@@ -102,6 +102,18 @@ def _is_local_reference_route_enabled() -> bool:
     return _is_local_reference_write_enabled()
 
 
+def _is_local_sales_inventory_read_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
+    return (
+        app_env in {"development", "dev", "local"}
+        and db_url in {SALES_ORDER_LOCAL_ALLOWED_DB_URL, REFERENCE_LOCAL_ALLOWED_DB_URL}
+        and allow_dev_auth == "true"
+        and get_permission_source() == "static"
+    )
+
+
 def _extract_sales_order_request_tag(value: str) -> str | None:
     matched = SALES_ORDER_REQUEST_TAG_PATTERN.fullmatch(value)
     if matched is None:
@@ -614,6 +626,21 @@ def list_sales_orders(
     parsed_from_date = _parse_optional_date(from_date, "from_date")
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
+    if _is_local_sales_inventory_read_enabled():
+        local_items = _write_service(session).list_local_sales_orders(
+            order_no=_scope_text(order_no),
+            keyword=_scope_text(keyword),
+            company=company,
+            customer=customer,
+            item_code=item_code,
+            item_name=_scope_text(item_name),
+            from_date=parsed_from_date,
+            to_date=parsed_to_date,
+        )
+        filtered_items = [item for item in local_items if _scope_allowed(item, permissions)]
+        paged_items, total = _paginate_list_items(filtered_items, page=page, page_size=page_size)
+        return _ok({"items": paged_items, "total": total, "page": page, "page_size": page_size})
+
     local_items: list[Any] = []
     if _is_local_sales_order_write_enabled():
         local_items = _write_service(session).list_local_sales_orders(
@@ -681,22 +708,38 @@ def get_sales_order_detail(
         module="sales_inventory",
         resource_type="sales_order",
     )
-    try:
-        data = _service(request).get_sales_order(name=name)
-    except ERPNextAdapterException as exc:
-        if _is_local_sales_order_write_enabled():
-            local_detail = _write_service(session).get_local_sales_order(name=name)
-            if local_detail is not None:
-                return _ok(local_detail)
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="SalesOrder",
-            resource_no=name,
-        )
+    if _is_local_sales_inventory_read_enabled():
+        data = _write_service(session).get_local_sales_order(name=name)
+        if data is None:
+            _raise_hidden_sales_order_not_found()
+    else:
+        try:
+            data = _service(request).get_sales_order(name=name)
+        except ERPNextAdapterException as exc:
+            if _is_local_sales_order_write_enabled():
+                local_detail = _write_service(session).get_local_sales_order(name=name)
+                if local_detail is not None:
+                    data = local_detail
+                else:
+                    _handle_erpnext_error(
+                        exc=exc,
+                        permission_service=permission_service,
+                        request=request,
+                        current_user=current_user,
+                        action=action,
+                        resource_type="SalesOrder",
+                        resource_no=name,
+                    )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="SalesOrder",
+                    resource_no=name,
+                )
     try:
         permission_service.ensure_resource_scope_permission(
             current_user=current_user,
@@ -947,6 +990,9 @@ def cancel_sales_order_draft(
 @router.get("/suppliers")
 def list_suppliers(
     request: Request,
+    keyword: str | None = Query(default=None),
+    company: str | None = Query(default=None),
+    disabled: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
@@ -961,13 +1007,65 @@ def list_suppliers(
         module="sales_inventory",
         resource_type="supplier",
     )
-    data = _write_service(session).list_local_suppliers(page=page, page_size=page_size)
     permissions = _get_read_permissions(
         permission_service=permission_service,
         current_user=current_user,
         request=request,
         resource_type="supplier",
     )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={"company": company},
+        required_fields=(),
+        resource_type="supplier",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    if _is_local_sales_inventory_read_enabled():
+        data = _write_service(session).list_local_suppliers(
+            keyword=_scope_text(keyword),
+            company=company,
+            disabled=disabled,
+            page=page,
+            page_size=page_size,
+        )
+    else:
+        try:
+            data = _service(request).list_suppliers(page=page, page_size=page_size)
+        except ERPNextAdapterException as exc:
+            if _local_read_fallback_enabled(exc):
+                data = _write_service(session).list_local_suppliers(
+                    keyword=_scope_text(keyword),
+                    company=company,
+                    disabled=disabled,
+                    page=page,
+                    page_size=page_size,
+                )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="Supplier",
+                )
+        normalized_keyword = _scope_text(keyword)
+        if normalized_keyword or disabled is not None:
+            filtered_adapter_items = []
+            for item in data.items:
+                if disabled is not None and item.disabled is not None and item.disabled != disabled:
+                    continue
+                if normalized_keyword and normalized_keyword.lower() not in " ".join(
+                    [item.name, item.supplier_name or ""],
+                ).lower():
+                    continue
+                filtered_adapter_items.append(item)
+            data.items = filtered_adapter_items
+            data.total = len(filtered_adapter_items)
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     paged_items, total = _paginate_list_items(filtered, page=page, page_size=page_size)
     data.items = paged_items
@@ -2345,6 +2443,8 @@ def list_stock_ledger(
 def list_warehouses(
     request: Request,
     company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    disabled: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
@@ -2376,19 +2476,41 @@ def list_warehouses(
         enforce_action=False,
         user_permissions=permissions,
     )
-    try:
-        data = _service(request).list_warehouses(company=company, page=page, page_size=page_size)
-    except ERPNextAdapterException as exc:
-        if _local_read_fallback_enabled(exc):
-            return _ok(_build_local_list_fallback(page=page, page_size=page_size))
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="Warehouse",
+    if _is_local_sales_inventory_read_enabled():
+        data = _write_service(session).list_local_warehouses(
+            company=company,
+            keyword=_scope_text(keyword),
+            disabled=disabled,
+            page=page,
+            page_size=page_size,
         )
+    else:
+        try:
+            data = _service(request).list_warehouses(company=company, page=page, page_size=page_size)
+        except ERPNextAdapterException as exc:
+            if _local_read_fallback_enabled(exc):
+                return _ok(_build_local_list_fallback(page=page, page_size=page_size))
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="Warehouse",
+            )
+        normalized_keyword = _scope_text(keyword)
+        if normalized_keyword or disabled is not None:
+            filtered_adapter_items = []
+            for item in data.items:
+                if disabled is not None and item.disabled is not None and item.disabled != disabled:
+                    continue
+                if normalized_keyword and normalized_keyword.lower() not in " ".join(
+                    [item.name, item.warehouse_name or "", item.company or ""],
+                ).lower():
+                    continue
+                filtered_adapter_items.append(item)
+            data.items = filtered_adapter_items
+            data.total = len(filtered_adapter_items)
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     data.items = filtered
     data.total = len(filtered)
@@ -2398,6 +2520,9 @@ def list_warehouses(
 @router.get("/customers")
 def list_customers(
     request: Request,
+    keyword: str | None = Query(default=None),
+    company: str | None = Query(default=None),
+    disabled: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
@@ -2418,24 +2543,63 @@ def list_customers(
         request=request,
         resource_type="customer",
     )
-    try:
-        data = _service(request).list_customers(page=page, page_size=page_size)
-    except ERPNextAdapterException as exc:
-        if _local_read_fallback_enabled(exc):
-            data = _write_service(session).list_local_customers(page=page, page_size=page_size)
-            filtered = [item for item in data.items if _scope_allowed(item, permissions)]
-            paged_items, total = _paginate_list_items(filtered, page=page, page_size=page_size)
-            data.items = paged_items
-            data.total = total
-            return _ok(data)
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="Customer",
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={"company": company},
+        required_fields=(),
+        resource_type="customer",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    if _is_local_sales_inventory_read_enabled():
+        data = _write_service(session).list_local_customers(
+            keyword=_scope_text(keyword),
+            company=company,
+            disabled=disabled,
+            page=page,
+            page_size=page_size,
         )
+    else:
+        try:
+            data = _service(request).list_customers(page=page, page_size=page_size)
+        except ERPNextAdapterException as exc:
+            if _local_read_fallback_enabled(exc):
+                data = _write_service(session).list_local_customers(
+                    keyword=_scope_text(keyword),
+                    company=company,
+                    disabled=disabled,
+                    page=page,
+                    page_size=page_size,
+                )
+                filtered = [item for item in data.items if _scope_allowed(item, permissions)]
+                paged_items, total = _paginate_list_items(filtered, page=page, page_size=page_size)
+                data.items = paged_items
+                data.total = total
+                return _ok(data)
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="Customer",
+            )
+        normalized_keyword = _scope_text(keyword)
+        if normalized_keyword or disabled is not None:
+            filtered_adapter_items = []
+            for item in data.items:
+                if disabled is not None and item.disabled is not None and item.disabled != disabled:
+                    continue
+                if normalized_keyword and normalized_keyword.lower() not in " ".join(
+                    [item.name, item.customer_name or ""],
+                ).lower():
+                    continue
+                filtered_adapter_items.append(item)
+            data.items = filtered_adapter_items
+            data.total = len(filtered_adapter_items)
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     paged_items, total = _paginate_list_items(filtered, page=page, page_size=page_size)
     data.items = paged_items
@@ -2512,6 +2676,8 @@ def get_sales_order_fulfillment(
     item_code: str | None = Query(default=None),
     warehouse: str | None = Query(default=None),
     item_name: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -2541,43 +2707,56 @@ def get_sales_order_fulfillment(
         enforce_action=False,
         user_permissions=permissions,
     )
-    local_fulfillment = (
-        _write_service(session).get_local_sales_order_fulfillment(
+    if _is_local_sales_inventory_read_enabled():
+        data = _write_service(session).get_local_sales_order_fulfillment(
             company=company,
             item_code=_scope_text(item_code),
             warehouse=_scope_text(warehouse),
             item_name=_scope_text(item_name),
         )
-        if _is_local_sales_order_write_enabled()
-        else None
-    )
-    try:
-        data = _service(request).get_sales_order_fulfillment(
-            company=company,
-            item_code=_scope_text(item_code),
-            warehouse=_scope_text(warehouse),
-            item_name=_scope_text(item_name),
+    else:
+        local_fulfillment = (
+            _write_service(session).get_local_sales_order_fulfillment(
+                company=company,
+                item_code=_scope_text(item_code),
+                warehouse=_scope_text(warehouse),
+                item_name=_scope_text(item_name),
+            )
+            if _is_local_sales_order_write_enabled()
+            else None
         )
-    except ERPNextAdapterException as exc:
-        if (_local_read_fallback_enabled(exc) or _is_local_sales_order_write_enabled()) and local_fulfillment is not None:
-            local_fulfillment.items = [item for item in local_fulfillment.items if _scope_allowed(item, permissions)]
-            return _ok(local_fulfillment)
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="SalesOrder",
-        )
-    if local_fulfillment is not None and local_fulfillment.items:
-        existing_keys = {(item.sales_order, item.item_code, item.warehouse or "") for item in data.items}
-        for local_item in local_fulfillment.items:
-            key = (local_item.sales_order, local_item.item_code, local_item.warehouse or "")
-            if key not in existing_keys:
-                data.items.append(local_item)
-                existing_keys.add(key)
-    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+        try:
+            data = _service(request).get_sales_order_fulfillment(
+                company=company,
+                item_code=_scope_text(item_code),
+                warehouse=_scope_text(warehouse),
+                item_name=_scope_text(item_name),
+            )
+        except ERPNextAdapterException as exc:
+            if (_local_read_fallback_enabled(exc) or _is_local_sales_order_write_enabled()) and local_fulfillment is not None:
+                data = local_fulfillment
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="SalesOrder",
+                )
+        if local_fulfillment is not None and local_fulfillment.items:
+            existing_keys = {(item.sales_order, item.item_code, item.warehouse or "") for item in data.items}
+            for local_item in local_fulfillment.items:
+                key = (local_item.sales_order, local_item.item_code, local_item.warehouse or "")
+                if key not in existing_keys:
+                    data.items.append(local_item)
+                    existing_keys.add(key)
+    filtered_items = [item for item in data.items if _scope_allowed(item, permissions)]
+    paged_items, total = _paginate_list_items(filtered_items, page=page, page_size=page_size)
+    data.items = paged_items
+    data.total = total
+    data.page = page
+    data.page_size = page_size
     return _ok(data)
 
 

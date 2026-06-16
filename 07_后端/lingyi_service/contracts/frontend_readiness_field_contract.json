@@ -85,7 +85,10 @@
       "items.warehouse",
       "items.ordered_qty",
       "items.actual_qty",
-      "items.fulfillment_rate"
+      "items.fulfillment_rate",
+      "total",
+      "page",
+      "page_size"
     ],
     "GET /api/subcontract/factories": [
       "company",

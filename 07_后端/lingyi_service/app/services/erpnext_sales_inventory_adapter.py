@@ -52,6 +52,7 @@ class ERPNextSalesInventoryAdapter:
     ]
     WAREHOUSE_FIELDS = ["name", "company", "warehouse_name", "disabled"]
     CUSTOMER_FIELDS = ["name", "customer_name", "disabled"]
+    SUPPLIER_FIELDS = ["name", "supplier_name", "disabled"]
 
     def __init__(self, request_obj: Request | None = None):
         self.request_obj = request_obj
@@ -204,6 +205,17 @@ class ERPNextSalesInventoryAdapter:
         rows = self._list_resource(
             doctype="Customer",
             fields=self.CUSTOMER_FIELDS,
+            filters=[],
+            page=page,
+            page_size=page_size,
+            order_by="name asc",
+        )
+        return [dict(row) for row in rows], len(rows)
+
+    def list_suppliers(self, *, page: int = 1, page_size: int = 20) -> tuple[list[dict[str, Any]], int]:
+        rows = self._list_resource(
+            doctype="Supplier",
+            fields=self.SUPPLIER_FIELDS,
             filters=[],
             page=page,
             page_size=page_size,

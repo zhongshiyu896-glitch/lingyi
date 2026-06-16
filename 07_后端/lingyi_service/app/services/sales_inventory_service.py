@@ -380,12 +380,11 @@ class SalesInventoryService:
         )
         if company:
             query = query.filter(LyWarehouseStockEntryDraft.company == company)
-        if customer:
-            query = query.filter(LyWarehouseStockEntryDraft.created_by == customer)
         rows = query.order_by(LyWarehouseStockEntryDraft.id.desc()).all()
 
         normalized_order_no = self._text(order_no)
         normalized_keyword = self._text(keyword)
+        normalized_customer = self._text(customer)
         normalized_item_code = self._text(item_code)
         normalized_item_name = self._text(item_name)
 
@@ -395,11 +394,14 @@ class SalesInventoryService:
             sales_order_no = self._text(payload.get("sales_order_no")) or str(draft.source_id)
             if normalized_order_no and normalized_order_no.lower() not in sales_order_no.lower():
                 continue
+            payload_customer = self._text(payload.get("customer"))
+            if normalized_customer and payload_customer != normalized_customer:
+                continue
             if normalized_keyword:
                 keyword_haystack = " ".join(
                     [
                         sales_order_no,
-                        self._text(payload.get("customer")) or "",
+                        payload_customer or "",
                         str(draft.company),
                     ]
                 )
@@ -423,7 +425,7 @@ class SalesInventoryService:
                 SalesOrderListItem(
                     name=sales_order_no,
                     company=str(draft.company),
-                    customer=self._text(payload.get("customer")),
+                    customer=payload_customer,
                     transaction_date=tx_date,
                     delivery_date=self._parse_optional_iso_date(self._text(payload.get("delivery_date"))),
                     status=("Cancelled" if str(draft.status) == "cancelled" else "Draft"),
@@ -512,7 +514,7 @@ class SalesInventoryService:
                 if item_name and not self._contains_like(line.item_name, item_name):
                     continue
                 ordered_qty = self._decimal_or_zero(line.qty)
-                actual_qty = Decimal("0") if detail.docstatus == 2 else ordered_qty
+                actual_qty = Decimal("0")
                 rows.append(
                     SalesOrderFulfillmentItem(
                         company=detail.company,
@@ -2807,8 +2809,39 @@ class SalesInventoryService:
             page_size=page_size,
         )
 
-    def list_local_customers(self, *, page: int, page_size: int) -> SalesInventoryListData[CustomerItem]:
-        drafts = self.list_reference_drafts(reference_type="customer", page=page, page_size=page_size)
+    def list_suppliers(self, *, page: int, page_size: int) -> SalesInventoryListData[SupplierItem]:
+        rows, total = self.adapter.list_suppliers(page=page, page_size=page_size)
+        return SalesInventoryListData[SupplierItem](
+            items=[
+                SupplierItem(
+                    name=str(row.get("name") or ""),
+                    supplier_name=self._text(row.get("supplier_name")),
+                    disabled=self._bool_or_none(row.get("disabled")),
+                )
+                for row in rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_local_customers(
+        self,
+        *,
+        keyword: str | None = None,
+        company: str | None = None,
+        disabled: bool | None = None,
+        page: int,
+        page_size: int,
+    ) -> SalesInventoryListData[CustomerItem]:
+        drafts = self._list_reference_drafts_filtered(
+            reference_type="customer",
+            keyword=keyword,
+            company=company,
+            disabled=disabled,
+            page=page,
+            page_size=page_size,
+        )
         return SalesInventoryListData[CustomerItem](
             items=[
                 CustomerItem(
@@ -2823,8 +2856,23 @@ class SalesInventoryService:
             page_size=page_size,
         )
 
-    def list_local_suppliers(self, *, page: int, page_size: int) -> SalesInventoryListData[SupplierItem]:
-        drafts = self.list_reference_drafts(reference_type="supplier", page=page, page_size=page_size)
+    def list_local_suppliers(
+        self,
+        *,
+        keyword: str | None = None,
+        company: str | None = None,
+        disabled: bool | None = None,
+        page: int,
+        page_size: int,
+    ) -> SalesInventoryListData[SupplierItem]:
+        drafts = self._list_reference_drafts_filtered(
+            reference_type="supplier",
+            keyword=keyword,
+            company=company,
+            disabled=disabled,
+            page=page,
+            page_size=page_size,
+        )
         return SalesInventoryListData[SupplierItem](
             items=[
                 SupplierItem(
@@ -2835,6 +2883,70 @@ class SalesInventoryService:
                 for item in drafts.items
             ],
             total=drafts.total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_local_warehouses(
+        self,
+        *,
+        company: str | None = None,
+        keyword: str | None = None,
+        disabled: bool | None = None,
+        page: int,
+        page_size: int,
+    ) -> SalesInventoryListData[WarehouseItem]:
+        session = self._require_session()
+        if disabled is True:
+            return SalesInventoryListData[WarehouseItem](items=[], total=0, page=page, page_size=page_size)
+
+        normalized_company = self._text(company)
+        normalized_keyword = self._text(keyword)
+        query = (
+            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(LyWarehouseStockEntryDraft.status != "cancelled")
+        )
+        if normalized_company:
+            query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+
+        items_by_key: dict[tuple[str, str], WarehouseItem] = {}
+
+        def add_warehouse(*, row_company: str, warehouse_name: str | None) -> None:
+            normalized_warehouse = self._text(warehouse_name)
+            if normalized_warehouse is None:
+                return
+            haystack = " ".join([normalized_warehouse, row_company])
+            if normalized_keyword and not self._contains_like(haystack, normalized_keyword):
+                return
+            key = (row_company, normalized_warehouse)
+            items_by_key[key] = WarehouseItem(
+                name=normalized_warehouse,
+                company=row_company,
+                warehouse_name=normalized_warehouse,
+                disabled=False,
+            )
+
+        for draft_row, item_row in query.all():
+            row_company = str(draft_row.company)
+            add_warehouse(row_company=row_company, warehouse_name=draft_row.source_warehouse)
+            add_warehouse(row_company=row_company, warehouse_name=draft_row.target_warehouse)
+            add_warehouse(row_company=row_company, warehouse_name=item_row.source_warehouse)
+            add_warehouse(row_company=row_company, warehouse_name=item_row.target_warehouse)
+
+        sorted_items = [
+            items_by_key[key]
+            for key in sorted(items_by_key, key=lambda value: (value[0], value[1]))
+        ]
+        total = len(sorted_items)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        return SalesInventoryListData[WarehouseItem](
+            items=sorted_items[start:end],
+            total=total,
             page=page,
             page_size=page_size,
         )
@@ -2881,6 +2993,74 @@ class SalesInventoryService:
                     f"SELECT COUNT(*) FROM {self._LOCAL_REFERENCE_DRAFT_TABLE} WHERE reference_type = :reference_type",
                 ),
                 {"reference_type": normalized_reference_type},
+            ).scalar_one()
+        )
+        return SalesInventoryListData[ReferenceDraftData](
+            items=[self._reference_draft_row_to_data(dict(row)) for row in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def _list_reference_drafts_filtered(
+        self,
+        *,
+        reference_type: str,
+        keyword: str | None,
+        company: str | None,
+        disabled: bool | None,
+        page: int,
+        page_size: int,
+    ) -> SalesInventoryListData[ReferenceDraftData]:
+        session = self._require_session()
+        normalized_reference_type = self._normalize_reference_type(reference_type)
+        normalized_company = self._text(company)
+        normalized_keyword = self._text(keyword)
+        self._ensure_reference_draft_table()
+
+        clauses = ["reference_type = :reference_type"]
+        params: dict[str, Any] = {"reference_type": normalized_reference_type}
+        if normalized_company:
+            clauses.append("company = :company")
+            params["company"] = normalized_company
+        if disabled is not None:
+            clauses.append("status = :status")
+            params["status"] = "inactive" if disabled else "active"
+        if normalized_keyword:
+            clauses.append("(LOWER(reference_no) LIKE :keyword OR LOWER(reference_name) LIKE :keyword)")
+            params["keyword"] = f"%{normalized_keyword.lower()}%"
+
+        where_sql = " AND ".join(clauses)
+        offset = max(page - 1, 0) * page_size
+        rows = session.execute(
+            text(
+                f"""
+                SELECT
+                    id,
+                    reference_type,
+                    reference_no,
+                    reference_name,
+                    company,
+                    status,
+                    scenario_tag,
+                    idempotency_key,
+                    created_by,
+                    created_at,
+                    deactivated_by,
+                    deactivated_at,
+                    deactivate_reason
+                FROM {self._LOCAL_REFERENCE_DRAFT_TABLE}
+                WHERE {where_sql}
+                ORDER BY id DESC
+                LIMIT :limit OFFSET :offset
+                """,
+            ),
+            {**params, "limit": page_size, "offset": offset},
+        ).mappings().all()
+        total = int(
+            session.execute(
+                text(f"SELECT COUNT(*) FROM {self._LOCAL_REFERENCE_DRAFT_TABLE} WHERE {where_sql}"),
+                params,
             ).scalar_one()
         )
         return SalesInventoryListData[ReferenceDraftData](

@@ -10,6 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter
 from fastapi import Depends
+from fastapi import Query
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError
@@ -548,9 +549,10 @@ def create_bom(
 def list_bom(
     request: Request,
     item_code: str | None = None,
+    keyword: str | None = Query(default=None, max_length=140),
     status: str | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -571,7 +573,7 @@ def list_bom(
         resource_type="bom",
     )
     service = BomService(session=session)
-    query = BomListQuery(item_code=item_code, status=status, page=page, page_size=page_size)
+    query = BomListQuery(item_code=item_code, keyword=keyword, status=status, page=page, page_size=page_size)
     try:
         data: BomListData = service.list_bom(query=query, allowed_item_codes=allowed_item_codes)
         return _ok(data.model_dump())
@@ -645,7 +647,7 @@ def list_bom_fabrics(
     supplier_name: str | None = None,
     status: str | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -696,7 +698,7 @@ def list_bom_accessories_packaging(
     supplier_name: str | None = None,
     status: str | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -1081,7 +1083,7 @@ def list_bom_material_types(
     applicable_scene: str | None = None,
     status: str | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -1133,7 +1135,7 @@ def list_bom_material_units(
     unit_name: str | None = None,
     status: str | None = None,
     page: int = 1,
-    page_size: int = 20,
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):

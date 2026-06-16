@@ -4965,7 +4965,9 @@
           "company",
           "item_code",
           "warehouse",
-          "item_name"
+          "item_name",
+          "page",
+          "page_size"
         ],
         "body": []
       },
@@ -4976,9 +4978,12 @@
         "items.warehouse",
         "items.ordered_qty",
         "items.actual_qty",
-        "items.fulfillment_rate"
+        "items.fulfillment_rate",
+        "total",
+        "page",
+        "page_size"
       ],
-      "is_paginated": false,
+      "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
       "frontend_connect_status": "candidate",

@@ -781,3 +781,6 @@ class SalesOrderFulfillmentData(BaseModel):
 
     company: str | None = None
     items: list[SalesOrderFulfillmentItem]
+    total: int = 0
+    page: int = 1
+    page_size: int = 20

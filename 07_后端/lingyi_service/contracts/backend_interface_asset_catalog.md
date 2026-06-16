@@ -149,7 +149,7 @@
 | A | GET | `/api/sales-inventory/material-transfers` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | B | GET | `/api/sales-inventory/sales-channels` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
 | A | GET | `/api/sales-inventory/sales-invoices` | 是 | 是 | 否 | candidate | sales_invoice, company, sales_order, customer, grand_total, paid_amount, outstanding_amount, posting_date, status | 真实业务只读接口候选 |
-| A | GET | `/api/sales-inventory/sales-order-fulfillment` | 否 | 是 | 否 | candidate | company, items.sales_order, items.item_code, items.warehouse, items.ordered_qty, items.actual_qty, items.fulfillment_rate | 真实业务只读接口候选 |
+| A | GET | `/api/sales-inventory/sales-order-fulfillment` | 是 | 是 | 否 | candidate | company, items.sales_order, items.item_code, items.warehouse, items.ordered_qty, items.actual_qty, items.fulfillment_rate, total, page, page_size | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/sales-orders` | 是 | 是 | 否 | candidate | name, company, customer, transaction_date, delivery_date, status, docstatus, grand_total, currency | 真实业务只读接口候选 |
 | A | POST | `/api/sales-inventory/sales-orders/drafts` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | POST | `/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |

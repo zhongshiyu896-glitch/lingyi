@@ -97,9 +97,10 @@ class BomListQuery(BaseModel):
     """BOM list query params."""
 
     item_code: Optional[str] = None
+    keyword: Optional[str] = Field(default=None, max_length=140)
     status: Optional[str] = None
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=200)
+    page_size: int = Field(default=20, ge=1, le=100)
 
 
 class BomMaterialGalleryQuery(BaseModel):
@@ -126,7 +127,7 @@ class BomFabricQuery(BaseModel):
     supplier_name: Optional[str] = None
     status: Optional[str] = None
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=200)
+    page_size: int = Field(default=20, ge=1, le=100)
 
 
 class BomAccessoriesPackagingQuery(BaseModel):
@@ -139,7 +140,7 @@ class BomAccessoriesPackagingQuery(BaseModel):
     supplier_name: Optional[str] = None
     status: Optional[str] = None
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=200)
+    page_size: int = Field(default=20, ge=1, le=100)
 
 
 class BomPurchaseOrderQuery(BaseModel):
@@ -235,7 +236,7 @@ class BomMaterialTypeQuery(BaseModel):
     applicable_scene: Optional[str] = None
     status: Optional[str] = None
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=200)
+    page_size: int = Field(default=20, ge=1, le=100)
 
 
 class BomMaterialUnitQuery(BaseModel):
@@ -246,7 +247,7 @@ class BomMaterialUnitQuery(BaseModel):
     unit_name: Optional[str] = None
     status: Optional[str] = None
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=200)
+    page_size: int = Field(default=20, ge=1, le=100)
 
 
 class BomExplodeRequest(BaseModel):

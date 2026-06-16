@@ -60,7 +60,7 @@ class ProductionPlanQuery(BaseModel):
     to_date: Optional[date] = None
     status: Optional[str] = None
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=200)
+    page_size: int = Field(default=20, ge=1, le=100)
 
 
 class ProductionWorkOrderOutboxSummary(BaseModel):

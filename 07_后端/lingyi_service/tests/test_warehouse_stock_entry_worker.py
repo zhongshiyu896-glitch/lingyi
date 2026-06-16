@@ -54,9 +54,7 @@ class WarehouseStockEntryWorkerTest(WarehouseStockEntryDraftApiBase):
 
     @classmethod
     def _headers_for_payload(cls, roles: str, payload: dict) -> dict[str, str]:
-        headers = cls._headers(roles)
-        headers["X-Request-ID"] = cls._request_id(payload)
-        return headers
+        return cls._headers(roles, request_id=cls._request_id(payload))
 
     @classmethod
     def _payload(cls, *, qty: str = "5", source_id: str = "SRC-001", idempotency_key: str = "idem-001") -> dict:

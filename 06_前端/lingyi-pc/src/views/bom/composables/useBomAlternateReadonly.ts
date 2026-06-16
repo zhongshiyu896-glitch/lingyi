@@ -87,6 +87,34 @@ export interface BomAlternateListReadonlySummary {
   rowCountLabel: string
 }
 
+export interface BomAlternateReadonlySectionSummary {
+  tags: Array<{ key: string; label: string; type: BomReadonlyTagType }>
+  readonlySourceLabel: string
+  readonlyModeLabel: string
+  parityLabel: string
+  focusStateLabel: string
+  queryStateLabel: string
+  itemStatusLabel: string
+  itemStatusTone: BomReadonlyTagType
+  sourceStatusLabel: string
+  blockedReasonSummary: string
+  guardMessage: string
+  remainingGap: string
+  writeBoundary: string
+  metrics: Array<{ key: string; label: string; value: string }>
+  items: Array<{
+    key: string
+    title: string
+    scopeLabel: string
+    statusLabel: string
+    statusTone: BomReadonlyTagType
+    sourceStatusLabel: string
+    blockedReason: string
+    note: string
+  }>
+  guardedActions: Array<{ key: string; label: string; reason: string }>
+}
+
 const normalizeText = (value: unknown, fallback = '-'): string => {
   if (typeof value !== 'string') return fallback
   const trimmed = value.trim()

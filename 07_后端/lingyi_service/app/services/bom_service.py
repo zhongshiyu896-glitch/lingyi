@@ -15,6 +15,7 @@ from typing import Tuple
 
 from sqlalchemy import and_
 from sqlalchemy import func
+from sqlalchemy import or_
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
@@ -182,6 +183,16 @@ class BomService:
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
             if query.item_code:
                 sql = sql.filter(LyApparelBom.item_code == query.item_code)
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                sql = sql.filter(
+                    or_(
+                        LyApparelBom.bom_no.like(keyword),
+                        LyApparelBom.item_code.like(keyword),
+                        LyApparelBom.version_no.like(keyword),
+                        LyApparelBom.status.like(keyword),
+                    )
+                )
             if query.status:
                 sql = sql.filter(LyApparelBom.status == query.status)
 

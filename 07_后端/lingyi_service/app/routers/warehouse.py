@@ -230,10 +230,22 @@ def _is_local_warehouse_write_enabled() -> bool:
     return app_env == "development" and db_url == WAREHOUSE_LOCAL_ALLOWED_DB_URL
 
 
+def _is_local_warehouse_read_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
+    return (
+        app_env in {"development", "dev", "local"}
+        and db_url == WAREHOUSE_LOCAL_ALLOWED_DB_URL
+        and allow_dev_auth == "true"
+        and get_permission_source() == "static"
+    )
+
+
 def _local_warehouse_read_fallback_enabled(exc: ERPNextAdapterException) -> bool:
     if exc.error_code != EXTERNAL_SERVICE_UNAVAILABLE:
         return False
-    return _is_local_warehouse_write_enabled() and get_permission_source() == "static"
+    return (_is_local_warehouse_read_enabled() or _is_local_warehouse_write_enabled()) and get_permission_source() == "static"
 
 
 def _match_warehouse_stock_scenario_tag(value: str) -> str | None:
@@ -579,6 +591,8 @@ def _build_local_stock_ledger_fallback(
     company: str | None,
     warehouse: str | None,
     item_code: str | None,
+    from_date: date | None = None,
+    to_date: date | None = None,
     page: int,
     page_size: int,
 ) -> WarehouseStockLedgerData:
@@ -606,13 +620,18 @@ def _build_local_stock_ledger_fallback(
     fallback_items: list[WarehouseStockLedgerItem] = []
     for draft_row, item_row in rows:
         qty = Decimal(str(item_row.qty))
+        posting_date = draft_row.created_at.date() if draft_row.created_at else date.today()
+        if from_date is not None and posting_date < from_date:
+            continue
+        if to_date is not None and posting_date > to_date:
+            continue
         running_qty += qty
         fallback_items.append(
             WarehouseStockLedgerItem(
                 company=str(draft_row.company),
                 warehouse=str(item_row.target_warehouse or draft_row.target_warehouse or ""),
                 item_code=str(item_row.item_code),
-                posting_date=(draft_row.created_at.date() if draft_row.created_at else date.today()),
+                posting_date=posting_date,
                 voucher_type="Stock Entry Draft",
                 voucher_no=f"DRAFT-{draft_row.id}",
                 actual_qty=qty,
@@ -1205,7 +1224,7 @@ def list_stock_ledger(
     from_date: str | None = Query(default=None),
     to_date: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=200),
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -1244,35 +1263,49 @@ def list_stock_ledger(
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
 
-    try:
-        data = _read_service(request).list_stock_ledger(
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
+    if _is_local_warehouse_read_enabled():
+        data = _build_local_stock_ledger_fallback(
+            session=session,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
             from_date=parsed_from_date,
             to_date=parsed_to_date,
             page=page,
             page_size=page_size,
         )
-    except ERPNextAdapterException as exc:
-        if _local_warehouse_read_fallback_enabled(exc):
-            data = _build_local_stock_ledger_fallback(
-                session=session,
-                company=company,
-                warehouse=warehouse,
-                item_code=item_code,
+    else:
+        try:
+            data = _read_service(request).list_stock_ledger(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+                from_date=parsed_from_date,
+                to_date=parsed_to_date,
                 page=page,
                 page_size=page_size,
             )
-        else:
-            _handle_erpnext_error(
-                exc=exc,
-                permission_service=permission_service,
-                request=request,
-                current_user=current_user,
-                action=action,
-                resource_type="StockLedgerEntry",
-            )
+        except ERPNextAdapterException as exc:
+            if _local_warehouse_read_fallback_enabled(exc):
+                data = _build_local_stock_ledger_fallback(
+                    session=session,
+                    company=company,
+                    warehouse=warehouse,
+                    item_code=item_code,
+                    from_date=parsed_from_date,
+                    to_date=parsed_to_date,
+                    page=page,
+                    page_size=page_size,
+                )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="StockLedgerEntry",
+                )
 
     filtered = [
         row
