@@ -53,6 +53,7 @@ from app.routers.warehouse import get_db_session as warehouse_db_dep  # noqa: E4
 from app.routers.workshop import get_db_session as workshop_db_dep  # noqa: E402
 from app.schemas.cross_module_view import CrossModuleWorkOrderTrailData  # noqa: E402
 from app.schemas.production import ProductionOrderIOQuantityListData  # noqa: E402
+from app.schemas.production import ProductionFollowupTemplateListData  # noqa: E402
 from app.schemas.production import ProductionPlanListData  # noqa: E402
 from app.schemas.production import ProductionWorkOrderListData  # noqa: E402
 from app.schemas.quality import QualityInspectionListData  # noqa: E402
@@ -118,7 +119,6 @@ GAP_PATHS = [
     "/api/factory-statements/cashier-accounts",
     "/api/bom/size-chart-templates",
     "/api/bom/sample-orders",
-    "/api/production/followup-templates",
 ]
 
 WRITE_FLOW_PATHS = [
@@ -218,6 +218,13 @@ REAL_REUSE_EXPECTATIONS = {
     "/api/bom/purchase-orders": {"purchase_no", "supplier_name", "material_item_code", "total_amount"},
     "/api/production/plans": {"plan_no", "sales_order", "item_code", "planned_qty"},
     "/api/production/work-orders": {"plan_no", "sales_order", "item_code", "work_order", "planned_qty"},
+    "/api/production/followup-templates": {
+        "template_no",
+        "template_name",
+        "template_type",
+        "followup_role",
+        "status",
+    },
     "/api/production/order-io-quantities": {"plan_no", "sales_order", "inbound_qty", "outbound_qty"},
     "/api/quality/inspections": {"inspection_no", "source_type", "item_code", "inspected_qty"},
     "/api/workshop/tickets": {"ticket_no", "job_card", "employee", "wage_amount"},
@@ -301,6 +308,10 @@ def _patches_for_real_reuse_endpoints():
         patch(
             "app.services.production_service.ProductionService.list_work_orders",
             return_value=ProductionWorkOrderListData.model_validate(_page_payload("work_orders")),
+        ),
+        patch(
+            "app.services.production_service.ProductionService.list_followup_templates",
+            return_value=ProductionFollowupTemplateListData.model_validate(_page_payload("followup_templates")),
         ),
         patch(
             "app.services.production_service.ProductionService.list_order_io_quantities",

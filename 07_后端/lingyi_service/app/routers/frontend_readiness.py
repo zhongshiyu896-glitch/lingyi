@@ -57,7 +57,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
 READINESS_ENDPOINTS: dict[str, str] = {
     "/api/sales-inventory/delivery-addresses": "delivery_addresses",
     "/api/sales-inventory/sales-channels": "sales_channels",
-    "/api/production/followup-templates": "followup_templates",
 }
 
 WRITE_READINESS_ENDPOINTS: dict[str, str] = {

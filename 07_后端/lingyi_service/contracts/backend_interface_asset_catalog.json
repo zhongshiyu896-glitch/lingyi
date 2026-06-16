@@ -2675,47 +2675,8 @@
       "is_real_write_db": false,
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
-      "duplicate_method_path_count": 2,
+      "duplicate_method_path_count": 1,
       "registered_order": 54
-    },
-    {
-      "class": "B",
-      "method": "GET",
-      "path": "/api/production/followup-templates",
-      "name": "frontend_readiness_followup_templates",
-      "tags": [
-        "frontend_readiness"
-      ],
-      "endpoint_module": "app.routers.frontend_readiness",
-      "request_params": {
-        "path": [],
-        "query": [
-          "page",
-          "page_size"
-        ],
-        "body": []
-      },
-      "response_fields": [
-        "template_id",
-        "template_no",
-        "template_name",
-        "template_type",
-        "trigger_node",
-        "followup_role",
-        "followup_frequency",
-        "sla_hours",
-        "item_code",
-        "company",
-        "status",
-        "updated_at"
-      ],
-      "is_paginated": true,
-      "requires_login": true,
-      "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
-      "duplicate_method_path_count": 2,
-      "registered_order": 222
     },
     {
       "class": "D",

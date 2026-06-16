@@ -3,7 +3,7 @@
 来源：FastAPI `app.routes` 自动导出；readiness/stub 以 `app/routers/frontend_readiness.py` 为准。
 
 - A 类真实业务接口：178
-- B 类 dev/test readiness 只读接口：27
+- B 类 dev/test readiness 只读接口：26
 - C 类 readiness flow 回执桩：7
 - D 类内部/诊断/不建议前端直连接口：11
 
@@ -87,7 +87,6 @@
 | A | GET | `/api/permissions/menu-management` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/permissions/roles/matrix` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/production/followup-templates` | 是 | 是 | 否 | candidate | template_id, template_no, template_name, template_type, trigger_node, followup_role, followup_frequency, sla_hours, item_code, company, status, updated_at | 真实业务只读接口候选 |
-| B | GET | `/api/production/followup-templates` | 是 | 是 | 否 | temporary_dev_only | template_id, template_no, template_name, template_type, trigger_node, followup_role, followup_frequency, sla_hours, item_code, company, status, updated_at | dev/test only; 生产环境必须关闭 |
 | D | POST | `/api/production/internal/work-order-sync/run-once` | 否 | 是 | 否 | not_for_page_direct_use | code, message, data, data.dry_run, data.processed_count, data.succeeded_count, data.failed_count, data.dead_count | 内部 worker/运维接口; 不给前端页面直接接入 |
 | A | GET | `/api/production/material-cost-details` | 是 | 是 | 否 | candidate | code, message, data, data.items, data.items.plan_id, data.items.plan_no, data.items.company, data.items.sales_order, data.items.sales_order_item, data.items.item_code, data.items.material_item_code, data.items.supplier, ... | 真实业务只读接口候选 |
 | B | GET | `/api/production/material-issues` | 是 | 是 | 否 | temporary_dev_only | plan_id, plan_no, work_order, company, item_code, material_item_code, warehouse, required_qty, available_qty, issued_qty, shortage_qty, status | dev/test only; 生产环境必须关闭 |

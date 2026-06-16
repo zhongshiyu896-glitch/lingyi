@@ -52,6 +52,7 @@ class BackendContractAssetsTest(unittest.TestCase):
             "/api/bom/style-bom-process": "app.routers.bom",
             "/api/bom/process-requirement-templates": "app.routers.bom",
             "/api/production/work-orders": "app.routers.production",
+            "/api/production/followup-templates": "app.routers.production",
             "/api/sales-inventory/suppliers": "app.routers.sales_inventory",
             "/api/sales-inventory/warehouses": "app.routers.sales_inventory",
             "/api/factory-statements/customer-receivables": "app.routers.factory_statement",
@@ -81,6 +82,7 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertIn(("GET", "/api/bom/materials"), dev_paths)
         self.assertIn(("GET", "/api/bom/units"), dev_paths)
         self.assertIn(("GET", "/api/bom/style-bom-process"), dev_paths)
+        self.assertIn(("GET", "/api/production/followup-templates"), dev_paths)
         self.assertIn(("POST", "/api/production/readiness/work-order-flow"), dev_paths)
 
         prod_app = load_app_for_env("production")
@@ -90,6 +92,7 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertIn(("GET", "/api/bom/materials"), prod_paths)
         self.assertIn(("GET", "/api/bom/units"), prod_paths)
         self.assertIn(("GET", "/api/bom/style-bom-process"), prod_paths)
+        self.assertIn(("GET", "/api/production/followup-templates"), prod_paths)
         self.assertNotIn(("POST", "/api/production/readiness/work-order-flow"), prod_paths)
 
     def test_core_real_routes_are_not_shadowed_by_frontend_readiness_router(self) -> None:
@@ -103,6 +106,7 @@ class BackendContractAssetsTest(unittest.TestCase):
             "/api/bom/style-bom-process",
             "/api/bom/units",
             "/api/factory-statements/customer-receivables",
+            "/api/production/followup-templates",
             "/api/production/plans",
             "/api/production/work-orders",
             "/api/sales-inventory/customers",
