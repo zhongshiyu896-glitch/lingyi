@@ -20,6 +20,7 @@ from fastapi import Body
 from fastapi import HTTPException
 from fastapi import Query
 from sqlalchemy import create_engine
+from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
 
 os.environ.setdefault("APP_ENV", "development")
@@ -36,6 +37,7 @@ from app.models.bom import LyApparelBomItem  # noqa: E402
 from app.models.bom import LyBomOperation  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.master_data import Base as MasterDataBase  # noqa: E402
+from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 import app.models.quality_outbox  # noqa: E402,F401
@@ -70,6 +72,7 @@ def _create_local_tables() -> None:
     ProductionBase.metadata.create_all(bind=main_module.engine)
     FactoryStatementBase.metadata.create_all(bind=main_module.engine)
     MasterDataBase.metadata.create_all(bind=main_module.engine)
+    MaterialPurchaseBase.metadata.create_all(bind=main_module.engine)
     SampleBase.metadata.create_all(bind=main_module.engine)
     SalesOrderBase.metadata.create_all(bind=main_module.engine)
     QualityBase.metadata.create_all(bind=main_module.engine)
@@ -87,6 +90,26 @@ def _seed_local_bom() -> None:
     with main_module.SessionLocal() as session:
         existing = session.query(LyApparelBom.id).first()
         if existing:
+            bom_id = int(existing[0])
+            operation = session.query(LyBomOperation).filter(LyBomOperation.bom_id == bom_id, LyBomOperation.process_name == "外发裁剪").first()
+            if operation is None:
+                next_operation_id = int(session.query(func.coalesce(func.max(LyBomOperation.id), 0)).scalar() or 0) + 1
+                session.add(
+                    LyBomOperation(
+                        id=next_operation_id,
+                        bom_id=bom_id,
+                        process_name="外发裁剪",
+                        sequence_no=10,
+                        is_subcontract=True,
+                        wage_rate=2.5,
+                        subcontract_cost_per_piece=2.5,
+                        remark="本地开发演示外发工序",
+                    )
+                )
+            else:
+                operation.is_subcontract = True
+                operation.subcontract_cost_per_piece = operation.subcontract_cost_per_piece or 2.5
+            session.commit()
             return
 
         bom = LyApparelBom(
@@ -128,11 +151,11 @@ def _seed_local_bom() -> None:
             LyBomOperation(
                 id=1,
                 bom_id=1,
-                process_name="裁剪",
+                process_name="外发裁剪",
                 sequence_no=10,
-                is_subcontract=False,
+                is_subcontract=True,
                 wage_rate=2.5,
-                subcontract_cost_per_piece=None,
+                subcontract_cost_per_piece=2.5,
                 remark="本地开发演示工序",
             ),
             LyBomOperation(

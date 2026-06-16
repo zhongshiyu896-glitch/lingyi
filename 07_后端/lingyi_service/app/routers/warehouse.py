@@ -76,6 +76,8 @@ from app.services.warehouse_export_service import SUPPORTED_DATASETS
 from app.services.warehouse_export_service import WarehouseExportService
 from app.services.warehouse_service import WarehouseService
 from app.services.warehouse_service import WarehouseServiceError
+from app.services.audit_service import AuditContext
+from app.services.audit_service import AuditService
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import is_request_id_valid
 
@@ -1007,6 +1009,29 @@ def _check_draft_scope(
             )
 
 
+def _draft_scope_allowed(
+    *,
+    permission_service: PermissionService,
+    current_user: CurrentUser,
+    request: Request,
+    action: str,
+    draft_data: dict[str, Any],
+    permissions: UserPermissionResult | None,
+) -> bool:
+    try:
+        _check_draft_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            draft_data=draft_data,
+            user_permissions=permissions,
+        )
+        return True
+    except HTTPException:
+        return False
+
+
 def _ensure_inventory_count_scope(
     *,
     permission_service: PermissionService,
@@ -1785,7 +1810,7 @@ def list_factory_return_material_report(
         )
 
     try:
-        data: WarehouseFactoryReturnMaterialReportData = _read_service(request).list_factory_return_material_report(
+        data: WarehouseFactoryReturnMaterialReportData = _write_service(session, request=request).list_factory_return_material_report(
             company=_scope_text(company),
             warehouse=_scope_text(warehouse),
             item_code=_scope_text(item_code),
@@ -2570,6 +2595,61 @@ def get_warehouse_diagnostic(
     return _ok(data)
 
 
+@router.get("/stock-entry-drafts")
+def list_stock_entry_drafts(
+    request: Request,
+    company: str | None = Query(default=None),
+    purpose: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_READ
+    permission_service = PermissionService(session=session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_stock_entry_draft",
+    )
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+    try:
+        data = _write_service(session).list_stock_entry_drafts(
+            company=company,
+            purpose=purpose,
+            status=status,
+            keyword=keyword,
+            page=page,
+            page_size=page_size,
+        )
+        data.items = [
+            row
+            for row in data.items
+            if _draft_scope_allowed(
+                permission_service=permission_service,
+                current_user=current_user,
+                request=request,
+                action=action,
+                draft_data=row.model_dump(mode="json"),
+                permissions=permissions,
+            )
+        ]
+        data.total = len(data.items)
+    except WarehouseServiceError as exc:
+        _raise_service_error(exc)
+    return _ok(data)
+
+
 @router.post("/stock-entry-drafts")
 def create_stock_entry_draft(
     request: Request,
@@ -2579,6 +2659,7 @@ def create_stock_entry_draft(
 ):
     action = WAREHOUSE_STOCK_ENTRY_DRAFT
     permission_service = PermissionService(session=session)
+    audit = AuditService(session)
     _require_warehouse_action(
         permission_service=permission_service,
         current_user=current_user,
@@ -2646,9 +2727,35 @@ def create_stock_entry_draft(
             payload=payload,
             current_user=current_user.username,
         )
+        audit.record_success(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_stock_entry_draft",
+            resource_id=int(data.id),
+            resource_no=str(data.id),
+            before_data=None,
+            after_data=data.model_dump(mode="json"),
+            context=AuditContext.from_request(request),
+        )
         session.commit()
     except WarehouseServiceError as exc:
         session.rollback()
+        AuditService(session).record_failure(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_stock_entry_draft",
+            resource_id=None,
+            resource_no=payload.source_id,
+            before_data=None,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
         _raise_service_error(exc)
     except Exception:
         session.rollback()
@@ -2666,6 +2773,7 @@ def cancel_stock_entry_draft(
 ):
     action = WAREHOUSE_STOCK_ENTRY_CANCEL
     permission_service = PermissionService(session=session)
+    audit = AuditService(session)
     _require_warehouse_action(
         permission_service=permission_service,
         current_user=current_user,
@@ -2745,9 +2853,35 @@ def cancel_stock_entry_draft(
             reason=payload.reason,
             cancelled_by=current_user.username,
         )
+        audit.record_success(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_stock_entry_draft",
+            resource_id=int(data.id),
+            resource_no=str(data.id),
+            before_data=before_data,
+            after_data=data.model_dump(mode="json"),
+            context=AuditContext.from_request(request),
+        )
         session.commit()
     except WarehouseServiceError as exc:
         session.rollback()
+        AuditService(session).record_failure(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_stock_entry_draft",
+            resource_id=draft_id,
+            resource_no=str(draft_id),
+            before_data=before_data,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
         _raise_service_error(exc)
     except Exception:
         session.rollback()

@@ -65,6 +65,8 @@ from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
+from app.core.permissions import MATERIAL_PURCHASE_READ
+from app.core.permissions import MATERIAL_PURCHASE_WRITE
 from app.core.permissions import QUALITY_CANCEL
 from app.core.permissions import QUALITY_CONFIRM
 from app.core.permissions import QUALITY_CREATE
@@ -76,6 +78,9 @@ from app.core.permissions import QUALITY_WORKER
 from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import WAREHOUSE_EXPORT
 from app.core.permissions import WAREHOUSE_DIAGNOSTIC
+from app.core.permissions import WAREHOUSE_READ
+from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
+from app.core.permissions import WAREHOUSE_STOCK_ENTRY_CANCEL
 from app.core.permissions import DASHBOARD_READ
 from app.core.permissions import PERMISSION_GOVERNANCE_AUDIT_READ
 from app.core.permissions import PERMISSION_GOVERNANCE_DIAGNOSTIC
@@ -111,6 +116,8 @@ from app.routers.master_data import get_db_session as master_data_router_session
 from app.routers.master_data import router as master_data_router
 from app.routers.sample import get_db_session as sample_router_session_dep
 from app.routers.sample import router as sample_router
+from app.routers.material_purchase import get_db_session as material_purchase_router_session_dep
+from app.routers.material_purchase import router as material_purchase_router
 from app.routers.quality import get_db_session as quality_router_session_dep
 from app.routers.quality import router as quality_router
 from app.routers.cross_module_view import get_db_session as cross_module_view_router_session_dep
@@ -165,6 +172,7 @@ app.dependency_overrides[factory_statement_router_session_dep] = get_db_session
 app.dependency_overrides[sales_inventory_router_session_dep] = get_db_session
 app.dependency_overrides[master_data_router_session_dep] = get_db_session
 app.dependency_overrides[sample_router_session_dep] = get_db_session
+app.dependency_overrides[material_purchase_router_session_dep] = get_db_session
 app.dependency_overrides[quality_router_session_dep] = get_db_session
 app.dependency_overrides[cross_module_view_router_session_dep] = get_db_session
 app.dependency_overrides[warehouse_router_session_dep] = get_db_session
@@ -185,6 +193,7 @@ app.include_router(factory_statement_router)
 app.include_router(sales_inventory_router)
 app.include_router(master_data_router)
 app.include_router(sample_router)
+app.include_router(material_purchase_router)
 app.include_router(quality_router)
 app.include_router(cross_module_view_router)
 app.include_router(warehouse_router)
@@ -453,6 +462,13 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             return "sales_inventory", SALES_INVENTORY_READ, "Customer", None
         return "sales_inventory", SALES_INVENTORY_READ, "SalesInventory", None
 
+    if path.startswith("/api/material-purchase"):
+        if path in {"/api/material-purchase/orders", "/api/material-purchase/orders/"}:
+            if method == "POST":
+                return "material_purchase", MATERIAL_PURCHASE_WRITE, "MaterialPurchaseOrder", None
+            return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseOrder", None
+        return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseOrder", None
+
     if path.startswith("/api/quality"):
         if path.endswith("/internal/outbox-sync/run-once"):
             return "quality", QUALITY_WORKER, "QualityOutboxWorker", None
@@ -480,10 +496,19 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
     if path.startswith("/api/warehouse"):
         if path.endswith("/internal/stock-entry-sync/run-once"):
             return "warehouse", WAREHOUSE_WORKER, "WarehouseStockEntryWorker", None
+        if "/stock-entry-drafts/" in path and path.endswith("/cancel"):
+            return "warehouse", WAREHOUSE_STOCK_ENTRY_CANCEL, "WarehouseStockEntryDraft", _extract_warehouse_stock_entry_draft_id(path)
+        if path in {"/api/warehouse/stock-entry-drafts", "/api/warehouse/stock-entry-drafts/"}:
+            if method == "POST":
+                return "warehouse", WAREHOUSE_STOCK_ENTRY_DRAFT, "WarehouseStockEntryDraft", None
+            return "warehouse", WAREHOUSE_READ, "WarehouseStockEntryDraft", None
+        if "/stock-entry-drafts/" in path:
+            return "warehouse", WAREHOUSE_READ, "WarehouseStockEntryDraft", _extract_warehouse_stock_entry_draft_id(path)
         if path.endswith("/export"):
             return "warehouse", WAREHOUSE_EXPORT, "WarehouseExport", None
         if path.endswith("/diagnostic"):
             return "warehouse", WAREHOUSE_DIAGNOSTIC, "WarehouseDiagnostic", None
+        return "warehouse", WAREHOUSE_READ, "Warehouse", None
 
     if path.startswith("/api/dashboard"):
         return "dashboard", DASHBOARD_READ, "DashboardOverview", None
@@ -566,6 +591,13 @@ def _extract_sales_inventory_item(path: str) -> str | None:
 
 def _extract_quality_inspection_id(path: str) -> str | None:
     match = re.match(r"^/api/quality/inspections/(\d+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_warehouse_stock_entry_draft_id(path: str) -> str | None:
+    match = re.match(r"^/api/warehouse/stock-entry-drafts/(\d+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None

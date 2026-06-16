@@ -545,6 +545,15 @@ class WarehouseStockEntryDraftData(BaseModel):
     outbox: WarehouseStockEntryOutboxStatusData | None = None
 
 
+class WarehouseStockEntryDraftListData(BaseModel):
+    """Paginated stock-entry draft list response."""
+
+    items: list[WarehouseStockEntryDraftData]
+    total: int
+    page: int
+    page_size: int
+
+
 class WarehouseInventoryCountItemCreateRequest(BaseModel):
     """Inventory-count line create payload."""
 

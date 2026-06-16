@@ -97,6 +97,9 @@ MASTER_DATA_MANAGE = "master_data:manage"
 SAMPLE_READ = "sample:read"
 SAMPLE_MANAGE = "sample:manage"
 
+MATERIAL_PURCHASE_READ = "material_purchase:read"
+MATERIAL_PURCHASE_WRITE = "material_purchase:write"
+
 SALES_READ = "sales:read"
 SALES_EXPORT = "sales:export"
 INVENTORY_READ = "inventory:read"
@@ -242,6 +245,11 @@ ALL_SAMPLE_ACTIONS = {
     SAMPLE_MANAGE,
 }
 
+ALL_MATERIAL_PURCHASE_ACTIONS = {
+    MATERIAL_PURCHASE_READ,
+    MATERIAL_PURCHASE_WRITE,
+}
+
 ALL_SALES_ACTIONS = {
     SALES_READ,
     SALES_EXPORT,
@@ -315,6 +323,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_SALES_INVENTORY_ACTIONS
         | ALL_MASTER_DATA_ACTIONS
         | ALL_SAMPLE_ACTIONS
+        | ALL_MATERIAL_PURCHASE_ACTIONS
         | ALL_SALES_ACTIONS
         | ALL_INVENTORY_ACTIONS
         | ALL_WAREHOUSE_ACTIONS
@@ -384,6 +393,8 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
     },
     "Master Data Manager": set(ALL_MASTER_DATA_ACTIONS),
     "Sample Manager": set(ALL_SAMPLE_ACTIONS),
+    "Purchasing Manager": set(ALL_MATERIAL_PURCHASE_ACTIONS | {WAREHOUSE_READ, WAREHOUSE_STOCK_ENTRY_DRAFT}),
+    "Warehouse Manager": set(ALL_WAREHOUSE_ACTIONS),
     "Quality Manager": {
         QUALITY_READ,
         QUALITY_CREATE,
@@ -440,6 +451,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "sales_inventory": set(ALL_SALES_INVENTORY_ACTIONS),
     "master_data": set(ALL_MASTER_DATA_ACTIONS),
     "sample": set(ALL_SAMPLE_ACTIONS),
+    "material_purchase": set(ALL_MATERIAL_PURCHASE_ACTIONS),
     "sales": set(ALL_SALES_ACTIONS),
     "inventory": set(ALL_INVENTORY_ACTIONS),
     "warehouse": set(ALL_WAREHOUSE_ACTIONS),

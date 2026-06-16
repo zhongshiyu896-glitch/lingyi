@@ -8,9 +8,11 @@ from datetime import datetime
 from datetime import timezone
 from decimal import Decimal
 import hashlib
+import os
 from typing import Any
 from typing import Literal
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.error_codes import INTERNAL_ERROR
@@ -41,6 +43,7 @@ from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
 from app.schemas.warehouse import WarehouseStockEntryDraftData
 from app.schemas.warehouse import WarehouseStockEntryDraftItemCreateRequest
 from app.schemas.warehouse import WarehouseStockEntryDraftItemData
+from app.schemas.warehouse import WarehouseStockEntryDraftListData
 from app.schemas.warehouse import WarehouseStockEntryOutboxStatusData
 from app.schemas.warehouse import WarehouseStockEntryWorkerRunOnceData
 from app.schemas.warehouse import WarehouseStockLedgerData
@@ -62,6 +65,7 @@ from app.schemas.warehouse import WarehouseTraceabilityData
 from app.schemas.warehouse import WarehouseTraceabilityItem
 from app.services.erpnext_warehouse_adapter import ERPNextWarehouseAdapter
 from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
+from app.services.material_purchase_service import MaterialPurchaseService
 
 
 @dataclass(slots=True)
@@ -137,7 +141,12 @@ class WarehouseService:
         warehouse: str | None,
         item_code: str | None,
     ) -> WarehouseStockSummaryData:
-        rows = self._require_adapter().list_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        try:
+            rows = self._require_adapter().list_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        except ERPNextAdapterException:
+            if not self._local_read_fallback_enabled():
+                raise
+            return self._local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
         items = [self._summary_item(row) for row in rows]
         items.sort(key=lambda row: (row.company, row.warehouse, row.item_code))
         management_rows = self._build_management_overview(items=items)
@@ -149,6 +158,88 @@ class WarehouseService:
             items=items,
             warehouse_management=management_rows,
             material_inventory=material_rows,
+        )
+
+    def _local_read_fallback_enabled(self) -> bool:
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        db_url = os.getenv("LINGYI_DB_URL", "").strip()
+        allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
+        return (
+            self.session is not None
+            and app_env in {"development", "dev", "local"}
+            and db_url == "sqlite:///./lingyi_service.local.db"
+            and allow_dev_auth == "true"
+        )
+
+    def _local_stock_summary(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> WarehouseStockSummaryData:
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_warehouse = self._text(warehouse)
+        normalized_item_code = self._text(item_code)
+        query = (
+            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(LyWarehouseStockEntryDraft.status != "cancelled")
+        )
+        if normalized_company:
+            query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+        if normalized_item_code:
+            query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
+
+        grouped: dict[tuple[str, str, str], Decimal] = {}
+
+        def add_movement(*, draft: LyWarehouseStockEntryDraft, item: LyWarehouseStockEntryDraftItem, warehouse_value: str | None, qty: Decimal) -> None:
+            warehouse_key = str(warehouse_value or "").strip()
+            if not warehouse_key:
+                return
+            if normalized_warehouse and warehouse_key != normalized_warehouse:
+                return
+            key = (str(draft.company), warehouse_key, str(item.item_code))
+            grouped[key] = grouped.get(key, Decimal("0")) + qty
+
+        for draft, item in query.all():
+            qty = Decimal(str(item.qty or 0))
+            if str(draft.purpose) == "Material Issue":
+                add_movement(draft=draft, item=item, warehouse_value=item.source_warehouse or draft.source_warehouse, qty=-qty)
+            elif str(draft.purpose) == "Material Transfer":
+                add_movement(draft=draft, item=item, warehouse_value=item.source_warehouse or draft.source_warehouse, qty=-qty)
+                add_movement(draft=draft, item=item, warehouse_value=item.target_warehouse or draft.target_warehouse, qty=qty)
+            else:
+                add_movement(draft=draft, item=item, warehouse_value=item.target_warehouse or draft.target_warehouse, qty=qty)
+
+        items = [
+            WarehouseStockSummaryItem(
+                company=company_key,
+                warehouse=warehouse_key,
+                item_code=item_key,
+                actual_qty=qty,
+                projected_qty=qty,
+                reserved_qty=Decimal("0"),
+                ordered_qty=Decimal("0"),
+                reorder_level=Decimal("0"),
+                safety_stock=Decimal("0"),
+                threshold_missing=False,
+                is_below_reorder=False,
+                is_below_safety=False,
+            )
+            for (company_key, warehouse_key, item_key), qty in sorted(grouped.items())
+        ]
+        return WarehouseStockSummaryData(
+            company=normalized_company,
+            warehouse=normalized_warehouse,
+            item_code=normalized_item_code,
+            items=items,
+            warehouse_management=self._build_management_overview(items=items),
+            material_inventory=self._build_material_inventory(items=items),
         )
 
     def list_other_inbound(
@@ -904,7 +995,55 @@ class WarehouseService:
         )
         session.flush()
 
+        if source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt":
+            self._apply_material_purchase_receipt(company=company, source_id=source_id, items=item_rows)
+            session.flush()
+
         return self._build_draft_data(draft)
+
+    def list_stock_entry_drafts(
+        self,
+        *,
+        company: str | None,
+        purpose: str | None,
+        status: str | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+    ) -> WarehouseStockEntryDraftListData:
+        session = self._require_session()
+        query = session.query(LyWarehouseStockEntryDraft)
+        normalized_company = self._text(company)
+        if normalized_company:
+            query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+        normalized_purpose = self._text(purpose)
+        if normalized_purpose:
+            query = query.filter(LyWarehouseStockEntryDraft.purpose == normalized_purpose)
+        normalized_status = self._text(status)
+        if normalized_status:
+            query = query.filter(LyWarehouseStockEntryDraft.status == normalized_status)
+        normalized_keyword = self._text(keyword)
+        if normalized_keyword:
+            like_value = f"%{normalized_keyword.lower()}%"
+            query = query.filter(
+                (func.lower(LyWarehouseStockEntryDraft.source_id).like(like_value))
+                | (func.lower(LyWarehouseStockEntryDraft.source_type).like(like_value))
+                | (func.lower(LyWarehouseStockEntryDraft.source_warehouse).like(like_value))
+                | (func.lower(LyWarehouseStockEntryDraft.target_warehouse).like(like_value))
+            )
+        total = int(query.count())
+        rows = (
+            query.order_by(LyWarehouseStockEntryDraft.created_at.desc(), LyWarehouseStockEntryDraft.id.desc())
+            .offset(max(page - 1, 0) * page_size)
+            .limit(page_size)
+            .all()
+        )
+        return WarehouseStockEntryDraftListData(
+            items=[self._build_draft_data(row) for row in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
 
     def cancel_stock_entry_draft(
         self,
@@ -1328,6 +1467,26 @@ class WarehouseService:
             ],
             outbox=self._build_outbox_status(outbox=outbox) if outbox is not None else None,
         )
+
+    def _apply_material_purchase_receipt(
+        self,
+        *,
+        company: str,
+        source_id: str,
+        items: list[dict[str, Any]],
+    ) -> None:
+        quantities: dict[str, Decimal] = {}
+        for item in items:
+            item_code = str(item["item_code"]).strip()
+            quantities[item_code] = quantities.get(item_code, Decimal("0")) + Decimal(str(item["qty"]))
+        try:
+            MaterialPurchaseService(self.session).apply_receipt(
+                company=company,
+                purchase_no=source_id.rsplit(":", 1)[-1],
+                item_quantities=quantities,
+            )
+        except BusinessException as exc:
+            raise WarehouseServiceError(exc.status_code, exc.code, exc.message) from exc
 
     def _latest_outbox_for_draft(self, draft_id: int) -> LyWarehouseStockEntryOutboxEvent | None:
         return (
