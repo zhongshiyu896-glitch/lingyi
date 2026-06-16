@@ -45,6 +45,8 @@ from app.schemas.sales_inventory import SupplierItem
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
 from app.schemas.sales_inventory import SalesInvoiceListData
+from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
+from app.schemas.sales_inventory import SalesPaymentEntryListData
 from app.schemas.sales_inventory import StockLedgerData
 from app.schemas.sales_inventory import StockLedgerItem
 from app.schemas.sales_inventory import StockSummaryData
@@ -79,6 +81,9 @@ REFERENCE_ALLOWED_TYPES = {"customer", "supplier"}
 DELIVERY_INVOICE_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-DELIVERY-INVOICE-\d{8}-\d{3}$")
 DELIVERY_INVOICE_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-DELIVERY-INVOICE-\d{8}-\d{3})(?:$|[-_.].*)$")
 DELIVERY_INVOICE_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-DELIVERY-INVOICE-\d{8}-\d{3})(?:[-_.].*)?$")
+SALES_PAYMENT_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-PAYMENT-\d{8}-\d{3}$")
+SALES_PAYMENT_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-PAYMENT-\d{8}-\d{3})(?:$|[-_.].*)$")
+SALES_PAYMENT_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-PAYMENT-\d{8}-\d{3})(?:[-_.].*)?$")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -144,6 +149,13 @@ def _extract_delivery_invoice_request_tag(value: str) -> str | None:
     return matched.group(1)
 
 
+def _extract_sales_payment_request_tag(value: str) -> str | None:
+    matched = SALES_PAYMENT_REQUEST_TAG_PATTERN.fullmatch(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
 def _match_sales_order_prefixed_carrier(value: str | None, pattern: re.Pattern[str]) -> str | None:
     normalized = _scope_text(value)
     if normalized is None:
@@ -181,6 +193,17 @@ def _raise_delivery_invoice_conflict(message: str) -> None:
         status_code=409,
         detail={
             "code": "SALES_DELIVERY_INVOICE_CONFLICT",
+            "message": message,
+            "data": {},
+        },
+    )
+
+
+def _raise_sales_payment_conflict(message: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "SALES_PAYMENT_ENTRY_CONFLICT",
             "message": message,
             "data": {},
         },
@@ -390,6 +413,57 @@ def _validate_delivery_invoice_write_gate(
         _raise_delivery_invoice_conflict("idempotency_key 载体缺失或格式非法")
     if idempotency_tag != normalized_scenario_tag:
         _raise_delivery_invoice_conflict("idempotency_key 载体与 scenario_tag 不一致")
+    return normalized_scenario_tag
+
+
+def _validate_sales_payment_write_gate(
+    *,
+    request_obj: Request,
+    scenario_tag: str | None,
+    idempotency_key: str | None,
+    company: str | None,
+    operation: str | None,
+) -> str:
+    normalized_scenario_tag = _scope_text(scenario_tag)
+    strict_gate_requested = bool(
+        normalized_scenario_tag and SALES_PAYMENT_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag)
+    )
+    normalized_operation = _scope_text(operation) or "create_payment_entry"
+    if normalized_operation != "create_payment_entry":
+        _raise_sales_payment_conflict("operation 非法")
+    if not _scope_text(company):
+        _raise_sales_payment_conflict("company 不能为空")
+    if not _scope_text(idempotency_key):
+        _raise_sales_payment_conflict("idempotency_key 不能为空")
+    if not strict_gate_requested:
+        return normalized_scenario_tag or ""
+
+    if not _is_local_sales_order_write_enabled():
+        _raise_sales_payment_conflict("仅允许本地开发测试库执行销售回款场景写入")
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_sales_payment_conflict("request_id 不能为空")
+    if not is_request_id_valid(request_id_header):
+        _raise_sales_payment_conflict("request_id_pattern_invalid")
+    header_tag = _extract_sales_payment_request_tag(request_id_header)
+    if header_tag is None or SALES_PAYMENT_SCENARIO_FULL_PATTERN.fullmatch(header_tag) is None:
+        _raise_sales_payment_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    if not request_id or request_id != request_id_header:
+        _raise_sales_payment_conflict("request_id 与 Header 不一致")
+    request_tag = _extract_sales_payment_request_tag(request_id)
+    if request_tag != header_tag:
+        _raise_sales_payment_conflict("request_id 与 scenario_tag 不一致")
+    if normalized_scenario_tag != header_tag:
+        _raise_sales_payment_conflict("scenario_tag 载体与 request_id 不一致")
+
+    idempotency_tag = _match_sales_order_prefixed_carrier(idempotency_key, SALES_PAYMENT_IDEMPOTENCY_PATTERN)
+    if idempotency_tag is None:
+        _raise_sales_payment_conflict("idempotency_key 载体缺失或格式非法")
+    if idempotency_tag != normalized_scenario_tag:
+        _raise_sales_payment_conflict("idempotency_key 载体与 scenario_tag 不一致")
     return normalized_scenario_tag
 
 
@@ -1174,6 +1248,143 @@ def list_sales_invoices(
         )
     )
     return _ok(data)
+
+
+@router.get("/payment-entries")
+def list_payment_entries(
+    request: Request,
+    company: str | None = Query(default=None),
+    sales_invoice: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="payment_entry",
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="payment_entry",
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": company,
+            "customer": customer,
+        },
+        required_fields=(),
+        resource_type="payment_entry",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    data: SalesPaymentEntryListData = _write_service(session).list_local_payment_entries(
+        company=company,
+        sales_invoice=sales_invoice,
+        customer=customer,
+        status=status,
+        keyword=keyword,
+        page=_coerce_page(page, default=1),
+        page_size=_coerce_page(page_size, default=20, maximum=100),
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
+@router.post("/payment-entries")
+def create_payment_entry(
+    request: Request,
+    payload: SalesPaymentEntryCreateRequest = Body(...),
+    idempotency_key_header: str | None = Header(default=None, alias="Idempotency-Key"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_WRITE
+    if not payload.idempotency_key and idempotency_key_header:
+        payload.idempotency_key = idempotency_key_header
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="payment_entry",
+    )
+    scenario_tag = _validate_sales_payment_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        operation=payload.operation,
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": payload.company,
+            "customer": payload.customer,
+        },
+        required_fields=("company",),
+        resource_type="payment_entry",
+        enforce_action=False,
+    )
+    try:
+        data = _write_service(session).create_payment_entry(
+            payload=payload,
+            current_user=current_user.username,
+            scenario_tag=scenario_tag,
+        )
+        AuditService(session).record_success(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="payment_entry",
+            resource_id=int(data.id),
+            resource_no=str(data.payment_entry),
+            before_data=None,
+            after_data=jsonable_encoder(data),
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="payment_entry",
+            resource_id=None,
+            resource_no=payload.payment_entry or payload.sales_invoice,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _created(data)
 
 
 @router.post("/sales-orders/drafts")

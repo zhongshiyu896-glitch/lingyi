@@ -140,6 +140,61 @@ class DeliveryInvoiceListData(BaseModel):
     page_size: int
 
 
+class SalesPaymentEntryCreateRequest(BaseModel):
+    """Create FastAPI-native customer payment entry payload."""
+
+    company: str
+    sales_invoice: str
+    customer: str | None = None
+    posting_date: date
+    paid_amount: Decimal
+    mode_of_payment: str = "Bank Transfer"
+    reference_no: str | None = None
+    reference_date: date | None = None
+    payment_entry: str | None = None
+    source_ref: str | None = None
+    idempotency_key: str
+    scenario_tag: str | None = None
+    operation: str | None = "create_payment_entry"
+
+
+class SalesPaymentEntryData(BaseModel):
+    """FastAPI-native customer payment entry response."""
+
+    id: int
+    company: str
+    payment_entry: str
+    delivery_invoice_id: int
+    delivery_note: str
+    sales_invoice: str
+    sales_order: str
+    customer: str | None = None
+    posting_date: date
+    paid_amount: Decimal
+    allocated_amount: Decimal
+    outstanding_before: Decimal
+    outstanding_after: Decimal
+    mode_of_payment: str
+    reference_no: str | None = None
+    reference_date: date | None = None
+    status: Literal["submitted", "cancelled"]
+    docstatus: int
+    source_ref: str
+    idempotency_key: str
+    scenario_tag: str | None = None
+    created_by: str
+    created_at: datetime
+
+
+class SalesPaymentEntryListData(BaseModel):
+    """Paginated customer payment entry response."""
+
+    items: list[SalesPaymentEntryData]
+    total: int
+    page: int
+    page_size: int
+
+
 class SalesOrderListItem(BaseModel):
     """Read-only Sales Order list row."""
 

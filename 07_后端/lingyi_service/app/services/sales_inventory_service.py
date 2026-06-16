@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.models.sales_order import LyDeliveryInvoice
+from app.models.sales_order import LySalesPaymentEntry
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
@@ -60,6 +61,9 @@ from app.schemas.sales_inventory import SalesInventoryListData
 from app.schemas.sales_inventory import SalesInvoiceItem
 from app.schemas.sales_inventory import SupplierItem
 from app.schemas.sales_inventory import SalesInvoiceListData
+from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
+from app.schemas.sales_inventory import SalesPaymentEntryData
+from app.schemas.sales_inventory import SalesPaymentEntryListData
 from app.schemas.sales_inventory import ReferenceDraftCreateRequest
 from app.schemas.sales_inventory import ReferenceDraftData
 from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
@@ -1039,6 +1043,180 @@ class SalesInventoryService:
                 )
                 for row in rows[start : start + page_size]
             ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def create_payment_entry(
+        self,
+        *,
+        payload: SalesPaymentEntryCreateRequest,
+        current_user: str,
+        scenario_tag: str | None,
+    ) -> SalesPaymentEntryData:
+        session = self._require_session()
+        company = self._text(payload.company)
+        sales_invoice = self._text(payload.sales_invoice)
+        idempotency_key = self._text(payload.idempotency_key)
+        operation = self._text(payload.operation) or "create_payment_entry"
+        if company is None:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "company 不能为空")
+        if sales_invoice is None:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "sales_invoice 不能为空")
+        if idempotency_key is None:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "idempotency_key 不能为空")
+        if operation != "create_payment_entry":
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "operation 非法")
+        paid_amount = self._decimal_or_zero(payload.paid_amount)
+        if paid_amount <= Decimal("0"):
+            raise SalesInventoryServiceError(400, "SALES_PAYMENT_ENTRY_INVALID_PAYLOAD", "paid_amount 必须大于 0")
+
+        requested_payment_entry = self._text(payload.payment_entry)
+        customer = self._text(payload.customer)
+        mode_of_payment = self._text(payload.mode_of_payment) or "Bank Transfer"
+        reference_no = self._text(payload.reference_no)
+        source_ref = self._text(payload.source_ref) or f"{sales_invoice}:{idempotency_key}"
+        request_hash = self._sales_payment_entry_request_hash(
+            {
+                "company": company,
+                "sales_invoice": sales_invoice,
+                "customer": customer,
+                "posting_date": payload.posting_date.isoformat(),
+                "paid_amount": str(paid_amount),
+                "mode_of_payment": mode_of_payment,
+                "reference_no": reference_no,
+                "reference_date": payload.reference_date.isoformat() if payload.reference_date else None,
+                "requested_payment_entry": requested_payment_entry,
+                "source_ref": source_ref,
+            }
+        )
+
+        existing_idem = (
+            session.query(LySalesPaymentEntry)
+            .filter(
+                LySalesPaymentEntry.company == company,
+                LySalesPaymentEntry.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing_idem is not None:
+            if str(existing_idem.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "幂等键冲突且请求内容不一致")
+            return self._build_sales_payment_entry_data(existing_idem)
+
+        existing_source = (
+            session.query(LySalesPaymentEntry)
+            .filter(
+                LySalesPaymentEntry.company == company,
+                LySalesPaymentEntry.source_ref == source_ref,
+            )
+            .first()
+        )
+        if existing_source is not None:
+            if str(existing_source.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "source_ref 已存在且请求内容不一致")
+            return self._build_sales_payment_entry_data(existing_source)
+
+        invoice = (
+            session.query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.sales_invoice == sales_invoice,
+            )
+            .with_for_update()
+            .first()
+        )
+        if invoice is None:
+            raise SalesInventoryServiceError(404, "SALES_PAYMENT_INVOICE_NOT_FOUND", "销售发票不存在")
+        if str(invoice.status) == "cancelled":
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "已取消销售发票不可回款")
+        if customer is not None and self._text(invoice.customer) not in {None, customer}:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "客户与销售发票不一致")
+
+        outstanding_before = Decimal(str(invoice.outstanding_amount or 0))
+        if outstanding_before <= Decimal("0"):
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ALREADY_PAID", "销售发票无未收款余额")
+        if paid_amount > outstanding_before:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_AMOUNT_EXCEEDED", "回款金额超过未收款余额")
+
+        payment_entry = requested_payment_entry or self._next_sales_payment_entry(
+            company=company,
+            posting_date=payload.posting_date,
+        )
+        existing_payment = (
+            session.query(LySalesPaymentEntry)
+            .filter(
+                LySalesPaymentEntry.company == company,
+                LySalesPaymentEntry.payment_entry == payment_entry,
+            )
+            .first()
+        )
+        if existing_payment is not None:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "payment_entry 已存在")
+
+        outstanding_after = outstanding_before - paid_amount
+        invoice.paid_amount = Decimal(str(invoice.paid_amount or 0)) + paid_amount
+        invoice.outstanding_amount = outstanding_after
+        invoice.status = "paid" if outstanding_after == Decimal("0") else "partly_paid"
+        invoice.updated_by = current_user
+        invoice.updated_at = datetime.now(timezone.utc)
+
+        row = LySalesPaymentEntry(
+            company=company,
+            payment_entry=payment_entry,
+            delivery_invoice_id=int(invoice.id),
+            delivery_note=str(invoice.delivery_note),
+            sales_invoice=str(invoice.sales_invoice),
+            sales_order=str(invoice.sales_order),
+            customer=customer or self._text(invoice.customer),
+            posting_date=payload.posting_date,
+            paid_amount=paid_amount,
+            allocated_amount=paid_amount,
+            outstanding_before=outstanding_before,
+            outstanding_after=outstanding_after,
+            mode_of_payment=mode_of_payment,
+            reference_no=reference_no,
+            reference_date=payload.reference_date,
+            status="submitted",
+            docstatus=1,
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            scenario_tag=self._text(scenario_tag) or self._text(payload.scenario_tag),
+            payload={
+                "operation": operation,
+                "scenario_tag": self._text(scenario_tag) or self._text(payload.scenario_tag),
+                "sales_invoice": sales_invoice,
+            },
+            created_by=current_user,
+        )
+        session.add(row)
+        session.flush()
+        return self._build_sales_payment_entry_data(row)
+
+    def list_local_payment_entries(
+        self,
+        *,
+        company: str | None,
+        sales_invoice: str | None,
+        customer: str | None,
+        status: str | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+    ) -> SalesPaymentEntryListData:
+        rows = self._query_local_payment_entries(
+            company=company,
+            sales_invoice=sales_invoice,
+            customer=customer,
+            status=status,
+            keyword=keyword,
+        )
+        total = len(rows)
+        start = max((page - 1) * page_size, 0)
+        return SalesPaymentEntryListData(
+            items=[self._build_sales_payment_entry_data(row) for row in rows[start : start + page_size]],
             total=total,
             page=page,
             page_size=page_size,
@@ -4188,6 +4366,11 @@ class SalesInventoryService:
         raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
+    @staticmethod
+    def _sales_payment_entry_request_hash(payload: dict[str, Any]) -> str:
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
     def _next_delivery_note(self, *, company: str, posting_date: date) -> str:
         prefix = f"DN-{posting_date.strftime('%Y%m%d')}-"
         latest = (
@@ -4215,6 +4398,20 @@ class SalesInventoryService:
             .first()
         )
         return f"{prefix}{self._next_numeric_tail(latest.sales_invoice if latest is not None else None, prefix):03d}"
+
+    def _next_sales_payment_entry(self, *, company: str, posting_date: date) -> str:
+        prefix = f"PE-{posting_date.strftime('%Y%m%d')}-"
+        latest = (
+            self._require_session()
+            .query(LySalesPaymentEntry)
+            .filter(
+                LySalesPaymentEntry.company == company,
+                LySalesPaymentEntry.payment_entry.like(f"{prefix}%"),
+            )
+            .order_by(LySalesPaymentEntry.id.desc())
+            .first()
+        )
+        return f"{prefix}{self._next_numeric_tail(latest.payment_entry if latest is not None else None, prefix):03d}"
 
     @staticmethod
     def _next_numeric_tail(value: Any, prefix: str) -> int:
@@ -4283,6 +4480,57 @@ class SalesInventoryService:
             ]
         return rows
 
+    def _query_local_payment_entries(
+        self,
+        *,
+        company: str | None,
+        sales_invoice: str | None,
+        customer: str | None,
+        status: str | None,
+        keyword: str | None,
+    ) -> list[LySalesPaymentEntry]:
+        session = self._require_session()
+        try:
+            query = session.query(LySalesPaymentEntry)
+            normalized_company = self._text(company)
+            normalized_sales_invoice = self._text(sales_invoice)
+            normalized_customer = self._text(customer)
+            normalized_status = self._text(status)
+            if normalized_company:
+                query = query.filter(LySalesPaymentEntry.company == normalized_company)
+            if normalized_sales_invoice:
+                query = query.filter(LySalesPaymentEntry.sales_invoice == normalized_sales_invoice)
+            if normalized_customer:
+                query = query.filter(LySalesPaymentEntry.customer == normalized_customer)
+            if normalized_status:
+                query = query.filter(LySalesPaymentEntry.status == normalized_status)
+            rows = query.order_by(LySalesPaymentEntry.id.desc()).all()
+        except Exception as exc:
+            if self._is_missing_sales_payment_entry_table(exc):
+                return []
+            raise
+        normalized_keyword = self._text(keyword)
+        if normalized_keyword:
+            rows = [
+                row
+                for row in rows
+                if self._contains_like(
+                    " ".join(
+                        [
+                            str(row.payment_entry),
+                            str(row.sales_invoice),
+                            str(row.delivery_note),
+                            str(row.sales_order),
+                            self._text(row.customer) or "",
+                            str(row.mode_of_payment),
+                            self._text(row.reference_no) or "",
+                        ]
+                    ),
+                    normalized_keyword,
+                )
+            ]
+        return rows
+
     def _build_delivery_invoice_data(self, row: LyDeliveryInvoice) -> DeliveryInvoiceData:
         return DeliveryInvoiceData(
             id=int(row.id),
@@ -4308,6 +4556,33 @@ class SalesInventoryService:
             idempotency_key=str(row.idempotency_key),
             scenario_tag=self._text(row.scenario_tag),
             warehouse_draft_id=int(row.warehouse_draft_id) if row.warehouse_draft_id is not None else None,
+            created_by=str(row.created_by),
+            created_at=row.created_at,
+        )
+
+    def _build_sales_payment_entry_data(self, row: LySalesPaymentEntry) -> SalesPaymentEntryData:
+        return SalesPaymentEntryData(
+            id=int(row.id),
+            company=str(row.company),
+            payment_entry=str(row.payment_entry),
+            delivery_invoice_id=int(row.delivery_invoice_id),
+            delivery_note=str(row.delivery_note),
+            sales_invoice=str(row.sales_invoice),
+            sales_order=str(row.sales_order),
+            customer=self._text(row.customer),
+            posting_date=row.posting_date,
+            paid_amount=Decimal(str(row.paid_amount)),
+            allocated_amount=Decimal(str(row.allocated_amount)),
+            outstanding_before=Decimal(str(row.outstanding_before)),
+            outstanding_after=Decimal(str(row.outstanding_after)),
+            mode_of_payment=str(row.mode_of_payment),
+            reference_no=self._text(row.reference_no),
+            reference_date=row.reference_date,
+            status=str(row.status),  # type: ignore[arg-type]
+            docstatus=int(row.docstatus or 0),
+            source_ref=str(row.source_ref),
+            idempotency_key=str(row.idempotency_key),
+            scenario_tag=self._text(row.scenario_tag),
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
@@ -4505,6 +4780,11 @@ class SalesInventoryService:
     def _is_missing_delivery_invoice_table(exc: BaseException) -> bool:
         message = str(exc).lower()
         return "ly_delivery_invoice" in message and ("no such table" in message or "does not exist" in message)
+
+    @staticmethod
+    def _is_missing_sales_payment_entry_table(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "ly_sales_payment_entry" in message and ("no such table" in message or "does not exist" in message)
 
     @staticmethod
     def _is_missing_legacy_sales_order_table(exc: BaseException) -> bool:
