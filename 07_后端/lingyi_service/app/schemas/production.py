@@ -100,6 +100,55 @@ class ProductionPlanListData(BaseModel):
     page_size: int
 
 
+class ProductionWorkOrderQuery(BaseModel):
+    """Production work-order list query."""
+
+    sales_order: Optional[str] = None
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    turnover_no: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = None
+    company: Optional[str] = None
+    status: Optional[str] = None
+    sync_status: Optional[str] = None
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class ProductionWorkOrderListItem(BaseModel):
+    """Production work-order list row."""
+
+    plan_id: int
+    plan_no: str
+    company: str
+    sales_order: str
+    sales_order_item: str
+    customer: Optional[str] = None
+    item_code: str
+    bom_id: Optional[int] = None
+    bom_version: Optional[str] = None
+    work_order: str
+    planned_qty: Decimal
+    produced_qty: Decimal = Decimal("0")
+    status: str
+    erpnext_docstatus: Optional[int] = None
+    erpnext_status: Optional[str] = None
+    sync_status: Optional[str] = None
+    last_synced_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+class ProductionWorkOrderListData(BaseModel):
+    """Production work-order list result."""
+
+    items: List[ProductionWorkOrderListItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class ProductionMaterialCostQuery(BaseModel):
     """Production material-cost list query."""
 

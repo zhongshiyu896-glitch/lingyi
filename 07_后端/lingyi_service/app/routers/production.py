@@ -65,6 +65,8 @@ from app.schemas.production import ProductionSalespersonPerformanceListData
 from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionSyncJobCardsRequest
+from app.schemas.production import ProductionWorkOrderListData
+from app.schemas.production import ProductionWorkOrderQuery
 from app.schemas.production import ProductionWorkerRunOnceData
 from app.schemas.production import ProductionWorkerRunOnceRequest
 from app.services.audit_service import AuditContext
@@ -456,6 +458,69 @@ def list_production_plans(
             page_size=page_size,
         )
         data = _service(session=session, request=request).list_plans(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/work-orders", response_model=ApiResponse[ProductionWorkOrderListData])
+def list_production_work_orders(
+    request: Request,
+    sales_order: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    turnover_no: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    company: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    sync_status: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_work_order",
+            resource_id=None,
+        )
+
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionWorkOrderQuery(
+            sales_order=sales_order,
+            keyword=keyword,
+            turnover_no=turnover_no,
+            item_code=item_code,
+            company=company,
+            status=status,
+            sync_status=sync_status,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_work_orders(
             query=query,
             readable_companies=readable_companies,
             readable_item_codes=readable_items,

@@ -5,13 +5,13 @@
 | 模块 | 页面节点 | 方法 | URL | 关键字段 | dev seed |
 | --- | --- | --- | --- | --- | --- |
 | 基础资料 | 客户 | GET | `/api/sales-inventory/customers` | `name, customer_name, disabled` | 是 |
-| 基础资料 | 供应商 | GET | `/api/sales-inventory/suppliers` | `name, supplier_name, disabled` | 是 |
+| 基础资料 | 供应商 | GET | `/api/sales-inventory/suppliers` | `name, supplier_name, disabled` | 真实 |
 | 基础资料 | 加工厂 | GET | `/api/subcontract/factories` | `factory_name, factory_code, review_status` | 是 |
 | 基础资料 | 仓库 | GET | `/api/sales-inventory/warehouses` | `name, company, warehouse_name, disabled` | 是 |
 | 基础资料 | 供应商评估 | GET | `/api/factory-statements/supplier-evaluations` | `evaluation_no, supplier, score, review_status` | 是 |
 | 基础资料 | 加工厂评估 | GET | `/api/factory-statements/factory-evaluations` | `evaluation_no, factory_name, score, review_status` | 是 |
 | 物料开发 | BOM | GET | `/api/bom/` | `bom_no, item_code, version_no, status` | 既有 |
-| 物料开发 | 物料档案 | GET | `/api/bom/materials` | `item_code, material_item_code, material_type_name` | 是 |
+| 物料开发 | 物料档案 | GET | `/api/bom/materials` | `item_code, material_item_code, material_type_name` | 真实 |
 | 物料开发 | 款式档案 | GET | `/api/bom/styles` | `bom_no, item_code, version_no` | 是 |
 | 物料开发 | 物料图库 | GET | `/api/bom/material-gallery` | `bom_no, material_item_code, qty_per_piece` | 是 |
 | 物料开发 | 面料 | GET | `/api/bom/fabrics` | `fabric_name, material_item_code, supplier_name` | 是 |
@@ -21,7 +21,7 @@
 | 物料开发 | 打样进度 | GET | `/api/bom/sample-progress` | `sample_order_no, sample_type, item_code, status` | 是 |
 | 销售生产 | 销售订单 | GET | `/api/sales-inventory/sales-orders` | `name, customer, transaction_date, grand_total` | 是 |
 | 销售生产 | 生产计划 | GET | `/api/production/plans` | `plan_no, sales_order, item_code, planned_qty` | 是 |
-| 销售生产 | 工单 | GET | `/api/production/work-orders` | `work_order, sales_order, planned_qty, produced_qty` | 是 |
+| 销售生产 | 工单 | GET | `/api/production/work-orders` | `work_order, sales_order, planned_qty, produced_qty` | 真实 |
 | 销售生产 | 工单领料 | GET | `/api/production/material-issues` | `work_order, material_item_code, required_qty, issued_qty` | 是 |
 | 销售生产 | 收发数量 | GET | `/api/production/order-io-quantities` | `inbound_qty, outbound_qty, io_status` | 是 |
 | 销售生产 | 工单轨迹 | GET | `/api/cross-module/work-order-trail/WO-FR-001?company=LY-FRONTEND-DEV` | `work_order, stock_entries, quality_inspections, summary` | 是 |

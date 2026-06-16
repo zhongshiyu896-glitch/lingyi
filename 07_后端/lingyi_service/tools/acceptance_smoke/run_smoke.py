@@ -54,12 +54,15 @@ from app.routers.workshop import get_db_session as workshop_db_dep  # noqa: E402
 from app.schemas.cross_module_view import CrossModuleWorkOrderTrailData  # noqa: E402
 from app.schemas.production import ProductionOrderIOQuantityListData  # noqa: E402
 from app.schemas.production import ProductionPlanListData  # noqa: E402
+from app.schemas.production import ProductionWorkOrderListData  # noqa: E402
 from app.schemas.quality import QualityInspectionListData  # noqa: E402
 from app.schemas.quality import QualityStatisticsData  # noqa: E402
 from app.schemas.quality import QualityStatisticsTrendData  # noqa: E402
 from app.schemas.report import ReportApprovalReportData  # noqa: E402
 from app.schemas.report import ReportCatalogListData  # noqa: E402
 from app.schemas.report import ReportEmployeeTaskStatisticsData  # noqa: E402
+from app.schemas.sales_inventory import SalesInventoryListData  # noqa: E402
+from app.schemas.sales_inventory import SupplierItem  # noqa: E402
 from app.schemas.style_profit import StyleProfitSnapshotListData  # noqa: E402
 from app.schemas.system_management import SystemApprovalFlowCatalogData  # noqa: E402
 from app.schemas.warehouse import WarehouseStockSummaryData  # noqa: E402
@@ -90,7 +93,6 @@ def _page_payload(seed_key: str, *, page: int = 1, page_size: int = 20) -> dict[
 
 GAP_PATHS = [
     "/api/subcontract/factories",
-    "/api/bom/materials",
     "/api/bom/styles",
     "/api/bom/colors",
     "/api/bom/sizes",
@@ -98,7 +100,6 @@ GAP_PATHS = [
     "/api/bom/material-categories",
     "/api/bom/style-bom-process",
     "/api/bom/sample-progress",
-    "/api/production/work-orders",
     "/api/production/material-issues",
     "/api/bom/material-requests",
     "/api/warehouse/purchase-receipts",
@@ -112,7 +113,6 @@ GAP_PATHS = [
     "/api/factory-statements/customer-receivables",
     "/api/warehouse/inventory-balance-reconciliation",
     "/api/style-profit/style-costs",
-    "/api/sales-inventory/suppliers",
     "/api/sales-inventory/delivery-addresses",
     "/api/factory-statements/settlement-methods",
     "/api/factory-statements/invoice-types",
@@ -139,10 +139,8 @@ WRITE_FLOW_PATHS = [
 ]
 
 FIELD_EXPECTATIONS = {
-    "/api/bom/materials": {"item_code", "material_item_code", "material_type_name", "supplier_name", "status"},
     "/api/bom/styles": {"bom_no", "item_code", "version_no", "is_default", "status"},
     "/api/bom/style-bom-process": {"bom_no", "item_code", "process_name", "sequence_no", "unit_rate"},
-    "/api/production/work-orders": {"plan_no", "sales_order", "item_code", "work_order", "planned_qty"},
     "/api/production/material-issues": {"work_order", "material_item_code", "required_qty", "issued_qty"},
     "/api/bom/material-requests": {"request_no", "material_item_code", "supplier_name", "qty", "status"},
     "/api/warehouse/purchase-receipts": {"receipt_no", "purchase_no", "material_item_code", "received_qty"},
@@ -219,8 +217,10 @@ REAL_REUSE_EXPECTATIONS = {
     "/api/bom/material-gallery": {"bom_no", "item_code", "material_item_code", "qty_per_piece"},
     "/api/bom/fabrics": {"fabric_name", "material_item_code", "supplier_name", "qty_per_piece"},
     "/api/bom/accessories-packaging": {"material_name", "category", "supplier_name", "qty_per_piece"},
+    "/api/bom/materials": {"item_code", "material_item_code", "material_type_name", "supplier_name", "status"},
     "/api/bom/purchase-orders": {"purchase_no", "supplier_name", "material_item_code", "total_amount"},
     "/api/production/plans": {"plan_no", "sales_order", "item_code", "planned_qty"},
+    "/api/production/work-orders": {"plan_no", "sales_order", "item_code", "work_order", "planned_qty"},
     "/api/production/order-io-quantities": {"plan_no", "sales_order", "inbound_qty", "outbound_qty"},
     "/api/quality/inspections": {"inspection_no", "source_type", "item_code", "inspected_qty"},
     "/api/workshop/tickets": {"ticket_no", "job_card", "employee", "wage_amount"},
@@ -244,6 +244,7 @@ REAL_REUSE_EXPECTATIONS = {
     "/api/reports/employee-task-statistics": {"employee_id", "pending_tasks", "completion_rate"},
     "/api/reports/approval-reports": {"approval_no", "approval_type", "approver", "status"},
     "/api/system/approval-flows": {"flow_key", "title", "audit_type", "status"},
+    "/api/sales-inventory/suppliers": {"name", "supplier_name", "disabled"},
     "/api/reports/style-profit/snapshots?company=LY-FRONTEND-DEV&item_code=ITEM-FR-001": {
         "snapshot_no",
         "item_code",
@@ -254,6 +255,7 @@ REAL_REUSE_EXPECTATIONS = {
 
 def _patches_for_real_reuse_endpoints():
     return [
+        patch("app.services.bom_service.BomService.list_material_types", return_value=_DumpablePage(_page_payload("materials"))),
         patch("app.services.bom_service.BomService.list_material_gallery", return_value=_DumpablePage(_page_payload("material_gallery"))),
         patch("app.services.bom_service.BomService.list_fabrics", return_value=_DumpablePage(_page_payload("fabrics"))),
         patch(
@@ -284,6 +286,10 @@ def _patches_for_real_reuse_endpoints():
         patch(
             "app.services.production_service.ProductionService.list_plans",
             return_value=ProductionPlanListData.model_validate(_page_payload("production_plans")),
+        ),
+        patch(
+            "app.services.production_service.ProductionService.list_work_orders",
+            return_value=ProductionWorkOrderListData.model_validate(_page_payload("work_orders")),
         ),
         patch(
             "app.services.production_service.ProductionService.list_order_io_quantities",
@@ -376,6 +382,10 @@ def _patches_for_real_reuse_endpoints():
                     "audit_type_options": ["purchase_invoice"],
                 }
             ),
+        ),
+        patch(
+            "app.services.sales_inventory_service.SalesInventoryService.list_local_suppliers",
+            return_value=SalesInventoryListData[SupplierItem].model_validate(_page_payload("suppliers")),
         ),
     ]
 

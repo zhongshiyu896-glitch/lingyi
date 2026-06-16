@@ -74,6 +74,9 @@ from app.schemas.production import ProductionSalespersonPerformanceListItem
 from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionSyncJobCardsRequest
+from app.schemas.production import ProductionWorkOrderListData
+from app.schemas.production import ProductionWorkOrderListItem
+from app.schemas.production import ProductionWorkOrderQuery
 from app.schemas.production import ProductionWorkOrderOutboxSummary
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
 from app.services.erpnext_production_adapter import ERPNextSalesOrder
@@ -293,6 +296,93 @@ class ProductionService:
             )
 
         return ProductionPlanListData(items=items, total=int(total), page=query.page, page_size=query.page_size)
+
+    def list_work_orders(
+        self,
+        *,
+        query: ProductionWorkOrderQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionWorkOrderListData:
+        try:
+            sql = self.session.query(LyProductionWorkOrderLink, LyProductionPlan).join(
+                LyProductionPlan,
+                LyProductionWorkOrderLink.plan_id == LyProductionPlan.id,
+            )
+            if query.sales_order:
+                sql = sql.filter(LyProductionPlan.sales_order == query.sales_order)
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                sql = sql.filter(
+                    or_(
+                        LyProductionPlan.sales_order.like(keyword),
+                        LyProductionPlan.sales_order_item.like(keyword),
+                        LyProductionPlan.item_code.like(keyword),
+                        LyProductionPlan.customer.like(keyword),
+                        LyProductionPlan.plan_no.like(keyword),
+                        LyProductionWorkOrderLink.work_order.like(keyword),
+                    )
+                )
+            if query.turnover_no:
+                sql = sql.filter(LyProductionPlan.sales_order_item.like(f"%{query.turnover_no.strip()}%"))
+            if query.item_code:
+                sql = sql.filter(LyProductionPlan.item_code == query.item_code)
+            if query.company:
+                sql = sql.filter(LyProductionPlan.company == query.company)
+            if query.status:
+                sql = sql.filter(LyProductionPlan.status == query.status)
+            if query.sync_status:
+                sql = sql.filter(LyProductionWorkOrderLink.sync_status == query.sync_status)
+            if query.from_date:
+                sql = sql.filter(func.date(LyProductionWorkOrderLink.created_at) >= query.from_date)
+            if query.to_date:
+                sql = sql.filter(func.date(LyProductionWorkOrderLink.created_at) <= query.to_date)
+
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionWorkOrderListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionWorkOrderListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+
+            total = sql.with_entities(func.count(LyProductionWorkOrderLink.id)).scalar() or 0
+            rows: list[tuple[LyProductionWorkOrderLink, LyProductionPlan]] = (
+                sql.order_by(LyProductionWorkOrderLink.id.desc())
+                .offset((query.page - 1) * query.page_size)
+                .limit(query.page_size)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        items = [
+            ProductionWorkOrderListItem(
+                plan_id=int(plan.id),
+                plan_no=str(plan.plan_no),
+                company=str(plan.company),
+                sales_order=str(plan.sales_order),
+                sales_order_item=str(plan.sales_order_item),
+                customer=(str(plan.customer) if plan.customer else None),
+                item_code=str(plan.item_code),
+                bom_id=int(plan.bom_id) if plan.bom_id is not None else None,
+                bom_version=(str(plan.bom_version) if plan.bom_version else None),
+                work_order=str(link.work_order),
+                planned_qty=Decimal(str(plan.planned_qty)),
+                produced_qty=Decimal("0"),
+                status=str(plan.status),
+                erpnext_docstatus=(int(link.erpnext_docstatus) if link.erpnext_docstatus is not None else None),
+                erpnext_status=(str(link.erpnext_status) if link.erpnext_status else None),
+                sync_status=(str(link.sync_status) if link.sync_status else None),
+                last_synced_at=link.last_synced_at,
+                created_at=link.created_at,
+                updated_at=link.updated_at,
+            )
+            for link, plan in rows
+        ]
+        return ProductionWorkOrderListData(items=items, total=int(total), page=query.page, page_size=query.page_size)
 
     def list_material_cost_details(
         self,

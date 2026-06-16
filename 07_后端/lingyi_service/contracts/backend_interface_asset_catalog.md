@@ -2,8 +2,8 @@
 
 来源：FastAPI `app.routes` 自动导出；readiness/stub 以 `app/routers/frontend_readiness.py` 为准。
 
-- A 类真实业务接口：169
-- B 类 dev/test readiness 只读接口：37
+- A 类真实业务接口：172
+- B 类 dev/test readiness 只读接口：34
 - C 类 readiness flow 回执桩：7
 - D 类内部/诊断/不建议前端直连接口：11
 
@@ -28,7 +28,7 @@
 | A | GET | `/api/bom/material-sales-outbound` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/bom/material-types` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/bom/material-units` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
-| B | GET | `/api/bom/materials` | 是 | 是 | 否 | temporary_dev_only | id, bom_id, bom_no, item_code, material_item_code, material_type_code, material_type_name, material_group, applicable_scene, supplier_name, status, is_default | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/bom/materials` | 是 | 是 | 否 | candidate | id, bom_id, bom_no, item_code, material_item_code, material_type_code, material_type_name, material_group, applicable_scene, supplier_name, status, is_default | 真实业务只读接口候选 |
 | B | GET | `/api/bom/process-requirement-templates` | 是 | 是 | 否 | temporary_dev_only | process_type_code, process_type_name, process_name, sequence_no, subcontract_mode, pricing_mode, unit_rate, status, is_default | dev/test only; 生产环境必须关闭 |
 | A | GET | `/api/bom/processing-types` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/bom/purchase-orders` | 是 | 是 | 否 | candidate | id, bom_id, purchase_no, supplier_name, item_code, material_item_code, material_name, qty, uom, unit_price, total_amount, expected_delivery_date, ... | 真实业务只读接口候选 |
@@ -102,7 +102,7 @@
 | C | POST | `/api/production/readiness/work-order-flow` | 否 | 是 | 否 | do_not_connect_as_write | plan_id, plan_no, outbox_id, event_key, sync_status, work_order, sales_order, sales_order_item, item_code, planned_qty, status | readiness flow 回执桩; 不得当作真实写接口 |
 | A | GET | `/api/production/sales-forecast-details` | 是 | 是 | 否 | candidate | code, message, data, data.items, data.items.plan_id, data.items.plan_no, data.items.company, data.items.sales_order, data.items.sales_order_item, data.items.customer, data.items.item_code, data.items.forecast_qty, ... | 真实业务只读接口候选 |
 | A | GET | `/api/production/salesperson-performance` | 是 | 是 | 否 | candidate | code, message, data, data.items, data.items.plan_id, data.items.plan_no, data.items.company, data.items.salesperson, data.items.sales_order, data.items.sales_order_item, data.items.customer, data.items.item_code, ... | 真实业务只读接口候选 |
-| B | GET | `/api/production/work-orders` | 是 | 是 | 否 | temporary_dev_only | plan_id, plan_no, company, sales_order, sales_order_item, item_code, work_order, planned_qty, produced_qty, status, created_at | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/production/work-orders` | 是 | 是 | 否 | candidate | plan_id, plan_no, company, sales_order, sales_order_item, customer, item_code, bom_id, bom_version, work_order, planned_qty, produced_qty, ... | 真实业务只读接口候选 |
 | A | POST | `/api/production/work-orders/{work_order}/sync-job-cards` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.work_order, data.plan_id, data.synced_count, data.items, data.items.job_card, data.items.operation, data.items.operation_sequence, data.items.company, data.items.item_code, ... | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | D | GET | `/api/quality/diagnostic` | 否 | 是 | 否 | not_for_page_direct_use | - | 诊断接口; 运维排障用途 |
 | A | GET | `/api/quality/export` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
@@ -157,7 +157,7 @@
 | A | GET | `/api/sales-inventory/sales-orders/{name}` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/semi-finished-inventory` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/stock-ledger` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
-| B | GET | `/api/sales-inventory/suppliers` | 是 | 是 | 否 | temporary_dev_only | name, supplier_name, disabled | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/sales-inventory/suppliers` | 是 | 是 | 否 | candidate | name, supplier_name, disabled | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/warehouses` | 是 | 是 | 否 | candidate | name, company, warehouse_name, disabled | 真实业务只读接口候选 |
 | B | GET | `/api/sales-inventory/warehouses` | 是 | 是 | 否 | temporary_dev_only | name, company, warehouse_name, disabled | dev/test only; 生产环境必须关闭 |
 | C | POST | `/api/style-profit/readiness/profit-flow` | 否 | 是 | 否 | do_not_connect_as_write | snapshot_no, company, sales_order, item_code, revenue_amount, actual_total_cost, standard_total_cost, profit_amount, profit_rate, snapshot_status, allocation_status, formula_version | readiness flow 回执桩; 不得当作真实写接口 |

@@ -1066,6 +1066,7 @@ def list_bom_material_sales_outbound(
         return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
 
 
+@router.get("/materials")
 @router.get("/material-types")
 def list_bom_material_types(
     request: Request,

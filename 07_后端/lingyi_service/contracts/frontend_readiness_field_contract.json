@@ -181,12 +181,20 @@
       "company",
       "sales_order",
       "sales_order_item",
+      "customer",
       "item_code",
+      "bom_id",
+      "bom_version",
       "work_order",
       "planned_qty",
       "produced_qty",
       "status",
-      "created_at"
+      "erpnext_docstatus",
+      "erpnext_status",
+      "sync_status",
+      "last_synced_at",
+      "created_at",
+      "updated_at"
     ],
     "GET /api/production/material-issues": [
       "plan_id",

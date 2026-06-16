@@ -819,7 +819,7 @@ def cancel_sales_order_draft(
     return _ok(data)
 
 
-@reference_local_router.get("/suppliers")
+@router.get("/suppliers")
 def list_suppliers(
     request: Request,
     page: int = Query(default=1, ge=1),
