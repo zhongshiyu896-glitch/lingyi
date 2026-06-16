@@ -49,6 +49,7 @@ from app.schemas.warehouse import WarehouseInventoryCountCancelRequest
 from app.schemas.warehouse import WarehouseInventoryCountCreateRequest
 from app.schemas.warehouse import WarehouseInventoryCountVarianceReviewRequest
 from app.schemas.warehouse import WarehouseInventoryBalanceReconciliationListData
+from app.schemas.warehouse import WarehouseMaterialRetentionReportData
 from app.schemas.warehouse import WarehouseOtherInboundData
 from app.schemas.warehouse import WarehousePurchaseReceiptListData
 from app.schemas.warehouse import WarehousePurchaseReturnOutboundData
@@ -632,6 +633,24 @@ def _build_local_factory_return_material_report(
         warehouse=_scope_text(warehouse),
         item_code=_scope_text(item_code),
         status=_scope_text(status),
+    )
+
+
+def _build_local_material_retention_report(
+    *,
+    session: Session,
+    company: str | None,
+    warehouse: str | None,
+    keyword: str | None,
+    min_retention_days: int | None,
+    as_of_date: date | None,
+) -> WarehouseMaterialRetentionReportData:
+    return WarehouseService(session=session).list_local_material_retention_report(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        keyword=_scope_text(keyword),
+        min_retention_days=min_retention_days,
+        as_of_date=as_of_date,
     )
 
 
@@ -1797,6 +1816,71 @@ def list_factory_return_material_report(
         warehouse=warehouse,
         item_code=item_code,
         status=normalized_status,
+    )
+
+    data.items = [
+        row
+        for row in data.items
+        if _scope_allowed(
+            company=data.company,
+            warehouse=row.warehouse,
+            item_code=row.material_code,
+            permissions=permissions,
+        )
+    ]
+    return _ok(data)
+
+
+@router.get("/material-retention-report")
+def list_material_retention_report(
+    request: Request,
+    company: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    min_retention_days: int | None = Query(default=None, ge=0),
+    to_date: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_READ
+    permission_service = PermissionService(session=session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_material_retention_report",
+    )
+
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+    try:
+        _ensure_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            company=company,
+            warehouse=warehouse,
+            item_code=None,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+
+    parsed_to_date = _parse_optional_date(to_date, "to_date")
+    data = _build_local_material_retention_report(
+        session=session,
+        company=company,
+        warehouse=warehouse,
+        keyword=keyword,
+        min_retention_days=min_retention_days,
+        as_of_date=parsed_to_date,
     )
 
     data.items = [

@@ -259,6 +259,42 @@ class WarehouseFactoryReturnMaterialReportData(BaseModel):
     items: list[WarehouseFactoryReturnMaterialReportItem]
 
 
+class WarehouseMaterialRetentionReportItem(BaseModel):
+    """Material retention report row derived from stock movements."""
+
+    report_no: str
+    material_code: str
+    material_name: str
+    material_category: str
+    warehouse: str
+    location: str
+    color: str
+    spec: str
+    unit: str
+    stock_qty: Decimal
+    stock_amount: Decimal
+    last_in_date: date | None = None
+    last_out_date: date | None = None
+    retention_days: int
+    risk_level: Literal["high", "medium", "low"]
+    supplier: str
+    suggestion: str
+    owner: str
+    reason: str
+    status: Literal["normal", "attention", "stale"]
+
+
+class WarehouseMaterialRetentionReportData(BaseModel):
+    """Material retention report response."""
+
+    company: str | None = None
+    warehouse: str | None = None
+    keyword: str | None = None
+    min_retention_days: int | None = None
+    as_of_date: date
+    items: list[WarehouseMaterialRetentionReportItem]
+
+
 class WarehouseSemiFinishedOutboundItem(BaseModel):
     """Semi-finished outbound read-only projection row."""
 

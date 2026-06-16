@@ -39,6 +39,8 @@ from app.schemas.warehouse import WarehouseInventoryCountItemData
 from app.schemas.warehouse import WarehouseInventoryCountListData
 from app.schemas.warehouse import WarehouseInventoryCountVarianceReviewRequest
 from app.schemas.warehouse import WarehouseInventoryCountVarianceStatsData
+from app.schemas.warehouse import WarehouseMaterialRetentionReportData
+from app.schemas.warehouse import WarehouseMaterialRetentionReportItem
 from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
 from app.schemas.warehouse import WarehouseStockEntryDraftData
 from app.schemas.warehouse import WarehouseStockEntryDraftItemCreateRequest
@@ -595,6 +597,104 @@ class WarehouseService:
             items=rows,
         )
 
+    def list_local_material_retention_report(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        keyword: str | None,
+        min_retention_days: int | None,
+        as_of_date: date | None,
+    ) -> WarehouseMaterialRetentionReportData:
+        normalized_keyword = self._text(keyword)
+        normalized_min_days = max(int(min_retention_days or 0), 0) if min_retention_days is not None else None
+        report_date = as_of_date or date.today()
+        movements = self._local_stock_movements(company=company, warehouse=warehouse, item_code=None)
+        grouped: dict[tuple[str, str, str], dict[str, Any]] = {}
+
+        for movement in movements:
+            key = (movement.company, movement.warehouse, movement.item_code)
+            bucket = grouped.setdefault(
+                key,
+                {
+                    "stock_qty": Decimal("0"),
+                    "last_in_date": None,
+                    "last_out_date": None,
+                    "valuation_rate": movement.valuation_rate,
+                },
+            )
+            bucket["stock_qty"] = Decimal(str(bucket["stock_qty"])) + movement.actual_qty
+            if movement.actual_qty > 0:
+                last_in_date = bucket["last_in_date"]
+                bucket["last_in_date"] = max(last_in_date, movement.posting_date) if last_in_date else movement.posting_date
+            elif movement.actual_qty < 0:
+                last_out_date = bucket["last_out_date"]
+                bucket["last_out_date"] = max(last_out_date, movement.posting_date) if last_out_date else movement.posting_date
+            bucket["valuation_rate"] = movement.valuation_rate
+
+        rows: list[WarehouseMaterialRetentionReportItem] = []
+        for index, ((company_key, warehouse_key, item_key), bucket) in enumerate(sorted(grouped.items()), start=1):
+            stock_qty = Decimal(str(bucket["stock_qty"])).quantize(Decimal("0.01"))
+            if stock_qty <= 0:
+                continue
+            material_name = self._material_name_from_code(item_key)
+            material_category = self._material_category_from_code(item_key)
+            supplier = self._supplier_from_material(material_category=material_category)
+            if normalized_keyword and normalized_keyword.lower() not in " ".join(
+                [item_key, material_name, material_category, warehouse_key, supplier]
+            ).lower():
+                continue
+
+            last_in_date = bucket["last_in_date"]
+            last_out_date = bucket["last_out_date"]
+            anchor_date = max([value for value in (last_in_date, last_out_date) if value is not None], default=report_date)
+            retention_days = max((report_date - anchor_date).days, 0)
+            if normalized_min_days is not None and retention_days < normalized_min_days:
+                continue
+
+            risk_level = self._material_retention_risk_level(retention_days=retention_days)
+            status_value = self._material_retention_status(risk_level=risk_level)
+            valuation_rate = Decimal(str(bucket["valuation_rate"]))
+            stock_amount = (stock_qty * valuation_rate).quantize(Decimal("0.01"))
+            rows.append(
+                WarehouseMaterialRetentionReportItem(
+                    report_no=f"MRR-{report_date.strftime('%Y%m')}-{len(rows) + 1:04d}",
+                    material_code=item_key,
+                    material_name=material_name,
+                    material_category=material_category,
+                    warehouse=warehouse_key,
+                    location=self._material_location(warehouse=warehouse_key, index=index),
+                    color=self._material_color_from_code(item_key=item_key),
+                    spec=self._material_spec_from_code(item_key=item_key),
+                    unit=self._material_unit_from_category(material_category=material_category),
+                    stock_qty=stock_qty,
+                    stock_amount=stock_amount,
+                    last_in_date=last_in_date,
+                    last_out_date=last_out_date,
+                    retention_days=retention_days,
+                    risk_level=risk_level,
+                    supplier=supplier,
+                    suggestion=self._material_retention_suggestion(risk_level=risk_level),
+                    owner="库存管理员",
+                    reason=self._material_retention_reason(
+                        last_in_date=last_in_date,
+                        last_out_date=last_out_date,
+                        retention_days=retention_days,
+                    ),
+                    status=status_value,
+                )
+            )
+
+        rows.sort(key=lambda item: (-item.retention_days, item.warehouse, item.material_code))
+        return WarehouseMaterialRetentionReportData(
+            company=self._text(company),
+            warehouse=self._text(warehouse),
+            keyword=normalized_keyword,
+            min_retention_days=normalized_min_days,
+            as_of_date=report_date,
+            items=rows,
+        )
+
     def list_semi_finished_outbound(
         self,
         *,
@@ -835,6 +935,75 @@ class WarehouseService:
             zone_prefix = "M"
         slot = ((index - 1) % 24) + 1
         return f"{zone_prefix}-{slot:02d}"
+
+    @staticmethod
+    def _material_color_from_code(*, item_key: str) -> str:
+        code = (item_key or "").upper()
+        if "BLACK" in code or "BLK" in code:
+            return "黑色"
+        if "WHITE" in code or "WHT" in code:
+            return "白色"
+        if "RED" in code:
+            return "红色"
+        if "BLUE" in code:
+            return "蓝色"
+        return "本色"
+
+    @staticmethod
+    def _material_spec_from_code(*, item_key: str) -> str:
+        code = (item_key or "").upper()
+        if code.startswith("FAB"):
+            return "幅宽150cm"
+        if code.startswith("ACC") or code.startswith("TRIM"):
+            return "通用辅料规格"
+        if code.startswith("PKG") or code.startswith("TAG") or code.startswith("LBL"):
+            return "包装规格"
+        return "标准规格"
+
+    @staticmethod
+    def _material_unit_from_category(*, material_category: str) -> str:
+        if material_category == "面料":
+            return "米"
+        if material_category == "包材":
+            return "个"
+        return "件"
+
+    @staticmethod
+    def _material_retention_risk_level(*, retention_days: int) -> Literal["high", "medium", "low"]:
+        if retention_days >= 180:
+            return "high"
+        if retention_days >= 90:
+            return "medium"
+        return "low"
+
+    @staticmethod
+    def _material_retention_status(*, risk_level: Literal["high", "medium", "low"]) -> Literal["normal", "attention", "stale"]:
+        if risk_level == "high":
+            return "stale"
+        if risk_level == "medium":
+            return "attention"
+        return "normal"
+
+    @staticmethod
+    def _material_retention_suggestion(*, risk_level: Literal["high", "medium", "low"]) -> str:
+        if risk_level == "high":
+            return "优先调拨或折价处理"
+        if risk_level == "medium":
+            return "复核后续订单用料计划"
+        return "持续观察"
+
+    @staticmethod
+    def _material_retention_reason(
+        *,
+        last_in_date: date | None,
+        last_out_date: date | None,
+        retention_days: int,
+    ) -> str:
+        if last_out_date is None:
+            return f"入库后 {retention_days} 天未发生出库"
+        if last_in_date is not None and last_in_date > last_out_date:
+            return f"最近入库后 {retention_days} 天未消耗"
+        return f"最近出库后 {retention_days} 天未再流转"
 
     def get_alerts(
         self,

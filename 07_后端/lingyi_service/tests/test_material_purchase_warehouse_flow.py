@@ -309,6 +309,64 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(rows[0]["material_code"], self.ITEM_CODE)
         self.assertEqual(rows[0]["warehouse"], self.WAREHOUSE)
 
+    def test_material_retention_report_uses_fastapi_native_stock_movements(self) -> None:
+        receipt_idem = f"{self.SCENARIO_TAG}:receipt:RETENTION-LOCAL-IDEM"
+        receipt_source_ref = f"{self.SCENARIO_TAG}:receipt:RETENTION-LOCAL-SRC"
+        receipt = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                )
+            ),
+            json={
+                "operation": "create_stock_entry_draft",
+                "company": "默认公司",
+                "purpose": "Material Receipt",
+                "source_type": "material_retention_report_proof",
+                "source_id": receipt_source_ref,
+                "source_ref": receipt_source_ref,
+                "warehouse": self.WAREHOUSE,
+                "item_code": self.ITEM_CODE,
+                "quantity": "20",
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "create",
+                "scenario_tag": self.SCENARIO_TAG,
+                "target_warehouse": self.WAREHOUSE,
+                "idempotency_key": receipt_idem,
+                "items": [
+                    {
+                        "item_code": self.ITEM_CODE,
+                        "qty": "20",
+                        "uom": "米",
+                        "target_warehouse": self.WAREHOUSE,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(receipt.status_code, 201, receipt.text)
+
+        with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("ERPNext adapter must not be used")):
+            response = self.client.get(
+                "/api/warehouse/material-retention-report?keyword=FAB-A&min_retention_days=90&to_date=2026-10-01",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        rows = payload["data"]["items"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["material_code"], self.ITEM_CODE)
+        self.assertEqual(rows[0]["warehouse"], self.WAREHOUSE)
+        self.assertEqual(rows[0]["last_in_date"], self.BUSINESS_DATE)
+        self.assertEqual(Decimal(str(rows[0]["stock_qty"])), Decimal("20.0"))
+        self.assertEqual(Decimal(str(rows[0]["stock_amount"])), Decimal("172.0"))
+        self.assertGreaterEqual(rows[0]["retention_days"], 90)
+        self.assertEqual(rows[0]["risk_level"], "medium")
+
 
 if __name__ == "__main__":
     unittest.main()
