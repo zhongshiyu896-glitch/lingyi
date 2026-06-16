@@ -78,6 +78,68 @@ class SalesInvoiceListData(BaseModel):
     page_size: int
 
 
+class DeliveryInvoiceCreateRequest(BaseModel):
+    """Create FastAPI-native delivery note + sales invoice payload."""
+
+    company: str
+    sales_order: str
+    customer: str | None = None
+    item_code: str
+    item_name: str | None = None
+    warehouse: str
+    delivered_qty: Decimal
+    uom: str = "Nos"
+    rate: Decimal | None = None
+    grand_total: Decimal | None = None
+    posting_date: date
+    due_date: date | None = None
+    delivery_note: str | None = None
+    sales_invoice: str | None = None
+    source_ref: str | None = None
+    idempotency_key: str
+    scenario_tag: str | None = None
+    operation: str | None = "create_delivery_invoice"
+
+
+class DeliveryInvoiceData(BaseModel):
+    """FastAPI-native delivery note + sales invoice response."""
+
+    id: int
+    company: str
+    delivery_note: str
+    sales_invoice: str
+    sales_order: str
+    customer: str | None = None
+    item_code: str
+    item_name: str | None = None
+    warehouse: str
+    delivered_qty: Decimal
+    uom: str
+    rate: Decimal | None = None
+    grand_total: Decimal
+    paid_amount: Decimal
+    outstanding_amount: Decimal
+    posting_date: date
+    due_date: date | None = None
+    status: Literal["submitted", "partly_paid", "paid", "cancelled"]
+    docstatus: int
+    source_ref: str
+    idempotency_key: str
+    scenario_tag: str | None = None
+    warehouse_draft_id: int | None = None
+    created_by: str
+    created_at: datetime
+
+
+class DeliveryInvoiceListData(BaseModel):
+    """Paginated delivery invoice response."""
+
+    items: list[DeliveryInvoiceData]
+    total: int
+    page: int
+    page_size: int
+
+
 class SalesOrderListItem(BaseModel):
     """Read-only Sales Order list row."""
 

@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
@@ -24,6 +25,11 @@ from app.schemas.sales_inventory import CustomerReturnApplicationData
 from app.schemas.sales_inventory import CustomerReturnApplicationItem
 from app.schemas.sales_inventory import CustomerReturnInboundData
 from app.schemas.sales_inventory import CustomerReturnInboundItem
+from app.schemas.sales_inventory import DeliveryInvoiceCreateRequest
+from app.schemas.sales_inventory import DeliveryInvoiceData
+from app.schemas.sales_inventory import DeliveryInvoiceListData
+from app.schemas.sales_inventory import DeliveryNoteItem
+from app.schemas.sales_inventory import DeliveryNoteListData
 from app.schemas.sales_inventory import FinishedGoodsOtherOutboundData
 from app.schemas.sales_inventory import FinishedGoodsOtherOutboundItem
 from app.schemas.sales_inventory import FinishedGoodsCountData
@@ -51,7 +57,9 @@ from app.schemas.sales_inventory import MaterialInventoryReportItem
 from app.schemas.sales_inventory import MaterialTransferData
 from app.schemas.sales_inventory import MaterialTransferItem
 from app.schemas.sales_inventory import SalesInventoryListData
+from app.schemas.sales_inventory import SalesInvoiceItem
 from app.schemas.sales_inventory import SupplierItem
+from app.schemas.sales_inventory import SalesInvoiceListData
 from app.schemas.sales_inventory import ReferenceDraftCreateRequest
 from app.schemas.sales_inventory import ReferenceDraftData
 from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
@@ -768,6 +776,272 @@ class SalesInventoryService:
                 )
                 for item in line_items
             ],
+        )
+
+    def create_delivery_invoice(
+        self,
+        *,
+        payload: DeliveryInvoiceCreateRequest,
+        current_user: str,
+        scenario_tag: str | None,
+    ) -> DeliveryInvoiceData:
+        session = self._require_session()
+        company = self._require_text(payload.company, "company")
+        sales_order = self._require_text(payload.sales_order, "sales_order")
+        item_code = self._require_text(payload.item_code, "item_code")
+        warehouse = self._require_text(payload.warehouse, "warehouse")
+        delivered_qty = self._positive_decimal(payload.delivered_qty, "delivered_qty")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        operation = self._text(payload.operation) or "create_delivery_invoice"
+        if operation != "create_delivery_invoice":
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "operation 非法")
+        posting_date = payload.posting_date
+        rate = self._decimal_or_none(payload.rate)
+        grand_total = self._decimal_or_none(payload.grand_total)
+        if grand_total is None:
+            grand_total = delivered_qty * rate if rate is not None else Decimal("0")
+        if grand_total < Decimal("0"):
+            raise SalesInventoryServiceError(400, "SALES_DELIVERY_INVOICE_INVALID_PAYLOAD", "grand_total 不得为负数")
+        delivery_note = self._text(payload.delivery_note) or self._next_delivery_note(company=company, posting_date=posting_date)
+        sales_invoice = self._text(payload.sales_invoice) or self._next_sales_invoice(company=company, posting_date=posting_date)
+        source_ref = self._text(payload.source_ref) or f"{delivery_note}:{sales_invoice}"
+        customer = self._text(payload.customer)
+        item_name = self._text(payload.item_name)
+        uom = self._require_text(payload.uom, "uom")
+
+        request_hash = self._delivery_invoice_request_hash(
+            {
+                "company": company,
+                "delivery_note": delivery_note,
+                "sales_invoice": sales_invoice,
+                "sales_order": sales_order,
+                "customer": customer,
+                "item_code": item_code,
+                "item_name": item_name,
+                "warehouse": warehouse,
+                "delivered_qty": str(delivered_qty),
+                "uom": uom,
+                "rate": str(rate) if rate is not None else None,
+                "grand_total": str(grand_total),
+                "posting_date": posting_date.isoformat(),
+                "due_date": payload.due_date.isoformat() if payload.due_date else None,
+                "source_ref": source_ref,
+            }
+        )
+
+        existing_idem = (
+            session.query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing_idem is not None:
+            if str(existing_idem.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "幂等键冲突且请求内容不一致")
+            return self._build_delivery_invoice_data(existing_idem)
+
+        existing_source = (
+            session.query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.source_ref == source_ref,
+            )
+            .first()
+        )
+        if existing_source is not None:
+            if str(existing_source.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "source_ref 已存在且请求内容不一致")
+            return self._build_delivery_invoice_data(existing_source)
+
+        for field_name, value in {"delivery_note": delivery_note, "sales_invoice": sales_invoice}.items():
+            existing_doc = (
+                session.query(LyDeliveryInvoice)
+                .filter(
+                    LyDeliveryInvoice.company == company,
+                    getattr(LyDeliveryInvoice, field_name) == value,
+                )
+                .first()
+            )
+            if existing_doc is not None:
+                raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", f"{field_name} 已存在")
+
+        self._assert_local_stock_available(
+            company=company,
+            item_code=item_code,
+            warehouse=warehouse,
+            required_qty=delivered_qty,
+        )
+        self._increase_native_sales_order_delivered_qty(
+            company=company,
+            sales_order=sales_order,
+            item_code=item_code,
+            warehouse=warehouse,
+            delivered_qty=delivered_qty,
+        )
+
+        stock_draft = self._create_delivery_stock_issue(
+            company=company,
+            delivery_note=delivery_note,
+            sales_invoice=sales_invoice,
+            sales_order=sales_order,
+            item_code=item_code,
+            delivered_qty=delivered_qty,
+            uom=uom,
+            warehouse=warehouse,
+            posting_date=posting_date,
+            idempotency_key=idempotency_key,
+            current_user=current_user,
+        )
+        row = LyDeliveryInvoice(
+            company=company,
+            delivery_note=delivery_note,
+            sales_invoice=sales_invoice,
+            sales_order=sales_order,
+            customer=customer,
+            item_code=item_code,
+            item_name=item_name,
+            warehouse=warehouse,
+            delivered_qty=delivered_qty,
+            uom=uom,
+            rate=rate,
+            grand_total=grand_total,
+            paid_amount=Decimal("0"),
+            outstanding_amount=grand_total,
+            posting_date=posting_date,
+            due_date=payload.due_date,
+            status="submitted",
+            docstatus=1,
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            scenario_tag=self._text(scenario_tag) or self._text(payload.scenario_tag),
+            warehouse_draft_id=int(stock_draft.id),
+            payload={
+                "operation": operation,
+                "scenario_tag": self._text(scenario_tag) or self._text(payload.scenario_tag),
+                "stock_source_id": delivery_note,
+            },
+            created_by=current_user,
+        )
+        session.add(row)
+        session.flush()
+        return self._build_delivery_invoice_data(row)
+
+    def list_local_delivery_invoices(
+        self,
+        *,
+        company: str | None,
+        sales_order: str | None,
+        customer: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        status: str | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+    ) -> DeliveryInvoiceListData:
+        rows = self._query_local_delivery_invoices(
+            company=company,
+            sales_order=sales_order,
+            customer=customer,
+            item_code=item_code,
+            warehouse=warehouse,
+            status=status,
+            keyword=keyword,
+        )
+        total = len(rows)
+        start = max((page - 1) * page_size, 0)
+        return DeliveryInvoiceListData(
+            items=[self._build_delivery_invoice_data(row) for row in rows[start : start + page_size]],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_local_delivery_notes(
+        self,
+        *,
+        company: str | None,
+        sales_order: str | None,
+        customer: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> DeliveryNoteListData:
+        rows = self._query_local_delivery_invoices(
+            company=company,
+            sales_order=sales_order,
+            customer=customer,
+            item_code=item_code,
+            warehouse=warehouse,
+            status=status,
+            keyword=None,
+        )
+        total = len(rows)
+        start = max((page - 1) * page_size, 0)
+        return DeliveryNoteListData(
+            items=[
+                DeliveryNoteItem(
+                    delivery_note=str(row.delivery_note),
+                    company=str(row.company),
+                    sales_order=str(row.sales_order),
+                    customer=self._text(row.customer) or "",
+                    item_code=str(row.item_code),
+                    warehouse=str(row.warehouse),
+                    delivered_qty=Decimal(str(row.delivered_qty)),
+                    posting_date=row.posting_date,
+                    status=str(row.status),
+                )
+                for row in rows[start : start + page_size]
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_local_sales_invoices(
+        self,
+        *,
+        company: str | None,
+        sales_order: str | None,
+        customer: str | None,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> SalesInvoiceListData:
+        rows = self._query_local_delivery_invoices(
+            company=company,
+            sales_order=sales_order,
+            customer=customer,
+            item_code=None,
+            warehouse=None,
+            status=status,
+            keyword=None,
+        )
+        total = len(rows)
+        start = max((page - 1) * page_size, 0)
+        return SalesInvoiceListData(
+            items=[
+                SalesInvoiceItem(
+                    sales_invoice=str(row.sales_invoice),
+                    company=str(row.company),
+                    sales_order=str(row.sales_order),
+                    customer=self._text(row.customer) or "",
+                    grand_total=Decimal(str(row.grand_total or 0)),
+                    paid_amount=Decimal(str(row.paid_amount or 0)),
+                    outstanding_amount=Decimal(str(row.outstanding_amount or 0)),
+                    posting_date=row.posting_date,
+                    status=str(row.status),
+                )
+                for row in rows[start : start + page_size]
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
         )
 
     def get_local_sales_order_fulfillment(
@@ -3910,9 +4184,327 @@ class SalesInventoryService:
         return f"{prefix}{next_seq:03d}"
 
     @staticmethod
+    def _delivery_invoice_request_hash(payload: dict[str, Any]) -> str:
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
+    def _next_delivery_note(self, *, company: str, posting_date: date) -> str:
+        prefix = f"DN-{posting_date.strftime('%Y%m%d')}-"
+        latest = (
+            self._require_session()
+            .query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.delivery_note.like(f"{prefix}%"),
+            )
+            .order_by(LyDeliveryInvoice.id.desc())
+            .first()
+        )
+        return f"{prefix}{self._next_numeric_tail(latest.delivery_note if latest is not None else None, prefix):03d}"
+
+    def _next_sales_invoice(self, *, company: str, posting_date: date) -> str:
+        prefix = f"SI-{posting_date.strftime('%Y%m%d')}-"
+        latest = (
+            self._require_session()
+            .query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.sales_invoice.like(f"{prefix}%"),
+            )
+            .order_by(LyDeliveryInvoice.id.desc())
+            .first()
+        )
+        return f"{prefix}{self._next_numeric_tail(latest.sales_invoice if latest is not None else None, prefix):03d}"
+
+    @staticmethod
+    def _next_numeric_tail(value: Any, prefix: str) -> int:
+        if value is None:
+            return 1
+        tail = str(value).replace(prefix, "", 1)
+        if tail.isdigit():
+            return int(tail) + 1
+        return 1
+
+    def _query_local_delivery_invoices(
+        self,
+        *,
+        company: str | None,
+        sales_order: str | None,
+        customer: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        status: str | None,
+        keyword: str | None,
+    ) -> list[LyDeliveryInvoice]:
+        session = self._require_session()
+        try:
+            query = session.query(LyDeliveryInvoice)
+            normalized_company = self._text(company)
+            normalized_sales_order = self._text(sales_order)
+            normalized_customer = self._text(customer)
+            normalized_item_code = self._text(item_code)
+            normalized_warehouse = self._text(warehouse)
+            normalized_status = self._text(status)
+            if normalized_company:
+                query = query.filter(LyDeliveryInvoice.company == normalized_company)
+            if normalized_sales_order:
+                query = query.filter(LyDeliveryInvoice.sales_order == normalized_sales_order)
+            if normalized_customer:
+                query = query.filter(LyDeliveryInvoice.customer == normalized_customer)
+            if normalized_item_code:
+                query = query.filter(LyDeliveryInvoice.item_code == normalized_item_code)
+            if normalized_warehouse:
+                query = query.filter(LyDeliveryInvoice.warehouse == normalized_warehouse)
+            if normalized_status:
+                query = query.filter(LyDeliveryInvoice.status == normalized_status)
+            rows = query.order_by(LyDeliveryInvoice.id.desc()).all()
+        except Exception as exc:
+            if self._is_missing_delivery_invoice_table(exc):
+                return []
+            raise
+        normalized_keyword = self._text(keyword)
+        if normalized_keyword:
+            rows = [
+                row
+                for row in rows
+                if self._contains_like(
+                    " ".join(
+                        [
+                            str(row.delivery_note),
+                            str(row.sales_invoice),
+                            str(row.sales_order),
+                            self._text(row.customer) or "",
+                            str(row.item_code),
+                            str(row.warehouse),
+                        ]
+                    ),
+                    normalized_keyword,
+                )
+            ]
+        return rows
+
+    def _build_delivery_invoice_data(self, row: LyDeliveryInvoice) -> DeliveryInvoiceData:
+        return DeliveryInvoiceData(
+            id=int(row.id),
+            company=str(row.company),
+            delivery_note=str(row.delivery_note),
+            sales_invoice=str(row.sales_invoice),
+            sales_order=str(row.sales_order),
+            customer=self._text(row.customer),
+            item_code=str(row.item_code),
+            item_name=self._text(row.item_name),
+            warehouse=str(row.warehouse),
+            delivered_qty=Decimal(str(row.delivered_qty)),
+            uom=str(row.uom),
+            rate=self._decimal_or_none(row.rate),
+            grand_total=Decimal(str(row.grand_total or 0)),
+            paid_amount=Decimal(str(row.paid_amount or 0)),
+            outstanding_amount=Decimal(str(row.outstanding_amount or 0)),
+            posting_date=row.posting_date,
+            due_date=row.due_date,
+            status=str(row.status),  # type: ignore[arg-type]
+            docstatus=int(row.docstatus or 0),
+            source_ref=str(row.source_ref),
+            idempotency_key=str(row.idempotency_key),
+            scenario_tag=self._text(row.scenario_tag),
+            warehouse_draft_id=int(row.warehouse_draft_id) if row.warehouse_draft_id is not None else None,
+            created_by=str(row.created_by),
+            created_at=row.created_at,
+        )
+
+    def _assert_local_stock_available(
+        self,
+        *,
+        company: str,
+        item_code: str,
+        warehouse: str,
+        required_qty: Decimal,
+    ) -> None:
+        balance = self._local_stock_balance(company=company, item_code=item_code, warehouse=warehouse)
+        if balance < required_qty:
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_DELIVERY_INVOICE_STOCK_SHORTAGE",
+                f"库存不足：{warehouse}/{item_code} 当前 {balance}，需发 {required_qty}",
+            )
+
+    def _local_stock_balance(self, *, company: str, item_code: str, warehouse: str) -> Decimal:
+        session = self._require_session()
+        rows = (
+            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.status != "cancelled",
+                LyWarehouseStockEntryDraftItem.item_code == item_code,
+            )
+            .all()
+        )
+        balance = Decimal("0")
+        for draft, item in rows:
+            qty = Decimal(str(item.qty or 0))
+            purpose = str(draft.purpose)
+            source_warehouse = self._text(item.source_warehouse) or self._text(draft.source_warehouse)
+            target_warehouse = self._text(item.target_warehouse) or self._text(draft.target_warehouse)
+            if purpose == "Material Issue":
+                if source_warehouse == warehouse:
+                    balance -= qty
+            elif purpose == "Material Transfer":
+                if source_warehouse == warehouse:
+                    balance -= qty
+                if target_warehouse == warehouse:
+                    balance += qty
+            elif target_warehouse == warehouse:
+                balance += qty
+        return balance
+
+    def _increase_native_sales_order_delivered_qty(
+        self,
+        *,
+        company: str,
+        sales_order: str,
+        item_code: str,
+        warehouse: str,
+        delivered_qty: Decimal,
+    ) -> None:
+        order = (
+            self._require_session()
+            .query(LySalesOrder)
+            .filter(
+                LySalesOrder.company == company,
+                (LySalesOrder.sales_order_no == sales_order) | (LySalesOrder.source_order_ref == sales_order),
+            )
+            .order_by(LySalesOrder.id.desc())
+            .first()
+        )
+        if order is None:
+            return
+        candidates = [
+            item
+            for item in self._native_sales_order_items(order_id=int(order.id))
+            if str(item.item_code) == item_code and (self._text(item.warehouse) in {None, warehouse})
+        ]
+        if not candidates:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "销售订单未包含该发货物料")
+        line = candidates[0]
+        next_delivered = Decimal(str(line.delivered_qty or 0)) + delivered_qty
+        ordered_qty = Decimal(str(line.qty or 0))
+        if next_delivered > ordered_qty:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_QTY_EXCEEDED", "发货数量超过销售订单未发数量")
+        line.delivered_qty = next_delivered
+        order.updated_at = datetime.now(timezone.utc)
+
+    def _create_delivery_stock_issue(
+        self,
+        *,
+        company: str,
+        delivery_note: str,
+        sales_invoice: str,
+        sales_order: str,
+        item_code: str,
+        delivered_qty: Decimal,
+        uom: str,
+        warehouse: str,
+        posting_date: date,
+        idempotency_key: str,
+        current_user: str,
+    ) -> LyWarehouseStockEntryDraft:
+        session = self._require_session()
+        stock_idempotency_key = f"delivery:{idempotency_key}"
+        existing = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.idempotency_key == stock_idempotency_key,
+            )
+            .first()
+        )
+        if existing is not None:
+            return existing
+        event_key = self._build_delivery_stock_event_key(
+            company=company,
+            delivery_note=delivery_note,
+            sales_invoice=sales_invoice,
+            idempotency_key=idempotency_key,
+        )
+        now = datetime.now(timezone.utc)
+        draft = LyWarehouseStockEntryDraft(
+            company=company,
+            purpose="Material Issue",
+            source_type="sales_delivery_invoice",
+            source_id=delivery_note,
+            source_warehouse=warehouse,
+            target_warehouse=None,
+            status="pending_outbox",
+            created_by=current_user,
+            created_at=now,
+            idempotency_key=stock_idempotency_key,
+            event_key=event_key,
+        )
+        session.add(draft)
+        session.flush()
+        session.add(
+            LyWarehouseStockEntryDraftItem(
+                draft_id=int(draft.id),
+                company=company,
+                item_code=item_code,
+                qty=delivered_qty,
+                uom=uom,
+                batch_no=None,
+                serial_no=None,
+                source_warehouse=warehouse,
+                target_warehouse=None,
+            )
+        )
+        session.add(
+            LyWarehouseStockEntryOutboxEvent(
+                draft_id=int(draft.id),
+                event_type="sales_delivery_issue_sync",
+                event_key=event_key,
+                payload={
+                    "business_date": posting_date.isoformat(),
+                    "delivery_note": delivery_note,
+                    "sales_invoice": sales_invoice,
+                    "sales_order": sales_order,
+                    "company": company,
+                    "item_code": item_code,
+                    "warehouse": warehouse,
+                    "delivered_qty": str(delivered_qty),
+                },
+                status="in_pending",
+                retry_count=0,
+                external_ref=None,
+                error_message=None,
+                created_at=now,
+                processed_at=None,
+            )
+        )
+        session.flush()
+        return draft
+
+    @staticmethod
+    def _build_delivery_stock_event_key(
+        *,
+        company: str,
+        delivery_note: str,
+        sales_invoice: str,
+        idempotency_key: str,
+    ) -> str:
+        raw = "|".join([company, delivery_note, sales_invoice, idempotency_key]).encode("utf-8")
+        return f"sdi:{hashlib.sha256(raw).hexdigest()}"
+
+    @staticmethod
     def _is_missing_native_sales_order_table(exc: BaseException) -> bool:
         message = str(exc).lower()
         return "ly_sales_order" in message and ("no such table" in message or "does not exist" in message)
+
+    @staticmethod
+    def _is_missing_delivery_invoice_table(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "ly_delivery_invoice" in message and ("no such table" in message or "does not exist" in message)
 
     @staticmethod
     def _is_missing_legacy_sales_order_table(exc: BaseException) -> bool:

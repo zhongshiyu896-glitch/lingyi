@@ -35,6 +35,8 @@ from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import is_request_id_valid
 from app.schemas.sales_inventory import DiagnosticData
+from app.schemas.sales_inventory import DeliveryInvoiceCreateRequest
+from app.schemas.sales_inventory import DeliveryInvoiceListData
 from app.schemas.sales_inventory import DeliveryNoteListData
 from app.schemas.sales_inventory import InventoryAggregationData
 from app.schemas.sales_inventory import ReferenceDraftCreateRequest
@@ -74,6 +76,9 @@ REFERENCE_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-INV-REF-\d{8}-\d{3}$"
 REFERENCE_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-INV-REF-\d{8}-\d{3})(?:$|[-_.].*)$")
 REFERENCE_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-INV-REF-\d{8}-\d{3})(?:[-_.].*)?$")
 REFERENCE_ALLOWED_TYPES = {"customer", "supplier"}
+DELIVERY_INVOICE_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-DELIVERY-INVOICE-\d{8}-\d{3}$")
+DELIVERY_INVOICE_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-DELIVERY-INVOICE-\d{8}-\d{3})(?:$|[-_.].*)$")
+DELIVERY_INVOICE_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-DELIVERY-INVOICE-\d{8}-\d{3})(?:[-_.].*)?$")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -132,6 +137,13 @@ def _extract_reference_request_tag(value: str) -> str | None:
     return matched.group(1)
 
 
+def _extract_delivery_invoice_request_tag(value: str) -> str | None:
+    matched = DELIVERY_INVOICE_REQUEST_TAG_PATTERN.fullmatch(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
 def _match_sales_order_prefixed_carrier(value: str | None, pattern: re.Pattern[str]) -> str | None:
     normalized = _scope_text(value)
     if normalized is None:
@@ -158,6 +170,17 @@ def _raise_reference_idempotency_conflict(message: str) -> None:
         status_code=409,
         detail={
             "code": "SALES_INVENTORY_REFERENCE_CONFLICT",
+            "message": message,
+            "data": {},
+        },
+    )
+
+
+def _raise_delivery_invoice_conflict(message: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "SALES_DELIVERY_INVOICE_CONFLICT",
             "message": message,
             "data": {},
         },
@@ -319,6 +342,57 @@ def _validate_local_reference_write_gate(
     return normalized_scenario_tag
 
 
+def _validate_delivery_invoice_write_gate(
+    *,
+    request_obj: Request,
+    scenario_tag: str | None,
+    idempotency_key: str | None,
+    company: str | None,
+    operation: str | None,
+) -> str:
+    normalized_scenario_tag = _scope_text(scenario_tag)
+    strict_gate_requested = bool(
+        normalized_scenario_tag and DELIVERY_INVOICE_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag)
+    )
+    normalized_operation = _scope_text(operation) or "create_delivery_invoice"
+    if normalized_operation != "create_delivery_invoice":
+        _raise_delivery_invoice_conflict("operation 非法")
+    if not _scope_text(company):
+        _raise_delivery_invoice_conflict("company 不能为空")
+    if not _scope_text(idempotency_key):
+        _raise_delivery_invoice_conflict("idempotency_key 不能为空")
+    if not strict_gate_requested:
+        return normalized_scenario_tag or ""
+
+    if not _is_local_sales_order_write_enabled():
+        _raise_delivery_invoice_conflict("仅允许本地开发测试库执行发货开票场景写入")
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_delivery_invoice_conflict("request_id 不能为空")
+    if not is_request_id_valid(request_id_header):
+        _raise_delivery_invoice_conflict("request_id_pattern_invalid")
+    header_tag = _extract_delivery_invoice_request_tag(request_id_header)
+    if header_tag is None or DELIVERY_INVOICE_SCENARIO_FULL_PATTERN.fullmatch(header_tag) is None:
+        _raise_delivery_invoice_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    if not request_id or request_id != request_id_header:
+        _raise_delivery_invoice_conflict("request_id 与 Header 不一致")
+    request_tag = _extract_delivery_invoice_request_tag(request_id)
+    if request_tag != header_tag:
+        _raise_delivery_invoice_conflict("request_id 与 scenario_tag 不一致")
+    if normalized_scenario_tag != header_tag:
+        _raise_delivery_invoice_conflict("scenario_tag 载体与 request_id 不一致")
+
+    idempotency_tag = _match_sales_order_prefixed_carrier(idempotency_key, DELIVERY_INVOICE_IDEMPOTENCY_PATTERN)
+    if idempotency_tag is None:
+        _raise_delivery_invoice_conflict("idempotency_key 载体缺失或格式非法")
+    if idempotency_tag != normalized_scenario_tag:
+        _raise_delivery_invoice_conflict("idempotency_key 载体与 scenario_tag 不一致")
+    return normalized_scenario_tag
+
+
 def _handle_erpnext_error(
     *,
     exc: ERPNextAdapterException,
@@ -434,6 +508,17 @@ def _paginate_list_items(items: list[Any], *, page: int, page_size: int) -> tupl
     start = max((page - 1) * page_size, 0)
     end = start + page_size
     return items[start:end], total
+
+
+def _coerce_page(value: Any, *, default: int, minimum: int = 1, maximum: int | None = None) -> int:
+    try:
+        normalized = int(value)
+    except (TypeError, ValueError):
+        normalized = default
+    normalized = max(normalized, minimum)
+    if maximum is not None:
+        normalized = min(normalized, maximum)
+    return normalized
 
 
 def _build_local_stock_summary_fallback(
@@ -839,6 +924,22 @@ def list_delivery_notes(
         enforce_action=False,
         user_permissions=permissions,
     )
+    page_number = _coerce_page(page, default=1)
+    page_size_number = _coerce_page(page_size, default=20, maximum=100)
+    local_data = _write_service(session).list_local_delivery_notes(
+        company=company,
+        sales_order=sales_order,
+        customer=customer,
+        item_code=item_code,
+        warehouse=warehouse,
+        status=status,
+        page=page_number,
+        page_size=page_size_number,
+    )
+    if local_data.items:
+        local_data.items = [item for item in local_data.items if _scope_allowed(item, permissions)]
+        local_data.total = len(local_data.items)
+        return _ok(local_data)
     data = DeliveryNoteListData(
         **dev_seed_page_for_user(
             seed_key="delivery_notes",
@@ -856,6 +957,151 @@ def list_delivery_notes(
         )
     )
     return _ok(data)
+
+
+@router.get("/delivery-invoices")
+def list_delivery_invoices(
+    request: Request,
+    company: str | None = Query(default=None),
+    sales_order: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="delivery_invoice",
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="delivery_invoice",
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": company,
+            "customer": customer,
+            "item_code": item_code,
+            "warehouse": warehouse,
+        },
+        required_fields=(),
+        resource_type="delivery_invoice",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    data: DeliveryInvoiceListData = _write_service(session).list_local_delivery_invoices(
+        company=company,
+        sales_order=sales_order,
+        customer=customer,
+        item_code=item_code,
+        warehouse=warehouse,
+        status=status,
+        keyword=keyword,
+        page=page,
+        page_size=page_size,
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
+@router.post("/delivery-invoices")
+def create_delivery_invoice(
+    request: Request,
+    payload: DeliveryInvoiceCreateRequest = Body(...),
+    idempotency_key_header: str | None = Header(default=None, alias="Idempotency-Key"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_WRITE
+    if not payload.idempotency_key and idempotency_key_header:
+        payload.idempotency_key = idempotency_key_header
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="delivery_invoice",
+    )
+    scenario_tag = _validate_delivery_invoice_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        operation=payload.operation,
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": payload.company,
+            "customer": payload.customer,
+            "item_code": payload.item_code,
+            "warehouse": payload.warehouse,
+        },
+        required_fields=("company", "item_code", "warehouse"),
+        resource_type="delivery_invoice",
+        enforce_action=False,
+    )
+    try:
+        data = _write_service(session).create_delivery_invoice(
+            payload=payload,
+            current_user=current_user.username,
+            scenario_tag=scenario_tag,
+        )
+        AuditService(session).record_success(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="delivery_invoice",
+            resource_id=int(data.id),
+            resource_no=str(data.delivery_note),
+            before_data=None,
+            after_data=jsonable_encoder(data),
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="delivery_invoice",
+            resource_id=None,
+            resource_no=payload.delivery_note,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _created(data)
 
 
 @router.get("/sales-invoices")
@@ -899,6 +1145,20 @@ def list_sales_invoices(
         enforce_action=False,
         user_permissions=permissions,
     )
+    page_number = _coerce_page(page, default=1)
+    page_size_number = _coerce_page(page_size, default=20, maximum=100)
+    local_data = _write_service(session).list_local_sales_invoices(
+        company=company,
+        sales_order=sales_order,
+        customer=customer,
+        status=status,
+        page=page_number,
+        page_size=page_size_number,
+    )
+    if local_data.items:
+        local_data.items = [item for item in local_data.items if _scope_allowed(item, permissions)]
+        local_data.total = len(local_data.items)
+        return _ok(local_data)
     data = SalesInvoiceListData(
         **dev_seed_page_for_user(
             seed_key="sales_invoices",
