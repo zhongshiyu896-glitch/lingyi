@@ -56,7 +56,13 @@ class BackendContractAssetsTest(unittest.TestCase):
             "/api/sales-inventory/suppliers": "app.routers.sales_inventory",
             "/api/sales-inventory/warehouses": "app.routers.sales_inventory",
             "/api/factory-statements/customer-receivables": "app.routers.factory_statement",
+            "/api/factory-statements/purchase-invoices": "app.routers.factory_statement",
+            "/api/sales-inventory/delivery-notes": "app.routers.sales_inventory",
+            "/api/sales-inventory/sales-invoices": "app.routers.sales_inventory",
             "/api/style-profit/style-costs": "app.routers.style_profit",
+            "/api/warehouse/finished-goods-inbound": "app.routers.warehouse",
+            "/api/warehouse/inventory-balance-reconciliation": "app.routers.warehouse",
+            "/api/warehouse/purchase-receipts": "app.routers.warehouse",
         }.items():
             with self.subTest(path=path):
                 real_productized_row = catalog[("GET", path, module_name)]
@@ -85,6 +91,12 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertIn(("GET", "/api/bom/style-bom-process"), dev_paths)
         self.assertIn(("GET", "/api/production/followup-templates"), dev_paths)
         self.assertIn(("GET", "/api/style-profit/style-costs"), dev_paths)
+        self.assertIn(("GET", "/api/warehouse/purchase-receipts"), dev_paths)
+        self.assertIn(("GET", "/api/factory-statements/purchase-invoices"), dev_paths)
+        self.assertIn(("GET", "/api/warehouse/finished-goods-inbound"), dev_paths)
+        self.assertIn(("GET", "/api/sales-inventory/delivery-notes"), dev_paths)
+        self.assertIn(("GET", "/api/sales-inventory/sales-invoices"), dev_paths)
+        self.assertIn(("GET", "/api/warehouse/inventory-balance-reconciliation"), dev_paths)
         self.assertIn(("POST", "/api/production/readiness/work-order-flow"), dev_paths)
 
         prod_app = load_app_for_env("production")
@@ -96,6 +108,12 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertIn(("GET", "/api/bom/style-bom-process"), prod_paths)
         self.assertIn(("GET", "/api/production/followup-templates"), prod_paths)
         self.assertIn(("GET", "/api/style-profit/style-costs"), prod_paths)
+        self.assertIn(("GET", "/api/warehouse/purchase-receipts"), prod_paths)
+        self.assertIn(("GET", "/api/factory-statements/purchase-invoices"), prod_paths)
+        self.assertIn(("GET", "/api/warehouse/finished-goods-inbound"), prod_paths)
+        self.assertIn(("GET", "/api/sales-inventory/delivery-notes"), prod_paths)
+        self.assertIn(("GET", "/api/sales-inventory/sales-invoices"), prod_paths)
+        self.assertIn(("GET", "/api/warehouse/inventory-balance-reconciliation"), prod_paths)
         self.assertNotIn(("POST", "/api/production/readiness/work-order-flow"), prod_paths)
 
     def test_core_real_routes_are_not_shadowed_by_frontend_readiness_router(self) -> None:
@@ -109,12 +127,18 @@ class BackendContractAssetsTest(unittest.TestCase):
             "/api/bom/style-bom-process",
             "/api/bom/units",
             "/api/factory-statements/customer-receivables",
+            "/api/factory-statements/purchase-invoices",
             "/api/production/followup-templates",
             "/api/production/plans",
             "/api/production/work-orders",
             "/api/sales-inventory/customers",
+            "/api/sales-inventory/delivery-notes",
+            "/api/sales-inventory/sales-invoices",
             "/api/sales-inventory/suppliers",
             "/api/warehouse/stock-summary",
+            "/api/warehouse/finished-goods-inbound",
+            "/api/warehouse/inventory-balance-reconciliation",
+            "/api/warehouse/purchase-receipts",
             "/api/reports/catalog",
             "/api/style-profit/style-costs",
         ]

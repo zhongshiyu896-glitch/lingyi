@@ -2,8 +2,8 @@
 
 来源：FastAPI `app.routes` 自动导出；readiness/stub 以 `app/routers/frontend_readiness.py` 为准。
 
-- A 类真实业务接口：179
-- B 类 dev/test readiness 只读接口：25
+- A 类真实业务接口：185
+- B 类 dev/test readiness 只读接口：19
 - C 类 readiness flow 回执桩：7
 - D 类内部/诊断/不建议前端直连接口：11
 
@@ -69,7 +69,7 @@
 | A | GET | `/api/factory-statements/factory-reconciliations` | 是 | 是 | 否 | candidate | reconciliation_no, statement_no, company, supplier, factory_name, factory_code, currency, reconciliation_amount, settled_amount, pending_amount, settlement_status, review_status, ... | 真实业务只读接口候选 |
 | D | POST | `/api/factory-statements/internal/payable-draft-sync/run-once` | 否 | 是 | 否 | not_for_page_direct_use | - | 内部 worker/运维接口; 不给前端页面直接接入 |
 | B | GET | `/api/factory-statements/invoice-types` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
-| B | GET | `/api/factory-statements/purchase-invoices` | 是 | 是 | 否 | temporary_dev_only | purchase_invoice_name, company, supplier, supplier_name, currency, grand_total, paid_amount, outstanding_amount, status, posting_date | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/factory-statements/purchase-invoices` | 是 | 是 | 否 | candidate | purchase_invoice_name, company, supplier, supplier_name, currency, grand_total, paid_amount, outstanding_amount, status, posting_date | 真实业务只读接口候选 |
 | B | GET | `/api/factory-statements/settlement-methods` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
 | A | GET | `/api/factory-statements/supplier-evaluations` | 是 | 是 | 否 | candidate | evaluation_no, statement_no, company, supplier, supplier_code, assessor, score, score_level, review_status, follow_up_status, evaluation_date, expiry_date, ... | 真实业务只读接口候选 |
 | A | GET | `/api/factory-statements/supplier-payable-summaries` | 是 | 是 | 否 | candidate | summary_no, statement_no, company, supplier, supplier_code, currency, opening_payable, current_payable, paid_amount, ending_payable, aging_30, aging_60, ... | 真实业务只读接口候选 |
@@ -131,7 +131,7 @@
 | A | GET | `/api/sales-inventory/customer-return-inbound` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/customers` | 是 | 是 | 否 | candidate | name, customer_name, disabled | 真实业务只读接口候选 |
 | B | GET | `/api/sales-inventory/delivery-addresses` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
-| B | GET | `/api/sales-inventory/delivery-notes` | 是 | 是 | 否 | temporary_dev_only | delivery_note, company, sales_order, customer, item_code, warehouse, delivered_qty, posting_date, status | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/sales-inventory/delivery-notes` | 是 | 是 | 否 | candidate | delivery_note, company, sales_order, customer, item_code, warehouse, delivered_qty, posting_date, status | 真实业务只读接口候选 |
 | D | GET | `/api/sales-inventory/diagnostic` | 否 | 是 | 否 | not_for_page_direct_use | - | 诊断接口; 运维排障用途 |
 | A | GET | `/api/sales-inventory/finished-goods-adjustment` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/finished-goods-count` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
@@ -148,7 +148,7 @@
 | A | GET | `/api/sales-inventory/material-inventory-report` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/material-transfers` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | B | GET | `/api/sales-inventory/sales-channels` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
-| B | GET | `/api/sales-inventory/sales-invoices` | 是 | 是 | 否 | temporary_dev_only | sales_invoice, company, sales_order, customer, grand_total, paid_amount, outstanding_amount, posting_date, status | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/sales-inventory/sales-invoices` | 是 | 是 | 否 | candidate | sales_invoice, company, sales_order, customer, grand_total, paid_amount, outstanding_amount, posting_date, status | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/sales-order-fulfillment` | 否 | 是 | 否 | candidate | company, items.sales_order, items.item_code, items.warehouse, items.ordered_qty, items.actual_qty, items.fulfillment_rate | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/sales-orders` | 是 | 是 | 否 | candidate | name, company, customer, transaction_date, delivery_date, status, docstatus, grand_total, currency | 真实业务只读接口候选 |
 | A | POST | `/api/sales-inventory/sales-orders/drafts` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
@@ -195,10 +195,10 @@
 | D | GET | `/api/warehouse/diagnostic` | 否 | 是 | 否 | not_for_page_direct_use | - | 诊断接口; 运维排障用途 |
 | A | GET | `/api/warehouse/export` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/factory-return-material-report` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
-| B | GET | `/api/warehouse/finished-goods-inbound` | 是 | 是 | 否 | temporary_dev_only | reservation_no, item_code, item_name, warehouse, reserve_qty, inbound_qty, pending_inbound_qty, reserve_status, inbound_status, reserved_date, expected_inbound_date, owner, ... | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/warehouse/finished-goods-inbound` | 是 | 是 | 否 | candidate | reservation_no, item_code, item_name, warehouse, reserve_qty, inbound_qty, pending_inbound_qty, reserve_status, inbound_status, reserved_date, expected_inbound_date, owner, ... | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/finished-goods-inbound-candidates` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | D | POST | `/api/warehouse/internal/stock-entry-sync/run-once` | 否 | 是 | 否 | not_for_page_direct_use | - | 内部 worker/运维接口; 不给前端页面直接接入 |
-| B | GET | `/api/warehouse/inventory-balance-reconciliation` | 是 | 是 | 否 | temporary_dev_only | company, warehouse, item_code, book_qty, actual_qty, diff_qty, status, biz_date, owner, ref_no | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/warehouse/inventory-balance-reconciliation` | 是 | 是 | 否 | candidate | company, warehouse, item_code, book_qty, actual_qty, diff_qty, status, biz_date, owner, ref_no | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/inventory-counts` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | POST | `/api/warehouse/inventory-counts` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/warehouse/inventory-counts/{count_id}` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
@@ -207,7 +207,7 @@
 | A | POST | `/api/warehouse/inventory-counts/{count_id}/submit` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | POST | `/api/warehouse/inventory-counts/{count_id}/variance-review` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/warehouse/other-inbound` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
-| B | GET | `/api/warehouse/purchase-receipts` | 是 | 是 | 否 | temporary_dev_only | receipt_no, purchase_no, company, supplier_name, item_code, material_item_code, warehouse, received_qty, accepted_qty, posting_date, status | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/warehouse/purchase-receipts` | 是 | 是 | 否 | candidate | receipt_no, purchase_no, company, supplier_name, item_code, material_item_code, warehouse, received_qty, accepted_qty, posting_date, status | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/purchase-return-outbound` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/semi-finished-outbound` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/serial-numbers` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |

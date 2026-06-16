@@ -77,6 +77,30 @@ class FactoryStatementListData(BaseModel):
     page_size: int
 
 
+class FactoryStatementPurchaseInvoiceItem(BaseModel):
+    """Read-only purchase invoice/payable projection."""
+
+    purchase_invoice_name: str
+    company: str
+    supplier: str
+    supplier_name: str
+    currency: str
+    grand_total: Decimal
+    paid_amount: Decimal
+    outstanding_amount: Decimal
+    status: str
+    posting_date: date
+
+
+class FactoryStatementPurchaseInvoiceListData(BaseModel):
+    """Paginated purchase invoice/payable response."""
+
+    items: list[FactoryStatementPurchaseInvoiceItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class FactoryStatementExpenseReimbursementPaymentItem(BaseModel):
     """Read-only expense reimbursement payment row."""
 

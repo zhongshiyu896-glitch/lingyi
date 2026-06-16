@@ -32,6 +32,52 @@ class SalesInventoryListData(BaseModel, Generic[T]):
     page_size: int
 
 
+class DeliveryNoteItem(BaseModel):
+    """Read-only delivery note projection."""
+
+    delivery_note: str
+    company: str
+    sales_order: str
+    customer: str
+    item_code: str
+    warehouse: str
+    delivered_qty: Decimal
+    posting_date: date
+    status: str
+
+
+class DeliveryNoteListData(BaseModel):
+    """Paginated delivery note response."""
+
+    items: list[DeliveryNoteItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class SalesInvoiceItem(BaseModel):
+    """Read-only sales invoice projection."""
+
+    sales_invoice: str
+    company: str
+    sales_order: str
+    customer: str
+    grand_total: Decimal
+    paid_amount: Decimal
+    outstanding_amount: Decimal
+    posting_date: date
+    status: str
+
+
+class SalesInvoiceListData(BaseModel):
+    """Paginated sales invoice response."""
+
+    items: list[SalesInvoiceItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class SalesOrderListItem(BaseModel):
     """Read-only Sales Order list row."""
 

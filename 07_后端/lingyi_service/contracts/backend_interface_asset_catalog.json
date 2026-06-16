@@ -1,4 +1,5 @@
 {
+  "source": "FastAPI app.routes",
   "routes": [
     {
       "class": "A",
@@ -157,7 +158,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 62
+      "registered_order": 56
     },
     {
       "class": "A",
@@ -182,7 +183,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 61
+      "registered_order": 55
     },
     {
       "class": "A",
@@ -230,7 +231,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 66
+      "registered_order": 60
     },
     {
       "class": "B",
@@ -311,7 +312,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 65
+      "registered_order": 59
     },
     {
       "class": "A",
@@ -350,7 +351,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 77
+      "registered_order": 71
     },
     {
       "class": "A",
@@ -381,7 +382,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 73
+      "registered_order": 67
     },
     {
       "class": "A",
@@ -428,7 +429,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 64
+      "registered_order": 58
     },
     {
       "class": "A",
@@ -460,7 +461,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 71
+      "registered_order": 65
     },
     {
       "class": "A",
@@ -492,7 +493,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 72
+      "registered_order": 66
     },
     {
       "class": "B",
@@ -563,7 +564,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 74
+      "registered_order": 68
     },
     {
       "class": "A",
@@ -595,7 +596,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 75
+      "registered_order": 69
     },
     {
       "class": "A",
@@ -625,7 +626,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 78
+      "registered_order": 72
     },
     {
       "class": "A",
@@ -670,7 +671,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 76
+      "registered_order": 70
     },
     {
       "class": "A",
@@ -712,7 +713,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 69
+      "registered_order": 63
     },
     {
       "class": "A",
@@ -744,7 +745,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 68
+      "registered_order": 62
     },
     {
       "class": "A",
@@ -795,7 +796,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 67
+      "registered_order": 61
     },
     {
       "class": "C",
@@ -833,7 +834,7 @@
       "frontend_connect_status": "do_not_connect_as_write",
       "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
       "duplicate_method_path_count": 1,
-      "registered_order": 29
+      "registered_order": 23
     },
     {
       "class": "B",
@@ -866,7 +867,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 27
+      "registered_order": 21
     },
     {
       "class": "B",
@@ -933,7 +934,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 22
+      "registered_order": 16
     },
     {
       "class": "B",
@@ -966,7 +967,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 26
+      "registered_order": 20
     },
     {
       "class": "B",
@@ -999,7 +1000,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 24
+      "registered_order": 18
     },
     {
       "class": "B",
@@ -1079,7 +1080,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 70
+      "registered_order": 64
     },
     {
       "class": "A",
@@ -1115,7 +1116,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 63
+      "registered_order": 57
     },
     {
       "class": "A",
@@ -1152,7 +1153,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 79
+      "registered_order": 73
     },
     {
       "class": "A",
@@ -1177,7 +1178,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 80
+      "registered_order": 74
     },
     {
       "class": "A",
@@ -1204,7 +1205,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 81
+      "registered_order": 75
     },
     {
       "class": "A",
@@ -1231,7 +1232,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 83
+      "registered_order": 77
     },
     {
       "class": "A",
@@ -1258,7 +1259,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 84
+      "registered_order": 78
     },
     {
       "class": "A",
@@ -1285,7 +1286,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 85
+      "registered_order": 79
     },
     {
       "class": "A",
@@ -1312,7 +1313,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 82
+      "registered_order": 76
     },
     {
       "class": "A",
@@ -1339,7 +1340,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 165
+      "registered_order": 162
     },
     {
       "class": "A",
@@ -1366,7 +1367,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 164
+      "registered_order": 161
     },
     {
       "class": "A",
@@ -1438,7 +1439,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 106
+      "registered_order": 100
     },
     {
       "class": "A",
@@ -1463,7 +1464,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 101
+      "registered_order": 95
     },
     {
       "class": "A",
@@ -1498,7 +1499,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 108
+      "registered_order": 103
     },
     {
       "class": "A",
@@ -1534,7 +1535,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 121
+      "registered_order": 116
     },
     {
       "class": "A",
@@ -1569,7 +1570,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 109
+      "registered_order": 104
     },
     {
       "class": "B",
@@ -1602,7 +1603,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 25
+      "registered_order": 19
     },
     {
       "class": "A",
@@ -1637,7 +1638,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 110
+      "registered_order": 105
     },
     {
       "class": "A",
@@ -1671,7 +1672,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 113
+      "registered_order": 108
     },
     {
       "class": "A",
@@ -1724,7 +1725,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 114
+      "registered_order": 109
     },
     {
       "class": "A",
@@ -1758,7 +1759,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 111
+      "registered_order": 106
     },
     {
       "class": "A",
@@ -1792,7 +1793,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 112
+      "registered_order": 107
     },
     {
       "class": "A",
@@ -1827,7 +1828,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 107
+      "registered_order": 102
     },
     {
       "class": "B",
@@ -1860,7 +1861,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 23
+      "registered_order": 17
     },
     {
       "class": "A",
@@ -1911,7 +1912,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 115
+      "registered_order": 110
     },
     {
       "class": "A",
@@ -1966,7 +1967,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 117
+      "registered_order": 112
     },
     {
       "class": "A",
@@ -2019,7 +2020,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 116
+      "registered_order": 111
     },
     {
       "class": "D",
@@ -2044,7 +2045,7 @@
       "frontend_connect_status": "not_for_page_direct_use",
       "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
       "duplicate_method_path_count": 1,
-      "registered_order": 105
+      "registered_order": 99
     },
     {
       "class": "B",
@@ -2077,20 +2078,24 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 21
+      "registered_order": 15
     },
     {
-      "class": "B",
+      "class": "A",
       "method": "GET",
       "path": "/api/factory-statements/purchase-invoices",
-      "name": "frontend_readiness_purchase_invoices",
+      "name": "list_purchase_invoices",
       "tags": [
-        "frontend_readiness"
+        "factory_statement"
       ],
-      "endpoint_module": "app.routers.frontend_readiness",
+      "endpoint_module": "app.routers.factory_statement",
       "request_params": {
         "path": [],
         "query": [
+          "company",
+          "supplier",
+          "supplier_name",
+          "status",
           "page",
           "page_size"
         ],
@@ -2111,10 +2116,10 @@
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 12
+      "registered_order": 101
     },
     {
       "class": "B",
@@ -2147,7 +2152,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 20
+      "registered_order": 14
     },
     {
       "class": "A",
@@ -2197,7 +2202,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 118
+      "registered_order": 113
     },
     {
       "class": "A",
@@ -2252,7 +2257,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 120
+      "registered_order": 115
     },
     {
       "class": "A",
@@ -2287,7 +2292,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 119
+      "registered_order": 114
     },
     {
       "class": "A",
@@ -2312,7 +2317,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 122
+      "registered_order": 117
     },
     {
       "class": "A",
@@ -2339,7 +2344,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 103
+      "registered_order": 97
     },
     {
       "class": "A",
@@ -2366,7 +2371,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 102
+      "registered_order": 96
     },
     {
       "class": "A",
@@ -2393,7 +2398,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 104
+      "registered_order": 98
     },
     {
       "class": "A",
@@ -2676,7 +2681,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 53
+      "registered_order": 47
     },
     {
       "class": "D",
@@ -2710,7 +2715,7 @@
       "frontend_connect_status": "not_for_page_direct_use",
       "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
       "duplicate_method_path_count": 1,
-      "registered_order": 60
+      "registered_order": 54
     },
     {
       "class": "A",
@@ -2769,7 +2774,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 50
+      "registered_order": 44
     },
     {
       "class": "B",
@@ -2862,7 +2867,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 54
+      "registered_order": 48
     },
     {
       "class": "A",
@@ -2911,7 +2916,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 48
+      "registered_order": 42
     },
     {
       "class": "A",
@@ -2944,7 +2949,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 47
+      "registered_order": 41
     },
     {
       "class": "A",
@@ -3015,7 +3020,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 56
+      "registered_order": 50
     },
     {
       "class": "A",
@@ -3051,7 +3056,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 58
+      "registered_order": 52
     },
     {
       "class": "A",
@@ -3094,7 +3099,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 57
+      "registered_order": 51
     },
     {
       "class": "A",
@@ -3152,7 +3157,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 52
+      "registered_order": 46
     },
     {
       "class": "C",
@@ -3191,7 +3196,7 @@
       "frontend_connect_status": "do_not_connect_as_write",
       "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
       "duplicate_method_path_count": 1,
-      "registered_order": 31
+      "registered_order": 25
     },
     {
       "class": "C",
@@ -3228,7 +3233,7 @@
       "frontend_connect_status": "do_not_connect_as_write",
       "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
       "duplicate_method_path_count": 1,
-      "registered_order": 28
+      "registered_order": 22
     },
     {
       "class": "A",
@@ -3284,7 +3289,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 51
+      "registered_order": 45
     },
     {
       "class": "A",
@@ -3343,7 +3348,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 55
+      "registered_order": 49
     },
     {
       "class": "A",
@@ -3398,7 +3403,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 49
+      "registered_order": 43
     },
     {
       "class": "A",
@@ -3442,7 +3447,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 59
+      "registered_order": 53
     },
     {
       "class": "D",
@@ -3474,7 +3479,7 @@
       "frontend_connect_status": "not_for_page_direct_use",
       "risk_note": "诊断接口; 运维排障用途",
       "duplicate_method_path_count": 1,
-      "registered_order": 163
+      "registered_order": 160
     },
     {
       "class": "A",
@@ -3509,7 +3514,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 162
+      "registered_order": 159
     },
     {
       "class": "A",
@@ -3564,7 +3569,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 152
+      "registered_order": 149
     },
     {
       "class": "A",
@@ -3589,7 +3594,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 151
+      "registered_order": 148
     },
     {
       "class": "A",
@@ -3614,7 +3619,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 153
+      "registered_order": 150
     },
     {
       "class": "A",
@@ -3641,7 +3646,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 154
+      "registered_order": 151
     },
     {
       "class": "A",
@@ -3668,7 +3673,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 156
+      "registered_order": 153
     },
     {
       "class": "A",
@@ -3695,7 +3700,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 155
+      "registered_order": 152
     },
     {
       "class": "A",
@@ -3722,7 +3727,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 157
+      "registered_order": 154
     },
     {
       "class": "A",
@@ -3747,7 +3752,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 159
+      "registered_order": 156
     },
     {
       "class": "D",
@@ -3772,7 +3777,7 @@
       "frontend_connect_status": "not_for_page_direct_use",
       "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
       "duplicate_method_path_count": 1,
-      "registered_order": 158
+      "registered_order": 155
     },
     {
       "class": "C",
@@ -3806,7 +3811,7 @@
       "frontend_connect_status": "do_not_connect_as_write",
       "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
       "duplicate_method_path_count": 1,
-      "registered_order": 32
+      "registered_order": 26
     },
     {
       "class": "A",
@@ -3852,7 +3857,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 160
+      "registered_order": 157
     },
     {
       "class": "A",
@@ -3892,7 +3897,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 161
+      "registered_order": 158
     },
     {
       "class": "A",
@@ -4131,7 +4136,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 97
+      "registered_order": 91
     },
     {
       "class": "A",
@@ -4156,7 +4161,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 99
+      "registered_order": 93
     },
     {
       "class": "A",
@@ -4181,7 +4186,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 98
+      "registered_order": 92
     },
     {
       "class": "A",
@@ -4208,7 +4213,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 147
+      "registered_order": 144
     },
     {
       "class": "A",
@@ -4242,7 +4247,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 136
+      "registered_order": 133
     },
     {
       "class": "A",
@@ -4277,7 +4282,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 137
+      "registered_order": 134
     },
     {
       "class": "A",
@@ -4307,7 +4312,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 146
+      "registered_order": 143
     },
     {
       "class": "B",
@@ -4343,17 +4348,23 @@
       "registered_order": 220
     },
     {
-      "class": "B",
+      "class": "A",
       "method": "GET",
       "path": "/api/sales-inventory/delivery-notes",
-      "name": "frontend_readiness_delivery_notes",
+      "name": "list_delivery_notes",
       "tags": [
-        "frontend_readiness"
+        "sales_inventory"
       ],
-      "endpoint_module": "app.routers.frontend_readiness",
+      "endpoint_module": "app.routers.sales_inventory",
       "request_params": {
         "path": [],
         "query": [
+          "company",
+          "sales_order",
+          "customer",
+          "item_code",
+          "warehouse",
+          "status",
           "page",
           "page_size"
         ],
@@ -4373,10 +4384,10 @@
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 17
+      "registered_order": 120
     },
     {
       "class": "D",
@@ -4399,7 +4410,7 @@
       "frontend_connect_status": "not_for_page_direct_use",
       "risk_note": "诊断接口; 运维排障用途",
       "duplicate_method_path_count": 1,
-      "registered_order": 150
+      "registered_order": 147
     },
     {
       "class": "A",
@@ -4433,7 +4444,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 140
+      "registered_order": 137
     },
     {
       "class": "A",
@@ -4467,7 +4478,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 139
+      "registered_order": 136
     },
     {
       "class": "A",
@@ -4501,7 +4512,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 135
+      "registered_order": 132
     },
     {
       "class": "A",
@@ -4535,7 +4546,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 138
+      "registered_order": 135
     },
     {
       "class": "A",
@@ -4567,7 +4578,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 149
+      "registered_order": 146
     },
     {
       "class": "A",
@@ -4601,7 +4612,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 133
+      "registered_order": 130
     },
     {
       "class": "A",
@@ -4635,7 +4646,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 134
+      "registered_order": 131
     },
     {
       "class": "A",
@@ -4670,7 +4681,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 141
+      "registered_order": 138
     },
     {
       "class": "A",
@@ -4704,7 +4715,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 131
+      "registered_order": 128
     },
     {
       "class": "A",
@@ -4736,7 +4747,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 144
+      "registered_order": 141
     },
     {
       "class": "A",
@@ -4764,7 +4775,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 143
+      "registered_order": 140
     },
     {
       "class": "A",
@@ -4797,7 +4808,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 129
+      "registered_order": 126
     },
     {
       "class": "A",
@@ -4831,7 +4842,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 130
+      "registered_order": 127
     },
     {
       "class": "A",
@@ -4864,7 +4875,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 128
+      "registered_order": 125
     },
     {
       "class": "B",
@@ -4900,17 +4911,21 @@
       "registered_order": 221
     },
     {
-      "class": "B",
+      "class": "A",
       "method": "GET",
       "path": "/api/sales-inventory/sales-invoices",
-      "name": "frontend_readiness_sales_invoices",
+      "name": "list_sales_invoices",
       "tags": [
-        "frontend_readiness"
+        "sales_inventory"
       ],
-      "endpoint_module": "app.routers.frontend_readiness",
+      "endpoint_module": "app.routers.sales_inventory",
       "request_params": {
         "path": [],
         "query": [
+          "company",
+          "sales_order",
+          "customer",
+          "status",
           "page",
           "page_size"
         ],
@@ -4930,10 +4945,10 @@
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 18
+      "registered_order": 121
     },
     {
       "class": "A",
@@ -4969,7 +4984,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 148
+      "registered_order": 145
     },
     {
       "class": "A",
@@ -5013,7 +5028,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 123
+      "registered_order": 118
     },
     {
       "class": "A",
@@ -5038,7 +5053,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 125
+      "registered_order": 122
     },
     {
       "class": "A",
@@ -5065,7 +5080,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 126
+      "registered_order": 123
     },
     {
       "class": "A",
@@ -5090,7 +5105,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 124
+      "registered_order": 119
     },
     {
       "class": "A",
@@ -5124,7 +5139,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 132
+      "registered_order": 129
     },
     {
       "class": "A",
@@ -5152,7 +5167,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 142
+      "registered_order": 139
     },
     {
       "class": "A",
@@ -5182,7 +5197,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 127
+      "registered_order": 124
     },
     {
       "class": "A",
@@ -5214,7 +5229,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 145
+      "registered_order": 142
     },
     {
       "class": "C",
@@ -5252,7 +5267,7 @@
       "frontend_connect_status": "do_not_connect_as_write",
       "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
       "duplicate_method_path_count": 1,
-      "registered_order": 34
+      "registered_order": 28
     },
     {
       "class": "A",
@@ -5299,7 +5314,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 100
+      "registered_order": 94
     },
     {
       "class": "A",
@@ -5340,7 +5355,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 36
+      "registered_order": 30
     },
     {
       "class": "A",
@@ -5365,7 +5380,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 35
+      "registered_order": 29
     },
     {
       "class": "B",
@@ -5425,7 +5440,7 @@
       "frontend_connect_status": "not_for_page_direct_use",
       "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
       "duplicate_method_path_count": 1,
-      "registered_order": 44
+      "registered_order": 38
     },
     {
       "class": "B",
@@ -5462,7 +5477,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 13
+      "registered_order": 11
     },
     {
       "class": "C",
@@ -5500,7 +5515,7 @@
       "frontend_connect_status": "do_not_connect_as_write",
       "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
       "duplicate_method_path_count": 1,
-      "registered_order": 30
+      "registered_order": 24
     },
     {
       "class": "B",
@@ -5537,7 +5552,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 14
+      "registered_order": 12
     },
     {
       "class": "B",
@@ -5573,7 +5588,7 @@
       "frontend_connect_status": "temporary_dev_only",
       "risk_note": "dev/test only; 生产环境必须关闭",
       "duplicate_method_path_count": 1,
-      "registered_order": 15
+      "registered_order": 13
     },
     {
       "class": "A",
@@ -5628,7 +5643,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 37
+      "registered_order": 31
     },
     {
       "class": "A",
@@ -5653,7 +5668,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 39
+      "registered_order": 33
     },
     {
       "class": "A",
@@ -5678,7 +5693,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 40
+      "registered_order": 34
     },
     {
       "class": "A",
@@ -5703,7 +5718,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 38
+      "registered_order": 32
     },
     {
       "class": "A",
@@ -5728,7 +5743,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 41
+      "registered_order": 35
     },
     {
       "class": "A",
@@ -5755,7 +5770,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 46
+      "registered_order": 40
     },
     {
       "class": "A",
@@ -5782,7 +5797,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 42
+      "registered_order": 36
     },
     {
       "class": "A",
@@ -5809,7 +5824,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 45
+      "registered_order": 39
     },
     {
       "class": "A",
@@ -5836,7 +5851,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 43
+      "registered_order": 37
     },
     {
       "class": "A",
@@ -6368,17 +6383,22 @@
       "registered_order": 170
     },
     {
-      "class": "B",
+      "class": "A",
       "method": "GET",
       "path": "/api/warehouse/finished-goods-inbound",
-      "name": "frontend_readiness_finished_goods_inbound",
+      "name": "list_finished_goods_inbound",
       "tags": [
-        "frontend_readiness"
+        "warehouse"
       ],
-      "endpoint_module": "app.routers.frontend_readiness",
+      "endpoint_module": "app.routers.warehouse",
       "request_params": {
         "path": [],
         "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "reserve_status",
+          "inbound_status",
           "page",
           "page_size"
         ],
@@ -6403,10 +6423,10 @@
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 16
+      "registered_order": 166
     },
     {
       "class": "A",
@@ -6460,17 +6480,21 @@
       "registered_order": 185
     },
     {
-      "class": "B",
+      "class": "A",
       "method": "GET",
       "path": "/api/warehouse/inventory-balance-reconciliation",
-      "name": "frontend_readiness_inventory_balance_reconciliation",
+      "name": "list_inventory_balance_reconciliation",
       "tags": [
-        "frontend_readiness"
+        "warehouse"
       ],
-      "endpoint_module": "app.routers.frontend_readiness",
+      "endpoint_module": "app.routers.warehouse",
       "request_params": {
         "path": [],
         "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "status",
           "page",
           "page_size"
         ],
@@ -6491,10 +6515,10 @@
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 19
+      "registered_order": 167
     },
     {
       "class": "A",
@@ -6709,17 +6733,23 @@
       "registered_order": 168
     },
     {
-      "class": "B",
+      "class": "A",
       "method": "GET",
       "path": "/api/warehouse/purchase-receipts",
-      "name": "frontend_readiness_purchase_receipts",
+      "name": "list_purchase_receipts",
       "tags": [
-        "frontend_readiness"
+        "warehouse"
       ],
-      "endpoint_module": "app.routers.frontend_readiness",
+      "endpoint_module": "app.routers.warehouse",
       "request_params": {
         "path": [],
         "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "material_item_code",
+          "supplier_name",
+          "status",
           "page",
           "page_size"
         ],
@@ -6741,10 +6771,10 @@
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 11
+      "registered_order": 165
     },
     {
       "class": "A",
@@ -7003,7 +7033,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 166
+      "registered_order": 163
     },
     {
       "class": "A",
@@ -7030,7 +7060,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 167
+      "registered_order": 164
     },
     {
       "class": "A",
@@ -7103,7 +7133,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 90
+      "registered_order": 84
     },
     {
       "class": "D",
@@ -7152,7 +7182,7 @@
       "frontend_connect_status": "not_for_page_direct_use",
       "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
       "duplicate_method_path_count": 1,
-      "registered_order": 93
+      "registered_order": 87
     },
     {
       "class": "A",
@@ -7177,7 +7207,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 91
+      "registered_order": 85
     },
     {
       "class": "A",
@@ -7202,7 +7232,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 92
+      "registered_order": 86
     },
     {
       "class": "C",
@@ -7236,7 +7266,7 @@
       "frontend_connect_status": "do_not_connect_as_write",
       "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
       "duplicate_method_path_count": 1,
-      "registered_order": 33
+      "registered_order": 27
     },
     {
       "class": "A",
@@ -7292,7 +7322,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 89
+      "registered_order": 83
     },
     {
       "class": "A",
@@ -7317,7 +7347,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 88
+      "registered_order": 82
     },
     {
       "class": "A",
@@ -7342,7 +7372,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 86
+      "registered_order": 80
     },
     {
       "class": "A",
@@ -7367,7 +7397,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 87
+      "registered_order": 81
     },
     {
       "class": "A",
@@ -7398,7 +7428,7 @@
       "frontend_connect_status": "candidate",
       "risk_note": "真实业务只读接口候选",
       "duplicate_method_path_count": 1,
-      "registered_order": 94
+      "registered_order": 88
     },
     {
       "class": "A",
@@ -7423,7 +7453,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 95
+      "registered_order": 89
     },
     {
       "class": "A",
@@ -7450,7 +7480,7 @@
       "frontend_connect_status": "needs_dedicated_write_task",
       "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
       "duplicate_method_path_count": 1,
-      "registered_order": 96
+      "registered_order": 90
     }
   ]
 }

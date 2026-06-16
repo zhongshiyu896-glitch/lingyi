@@ -46,10 +46,13 @@ from app.schemas.warehouse import WarehouseBatchListData
 from app.schemas.warehouse import WarehouseDiagnosticData
 from app.schemas.warehouse import WarehouseFactoryReturnMaterialReportData
 from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidatesData
+from app.schemas.warehouse import WarehouseFinishedGoodsInboundListData
 from app.schemas.warehouse import WarehouseInventoryCountCancelRequest
 from app.schemas.warehouse import WarehouseInventoryCountCreateRequest
 from app.schemas.warehouse import WarehouseInventoryCountVarianceReviewRequest
+from app.schemas.warehouse import WarehouseInventoryBalanceReconciliationListData
 from app.schemas.warehouse import WarehouseOtherInboundData
+from app.schemas.warehouse import WarehousePurchaseReceiptListData
 from app.schemas.warehouse import WarehousePurchaseReturnOutboundData
 from app.schemas.warehouse import WarehouseSemiFinishedOutboundData
 from app.schemas.warehouse import WarehouseSerialNumberDetailData
@@ -67,6 +70,7 @@ from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.erpnext_warehouse_adapter import ERPNextWarehouseAdapter
+from app.services.frontend_readiness_seed_reader import dev_seed_page_for_user
 from app.services.permission_service import PermissionService
 from app.services.warehouse_export_service import SUPPORTED_DATASETS
 from app.services.warehouse_export_service import WarehouseExportService
@@ -1360,6 +1364,186 @@ def get_stock_summary(
         )
     ]
     data.items = filtered
+    return _ok(data)
+
+
+@router.get("/purchase-receipts")
+def list_purchase_receipts(
+    request: Request,
+    company: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    material_item_code: str | None = Query(default=None),
+    supplier_name: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_READ
+    permission_service = PermissionService(session=session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_purchase_receipt",
+    )
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+    try:
+        _ensure_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+    data = WarehousePurchaseReceiptListData(
+        **dev_seed_page_for_user(
+            seed_key="purchase_receipts",
+            current_user=current_user,
+            page=page,
+            page_size=page_size,
+            filters={
+                "company": company,
+                "warehouse": warehouse,
+                "item_code": item_code,
+                "material_item_code": material_item_code,
+                "supplier_name": supplier_name,
+                "status": status,
+            },
+        )
+    )
+    return _ok(data)
+
+
+@router.get("/finished-goods-inbound")
+def list_finished_goods_inbound(
+    request: Request,
+    company: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    reserve_status: str | None = Query(default=None),
+    inbound_status: str | None = Query(default=None),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_READ
+    permission_service = PermissionService(session=session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_finished_goods_inbound",
+    )
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+    try:
+        _ensure_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+    data = WarehouseFinishedGoodsInboundListData(
+        **dev_seed_page_for_user(
+            seed_key="finished_goods_inbound",
+            current_user=current_user,
+            page=page,
+            page_size=page_size,
+            filters={
+                "company": company,
+                "warehouse": warehouse,
+                "item_code": item_code,
+                "reserve_status": reserve_status,
+                "inbound_status": inbound_status,
+            },
+        )
+    )
+    return _ok(data)
+
+
+@router.get("/inventory-balance-reconciliation")
+def list_inventory_balance_reconciliation(
+    request: Request,
+    company: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_READ
+    permission_service = PermissionService(session=session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_inventory_balance_reconciliation",
+    )
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+    try:
+        _ensure_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+    data = WarehouseInventoryBalanceReconciliationListData(
+        **dev_seed_page_for_user(
+            seed_key="inventory_balance_reconciliation",
+            current_user=current_user,
+            page=page,
+            page_size=page_size,
+            filters={
+                "company": company,
+                "warehouse": warehouse,
+                "item_code": item_code,
+                "status": status,
+            },
+        )
+    )
     return _ok(data)
 
 

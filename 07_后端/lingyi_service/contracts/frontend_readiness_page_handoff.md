@@ -31,8 +31,8 @@
 | 销售生产 | 收发数量 | GET | `/api/production/order-io-quantities` | `inbound_qty, outbound_qty, io_status` | 是 |
 | 销售生产 | 工单轨迹 | GET | `/api/cross-module/work-order-trail/WO-FR-001?company=LY-FRONTEND-DEV` | `work_order, stock_entries, quality_inspections, summary` | 是 |
 | 采购闭环 | 请购 | GET | `/api/bom/material-requests` | `request_no, material_item_code, qty, status` | 是 |
-| 采购闭环 | 采购入库 | GET | `/api/warehouse/purchase-receipts` | `receipt_no, purchase_no, received_qty` | 是 |
-| 采购闭环 | 采购发票 | GET | `/api/factory-statements/purchase-invoices` | `purchase_invoice_name, grand_total, outstanding_amount` | 是 |
+| 采购闭环 | 采购入库 | GET | `/api/warehouse/purchase-receipts` | `receipt_no, purchase_no, received_qty` | 真实 |
+| 采购闭环 | 采购发票 | GET | `/api/factory-statements/purchase-invoices` | `purchase_invoice_name, grand_total, outstanding_amount` | 真实 |
 | 采购闭环 | 供应商应付 | GET | `/api/factory-statements/supplier-payable-summaries` | `summary_no, supplier, ending_payable` | 是 |
 | 外发加工 | 外发单 | GET | `/api/subcontract/` | `subcontract_no, supplier, item_code, status` | 既有 |
 | 外发加工 | 外发发料 | GET | `/api/subcontract/material-issues` | `subcontract_no, material_item_code, issued_qty` | 是 |
@@ -43,11 +43,11 @@
 | 外发加工 | 加工厂应付 | GET | `/api/factory-statements/factory-payable-summaries` | `summary_no, factory_name, ending_payable` | 是 |
 | 库存财务 | 库存台账 | GET | `/api/warehouse/stock-ledger` | `item_code, warehouse, actual_qty, qty_after_transaction` | 既有 |
 | 库存财务 | 库存快照 | GET | `/api/warehouse/stock-summary?company=LY-FRONTEND-DEV` | `warehouse, item_code, actual_qty, projected_qty` | 是 |
-| 库存财务 | 完工入库 | GET | `/api/warehouse/finished-goods-inbound` | `reservation_no, inbound_qty, pending_inbound_qty` | 是 |
-| 库存财务 | 发货单 | GET | `/api/sales-inventory/delivery-notes` | `delivery_note, sales_order, delivered_qty` | 是 |
-| 库存财务 | 销售发票 | GET | `/api/sales-inventory/sales-invoices` | `sales_invoice, grand_total, outstanding_amount` | 是 |
+| 库存财务 | 完工入库 | GET | `/api/warehouse/finished-goods-inbound` | `reservation_no, inbound_qty, pending_inbound_qty` | 真实 |
+| 库存财务 | 发货单 | GET | `/api/sales-inventory/delivery-notes` | `delivery_note, sales_order, delivered_qty` | 真实 |
+| 库存财务 | 销售发票 | GET | `/api/sales-inventory/sales-invoices` | `sales_invoice, grand_total, outstanding_amount` | 真实 |
 | 库存财务 | 应收 | GET | `/api/factory-statements/customer-receivables` | `summary_no, customer_code, ending_receivable` | 真实 |
-| 库存财务 | 账实平 | GET | `/api/warehouse/inventory-balance-reconciliation` | `warehouse, item_code, book_qty, actual_qty, diff_qty` | 是 |
+| 库存财务 | 账实平 | GET | `/api/warehouse/inventory-balance-reconciliation` | `warehouse, item_code, book_qty, actual_qty, diff_qty` | 真实 |
 | 质检工票 | 质检列表 | GET | `/api/quality/inspections` | `inspection_no, inspected_qty, accepted_qty, rejected_qty` | 是 |
 | 质检工票 | 质检统计 | GET | `/api/quality/statistics` | `total_count, total_inspected_qty, overall_defect_rate` | 是 |
 | 质检工票 | 质检趋势 | GET | `/api/quality/statistics/trend` | `period, points` | 是 |

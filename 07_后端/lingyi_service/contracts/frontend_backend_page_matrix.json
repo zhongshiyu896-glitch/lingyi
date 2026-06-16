@@ -61,9 +61,11 @@
       "api_path": null,
       "backend_status": "missing_api_path",
       "backend_class": null,
-      "contract_schemas": [],
+      "contract_schemas": [
+        "SupplierItem"
+      ],
       "field_gaps": [
-        "Supplier: contract 缺少 Supplier schema"
+        "SupplierEndpoint: SupplierItem 仅确认 name/supplier_name/disabled；list_local_suppliers / reference-drafts/suppliers 路径连接阶段确认，暂不写 apiPath"
       ],
       "priority": "P3_needs_product_contract"
     },
@@ -171,15 +173,15 @@
       "template": "config_list",
       "data_kind": "contractGap",
       "api_path": "/api/sales-inventory/warehouses",
-      "backend_status": "dev_readiness_only",
-      "backend_class": "B",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
         "WarehouseItem"
       ],
       "field_gaps": [
         "WarehouseLocation: WarehouseItem 仅含 name/company/warehouse_name/disabled，库位字段缺口回报 owner"
       ],
-      "priority": "P2_backend_alignment_needed"
+      "priority": "P1_first_readonly_connect"
     },
     {
       "index": 12,
@@ -259,7 +261,7 @@
         "BomFabricItem"
       ],
       "field_gaps": [
-        "MaterialFabricVisualOnly: 部位/幅宽/克重后端无字段，已隐藏"
+        "MaterialFabricVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 —"
       ],
       "priority": "P1_first_readonly_connect"
     },
@@ -277,7 +279,7 @@
         "BomAccessoriesPackagingItem"
       ],
       "field_gaps": [
-        "MaterialAccessoryVisualOnly: 部位/幅宽/克重后端无字段，已隐藏"
+        "MaterialAccessoryVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 —"
       ],
       "priority": "P1_first_readonly_connect"
     },
@@ -294,7 +296,9 @@
       "contract_schemas": [
         "BomMaterialGalleryItem"
       ],
-      "field_gaps": [],
+      "field_gaps": [
+        "MaterialGalleryVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 —；图片绑定 thumbnail_url"
+      ],
       "priority": "P1_first_readonly_connect"
     },
     {
@@ -593,18 +597,15 @@
       "page": "物料采购单",
       "page_route": "/materialPurchase/materialPurchaseProcess",
       "template": "list_table_filter",
-      "data_kind": "subcontract",
-      "api_path": "/api/subcontract/",
-      "backend_status": "real_backend_route",
-      "backend_class": "A",
-      "contract_schemas": [
-        "SubcontractListItem",
-        "SubcontractCreateRequest"
-      ],
+      "data_kind": "contractGap",
+      "api_path": null,
+      "backend_status": "missing_api_path",
+      "backend_class": null,
+      "contract_schemas": [],
       "field_gaps": [
-        "MaterialPurchaseOrder: contract 缺少采购单列表 schema，当前只用 SubcontractListItem 类型占位"
+        "MaterialPurchaseOrder: contract 缺少采购单列表 schema，不绑定 /api/subcontract/，采购单字段回报 owner"
       ],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P3_needs_product_contract"
     },
     {
       "index": 61,

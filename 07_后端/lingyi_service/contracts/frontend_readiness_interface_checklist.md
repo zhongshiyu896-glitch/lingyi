@@ -23,16 +23,16 @@
 | `GET /api/production/work-orders` | `plan_id, plan_no, company, sales_order, sales_order_item, item_code, work_order, planned_qty, produced_qty, status, created_at` | dev-gated 只读就绪 |
 | `GET /api/production/material-issues` | `plan_id, plan_no, work_order, company, item_code, material_item_code, warehouse, required_qty, available_qty, issued_qty, shortage_qty, status` | dev-gated 只读就绪 |
 | `GET /api/bom/material-requests` | `request_no, company, item_code, material_item_code, supplier_name, qty, uom, expected_delivery_date, status, bom_no` | dev-gated 只读就绪 |
-| `GET /api/warehouse/purchase-receipts` | `receipt_no, purchase_no, company, supplier_name, item_code, material_item_code, warehouse, received_qty, accepted_qty, posting_date, status` | dev-gated 只读就绪 |
-| `GET /api/factory-statements/purchase-invoices` | `purchase_invoice_name, company, supplier, supplier_name, currency, grand_total, paid_amount, outstanding_amount, status, posting_date` | dev-gated 只读就绪 |
+| `GET /api/warehouse/purchase-receipts` | `receipt_no, purchase_no, company, supplier_name, item_code, material_item_code, warehouse, received_qty, accepted_qty, posting_date, status` | 真实只读路由就绪 |
+| `GET /api/factory-statements/purchase-invoices` | `purchase_invoice_name, company, supplier, supplier_name, currency, grand_total, paid_amount, outstanding_amount, status, posting_date` | 真实只读路由就绪 |
 | `GET /api/subcontract/material-issues` | `subcontract_no, company, supplier, item_code, material_item_code, warehouse, required_qty, issued_qty, pending_qty, status` | dev-gated 只读就绪 |
 | `GET /api/subcontract/receipts` | `subcontract_no, company, supplier, item_code, receipt_batch_no, received_qty, accepted_qty, rejected_qty, receipt_warehouse, status` | dev-gated 只读就绪 |
 | `GET /api/subcontract/return-materials` | `subcontract_no, company, supplier, item_code, material_item_code, planned_return_qty, returned_qty, pending_qty, status` | dev-gated 只读就绪 |
-| `GET /api/warehouse/finished-goods-inbound` | `reservation_no, item_code, item_name, warehouse, reserve_qty, inbound_qty, pending_inbound_qty, reserve_status, inbound_status, reserved_date, expected_inbound_date, owner, ref_no, company` | dev-gated 只读就绪 |
-| `GET /api/sales-inventory/delivery-notes` | `delivery_note, company, sales_order, customer, item_code, warehouse, delivered_qty, posting_date, status` | dev-gated 只读就绪 |
-| `GET /api/sales-inventory/sales-invoices` | `sales_invoice, company, sales_order, customer, grand_total, paid_amount, outstanding_amount, posting_date, status` | dev-gated 只读就绪 |
+| `GET /api/warehouse/finished-goods-inbound` | `reservation_no, item_code, item_name, warehouse, reserve_qty, inbound_qty, pending_inbound_qty, reserve_status, inbound_status, reserved_date, expected_inbound_date, owner, ref_no, company` | 真实只读路由就绪 |
+| `GET /api/sales-inventory/delivery-notes` | `delivery_note, company, sales_order, customer, item_code, warehouse, delivered_qty, posting_date, status` | 真实只读路由就绪 |
+| `GET /api/sales-inventory/sales-invoices` | `sales_invoice, company, sales_order, customer, grand_total, paid_amount, outstanding_amount, posting_date, status` | 真实只读路由就绪 |
 | `GET /api/factory-statements/customer-receivables` | `summary_no, statement_no, company, customer_name, customer_code, currency, opening_receivable, current_receivable, received_amount, ending_receivable, aging_30, aging_60, aging_90_plus, risk_level, review_status, summary_date, owner, remark` | dev-gated 只读就绪 |
-| `GET /api/warehouse/inventory-balance-reconciliation` | `company, warehouse, item_code, book_qty, actual_qty, diff_qty, status, biz_date, owner, ref_no` | dev-gated 只读就绪 |
+| `GET /api/warehouse/inventory-balance-reconciliation` | `company, warehouse, item_code, book_qty, actual_qty, diff_qty, status, biz_date, owner, ref_no` | 真实只读路由就绪 |
 | `GET /api/style-profit/style-costs` | `snapshot_no, company, item_code, sales_order, from_date, to_date, revenue_amount, actual_total_cost, standard_total_cost, profit_amount, profit_rate, snapshot_status, allocation_status, formula_version` | dev-gated 只读就绪 |
 | `GET /api/sales-inventory/suppliers` | `name, supplier_name, disabled` | dev 下完整路径 200；既有 reference 路由优先，未挂载时 dev-gated 兜底 |
 | `GET /api/sales-inventory/delivery-addresses` | `dict_type, dict_code, dict_name, status, source, updated_at` | dev-gated 只读就绪 |

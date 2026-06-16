@@ -33,12 +33,14 @@ from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import is_request_id_valid
 from app.schemas.sales_inventory import DiagnosticData
+from app.schemas.sales_inventory import DeliveryNoteListData
 from app.schemas.sales_inventory import InventoryAggregationData
 from app.schemas.sales_inventory import ReferenceDraftCreateRequest
 from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
 from app.schemas.sales_inventory import SupplierItem
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
+from app.schemas.sales_inventory import SalesInvoiceListData
 from app.schemas.sales_inventory import StockLedgerData
 from app.schemas.sales_inventory import StockLedgerItem
 from app.schemas.sales_inventory import StockSummaryData
@@ -49,6 +51,7 @@ from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
+from app.services.frontend_readiness_seed_reader import dev_seed_page_for_user
 from app.services.permission_service import PermissionService
 from app.services.sales_inventory_service import SalesInventoryService
 from app.services.sales_inventory_service import SalesInventoryServiceError
@@ -714,6 +717,128 @@ def get_sales_order_detail(
         if detail.get("code") == RESOURCE_ACCESS_DENIED:
             _raise_hidden_sales_order_not_found()
         raise
+    return _ok(data)
+
+
+@router.get("/delivery-notes")
+def list_delivery_notes(
+    request: Request,
+    company: str | None = Query(default=None),
+    sales_order: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="delivery_note",
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="delivery_note",
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": company,
+            "customer": customer,
+            "item_code": item_code,
+            "warehouse": warehouse,
+        },
+        required_fields=(),
+        resource_type="delivery_note",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    data = DeliveryNoteListData(
+        **dev_seed_page_for_user(
+            seed_key="delivery_notes",
+            current_user=current_user,
+            page=page,
+            page_size=page_size,
+            filters={
+                "company": company,
+                "sales_order": sales_order,
+                "customer": customer,
+                "item_code": item_code,
+                "warehouse": warehouse,
+                "status": status,
+            },
+        )
+    )
+    return _ok(data)
+
+
+@router.get("/sales-invoices")
+def list_sales_invoices(
+    request: Request,
+    company: str | None = Query(default=None),
+    sales_order: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="sales_invoice",
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="sales_invoice",
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": company,
+            "customer": customer,
+        },
+        required_fields=(),
+        resource_type="sales_invoice",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    data = SalesInvoiceListData(
+        **dev_seed_page_for_user(
+            seed_key="sales_invoices",
+            current_user=current_user,
+            page=page,
+            page_size=page_size,
+            filters={
+                "company": company,
+                "sales_order": sales_order,
+                "customer": customer,
+                "status": status,
+            },
+        )
+    )
     return _ok(data)
 
 

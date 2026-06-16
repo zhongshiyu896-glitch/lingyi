@@ -100,6 +100,83 @@ class WarehouseStockSummaryData(BaseModel):
     material_inventory: list[WarehouseMaterialInventoryItem] = Field(default_factory=list)
 
 
+class WarehousePurchaseReceiptItem(BaseModel):
+    """Read-only purchase receipt projection."""
+
+    receipt_no: str
+    purchase_no: str
+    company: str
+    supplier_name: str
+    item_code: str
+    material_item_code: str
+    warehouse: str
+    received_qty: Decimal
+    accepted_qty: Decimal
+    posting_date: date
+    status: str
+
+
+class WarehousePurchaseReceiptListData(BaseModel):
+    """Paginated purchase receipt response."""
+
+    items: list[WarehousePurchaseReceiptItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class WarehouseFinishedGoodsInboundItem(BaseModel):
+    """Read-only finished goods inbound projection."""
+
+    reservation_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    reserve_qty: Decimal
+    inbound_qty: Decimal
+    pending_inbound_qty: Decimal
+    reserve_status: str
+    inbound_status: str
+    reserved_date: date
+    expected_inbound_date: date
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class WarehouseFinishedGoodsInboundListData(BaseModel):
+    """Paginated finished goods inbound response."""
+
+    items: list[WarehouseFinishedGoodsInboundItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class WarehouseInventoryBalanceReconciliationItem(BaseModel):
+    """Read-only inventory balance reconciliation projection."""
+
+    company: str
+    warehouse: str
+    item_code: str
+    book_qty: Decimal
+    actual_qty: Decimal
+    diff_qty: Decimal
+    status: str
+    biz_date: date
+    owner: str
+    ref_no: str
+
+
+class WarehouseInventoryBalanceReconciliationListData(BaseModel):
+    """Paginated inventory balance reconciliation response."""
+
+    items: list[WarehouseInventoryBalanceReconciliationItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class WarehouseOtherInboundItem(BaseModel):
     """Other inbound read-only projection row."""
 

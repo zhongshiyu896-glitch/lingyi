@@ -60,6 +60,7 @@ from app.schemas.factory_statement import FactoryStatementCustomerUnpaidReportDa
 from app.schemas.factory_statement import FactoryStatementFactoryEvaluationData
 from app.schemas.factory_statement import FactoryStatementFactoryPayableSummaryData
 from app.schemas.factory_statement import FactoryStatementFactoryReconciliationData
+from app.schemas.factory_statement import FactoryStatementPurchaseInvoiceListData
 from app.schemas.factory_statement import FactoryStatementSupplierEvaluationData
 from app.schemas.factory_statement import FactoryStatementSupplierPayableSummaryData
 from app.schemas.factory_statement import FactoryStatementSupplierReconciliationData
@@ -72,6 +73,7 @@ from app.services.audit_service import AuditService
 from app.services.erpnext_purchase_invoice_adapter import ERPNextPurchaseInvoiceAdapter
 from app.services.factory_statement_payable_worker import FactoryStatementPayableWorker
 from app.services.factory_statement_service import FactoryStatementService
+from app.services.frontend_readiness_seed_reader import dev_seed_page_for_user
 from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/factory-statements", tags=["factory_statement"])
@@ -1150,6 +1152,60 @@ def list_factory_statements(
         except AuditWriteFailed as audit_exc:
             return _app_err(audit_exc)
         return _app_err(error)
+
+
+@router.get("/purchase-invoices")
+def list_purchase_invoices(
+    request: Request,
+    company: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    supplier_name: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = FACTORY_STATEMENT_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="factory_statement",
+        resource_type="purchase_invoice",
+        resource_id=None,
+    )
+    readable_companies, readable_suppliers = _resolve_readable_scope(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+    )
+    rows = dev_seed_page_for_user(
+        seed_key="purchase_invoices",
+        current_user=current_user,
+        page=page,
+        page_size=page_size,
+        filters={
+            "company": company,
+            "supplier": supplier,
+            "supplier_name": supplier_name,
+            "status": status,
+        },
+    )
+    if readable_companies is not None or readable_suppliers is not None:
+        filtered_items = []
+        for row in rows["items"]:
+            row_company = _scope_text(row.get("company"))
+            row_supplier = _scope_text(row.get("supplier"))
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+            filtered_items.append(row)
+        rows = {**rows, "items": filtered_items, "total": len(filtered_items)}
+    data = FactoryStatementPurchaseInvoiceListData(**rows)
+    return _ok(data)
 
 
 @router.get("/expense-reimbursement-payments")
