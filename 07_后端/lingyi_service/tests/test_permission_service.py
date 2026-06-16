@@ -132,6 +132,26 @@ class PermissionAggregationTest(unittest.TestCase):
         )
         self.assertEqual(set(agg.actions), set())
 
+    def test_warehouse_manager_button_permissions(self) -> None:
+        agg = self._service().get_actions(
+            current_user=CurrentUser(
+                username="warehouse.manager",
+                roles=["Warehouse Manager"],
+                is_service_account=False,
+                source="dev_header",
+            ),
+            request_obj=_build_request(),
+            module="warehouse",
+        )
+        self.assertIn("warehouse:stock_entry_draft", agg.actions)
+        self.assertIn("warehouse:stock_entry_cancel", agg.actions)
+        self.assertTrue(agg.button_permissions["read"])
+        self.assertTrue(agg.button_permissions["create"])
+        self.assertTrue(agg.button_permissions["cancel"])
+        self.assertTrue(agg.button_permissions["export"])
+        self.assertTrue(agg.button_permissions["diagnostic"])
+        self.assertTrue(agg.button_permissions["worker"])
+
 
 class PermissionServiceFailClosedTest(unittest.TestCase):
     """Cover fail-closed behavior for ERPNext permission source."""

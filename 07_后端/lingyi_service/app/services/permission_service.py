@@ -78,6 +78,12 @@ from app.core.permissions import QUALITY_DIAGNOSTIC
 from app.core.permissions import QUALITY_EXPORT
 from app.core.permissions import QUALITY_READ
 from app.core.permissions import QUALITY_UPDATE
+from app.core.permissions import WAREHOUSE_DIAGNOSTIC
+from app.core.permissions import WAREHOUSE_EXPORT
+from app.core.permissions import WAREHOUSE_READ
+from app.core.permissions import WAREHOUSE_STOCK_ENTRY_CANCEL
+from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
+from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import MODULE_ACTION_REGISTRY
 from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
 from app.core.permissions import get_permission_source
@@ -1797,6 +1803,14 @@ class PermissionService:
             base["work_order_create"] = PRODUCTION_WORK_ORDER_CREATE in actions
             base["job_card_sync"] = PRODUCTION_JOB_CARD_SYNC in actions
             base["work_order_worker"] = PRODUCTION_WORK_ORDER_WORKER in actions
+            return base
+        if module == "warehouse":
+            base["read"] = WAREHOUSE_READ in actions
+            base["create"] = WAREHOUSE_STOCK_ENTRY_DRAFT in actions
+            base["cancel"] = WAREHOUSE_STOCK_ENTRY_CANCEL in actions
+            base["export"] = WAREHOUSE_EXPORT in actions
+            base["diagnostic"] = WAREHOUSE_DIAGNOSTIC in actions
+            base["worker"] = WAREHOUSE_WORKER in actions
             return base
         if module == "style_profit":
             base["read"] = STYLE_PROFIT_READ in actions

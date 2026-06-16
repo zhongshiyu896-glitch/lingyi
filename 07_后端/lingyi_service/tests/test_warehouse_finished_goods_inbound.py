@@ -250,6 +250,28 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
         self.assertEqual(body["allocation_mode"], "zero_placeholder_fallback")
         self.assertIn("找不到可分配的制单明细", body.get("strict_failure_reason") or "")
 
+    def test_create_finished_goods_draft_fastapi_local_source_without_erpnext(self) -> None:
+        payload = self._draft_payload(qty="3", item_code="FG-LOCAL-001")
+        payload["source_id"] = f"{self.STOCK_ENTRY_SCENARIO_TAG}-LOCAL-FG-001"
+        payload["source_ref"] = payload["source_id"]
+        payload["finished_goods_source_id"] = payload["source_id"]
+        payload["items"][0]["item_code"] = "FG-LOCAL-001"
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._stock_entry_request_id(payload),
+            ),
+            json=payload,
+        )
+
+        self.assertEqual(response.status_code, 201, response.text)
+        body = response.json()["data"]
+        self.assertEqual(body["source_type"], "finished_goods_inbound")
+        self.assertEqual(body["source_id"], payload["finished_goods_source_id"])
+        self.assertEqual(body["allocation_mode"], "zero_placeholder_fallback")
+        self.assertEqual(body["strict_failure_reason"], "FastAPI local finished goods inbound source")
+
     def test_create_finished_goods_draft_candidate_disabled_fail_closed(self) -> None:
         with patch(
             "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.get_finished_goods_inbound_candidate",

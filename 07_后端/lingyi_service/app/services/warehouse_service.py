@@ -1887,12 +1887,22 @@ class WarehouseService:
         target_warehouse: str | None,
         items: list[WarehouseStockEntryDraftItemCreateRequest],
     ) -> tuple[list[dict[str, Any]], str, str | None]:
+        item_rows = self._normalize_item_payloads(
+            items=items,
+            fallback_source_warehouse=source_warehouse,
+            fallback_target_warehouse=target_warehouse,
+        )
+        if len(item_rows) != 1:
+            raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PAYLOAD", "成品入仓草稿仅支持单条候选明细")
+
         try:
             candidate = self._require_adapter().get_finished_goods_inbound_candidate(
                 source_id=source_id,
                 company=company,
             )
         except ERPNextAdapterException as exc:
+            if self._local_read_fallback_enabled():
+                return item_rows, "zero_placeholder_fallback", "FastAPI local finished goods inbound source"
             raise WarehouseServiceError(
                 int(exc.http_status or 503),
                 str(exc.error_code),
@@ -1905,14 +1915,6 @@ class WarehouseService:
                 "WAREHOUSE_FINISHED_GOODS_CANDIDATE_DISABLED",
                 self._text(candidate.get("disabled_reason")) or self._FINISHED_GOODS_DISABLED_ENTRY_REASON,
             )
-
-        item_rows = self._normalize_item_payloads(
-            items=items,
-            fallback_source_warehouse=source_warehouse,
-            fallback_target_warehouse=target_warehouse,
-        )
-        if len(item_rows) != 1:
-            raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PAYLOAD", "成品入仓草稿仅支持单条候选明细")
 
         item_row = item_rows[0]
         expected_item_code = self._require_text(candidate.get("item_code"), "candidate.item_code")
