@@ -37,6 +37,7 @@ from app.core.exceptions import ERPNextServiceUnavailableError
 from app.core.request_id import is_request_id_valid
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
+from app.models.bom import LyBomOperation
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -44,6 +45,7 @@ from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionWorkOrderLink
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
+from app.models.style_profit import LyStyleProfitSnapshot
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionFollowupTemplateListData
@@ -68,6 +70,10 @@ from app.schemas.production import ProductionPlanQuery
 from app.schemas.production import ProductionQuoteListData
 from app.schemas.production import ProductionQuoteListItem
 from app.schemas.production import ProductionQuoteQuery
+from app.schemas.production import ProductionReportSuiteCompositionItem
+from app.schemas.production import ProductionReportSuiteData
+from app.schemas.production import ProductionReportSuiteQuery
+from app.schemas.production import ProductionReportSuiteTrendPoint
 from app.schemas.production import ProductionSalesForecastListData
 from app.schemas.production import ProductionSalesForecastListItem
 from app.schemas.production import ProductionSalesForecastQuery
@@ -1240,6 +1246,541 @@ class ProductionService:
             page=query.page,
             page_size=query.page_size,
         )
+
+    def get_report_suite(
+        self,
+        *,
+        query: ProductionReportSuiteQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionReportSuiteData:
+        try:
+            plan_sql = self.session.query(LyProductionPlan)
+            if query.company:
+                plan_sql = plan_sql.filter(LyProductionPlan.company == query.company)
+            if query.customer:
+                plan_sql = plan_sql.filter(LyProductionPlan.customer.like(f"%{query.customer.strip()}%"))
+            if query.owner:
+                plan_sql = plan_sql.filter(LyProductionPlan.created_by.like(f"%{query.owner.strip()}%"))
+            if query.status and query.status != "all":
+                plan_sql = plan_sql.filter(LyProductionPlan.status == query.status)
+            if query.from_date:
+                plan_sql = plan_sql.filter(func.date(LyProductionPlan.created_at) >= query.from_date)
+            if query.to_date:
+                plan_sql = plan_sql.filter(func.date(LyProductionPlan.created_at) <= query.to_date)
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                plan_sql = plan_sql.filter(
+                    or_(
+                        LyProductionPlan.plan_no.like(keyword),
+                        LyProductionPlan.sales_order.like(keyword),
+                        LyProductionPlan.sales_order_item.like(keyword),
+                        LyProductionPlan.item_code.like(keyword),
+                        LyProductionPlan.customer.like(keyword),
+                    )
+                )
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return self._empty_report_suite(query=query)
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return self._empty_report_suite(query=query)
+                plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+
+            plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        context = self._build_report_suite_context(plans)
+        all_rows = self._build_report_suite_rows(query.report_key, plans=plans, context=context)
+        total = len(all_rows)
+        start = (query.page - 1) * query.page_size
+        paged_rows = all_rows[start : start + query.page_size]
+
+        return ProductionReportSuiteData(
+            report_key=query.report_key,
+            title=self._report_suite_title(query.report_key),
+            items=paged_rows,
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+            trend=self._report_suite_trend(query.report_key, all_rows),
+            composition=self._report_suite_composition(query.report_key, all_rows),
+            data_basis=[
+                "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
+                "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 物料单价和工序工价预测",
+            ],
+            pending_b_phase_fields=[
+                "工票/质检/成品入库/发货开票未建页面时，完工、入库、发货执行量只展示本地已有 Job Card 或 Sales Order delivered_qty",
+                "样衣成本与样衣偏差等待 B 期样衣成本口径合并后补齐",
+            ],
+        )
+
+    def _empty_report_suite(self, *, query: ProductionReportSuiteQuery) -> ProductionReportSuiteData:
+        return ProductionReportSuiteData(
+            report_key=query.report_key,
+            title=self._report_suite_title(query.report_key),
+            items=[],
+            total=0,
+            page=query.page,
+            page_size=query.page_size,
+            trend=[],
+            composition=[],
+            data_basis=[
+                "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
+            ],
+            pending_b_phase_fields=[],
+        )
+
+    def _build_report_suite_context(self, plans: list[LyProductionPlan]) -> dict[str, Any]:
+        plan_ids = [int(plan.id) for plan in plans]
+        bom_ids = sorted({int(plan.bom_id) for plan in plans if plan.bom_id is not None})
+        sales_orders = sorted({str(plan.sales_order) for plan in plans if plan.sales_order})
+        item_codes = sorted({str(plan.item_code) for plan in plans if plan.item_code})
+        companies = sorted({str(plan.company) for plan in plans if plan.company})
+
+        try:
+            sales_rows = []
+            if sales_orders and item_codes:
+                sales_rows = (
+                    self.session.query(LySalesOrder, LySalesOrderItem)
+                    .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+                    .filter(LySalesOrder.sales_order_no.in_(sales_orders))
+                    .filter(LySalesOrderItem.item_code.in_(item_codes))
+                    .all()
+                )
+
+            material_snapshots = []
+            if plan_ids:
+                material_snapshots = (
+                    self.session.query(LyProductionPlanMaterial)
+                    .filter(LyProductionPlanMaterial.plan_id.in_(plan_ids))
+                    .order_by(LyProductionPlanMaterial.plan_id.asc(), LyProductionPlanMaterial.id.asc())
+                    .all()
+                )
+
+            bom_items = []
+            bom_operations = []
+            if bom_ids:
+                bom_items = (
+                    self.session.query(LyApparelBomItem)
+                    .filter(LyApparelBomItem.bom_id.in_(bom_ids))
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .all()
+                )
+                bom_operations = (
+                    self.session.query(LyBomOperation)
+                    .filter(LyBomOperation.bom_id.in_(bom_ids))
+                    .order_by(LyBomOperation.bom_id.asc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc())
+                    .all()
+                )
+
+            job_cards = []
+            if plan_ids:
+                job_cards = (
+                    self.session.query(LyProductionJobCardLink)
+                    .filter(LyProductionJobCardLink.plan_id.in_(plan_ids))
+                    .order_by(LyProductionJobCardLink.plan_id.asc(), LyProductionJobCardLink.id.asc())
+                    .all()
+                )
+
+            snapshots = []
+            if companies and item_codes:
+                snapshots = (
+                    self.session.query(LyStyleProfitSnapshot)
+                    .filter(LyStyleProfitSnapshot.company.in_(companies))
+                    .filter(LyStyleProfitSnapshot.item_code.in_(item_codes))
+                    .order_by(LyStyleProfitSnapshot.created_at.desc(), LyStyleProfitSnapshot.id.desc())
+                    .all()
+                )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        sales_map: dict[tuple[str, str, str], LySalesOrderItem] = {}
+        sales_header_map: dict[str, LySalesOrder] = {}
+        for order, item in sales_rows:
+            sales_header_map[str(order.sales_order_no)] = order
+            sales_map.setdefault((str(order.company), str(order.sales_order_no), str(item.item_code)), item)
+
+        material_map: dict[int, list[LyProductionPlanMaterial]] = {}
+        for row in material_snapshots:
+            material_map.setdefault(int(row.plan_id), []).append(row)
+
+        bom_item_map: dict[int, list[LyApparelBomItem]] = {}
+        bom_item_by_id: dict[int, LyApparelBomItem] = {}
+        for row in bom_items:
+            bom_item_map.setdefault(int(row.bom_id), []).append(row)
+            bom_item_by_id[int(row.id)] = row
+
+        operation_map: dict[int, list[LyBomOperation]] = {}
+        for row in bom_operations:
+            operation_map.setdefault(int(row.bom_id), []).append(row)
+
+        job_card_map: dict[int, list[LyProductionJobCardLink]] = {}
+        for row in job_cards:
+            job_card_map.setdefault(int(row.plan_id), []).append(row)
+
+        snapshot_map: dict[tuple[str, str, str], LyStyleProfitSnapshot] = {}
+        for row in snapshots:
+            key = (str(row.company), str(row.sales_order or ""), str(row.item_code))
+            snapshot_map.setdefault(key, row)
+
+        return {
+            "sales_map": sales_map,
+            "sales_header_map": sales_header_map,
+            "material_map": material_map,
+            "bom_item_map": bom_item_map,
+            "bom_item_by_id": bom_item_by_id,
+            "operation_map": operation_map,
+            "job_card_map": job_card_map,
+            "snapshot_map": snapshot_map,
+        }
+
+    def _build_report_suite_rows(
+        self,
+        report_key: str,
+        *,
+        plans: list[LyProductionPlan],
+        context: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        if report_key == "productionCostMaterialDetailReport":
+            return self._build_report_suite_material_rows(plans=plans, context=context)
+        if report_key == "orderTrackingReport":
+            return [self._build_report_suite_tracking_row(plan=plan, context=context) for plan in plans]
+        if report_key == "productOrderSampleCompare":
+            return [self._build_report_suite_sample_row(plan=plan, context=context) for plan in plans]
+        if report_key == "productOrderProfitReport":
+            return [self._build_report_suite_profit_row(plan=plan, context=context) for plan in plans]
+        return [self._build_report_suite_quantity_row(plan=plan, context=context) for plan in plans]
+
+    def _build_report_suite_quantity_row(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> dict[str, Any]:
+        base = self._build_report_suite_base_row(plan=plan, context=context)
+        qty = self._dec(base["qty"])
+        planned_qty = self._dec(plan.planned_qty)
+        finished_qty = self._completed_qty(plan=plan, context=context)
+        stocked_qty = Decimal("0")
+        return {
+            **base,
+            "id": f"OQ-{int(plan.id)}",
+            "colorSize": "-",
+            "plannedQty": planned_qty,
+            "finishedQty": finished_qty,
+            "stockedQty": stocked_qty,
+            "varianceQty": planned_qty - qty,
+            "progress": self._percent(finished_qty, planned_qty if planned_qty > 0 else qty),
+        }
+
+    def _build_report_suite_sample_row(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> dict[str, Any]:
+        base = self._build_report_suite_base_row(plan=plan, context=context)
+        qty = self._dec(base["qty"])
+        amount = self._dec(base["amount"])
+        total_cost = self._dec(base["totalCost"])
+        bulk_unit_price = self._divide(amount, qty)
+        bulk_unit_cost = self._divide(total_cost, qty)
+        return {
+            **base,
+            "id": f"SC-{int(plan.id)}",
+            "sampleCost": Decimal("0"),
+            "bulkUnitPrice": bulk_unit_price,
+            "bulkUnitCost": bulk_unit_cost,
+            "costDelta": bulk_unit_price - bulk_unit_cost,
+            "sampleGap": "待B期样衣成本",
+            "status": self._profit_status(self._dec(base["grossMargin"])),
+        }
+
+    def _build_report_suite_tracking_row(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> dict[str, Any]:
+        base = self._build_report_suite_base_row(plan=plan, context=context)
+        job_cards = context["job_card_map"].get(int(plan.id), [])
+        cut_qty = self._operation_qty(job_cards, ("cut", "裁"))
+        sewing_qty = self._operation_qty(job_cards, ("sew", "车", "缝"))
+        finishing_qty = self._operation_qty(job_cards, ("finish", "后", "整"))
+        shipped_qty = self._delivered_qty(plan=plan, context=context)
+        planned_qty = self._dec(plan.planned_qty)
+        return {
+            **base,
+            "id": f"TR-{int(plan.id)}",
+            "factory": "-",
+            "cutQty": cut_qty,
+            "sewingQty": sewing_qty,
+            "finishingQty": finishing_qty,
+            "shippedQty": shipped_qty,
+            "progress": self._percent(max(cut_qty, sewing_qty, finishing_qty, shipped_qty), planned_qty),
+        }
+
+    def _build_report_suite_profit_row(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> dict[str, Any]:
+        base = self._build_report_suite_base_row(plan=plan, context=context)
+        qty = self._dec(base["qty"])
+        gross_margin = self._dec(base["grossMargin"])
+        return {
+            **base,
+            "id": f"PF-{int(plan.id)}",
+            "unitProfit": self._divide(self._dec(base["profit"]), qty),
+            "risk": self._profit_risk(gross_margin),
+            "status": self._profit_status(gross_margin),
+        }
+
+    def _build_report_suite_material_rows(
+        self,
+        *,
+        plans: list[LyProductionPlan],
+        context: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for plan in plans:
+            base = self._build_report_suite_base_row(plan=plan, context=context)
+            planned_qty = self._dec(plan.planned_qty)
+            snapshot_items = context["material_map"].get(int(plan.id), [])
+            if snapshot_items:
+                for snapshot in snapshot_items:
+                    bom_item = (
+                        context["bom_item_by_id"].get(int(snapshot.bom_item_id))
+                        if snapshot.bom_item_id is not None
+                        else None
+                    )
+                    material_code = str(snapshot.material_item_code)
+                    required_qty = self._dec(snapshot.required_qty)
+                    available_qty = self._dec(snapshot.available_qty)
+                    shortage_qty = self._dec(snapshot.shortage_qty)
+                    unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+                    rows.append(
+                        {
+                            **base,
+                            "id": f"MD-{int(plan.id)}-{int(snapshot.id)}",
+                            "item_code": material_code,
+                            "materialName": material_code,
+                            "category": "物料",
+                            "requiredQty": required_qty,
+                            "unit": str(bom_item.uom) if bom_item is not None else "",
+                            "unitPrice": unit_price,
+                            "materialCost": required_qty * unit_price,
+                            "lossRate": self._dec(snapshot.loss_rate) * Decimal("100"),
+                            "availableQty": available_qty,
+                            "gapQty": available_qty - required_qty,
+                            "supplier": self._extract_supplier_from_remark(bom_item.remark if bom_item is not None else None) or "",
+                            "status": "缺口" if shortage_qty > 0 else "库存充足",
+                        }
+                    )
+                continue
+
+            for bom_item in context["bom_item_map"].get(int(plan.bom_id), []):
+                qty_per_piece = self._dec(bom_item.qty_per_piece)
+                loss_rate = self._dec(bom_item.loss_rate)
+                required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                unit_price = self._extract_unit_price_from_remark(bom_item.remark)
+                rows.append(
+                    {
+                        **base,
+                        "id": f"MD-{int(plan.id)}-BOM-{int(bom_item.id)}",
+                        "item_code": str(bom_item.material_item_code),
+                        "materialName": str(bom_item.material_item_code),
+                        "category": "物料",
+                        "requiredQty": required_qty,
+                        "unit": str(bom_item.uom),
+                        "unitPrice": unit_price,
+                        "materialCost": required_qty * unit_price,
+                        "lossRate": loss_rate * Decimal("100"),
+                        "availableQty": Decimal("0"),
+                        "gapQty": -required_qty,
+                        "supplier": self._extract_supplier_from_remark(bom_item.remark) or "",
+                        "status": "待齐料",
+                    }
+                )
+        return rows
+
+    def _build_report_suite_base_row(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> dict[str, Any]:
+        company = str(plan.company)
+        sales_order = str(plan.sales_order)
+        item_code = str(plan.item_code)
+        sales_item = context["sales_map"].get((company, sales_order, item_code))
+        sales_header = context["sales_header_map"].get(sales_order)
+        snapshot = context["snapshot_map"].get((company, sales_order, item_code))
+        qty = self._dec(getattr(sales_item, "qty", None)) or self._dec(plan.planned_qty)
+        amount = self._dec(getattr(sales_item, "amount", None))
+        if amount == Decimal("0"):
+            amount = self._dec(getattr(snapshot, "revenue_amount", None))
+        if amount == Decimal("0") and sales_item is not None:
+            amount = self._dec(getattr(sales_item, "qty", None)) * self._dec(getattr(sales_item, "rate", None))
+
+        material_cost, labor_cost, outsource_cost = self._estimated_costs(plan=plan, context=context)
+        if snapshot is not None:
+            material_cost = self._dec(snapshot.actual_material_cost)
+            labor_cost = self._dec(snapshot.actual_workshop_cost)
+            outsource_cost = self._dec(snapshot.actual_subcontract_cost)
+            total_cost = self._dec(snapshot.actual_total_cost)
+        else:
+            total_cost = material_cost + labor_cost + outsource_cost
+        profit = amount - total_cost
+        gross_margin = self._percent(profit, amount)
+        created_at = plan.created_at or datetime.utcnow()
+        order_date = getattr(sales_header, "transaction_date", None) or created_at.date()
+
+        return {
+            "id": f"PR-{int(plan.id)}",
+            "sales_order": sales_order,
+            "styleNo": item_code,
+            "styleName": str(getattr(sales_item, "item_name", None) or item_code),
+            "customer": str(plan.customer or getattr(sales_header, "customer", None) or ""),
+            "merchandiser": str(plan.created_by or ""),
+            "date": order_date.isoformat() if hasattr(order_date, "isoformat") else str(order_date),
+            "status": self._production_report_status(plan_status=str(plan.status or ""), gross_margin=gross_margin),
+            "qty": qty,
+            "amount": amount,
+            "materialCost": material_cost,
+            "laborCost": labor_cost,
+            "outsourceCost": outsource_cost,
+            "totalCost": total_cost,
+            "profit": profit,
+            "grossMargin": gross_margin,
+            "progress": Decimal("0"),
+            "delayDays": Decimal("0"),
+            "remark": "A期只读：利润按本地真实订单、BOM/利润快照计算；执行端缺页字段待B期补齐。",
+        }
+
+    def _estimated_costs(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> tuple[Decimal, Decimal, Decimal]:
+        planned_qty = self._dec(plan.planned_qty)
+        material_cost = Decimal("0")
+        for snapshot in context["material_map"].get(int(plan.id), []):
+            bom_item = (
+                context["bom_item_by_id"].get(int(snapshot.bom_item_id))
+                if snapshot.bom_item_id is not None
+                else None
+            )
+            unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+            material_cost += self._dec(snapshot.required_qty) * unit_price
+        if material_cost == Decimal("0"):
+            for bom_item in context["bom_item_map"].get(int(plan.bom_id), []):
+                qty_per_piece = self._dec(bom_item.qty_per_piece)
+                loss_rate = self._dec(bom_item.loss_rate)
+                required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                material_cost += required_qty * self._extract_unit_price_from_remark(bom_item.remark)
+
+        labor_cost = Decimal("0")
+        outsource_cost = Decimal("0")
+        for operation in context["operation_map"].get(int(plan.bom_id), []):
+            if bool(operation.is_subcontract):
+                outsource_cost += planned_qty * self._dec(operation.subcontract_cost_per_piece)
+            else:
+                labor_cost += planned_qty * self._dec(operation.wage_rate)
+        return material_cost, labor_cost, outsource_cost
+
+    @staticmethod
+    def _report_suite_title(report_key: str) -> str:
+        return {
+            "orderQuantityReport": "订单生产加工数量对照表",
+            "productOrderSampleCompare": "订单款式利润预测明细表",
+            "orderTrackingReport": "大货成本物料明细表",
+            "productOrderProfitReport": "大货销售预测明细表",
+            "productionCostMaterialDetailReport": "业务员业绩分析报表",
+        }.get(report_key, "生产报表")
+
+    @staticmethod
+    def _dec(value: Any) -> Decimal:
+        if value is None:
+            return Decimal("0")
+        try:
+            return Decimal(str(value))
+        except Exception:
+            return Decimal("0")
+
+    @staticmethod
+    def _divide(numerator: Decimal, denominator: Decimal) -> Decimal:
+        if denominator == Decimal("0"):
+            return Decimal("0")
+        return (numerator / denominator).quantize(Decimal("0.000001"))
+
+    @classmethod
+    def _percent(cls, numerator: Decimal, denominator: Decimal) -> Decimal:
+        if denominator == Decimal("0"):
+            return Decimal("0")
+        return ((numerator / denominator) * Decimal("100")).quantize(Decimal("0.01"))
+
+    @classmethod
+    def _completed_qty(cls, *, plan: LyProductionPlan, context: dict[str, Any]) -> Decimal:
+        return sum((cls._dec(row.completed_qty) for row in context["job_card_map"].get(int(plan.id), [])), Decimal("0"))
+
+    @classmethod
+    def _delivered_qty(cls, *, plan: LyProductionPlan, context: dict[str, Any]) -> Decimal:
+        item = context["sales_map"].get((str(plan.company), str(plan.sales_order), str(plan.item_code)))
+        return cls._dec(getattr(item, "delivered_qty", None))
+
+    @classmethod
+    def _operation_qty(cls, job_cards: list[LyProductionJobCardLink], keywords: tuple[str, ...]) -> Decimal:
+        total = Decimal("0")
+        lowered_keywords = tuple(keyword.lower() for keyword in keywords)
+        for row in job_cards:
+            operation = str(row.operation or "").lower()
+            if any(keyword in operation for keyword in lowered_keywords):
+                total += cls._dec(row.completed_qty)
+        return total
+
+    @staticmethod
+    def _production_report_status(*, plan_status: str, gross_margin: Decimal) -> str:
+        if plan_status in {"cancelled", "failed"}:
+            return "异常"
+        if gross_margin < Decimal("20"):
+            return "利润风险"
+        if plan_status in {"job_cards_synced", "work_order_created"}:
+            return "推进中"
+        return "在产"
+
+    @staticmethod
+    def _profit_risk(gross_margin: Decimal) -> str:
+        if gross_margin < Decimal("20"):
+            return "高风险"
+        if gross_margin < Decimal("30"):
+            return "中风险"
+        return "低风险"
+
+    @staticmethod
+    def _profit_status(gross_margin: Decimal) -> str:
+        if gross_margin < Decimal("20"):
+            return "需复核"
+        if gross_margin < Decimal("30"):
+            return "利润关注"
+        return "利润稳定"
+
+    @staticmethod
+    def _report_suite_trend(report_key: str, rows: list[dict[str, Any]]) -> list[ProductionReportSuiteTrendPoint]:
+        if report_key == "productionCostMaterialDetailReport":
+            source_rows = rows[:8]
+            return [
+                ProductionReportSuiteTrendPoint(
+                    label=str(row.get("materialName") or row.get("item_code") or "-")[:12],
+                    amount=ProductionService._dec(row.get("materialCost")),
+                    profit=ProductionService._dec(row.get("profit")),
+                )
+                for row in source_rows
+            ]
+        source_rows = rows[:8]
+        return [
+            ProductionReportSuiteTrendPoint(
+                label=str(row.get("styleNo") or row.get("sales_order") or "-")[-12:],
+                amount=ProductionService._dec(row.get("amount")),
+                profit=ProductionService._dec(row.get("profit")),
+            )
+            for row in source_rows
+        ]
+
+    @staticmethod
+    def _report_suite_composition(report_key: str, rows: list[dict[str, Any]]) -> list[ProductionReportSuiteCompositionItem]:
+        if report_key == "productionCostMaterialDetailReport":
+            material_total = sum((ProductionService._dec(row.get("materialCost")) for row in rows), Decimal("0"))
+            shortage_total = sum((abs(ProductionService._dec(row.get("gapQty"))) for row in rows if ProductionService._dec(row.get("gapQty")) < 0), Decimal("0"))
+            enough_total = sum((ProductionService._dec(row.get("availableQty")) for row in rows if ProductionService._dec(row.get("gapQty")) >= 0), Decimal("0"))
+            return [
+                ProductionReportSuiteCompositionItem(label="物料金额", value=material_total, color="#4E88F3"),
+                ProductionReportSuiteCompositionItem(label="缺口数量", value=shortage_total, color="#E65A5A"),
+                ProductionReportSuiteCompositionItem(label="可用数量", value=enough_total, color="#27AE60"),
+            ]
+        material_total = sum((ProductionService._dec(row.get("materialCost")) for row in rows), Decimal("0"))
+        labor_total = sum((ProductionService._dec(row.get("laborCost")) for row in rows), Decimal("0"))
+        outsource_total = sum((ProductionService._dec(row.get("outsourceCost")) for row in rows), Decimal("0"))
+        return [
+            ProductionReportSuiteCompositionItem(label="面辅料", value=material_total, color="#4E88F3"),
+            ProductionReportSuiteCompositionItem(label="工费", value=labor_total, color="#27AE60"),
+            ProductionReportSuiteCompositionItem(label="外协", value=outsource_total, color="#F5A623"),
+        ]
 
     def get_plan_detail(self, *, plan_id: int) -> ProductionPlanDetailData:
         plan = self._must_get_plan(plan_id=plan_id)

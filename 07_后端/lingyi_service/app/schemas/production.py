@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from typing import Generic
 from typing import List
 from typing import Optional
@@ -416,6 +417,52 @@ class ProductionSalespersonPerformanceListData(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ProductionReportSuiteQuery(BaseModel):
+    """Existing frontend production report-suite query."""
+
+    report_key: str = Field(..., min_length=1, max_length=80)
+    company: Optional[str] = Field(default=None, max_length=140)
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    customer: Optional[str] = Field(default=None, max_length=140)
+    owner: Optional[str] = Field(default=None, max_length=140)
+    status: Optional[str] = Field(default=None, max_length=80)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=30, ge=1, le=100)
+
+
+class ProductionReportSuiteTrendPoint(BaseModel):
+    """Small chart point for existing production report pages."""
+
+    label: str
+    amount: Decimal
+    profit: Decimal = Decimal("0")
+
+
+class ProductionReportSuiteCompositionItem(BaseModel):
+    """Composition chart item for existing production report pages."""
+
+    label: str
+    value: Decimal
+    color: str
+
+
+class ProductionReportSuiteData(BaseModel):
+    """Rows and chart data for the existing production report-suite pages."""
+
+    report_key: str
+    title: str
+    items: List[dict[str, Any]]
+    total: int
+    page: int
+    page_size: int
+    trend: List[ProductionReportSuiteTrendPoint] = Field(default_factory=list)
+    composition: List[ProductionReportSuiteCompositionItem] = Field(default_factory=list)
+    data_basis: List[str] = Field(default_factory=list)
+    pending_b_phase_fields: List[str] = Field(default_factory=list)
 
 
 class ProductionPlanMaterialSnapshotItem(BaseModel):

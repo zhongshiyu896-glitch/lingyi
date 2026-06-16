@@ -59,6 +59,8 @@ from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanQuery
 from app.schemas.production import ProductionQuoteListData
 from app.schemas.production import ProductionQuoteQuery
+from app.schemas.production import ProductionReportSuiteData
+from app.schemas.production import ProductionReportSuiteQuery
 from app.schemas.production import ProductionSalesForecastListData
 from app.schemas.production import ProductionSalesForecastQuery
 from app.schemas.production import ProductionSalespersonPerformanceListData
@@ -78,6 +80,13 @@ from app.services.production_work_order_worker import ProductionWorkOrderWorker
 
 router = APIRouter(prefix="/api/production", tags=["production"])
 logger = logging.getLogger(__name__)
+REPORT_SUITE_KEYS = {
+    "orderQuantityReport",
+    "productOrderSampleCompare",
+    "orderTrackingReport",
+    "productOrderProfitReport",
+    "productionCostMaterialDetailReport",
+}
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -891,6 +900,70 @@ def list_production_salesperson_performance(
             page_size=page_size,
         )
         data = _service(session=session, request=request).list_salesperson_performance(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/report-suite", response_model=ApiResponse[ProductionReportSuiteData])
+def get_production_report_suite(
+    request: Request,
+    report_key: str = Query(..., min_length=1, max_length=80),
+    company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    owner: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=30, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    if report_key not in REPORT_SUITE_KEYS:
+        return _err("INVALID_QUERY_PARAMETER", "report_key 不合法", 400)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_report_suite",
+            resource_id=None,
+        )
+
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionReportSuiteQuery(
+            report_key=report_key,
+            company=company,
+            keyword=keyword,
+            customer=customer,
+            owner=owner,
+            status=status,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).get_report_suite(
             query=query,
             readable_companies=readable_companies,
             readable_item_codes=readable_items,
