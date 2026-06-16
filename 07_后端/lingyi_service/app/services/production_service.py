@@ -11,6 +11,7 @@ import re
 from typing import Any
 
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -38,6 +39,8 @@ from app.core.request_id import is_request_id_valid
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
+from app.models.material_purchase import LyMaterialPurchaseOrder
+from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -1309,7 +1312,7 @@ class ProductionService:
             composition=self._report_suite_composition(query.report_key, all_rows),
             data_basis=[
                 "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
-                "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 物料单价和工序工价预测",
+                "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
             ],
             pending_b_phase_fields=[
                 "工票/质检/成品入库/发货开票未建页面时，完工、入库、发货执行量只展示本地已有 Job Card 或 Sales Order delivered_qty",
@@ -1385,6 +1388,41 @@ class ProductionService:
                     .all()
                 )
 
+            purchase_unit_price_map: dict[tuple[str, str], Decimal] = {}
+            material_item_codes = sorted(
+                {
+                    str(row.material_item_code)
+                    for row in [*material_snapshots, *bom_items]
+                    if getattr(row, "material_item_code", None)
+                }
+            )
+            if (
+                companies
+                and material_item_codes
+                and self._has_sqlite_tables(
+                    {
+                        LyMaterialPurchaseOrder.__tablename__,
+                        LyMaterialPurchaseOrderItem.__tablename__,
+                    }
+                )
+            ):
+                purchase_rows = (
+                    self.session.query(LyMaterialPurchaseOrderItem, LyMaterialPurchaseOrder)
+                    .join(LyMaterialPurchaseOrder, LyMaterialPurchaseOrder.id == LyMaterialPurchaseOrderItem.order_id)
+                    .filter(LyMaterialPurchaseOrderItem.company.in_(companies))
+                    .filter(LyMaterialPurchaseOrderItem.material_item_code.in_(material_item_codes))
+                    .filter(LyMaterialPurchaseOrder.status != "cancelled")
+                    .filter(LyMaterialPurchaseOrderItem.unit_price > 0)
+                    .order_by(
+                        LyMaterialPurchaseOrder.transaction_date.desc().nullslast(),
+                        LyMaterialPurchaseOrderItem.id.desc(),
+                    )
+                    .all()
+                )
+                for item, _order in purchase_rows:
+                    key = (str(item.company), str(item.material_item_code))
+                    purchase_unit_price_map.setdefault(key, self._dec(item.unit_price))
+
             snapshots = []
             if companies and item_codes:
                 snapshots = (
@@ -1435,6 +1473,7 @@ class ProductionService:
             "operation_map": operation_map,
             "job_card_map": job_card_map,
             "snapshot_map": snapshot_map,
+            "purchase_unit_price_map": purchase_unit_price_map,
         }
 
     def _build_report_suite_rows(
@@ -1542,7 +1581,12 @@ class ProductionService:
                     required_qty = self._dec(snapshot.required_qty)
                     available_qty = self._dec(snapshot.available_qty)
                     shortage_qty = self._dec(snapshot.shortage_qty)
-                    unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+                    unit_price = self._material_unit_price(
+                        material_item_code=material_code,
+                        company=str(plan.company),
+                        remark=bom_item.remark if bom_item is not None else None,
+                        context=context,
+                    )
                     rows.append(
                         {
                             **base,
@@ -1567,7 +1611,12 @@ class ProductionService:
                 qty_per_piece = self._dec(bom_item.qty_per_piece)
                 loss_rate = self._dec(bom_item.loss_rate)
                 required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
-                unit_price = self._extract_unit_price_from_remark(bom_item.remark)
+                unit_price = self._material_unit_price(
+                    material_item_code=str(bom_item.material_item_code),
+                    company=str(plan.company),
+                    remark=bom_item.remark,
+                    context=context,
+                )
                 rows.append(
                     {
                         **base,
@@ -1646,14 +1695,24 @@ class ProductionService:
                 if snapshot.bom_item_id is not None
                 else None
             )
-            unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+            unit_price = self._material_unit_price(
+                material_item_code=str(snapshot.material_item_code),
+                company=str(plan.company),
+                remark=bom_item.remark if bom_item is not None else None,
+                context=context,
+            )
             material_cost += self._dec(snapshot.required_qty) * unit_price
         if material_cost == Decimal("0"):
             for bom_item in context["bom_item_map"].get(int(plan.bom_id), []):
                 qty_per_piece = self._dec(bom_item.qty_per_piece)
                 loss_rate = self._dec(bom_item.loss_rate)
                 required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
-                material_cost += required_qty * self._extract_unit_price_from_remark(bom_item.remark)
+                material_cost += required_qty * self._material_unit_price(
+                    material_item_code=str(bom_item.material_item_code),
+                    company=str(plan.company),
+                    remark=bom_item.remark,
+                    context=context,
+                )
 
         labor_cost = Decimal("0")
         outsource_cost = Decimal("0")
@@ -1673,6 +1732,27 @@ class ProductionService:
             "productOrderProfitReport": "大货销售预测明细表",
             "productionCostMaterialDetailReport": "业务员业绩分析报表",
         }.get(report_key, "生产报表")
+
+    def _material_unit_price(
+        self,
+        *,
+        material_item_code: str,
+        company: str,
+        remark: str | None,
+        context: dict[str, Any],
+    ) -> Decimal:
+        remark_price = self._extract_unit_price_from_remark(remark)
+        if remark_price > Decimal("0"):
+            return remark_price
+        purchase_prices: dict[tuple[str, str], Decimal] = context.get("purchase_unit_price_map", {})
+        return self._dec(purchase_prices.get((company, material_item_code)))
+
+    def _has_sqlite_tables(self, table_names: set[str]) -> bool:
+        bind = self.session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        existing_tables = set(inspect(bind).get_table_names())
+        return table_names.issubset(existing_tables)
 
     @staticmethod
     def _dec(value: Any) -> Decimal:

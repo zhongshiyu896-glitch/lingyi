@@ -19,6 +19,9 @@ from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
+from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseOrder
+from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -44,7 +47,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
             execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
-        for base in (AuditBase, BomBase, SalesOrderBase, ProductionBase, StyleProfitBase):
+        for base in (AuditBase, BomBase, SalesOrderBase, ProductionBase, StyleProfitBase, MaterialPurchaseBase):
             base.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -74,6 +77,8 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             for model in (
                 LyStyleProfitSnapshot,
+                LyMaterialPurchaseOrderItem,
+                LyMaterialPurchaseOrder,
                 LyProductionPlanMaterial,
                 LyProductionPlan,
                 LyBomOperation,
@@ -272,6 +277,148 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["gapQty"])), Decimal("-26"))
         self.assertEqual(Decimal(str(row["materialCost"])), Decimal("880"))
         self.assertEqual(row["status"], "缺口")
+
+    def test_missing_bom_price_uses_latest_purchase_unit_price_for_profit(self) -> None:
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no="SO-RPT-PUR",
+                source_order_ref="SO-RPT-PUR",
+                company="COMP-A",
+                customer="杭州云澜服饰",
+                status="planned",
+                docstatus=0,
+                transaction_date=date(2026, 6, 2),
+                delivery_date=date(2026, 6, 22),
+                currency="CNY",
+                grand_total=Decimal("1000"),
+                idempotency_key="so-rpt-pur-idem",
+                request_hash="so-rpt-pur-hash",
+                created_by="sales.user",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-RPT-PUR-001",
+                    item_code="STYLE-PUR",
+                    item_name="采购价款式",
+                    qty=Decimal("50"),
+                    planned_qty=Decimal("50"),
+                    delivered_qty=Decimal("0"),
+                    rate=Decimal("20"),
+                    amount=Decimal("1000"),
+                    uom="件",
+                    warehouse="FG-A",
+                    delivery_date=date(2026, 6, 22),
+                )
+            )
+            bom = LyApparelBom(
+                id=2,
+                bom_no="BOM-RPT-PUR",
+                item_code="STYLE-PUR",
+                version_no="V1",
+                is_default=True,
+                status="active",
+                effective_date=date(2026, 5, 21),
+                created_by="bom.user",
+                updated_by="bom.user",
+            )
+            session.add(bom)
+            session.flush()
+            session.add(
+                LyApparelBomItem(
+                    id=2,
+                    bom_id=int(bom.id),
+                    material_item_code="MAT-PUR",
+                    qty_per_piece=Decimal("2"),
+                    loss_rate=Decimal("0.1"),
+                    uom="米",
+                    remark="采购单价来自本地物料采购单",
+                )
+            )
+            session.add(
+                LyBomOperation(
+                    id=3,
+                    bom_id=int(bom.id),
+                    process_name="车缝",
+                    sequence_no=1,
+                    is_subcontract=False,
+                    wage_rate=Decimal("1"),
+                )
+            )
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-RPT-PUR",
+                    company="COMP-A",
+                    sales_order="SO-RPT-PUR",
+                    sales_order_item="SO-RPT-PUR-001",
+                    customer="杭州云澜服饰",
+                    item_code="STYLE-PUR",
+                    bom_id=int(bom.id),
+                    bom_version="V1",
+                    planned_qty=Decimal("50"),
+                    planned_start_date=date(2026, 6, 4),
+                    status="planned",
+                    idempotency_key="plan-rpt-pur-idem",
+                    request_hash="plan-rpt-pur-hash",
+                    created_by="merch.user",
+                )
+            )
+            purchase = LyMaterialPurchaseOrder(
+                company="COMP-A",
+                purchase_no="PO-RPT-PUR",
+                supplier_name="瑞兴纺织",
+                transaction_date=date(2026, 6, 1),
+                expected_delivery_date=date(2026, 6, 10),
+                status="received",
+                total_qty=Decimal("200"),
+                received_qty=Decimal("200"),
+                total_amount=Decimal("1450"),
+                currency="CNY",
+                created_by="purchase.user",
+            )
+            session.add(purchase)
+            session.flush()
+            session.add(
+                LyMaterialPurchaseOrderItem(
+                    order_id=int(purchase.id),
+                    company="COMP-A",
+                    item_code="STYLE-PUR",
+                    material_item_code="MAT-PUR",
+                    material_name="采购价面料",
+                    qty=Decimal("200"),
+                    received_qty=Decimal("200"),
+                    uom="米",
+                    unit_price=Decimal("7.25"),
+                    amount=Decimal("1450"),
+                    warehouse="WH-A",
+                )
+            )
+            session.commit()
+
+        profit_response = self.client.get(
+            "/api/production/report-suite?report_key=productOrderProfitReport&company=COMP-A&keyword=SO-RPT-PUR",
+            headers=self._headers(),
+        )
+        self.assertEqual(profit_response.status_code, 200, profit_response.text)
+        profit_row = profit_response.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(profit_row["materialCost"])), Decimal("797.50000000"))
+        self.assertEqual(Decimal(str(profit_row["laborCost"])), Decimal("50.000000000000"))
+        self.assertEqual(Decimal(str(profit_row["totalCost"])), Decimal("847.500000000000"))
+        self.assertEqual(Decimal(str(profit_row["profit"])), Decimal("152.500000000000"))
+
+        material_response = self.client.get(
+            "/api/production/report-suite?report_key=productionCostMaterialDetailReport&company=COMP-A&keyword=SO-RPT-PUR",
+            headers=self._headers(),
+        )
+        self.assertEqual(material_response.status_code, 200, material_response.text)
+        material_row = material_response.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(material_row["unitPrice"])), Decimal("7.25"))
+        self.assertEqual(Decimal(str(material_row["requiredQty"])), Decimal("110.000000"))
+        self.assertEqual(Decimal(str(material_row["materialCost"])), Decimal("797.50000000"))
 
     def test_report_suite_requires_production_read(self) -> None:
         response = self.client.get(
