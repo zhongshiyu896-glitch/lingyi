@@ -27,6 +27,7 @@ from app.services.dashboard_service import DashboardSourceUnavailableError
 from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+DEV_DEFAULT_COMPANY = "LY-FRONTEND-DEV"
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -78,6 +79,8 @@ def _validate_date_range(*, from_date: date | None, to_date: date | None) -> Non
 def _require_company(company: str | None) -> str:
     normalized = _scope_text(company)
     if normalized is None:
+        if _dev_dashboard_company_fallback_enabled():
+            return DEV_DEFAULT_COMPANY
         raise HTTPException(
             status_code=400,
             detail={
@@ -87,6 +90,12 @@ def _require_company(company: str | None) -> str:
             },
         )
     return normalized
+
+
+def _dev_dashboard_company_fallback_enabled() -> bool:
+    env = os.getenv("APP_ENV", "").strip().lower()
+    allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
+    return env in {"development", "dev", "local", "test"} and allow_dev_auth == "true" and get_permission_source() == "static"
 
 
 def _local_dashboard_read_fallback_enabled() -> bool:
@@ -178,6 +187,7 @@ def get_dashboard_overview(
     )
 
     normalized_company = _require_company(company)
+    is_dev_default_company = _scope_text(company) is None and _dev_dashboard_company_fallback_enabled()
     normalized_item_code = _scope_text(item_code)
     normalized_warehouse = _scope_text(warehouse)
 
@@ -199,6 +209,15 @@ def get_dashboard_overview(
     parsed_from_date = _parse_optional_date(from_date, "from_date")
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
+
+    if is_dev_default_company:
+        return _ok(
+            _build_local_dashboard_read_fallback(
+                company=normalized_company,
+                from_date=parsed_from_date,
+                to_date=parsed_to_date,
+            )
+        )
 
     try:
         data = DashboardService(session=session, request_obj=request).get_overview(

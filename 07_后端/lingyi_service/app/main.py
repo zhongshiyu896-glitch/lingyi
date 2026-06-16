@@ -114,6 +114,9 @@ from app.routers.warehouse import get_db_session as warehouse_router_session_dep
 from app.routers.warehouse import router as warehouse_router
 from app.routers.dashboard import get_db_session as dashboard_router_session_dep
 from app.routers.dashboard import router as dashboard_router
+from app.routers.frontend_readiness import early_router as frontend_readiness_early_router
+from app.routers.frontend_readiness import frontend_readiness_enabled
+from app.routers.frontend_readiness import router as frontend_readiness_router
 from app.routers.report import get_db_session as report_router_session_dep
 from app.routers.report import router as report_router
 from app.routers.permission_governance import get_db_session as permission_governance_router_session_dep
@@ -163,6 +166,8 @@ app.dependency_overrides[report_router_session_dep] = get_db_session
 app.dependency_overrides[permission_governance_router_session_dep] = get_db_session
 app.dependency_overrides[system_management_router_session_dep] = get_db_session
 app.include_router(auth_router)
+if frontend_readiness_enabled():
+    app.include_router(frontend_readiness_early_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
 app.include_router(bom_router)
@@ -177,6 +182,8 @@ app.include_router(dashboard_router)
 app.include_router(report_router)
 app.include_router(permission_governance_router)
 app.include_router(system_management_router)
+if frontend_readiness_enabled():
+    app.include_router(frontend_readiness_router)
 
 
 SECURITY_AUDIT_CODES = {

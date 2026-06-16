@@ -136,21 +136,25 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 403, f"role={role} response={response.text}")
 
-    def test_company_missing_returns_400(self) -> None:
+    def test_company_missing_uses_dev_default_company(self) -> None:
         response = self.client.get(
             "/api/dashboard/overview",
             headers=self._headers_with_roles("dashboard:read"),
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["code"], "INVALID_QUERY_PARAMETER")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        self.assertEqual(payload["data"]["company"], "LY-FRONTEND-DEV")
 
-    def test_company_empty_returns_400(self) -> None:
+    def test_company_empty_uses_dev_default_company(self) -> None:
         response = self.client.get(
             "/api/dashboard/overview?company=",
             headers=self._headers_with_roles("dashboard:read"),
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["code"], "INVALID_QUERY_PARAMETER")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        self.assertEqual(payload["data"]["company"], "LY-FRONTEND-DEV")
 
     def test_invalid_date_returns_400(self) -> None:
         response = self.client.get(

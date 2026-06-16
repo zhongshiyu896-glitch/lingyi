@@ -322,7 +322,7 @@ def _local_read_fallback_enabled(exc: ERPNextAdapterException) -> bool:
     allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
     return (
         exc.error_code == EXTERNAL_SERVICE_UNAVAILABLE
-        and env in {"development", "dev", "local"}
+        and env in {"development", "dev", "local", "test"}
         and allow_dev_auth == "true"
         and get_permission_source() == "static"
     )
@@ -398,6 +398,13 @@ def _scope_text(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _paginate_list_items(items: list[Any], *, page: int, page_size: int) -> tuple[list[Any], int]:
+    total = len(items)
+    start = max((page - 1) * page_size, 0)
+    end = start + page_size
+    return items[start:end], total
 
 
 def _build_local_stock_summary_fallback(
@@ -632,7 +639,8 @@ def list_sales_orders(
     except ERPNextAdapterException as exc:
         if (_local_read_fallback_enabled(exc) or _is_local_sales_order_write_enabled()) and local_items:
             fallback_items = [item for item in local_items if _scope_allowed(item, permissions)]
-            return _ok({"items": fallback_items, "total": len(fallback_items), "page": page, "page_size": page_size})
+            paged_items, total = _paginate_list_items(fallback_items, page=page, page_size=page_size)
+            return _ok({"items": paged_items, "total": total, "page": page, "page_size": page_size})
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,
@@ -648,8 +656,9 @@ def list_sales_orders(
         data.items = list(merged.values())
         data.total = len(data.items)
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
-    data.items = filtered
-    data.total = len(filtered)
+    paged_items, total = _paginate_list_items(filtered, page=page, page_size=page_size)
+    data.items = paged_items
+    data.total = total
     return _ok(data)
 
 
@@ -835,8 +844,9 @@ def list_suppliers(
         resource_type="supplier",
     )
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
-    data.items = filtered
-    data.total = len(filtered)
+    paged_items, total = _paginate_list_items(filtered, page=page, page_size=page_size)
+    data.items = paged_items
+    data.total = total
     return _ok(data)
 
 
@@ -2289,8 +2299,9 @@ def list_customers(
         if _local_read_fallback_enabled(exc):
             data = _write_service(session).list_local_customers(page=page, page_size=page_size)
             filtered = [item for item in data.items if _scope_allowed(item, permissions)]
-            data.items = filtered
-            data.total = len(filtered)
+            paged_items, total = _paginate_list_items(filtered, page=page, page_size=page_size)
+            data.items = paged_items
+            data.total = total
             return _ok(data)
         _handle_erpnext_error(
             exc=exc,
@@ -2301,8 +2312,9 @@ def list_customers(
             resource_type="Customer",
         )
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
-    data.items = filtered
-    data.total = len(filtered)
+    paged_items, total = _paginate_list_items(filtered, page=page, page_size=page_size)
+    data.items = paged_items
+    data.total = total
     return _ok(data)
 
 

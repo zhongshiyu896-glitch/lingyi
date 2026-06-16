@@ -1,0 +1,1265 @@
+"""Development-only seed rows for frontend readiness endpoints."""
+
+from __future__ import annotations
+
+from datetime import UTC
+from datetime import date
+from datetime import datetime
+from decimal import Decimal
+from typing import Any
+
+GENERATED_AT = datetime(2026, 6, 16, 8, 0, tzinfo=UTC)
+DEFAULT_COMPANY = "LY-FRONTEND-DEV"
+
+DICTIONARY_ROWS: dict[str, list[dict[str, Any]]] = {
+    "delivery_addresses": [
+        {
+            "dict_type": "delivery_address",
+            "dict_code": "ADDR-FR-001",
+            "dict_name": "Frontend Readiness Delivery Address",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "settlement_methods": [
+        {
+            "dict_type": "settlement_method",
+            "dict_code": "SETTLE-FR-001",
+            "dict_name": "Monthly Settlement",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "invoice_types": [
+        {
+            "dict_type": "invoice_type",
+            "dict_code": "INVOICE-FR-001",
+            "dict_name": "VAT Invoice",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "sample_types": [
+        {
+            "dict_type": "sample_type",
+            "dict_code": "SAMPLE-FR-001",
+            "dict_name": "Development Sample",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "expense_types": [
+        {
+            "dict_type": "expense_type",
+            "dict_code": "EXPENSE-FR-001",
+            "dict_name": "Processing Fee",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "size_sortings": [
+        {
+            "dict_type": "size_sorting",
+            "dict_code": "SIZE-FR-001",
+            "dict_name": "XS-S-M-L-XL",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "sales_channels": [
+        {
+            "dict_type": "sales_channel",
+            "dict_code": "CHANNEL-FR-001",
+            "dict_name": "Offline Wholesale",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "size_chart_templates": [
+        {
+            "dict_type": "size_chart_template",
+            "dict_code": "SIZECHART-FR-001",
+            "dict_name": "Standard Shirt Size Chart",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "sample_orders": [
+        {
+            "dict_type": "sample_order",
+            "dict_code": "SAMPLE-ORDER-FR-001",
+            "dict_name": "Frontend Readiness Sample Order",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "colors": [
+        {
+            "dict_type": "color",
+            "dict_code": "COLOR-FR-001",
+            "dict_name": "Navy",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "sizes": [
+        {
+            "dict_type": "size",
+            "dict_code": "SIZE-FR-M",
+            "dict_name": "M",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "units": [
+        {
+            "dict_type": "unit",
+            "dict_code": "UNIT-FR-PCS",
+            "dict_name": "Pcs",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+    "material_categories": [
+        {
+            "dict_type": "material_category",
+            "dict_code": "MATCAT-FR-FABRIC",
+            "dict_name": "Fabric",
+            "status": "enabled",
+            "source": "frontend_readiness_seed",
+            "updated_at": GENERATED_AT.isoformat(),
+        }
+    ],
+}
+
+GAP_LIST_ROWS: dict[str, list[dict[str, Any]]] = {
+    "factories": [
+        {
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "factory_name": "Frontend Readiness Factory",
+            "factory_code": "FAC-FR-001",
+            "review_status": "approved",
+            "follow_up_status": "normal",
+        }
+    ],
+    "suppliers": [
+        {
+            "name": "SUP-FR-001",
+            "supplier_name": "Frontend Readiness Supplier",
+            "disabled": False,
+        }
+    ],
+    "materials": [
+        {
+            "id": 1,
+            "bom_id": 1,
+            "bom_no": "BOM-FR-001",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "material_type_code": "MATTYPE-FR-FABRIC",
+            "material_type_name": "Fabric",
+            "material_group": "main_material",
+            "applicable_scene": "bulk_production",
+            "supplier_name": "Frontend Readiness Supplier",
+            "status": "active",
+            "is_default": True,
+        }
+    ],
+    "styles": [
+        {
+            "id": 1,
+            "bom_no": "BOM-FR-001",
+            "item_code": "ITEM-FR-001",
+            "version_no": "V1",
+            "is_default": True,
+            "status": "active",
+            "effective_date": date(2026, 6, 16),
+        }
+    ],
+    "warehouses": [
+        {
+            "name": "WH-FR-001",
+            "company": DEFAULT_COMPANY,
+            "warehouse_name": "Frontend Readiness Warehouse",
+            "disabled": False,
+        }
+    ],
+    "style_bom_process": [
+        {
+            "id": 1,
+            "bom_id": 1,
+            "bom_no": "BOM-FR-001",
+            "item_code": "ITEM-FR-001",
+            "version_no": "V1",
+            "process_type_code": "PROC-FR-001",
+            "process_type_name": "Sewing",
+            "process_name": "Main Sewing",
+            "sequence_no": 10,
+            "subcontract_mode": "outsourced",
+            "pricing_mode": "piece_rate",
+            "unit_rate": Decimal("8.50"),
+            "status": "active",
+            "is_default": True,
+        }
+    ],
+    "sample_progress": [
+        {
+            "id": 1,
+            "sample_order_no": "SAMPLE-ORDER-FR-001",
+            "sample_type": "Development Sample",
+            "item_code": "ITEM-FR-001",
+            "status": "in_progress",
+            "owner": "sample.owner",
+            "updated_at": GENERATED_AT,
+        }
+    ],
+    "work_orders": [
+        {
+            "plan_id": 1,
+            "plan_no": "PLAN-FR-001",
+            "company": DEFAULT_COMPANY,
+            "sales_order": "SO-FR-001",
+            "sales_order_item": "SO-FR-001-ITEM-1",
+            "item_code": "ITEM-FR-001",
+            "work_order": "WO-FR-001",
+            "planned_qty": Decimal("160"),
+            "produced_qty": Decimal("20"),
+            "status": "in_process",
+            "created_at": GENERATED_AT,
+        }
+    ],
+    "production_material_issues": [
+        {
+            "plan_id": 1,
+            "plan_no": "PLAN-FR-001",
+            "work_order": "WO-FR-001",
+            "company": DEFAULT_COMPANY,
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "warehouse": "WH-FR-001",
+            "required_qty": Decimal("180"),
+            "available_qty": Decimal("220"),
+            "issued_qty": Decimal("40"),
+            "shortage_qty": Decimal("0"),
+            "status": "partially_issued",
+        }
+    ],
+    "material_requests": [
+        {
+            "request_no": "MR-FR-001",
+            "company": DEFAULT_COMPANY,
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "supplier_name": "Frontend Readiness Supplier",
+            "qty": Decimal("180"),
+            "uom": "Pcs",
+            "expected_delivery_date": date(2026, 6, 24),
+            "status": "draft",
+            "bom_no": "BOM-FR-001",
+        }
+    ],
+    "purchase_receipts": [
+        {
+            "receipt_no": "PR-FR-001",
+            "purchase_no": "PO-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier_name": "Frontend Readiness Supplier",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "warehouse": "WH-FR-001",
+            "received_qty": Decimal("180"),
+            "accepted_qty": Decimal("180"),
+            "posting_date": date(2026, 6, 18),
+            "status": "received",
+        }
+    ],
+    "purchase_invoices": [
+        {
+            "purchase_invoice_name": "PINV-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "supplier_name": "Frontend Readiness Supplier",
+            "currency": "CNY",
+            "grand_total": Decimal("1530.00"),
+            "paid_amount": Decimal("0"),
+            "outstanding_amount": Decimal("1530.00"),
+            "status": "unpaid",
+            "posting_date": date(2026, 6, 19),
+        }
+    ],
+    "subcontract_material_issues": [
+        {
+            "subcontract_no": "SUB-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "warehouse": "WH-FR-001",
+            "required_qty": Decimal("160"),
+            "issued_qty": Decimal("80"),
+            "pending_qty": Decimal("80"),
+            "status": "partially_issued",
+        }
+    ],
+    "subcontract_receipts": [
+        {
+            "subcontract_no": "SUB-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "item_code": "ITEM-FR-001",
+            "receipt_batch_no": "SUBRCV-FR-001",
+            "received_qty": Decimal("20"),
+            "accepted_qty": Decimal("20"),
+            "rejected_qty": Decimal("0"),
+            "receipt_warehouse": "WH-FR-001",
+            "status": "received",
+        }
+    ],
+    "subcontract_return_materials": [
+        {
+            "subcontract_no": "SUB-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "planned_return_qty": Decimal("12"),
+            "returned_qty": Decimal("0"),
+            "pending_qty": Decimal("12"),
+            "status": "pending",
+        }
+    ],
+    "finished_goods_inbound": [
+        {
+            "reservation_no": "FGIN-FR-001",
+            "item_code": "ITEM-FR-001",
+            "item_name": "Frontend Readiness Shirt",
+            "warehouse": "WH-FR-001",
+            "reserve_qty": Decimal("160"),
+            "inbound_qty": Decimal("20"),
+            "pending_inbound_qty": Decimal("140"),
+            "reserve_status": "reserved",
+            "inbound_status": "partial",
+            "reserved_date": date(2026, 6, 16),
+            "expected_inbound_date": date(2026, 6, 30),
+            "owner": "warehouse.user",
+            "ref_no": "WO-FR-001",
+            "company": DEFAULT_COMPANY,
+        }
+    ],
+    "delivery_notes": [
+        {
+            "delivery_note": "DN-FR-001",
+            "company": DEFAULT_COMPANY,
+            "sales_order": "SO-FR-001",
+            "customer": "CUST-FR-001",
+            "item_code": "ITEM-FR-001",
+            "warehouse": "WH-FR-001",
+            "delivered_qty": Decimal("20"),
+            "posting_date": date(2026, 6, 21),
+            "status": "to_bill",
+        }
+    ],
+    "sales_invoices": [
+        {
+            "sales_invoice": "SINV-FR-001",
+            "company": DEFAULT_COMPANY,
+            "sales_order": "SO-FR-001",
+            "customer": "CUST-FR-001",
+            "grand_total": Decimal("160.00"),
+            "paid_amount": Decimal("0"),
+            "outstanding_amount": Decimal("160.00"),
+            "posting_date": date(2026, 6, 22),
+            "status": "unpaid",
+        }
+    ],
+    "customer_receivables": [
+        {
+            "summary_no": "AR-FR-001",
+            "statement_no": "AR-STMT-FR-001",
+            "company": DEFAULT_COMPANY,
+            "customer_name": "Frontend Readiness Customer",
+            "customer_code": "CUST-FR-001",
+            "currency": "CNY",
+            "opening_receivable": Decimal("0"),
+            "current_receivable": Decimal("160.00"),
+            "received_amount": Decimal("0"),
+            "ending_receivable": Decimal("160.00"),
+            "aging_30": Decimal("160.00"),
+            "aging_60": Decimal("0"),
+            "aging_90_plus": Decimal("0"),
+            "risk_level": "normal",
+            "review_status": "pending",
+            "summary_date": date(2026, 6, 22),
+            "owner": "finance.user",
+            "remark": "frontend_readiness_seed",
+        }
+    ],
+    "inventory_balance_reconciliation": [
+        {
+            "company": DEFAULT_COMPANY,
+            "warehouse": "WH-FR-001",
+            "item_code": "ITEM-FR-001",
+            "book_qty": Decimal("160"),
+            "actual_qty": Decimal("160"),
+            "diff_qty": Decimal("0"),
+            "status": "balanced",
+            "biz_date": date(2026, 6, 22),
+            "owner": "warehouse.user",
+            "ref_no": "INV-BAL-FR-001",
+        }
+    ],
+    "style_costs": [
+        {
+            "snapshot_no": "SP-FR-001",
+            "company": DEFAULT_COMPANY,
+            "item_code": "ITEM-FR-001",
+            "sales_order": "SO-FR-001",
+            "from_date": date(2026, 6, 16),
+            "to_date": date(2026, 6, 30),
+            "revenue_amount": Decimal("1280.00"),
+            "actual_total_cost": Decimal("930.00"),
+            "standard_total_cost": Decimal("900.00"),
+            "profit_amount": Decimal("350.00"),
+            "profit_rate": Decimal("0.2734"),
+            "snapshot_status": "draft",
+            "allocation_status": "resolved",
+            "formula_version": "STYLE_PROFIT_V1",
+        }
+    ],
+    "cashier_accounts": [
+        {
+            "bank_name": "Frontend Readiness Bank",
+            "account_name": "Frontend Readiness Cashier",
+            "account_no": "FR-0001",
+            "currency": "CNY",
+            "owner": "finance.user",
+            "remark": "frontend_readiness_seed",
+        }
+    ],
+    "process_requirement_templates": [
+        {
+            "process_type_code": "PROC-FR-001",
+            "process_type_name": "Sewing",
+            "process_name": "Main Sewing",
+            "sequence_no": 10,
+            "subcontract_mode": "outsourced",
+            "pricing_mode": "piece_rate",
+            "unit_rate": Decimal("8.50"),
+            "status": "active",
+            "is_default": True,
+        }
+    ],
+    "followup_templates": [
+        {
+            "template_id": 1,
+            "template_no": "FOLLOW-FR-001",
+            "template_name": "Frontend Readiness Followup",
+            "template_type": "production",
+            "trigger_node": "sales_order",
+            "followup_role": "Production Manager",
+            "followup_frequency": "daily",
+            "sla_hours": 24,
+            "item_code": "ITEM-FR-001",
+            "company": DEFAULT_COMPANY,
+            "status": "active",
+            "updated_at": GENERATED_AT,
+        }
+    ],
+    "supplier_evaluations": [
+        {
+            "evaluation_no": "SEVAL-FR-001",
+            "statement_no": "STMT-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "supplier_code": "SUP-FR-001",
+            "assessor": "sourcing.user",
+            "score": Decimal("92"),
+            "score_level": "A",
+            "review_status": "approved",
+            "follow_up_status": "normal",
+            "evaluation_date": date(2026, 6, 16),
+            "expiry_date": date(2026, 12, 16),
+            "owner": "sourcing.user",
+            "remark": "frontend_readiness_seed",
+        }
+    ],
+    "factory_evaluations": [
+        {
+            "evaluation_no": "FEVAL-FR-001",
+            "statement_no": "STMT-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "factory_name": "Frontend Readiness Factory",
+            "factory_code": "FAC-FR-001",
+            "assessor": "subcontract.user",
+            "score": Decimal("91"),
+            "score_level": "A",
+            "review_status": "approved",
+            "follow_up_status": "normal",
+            "evaluation_date": date(2026, 6, 16),
+            "expiry_date": date(2026, 12, 16),
+            "owner": "subcontract.user",
+            "remark": "frontend_readiness_seed",
+        }
+    ],
+    "material_gallery": [
+        {
+            "id": 1,
+            "bom_id": 1,
+            "bom_no": "BOM-FR-001",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "category": "fabric",
+            "color": "Navy",
+            "size": "M",
+            "uom": "Pcs",
+            "qty_per_piece": Decimal("1.125"),
+            "loss_rate": Decimal("0.02"),
+            "status": "active",
+            "is_default": True,
+            "thumbnail_url": None,
+        }
+    ],
+    "fabrics": [
+        {
+            "id": 1,
+            "bom_id": 1,
+            "bom_no": "BOM-FR-001",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "fabric_name": "Frontend Readiness Fabric",
+            "color": "Navy",
+            "specification": "40S cotton",
+            "supplier_name": "Frontend Readiness Supplier",
+            "uom": "Meter",
+            "qty_per_piece": Decimal("1.125"),
+            "loss_rate": Decimal("0.02"),
+            "status": "active",
+            "is_default": True,
+        }
+    ],
+    "accessories_packaging": [
+        {
+            "id": 1,
+            "bom_id": 1,
+            "bom_no": "BOM-FR-001",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-BUTTON-001",
+            "material_name": "Frontend Readiness Button",
+            "category": "accessory",
+            "color": "Navy",
+            "specification": "18L",
+            "supplier_name": "Frontend Readiness Supplier",
+            "uom": "Pcs",
+            "qty_per_piece": Decimal("8"),
+            "loss_rate": Decimal("0.01"),
+            "status": "active",
+            "is_default": False,
+        }
+    ],
+    "purchase_orders": [
+        {
+            "id": 1,
+            "bom_id": 1,
+            "purchase_no": "PO-FR-001",
+            "supplier_name": "Frontend Readiness Supplier",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "material_name": "Frontend Readiness Fabric",
+            "qty": Decimal("180"),
+            "uom": "Meter",
+            "unit_price": Decimal("8.50"),
+            "total_amount": Decimal("1530.00"),
+            "expected_delivery_date": date(2026, 6, 24),
+            "status": "to_receive",
+            "bom_no": "BOM-FR-001",
+        }
+    ],
+    "production_plans": [
+        {
+            "id": 1,
+            "plan_no": "PLAN-FR-001",
+            "company": DEFAULT_COMPANY,
+            "sales_order": "SO-FR-001",
+            "sales_order_item": "SO-FR-001-ITEM-1",
+            "customer": "CUST-FR-001",
+            "item_code": "ITEM-FR-001",
+            "bom_id": 1,
+            "bom_version": "V1",
+            "planned_qty": Decimal("160"),
+            "planned_start_date": date(2026, 6, 17),
+            "status": "planned",
+            "latest_work_order_outbox": {
+                "outbox_id": 1,
+                "status": "in_pending",
+                "erpnext_work_order": "WO-FR-001",
+                "error_code": None,
+            },
+            "created_at": GENERATED_AT,
+        }
+    ],
+    "production_order_io_quantities": [
+        {
+            "plan_id": 1,
+            "plan_no": "PLAN-FR-001",
+            "company": DEFAULT_COMPANY,
+            "sales_order": "SO-FR-001",
+            "sales_order_item": "SO-FR-001-ITEM-1",
+            "customer": "CUST-FR-001",
+            "item_code": "ITEM-FR-001",
+            "ordered_qty": Decimal("160"),
+            "inbound_qty": Decimal("20"),
+            "outbound_qty": Decimal("20"),
+            "pending_inbound_qty": Decimal("140"),
+            "pending_outbound_qty": Decimal("140"),
+            "inbound_progress": Decimal("0.125"),
+            "outbound_progress": Decimal("0.125"),
+            "io_status": "partial",
+            "status": "in_process",
+            "planned_start_date": date(2026, 6, 17),
+            "updated_at": GENERATED_AT,
+        }
+    ],
+    "quality_inspections": [
+        {
+            "id": 1,
+            "inspection_no": "QINSP-FR-001",
+            "company": DEFAULT_COMPANY,
+            "source_type": "subcontract_receipt",
+            "source_id": "SUBRCV-FR-001",
+            "item_code": "ITEM-FR-001",
+            "supplier": "SUP-FR-001",
+            "warehouse": "WH-FR-001",
+            "inspection_date": date(2026, 6, 20),
+            "inspected_qty": Decimal("20"),
+            "accepted_qty": Decimal("20"),
+            "rejected_qty": Decimal("0"),
+            "defect_qty": Decimal("0"),
+            "defect_rate": Decimal("0"),
+            "rejected_rate": Decimal("0"),
+            "result": "pass",
+            "status": "confirmed",
+            "created_by": "quality.user",
+            "created_at": GENERATED_AT,
+        }
+    ],
+    "workshop_tickets": [
+        {
+            "id": 1,
+            "ticket_no": "WT-FR-001",
+            "ticket_key": "WT-FR-001:1",
+            "job_card": "JOB-FR-001",
+            "work_order": "WO-FR-001",
+            "bom_id": 1,
+            "item_code": "ITEM-FR-001",
+            "employee": "EMP-FR-001",
+            "process_name": "Main Sewing",
+            "color": "Navy",
+            "size": "M",
+            "operation_type": "register",
+            "qty": Decimal("20"),
+            "unit_wage": Decimal("8.50"),
+            "wage_amount": Decimal("170.00"),
+            "work_date": date(2026, 6, 20),
+            "source": "frontend_readiness_seed",
+            "source_ref": "JOB-FR-001",
+            "sync_status": "pending",
+            "created_by": "workshop.user",
+            "created_at": GENERATED_AT,
+        }
+    ],
+    "workshop_daily_wages": [
+        {
+            "employee": "EMP-FR-001",
+            "work_date": date(2026, 6, 20),
+            "process_name": "Main Sewing",
+            "item_code": "ITEM-FR-001",
+            "register_qty": Decimal("20"),
+            "reversal_qty": Decimal("0"),
+            "net_qty": Decimal("20"),
+            "wage_amount": Decimal("170.00"),
+        }
+    ],
+    "supplier_payable_summaries": [
+        {
+            "summary_no": "AP-SUP-FR-001",
+            "statement_no": "STMT-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "supplier_code": "SUP-FR-001",
+            "currency": "CNY",
+            "opening_payable": Decimal("0"),
+            "current_payable": Decimal("1530.00"),
+            "paid_amount": Decimal("0"),
+            "ending_payable": Decimal("1530.00"),
+            "aging_30": Decimal("1530.00"),
+            "aging_60": Decimal("0"),
+            "aging_90_plus": Decimal("0"),
+            "risk_level": "normal",
+            "review_status": "pending",
+            "follow_up_status": "normal",
+            "summary_date": date(2026, 6, 22),
+            "owner": "finance.user",
+            "remark": "frontend_readiness_seed",
+        }
+    ],
+    "subcontract_settlement_candidates": [
+        {
+            "inspection_id": 1,
+            "settlement_line_key": "SETTLE-FR-001",
+            "subcontract_id": 1,
+            "subcontract_no": "SUB-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "item_code": "ITEM-FR-001",
+            "process_name": "Main Sewing",
+            "receipt_batch_no": "SUBRCV-FR-001",
+            "inspected_at": GENERATED_AT,
+            "inspected_by": "quality.user",
+            "inspected_qty": Decimal("20"),
+            "accepted_qty": Decimal("20"),
+            "rejected_qty": Decimal("0"),
+            "rejected_rate": Decimal("0"),
+            "subcontract_rate": Decimal("8.50"),
+            "gross_amount": Decimal("170.00"),
+            "deduction_amount": Decimal("0"),
+            "net_amount": Decimal("170.00"),
+            "settlement_status": "candidate",
+            "statement_id": 1,
+            "statement_no": "STMT-FR-001",
+        }
+    ],
+    "factory_reconciliations": [
+        {
+            "reconciliation_no": "FREC-FR-001",
+            "statement_no": "STMT-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "factory_name": "Frontend Readiness Factory",
+            "factory_code": "FAC-FR-001",
+            "currency": "CNY",
+            "reconciliation_amount": Decimal("170.00"),
+            "settled_amount": Decimal("0"),
+            "pending_amount": Decimal("170.00"),
+            "settlement_status": "pending",
+            "review_status": "pending",
+            "follow_up_status": "normal",
+            "reconciled_at": date(2026, 6, 22),
+            "due_date": date(2026, 7, 22),
+            "owner": "finance.user",
+            "remark": "frontend_readiness_seed",
+        }
+    ],
+    "factory_payable_summaries": [
+        {
+            "summary_no": "AP-FAC-FR-001",
+            "statement_no": "STMT-FR-001",
+            "company": DEFAULT_COMPANY,
+            "supplier": "SUP-FR-001",
+            "factory_name": "Frontend Readiness Factory",
+            "factory_code": "FAC-FR-001",
+            "currency": "CNY",
+            "opening_payable": Decimal("0"),
+            "current_payable": Decimal("170.00"),
+            "paid_amount": Decimal("0"),
+            "ending_payable": Decimal("170.00"),
+            "aging_30": Decimal("170.00"),
+            "aging_60": Decimal("0"),
+            "aging_90_plus": Decimal("0"),
+            "risk_level": "normal",
+            "review_status": "pending",
+            "summary_date": date(2026, 6, 22),
+            "owner": "finance.user",
+            "remark": "frontend_readiness_seed",
+        }
+    ],
+    "warehouse_stock_summary": [
+        {
+            "company": DEFAULT_COMPANY,
+            "warehouse": "WH-FR-001",
+            "item_code": "ITEM-FR-001",
+            "actual_qty": Decimal("160"),
+            "projected_qty": Decimal("160"),
+            "reserved_qty": Decimal("20"),
+            "ordered_qty": Decimal("180"),
+            "reorder_level": Decimal("30"),
+            "safety_stock": Decimal("20"),
+            "threshold_missing": False,
+            "is_below_reorder": False,
+            "is_below_safety": False,
+        }
+    ],
+    "report_catalog": [
+        {
+            "report_key": "style_profit_trend",
+            "name": "Style Profit Trend",
+            "source_modules": ["style_profit", "sales_inventory", "workshop"],
+            "report_type": "finance",
+            "required_filters": ["company"],
+            "optional_filters": ["item_code", "sales_order"],
+            "metric_summary": ["profit_amount", "profit_rate"],
+            "permission_action": "report:read",
+            "status": "enabled",
+            "ui_placeholders": ["company"],
+            "ui_buttons": ["export"],
+            "ui_table_headers": ["snapshot_no", "item_code", "profit_amount"],
+            "status_tags": ["enabled"],
+            "preview_rows": [{"snapshot_no": "SP-FR-001", "profit_amount": "350.00"}],
+        }
+    ],
+    "employee_task_statistics": [
+        {
+            "employee_id": "EMP-FR-001",
+            "employee_name": "Frontend Readiness Worker",
+            "department": "Workshop",
+            "pending_tasks": 1,
+            "in_progress_tasks": 1,
+            "completed_tasks": 3,
+            "overdue_tasks": 0,
+            "completion_rate": "75%",
+            "latest_task_no": "TASK-FR-001",
+            "latest_task_title": "Main Sewing",
+            "latest_due_date": "2026-06-24",
+            "updated_at": GENERATED_AT.isoformat(),
+            "status": "normal",
+        }
+    ],
+    "approval_reports": [
+        {
+            "approval_no": "APR-FR-001",
+            "approval_type": "purchase_invoice",
+            "related_doc_no": "PINV-FR-001",
+            "applicant": "finance.user",
+            "approver": "manager.user",
+            "department": "Finance",
+            "amount": "1530.00",
+            "priority": "normal",
+            "submitted_at": "2026-06-22 09:00:00",
+            "completed_at": "",
+            "status": "pending",
+            "remark": "frontend_readiness_seed",
+        }
+    ],
+    "approval_flows": [
+        {
+            "flow_key": "FLOW-FR-001",
+            "title": "Purchase Invoice Approval",
+            "audit_type": "purchase_invoice",
+            "status": "enabled",
+            "sender": "finance.user",
+            "created_by": "system",
+            "created_at": GENERATED_AT.isoformat(),
+            "sent_at": GENERATED_AT.isoformat(),
+            "last_modified_by": "system",
+            "last_modified_at": GENERATED_AT.isoformat(),
+            "nodes": [
+                {
+                    "node_key": "manager_review",
+                    "node_name": "Manager Review",
+                    "approver_rule": "role:Finance Manager",
+                    "status": "enabled",
+                }
+            ],
+            "actions": [
+                {
+                    "action_key": "approve",
+                    "label": "Approve",
+                    "guarded": True,
+                    "disabled_reason": "",
+                }
+            ],
+        }
+    ],
+    "style_profit_snapshots": [
+        {
+            "id": 1,
+            "snapshot_no": "SP-FR-001",
+            "company": DEFAULT_COMPANY,
+            "company_full_name": "Frontend Readiness Company",
+            "item_code": "ITEM-FR-001",
+            "sales_order": "SO-FR-001",
+            "from_date": date(2026, 6, 16),
+            "to_date": date(2026, 6, 30),
+            "revenue_status": "actual",
+            "revenue_amount": Decimal("1280.00"),
+            "actual_total_cost": Decimal("930.00"),
+            "standard_total_cost": Decimal("900.00"),
+            "profit_amount": Decimal("350.00"),
+            "profit_rate": Decimal("0.2734"),
+            "snapshot_status": "complete",
+            "allocation_status": "enabled",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "unresolved_count": 0,
+            "created_by": "finance.user",
+            "created_at": GENERATED_AT,
+        }
+    ],
+    **DICTIONARY_ROWS,
+}
+
+QUALITY_STATISTICS_SEED: dict[str, Any] = {
+    "total_count": 1,
+    "total_inspected_qty": Decimal("20"),
+    "total_accepted_qty": Decimal("20"),
+    "total_rejected_qty": Decimal("0"),
+    "total_defect_qty": Decimal("0"),
+    "overall_defect_rate": Decimal("0"),
+    "inspected_qty": Decimal("20"),
+    "accepted_qty": Decimal("20"),
+    "rejected_qty": Decimal("0"),
+    "defect_qty": Decimal("0"),
+    "defect_rate": Decimal("0"),
+    "rejected_rate": Decimal("0"),
+    "by_result": {"pass": 1},
+    "by_supplier": [],
+    "by_item_code": [],
+    "by_warehouse": [],
+    "by_source_type": [],
+    "top_defective_suppliers": [],
+    "top_defective_items": [],
+}
+
+QUALITY_TREND_SEED: dict[str, Any] = {
+    "period": "monthly",
+    "points": [
+        {
+            "period_key": "2026-06",
+            "inspection_count": 1,
+            "defect_rate": Decimal("0"),
+            "rejected_rate": Decimal("0"),
+            "period": "2026-06",
+            "total_count": 1,
+            "total_inspected_qty": Decimal("20"),
+            "total_accepted_qty": Decimal("20"),
+            "total_rejected_qty": Decimal("0"),
+            "total_defect_qty": Decimal("0"),
+            "overall_defect_rate": Decimal("0"),
+        }
+    ],
+}
+
+WORK_ORDER_TRAIL_SEED: dict[str, Any] = {
+    "work_order": {
+        "work_order_id": "WO-FR-001",
+        "company": DEFAULT_COMPANY,
+        "production_item": "ITEM-FR-001",
+    },
+    "stock_entries": [
+        {
+            "voucher_no": "STE-FR-001",
+            "voucher_type": "Stock Entry",
+            "company": DEFAULT_COMPANY,
+            "item_code": "ITEM-FR-001",
+            "warehouse": "WH-FR-001",
+            "posting_date": date(2026, 6, 20),
+            "posting_time": "08:30:00",
+            "actual_qty": Decimal("20"),
+        }
+    ],
+    "quality_inspections": [
+        {
+            "inspection_id": 1,
+            "inspection_no": "QINSP-FR-001",
+            "company": DEFAULT_COMPANY,
+            "source_type": "subcontract_receipt",
+            "item_code": "ITEM-FR-001",
+            "warehouse": "WH-FR-001",
+            "work_order": "WO-FR-001",
+            "sales_order": "SO-FR-001",
+            "inspection_date": date(2026, 6, 20),
+            "accepted_qty": Decimal("20"),
+            "rejected_qty": Decimal("0"),
+            "defect_qty": Decimal("0"),
+            "status": "confirmed",
+            "result": "pass",
+        }
+    ],
+    "summary": {
+        "material_issue_qty": Decimal("40"),
+        "output_qty": Decimal("20"),
+        "accepted_qty": Decimal("20"),
+        "rejected_qty": Decimal("0"),
+        "defect_qty": Decimal("0"),
+        "stock_entry_count": 1,
+        "quality_inspection_count": 1,
+    },
+}
+
+WRITE_FLOW_ROWS: dict[str, dict[str, Any]] = {
+    "sales_to_production_flow": {
+        "plan_id": 1,
+        "plan_no": "PLAN-FR-001",
+        "outbox_id": 1,
+        "event_key": "pwo:frontend-readiness:001",
+        "sync_status": "in_pending",
+        "work_order": "WO-FR-001",
+        "sales_order": "SO-FR-001",
+        "sales_order_item": "SO-FR-001-ITEM-1",
+        "item_code": "ITEM-FR-001",
+        "planned_qty": Decimal("160"),
+        "status": "work_order_ready",
+    },
+    "procurement_flow": {
+        "request_no": "MR-FR-001",
+        "purchase_no": "PO-FR-001",
+        "receipt_no": "PR-FR-001",
+        "purchase_invoice_name": "PINV-FR-001",
+        "supplier": "SUP-FR-001",
+        "supplier_name": "Frontend Readiness Supplier",
+        "item_code": "ITEM-FR-001",
+        "material_item_code": "MAT-FR-FABRIC-001",
+        "received_qty": Decimal("180"),
+        "grand_total": Decimal("1530.00"),
+        "outstanding_amount": Decimal("1530.00"),
+        "status": "payable_ready",
+    },
+    "subcontract_flow": {
+        "subcontract_no": "SUB-FR-001",
+        "supplier": "SUP-FR-001",
+        "item_code": "ITEM-FR-001",
+        "material_item_code": "MAT-FR-FABRIC-001",
+        "issued_qty": Decimal("80"),
+        "received_qty": Decimal("20"),
+        "accepted_qty": Decimal("20"),
+        "planned_return_qty": Decimal("12"),
+        "returned_qty": Decimal("0"),
+        "statement_no": "FSTMT-FR-001",
+        "ending_payable": Decimal("170.00"),
+        "status": "reconciliation_ready",
+    },
+    "inventory_finance_flow": {
+        "reservation_no": "FGIN-FR-001",
+        "delivery_note": "DN-FR-001",
+        "sales_invoice": "SINV-FR-001",
+        "summary_no": "AR-FR-001",
+        "warehouse": "WH-FR-001",
+        "item_code": "ITEM-FR-001",
+        "inbound_qty": Decimal("20"),
+        "delivered_qty": Decimal("20"),
+        "book_qty": Decimal("160"),
+        "actual_qty": Decimal("160"),
+        "diff_qty": Decimal("0"),
+        "outstanding_amount": Decimal("160.00"),
+        "status": "balanced",
+    },
+    "quality_flow": {
+        "inspection_no": "QINSP-FR-001",
+        "work_order": "WO-FR-001",
+        "subcontract_no": "SUB-FR-001",
+        "item_code": "ITEM-FR-001",
+        "inspected_qty": Decimal("20"),
+        "accepted_qty": Decimal("20"),
+        "rejected_qty": Decimal("0"),
+        "status": "accepted",
+    },
+    "workshop_wage_flow": {
+        "work_order": "WO-FR-001",
+        "job_card": "JOB-FR-001",
+        "process_name": "Main Sewing",
+        "item_code": "ITEM-FR-001",
+        "completed_qty": Decimal("20"),
+        "unit_rate": Decimal("8.50"),
+        "wage_amount": Decimal("170.00"),
+        "status": "wage_ready",
+    },
+    "style_profit_flow": {
+        "snapshot_no": "SP-FR-001",
+        "company": DEFAULT_COMPANY,
+        "sales_order": "SO-FR-001",
+        "item_code": "ITEM-FR-001",
+        "revenue_amount": Decimal("1280.00"),
+        "actual_total_cost": Decimal("930.00"),
+        "standard_total_cost": Decimal("900.00"),
+        "profit_amount": Decimal("350.00"),
+        "profit_rate": Decimal("0.2734"),
+        "snapshot_status": "draft",
+        "allocation_status": "resolved",
+        "formula_version": "STYLE_PROFIT_V1",
+    },
+}
+
+ACCEPTANCE_CHAIN_SEED: dict[str, Any] = {
+    "customer": {
+        "name": "CUST-FR-001",
+        "customer_name": "Frontend Readiness Customer",
+        "disabled": False,
+    },
+    "sales_order": {
+        "name": "SO-FR-001",
+        "company": DEFAULT_COMPANY,
+        "customer": "CUST-FR-001",
+        "transaction_date": date(2026, 6, 16),
+        "delivery_date": date(2026, 6, 30),
+        "status": "To Deliver and Bill",
+        "docstatus": 1,
+        "grand_total": Decimal("1280.00"),
+        "currency": "CNY",
+        "items": [
+            {
+                "name": "SO-FR-001-ITEM-1",
+                "item_code": "ITEM-FR-001",
+                "item_name": "Frontend Readiness Shirt",
+                "qty": Decimal("160"),
+                "delivered_qty": Decimal("20"),
+                "rate": Decimal("8.00"),
+                "amount": Decimal("1280.00"),
+                "warehouse": "WH-FR-001",
+                "delivery_date": date(2026, 6, 30),
+            }
+        ],
+    },
+    "bom": {
+        "id": 1,
+        "bom_no": "BOM-FR-001",
+        "item_code": "ITEM-FR-001",
+        "version_no": "V1",
+        "is_default": True,
+        "status": "active",
+        "effective_date": date(2026, 6, 16),
+    },
+    "stock_ledger": {
+        "company": DEFAULT_COMPANY,
+        "warehouse": "WH-FR-001",
+        "item_code": "ITEM-FR-001",
+        "posting_date": date(2026, 6, 16),
+        "voucher_type": "Stock Entry",
+        "voucher_no": "STE-FR-001",
+        "actual_qty": Decimal("160"),
+        "qty_after_transaction": Decimal("160"),
+        "valuation_rate": Decimal("8.00"),
+    },
+    "subcontract": {
+        "id": 1,
+        "subcontract_no": "SUB-FR-001",
+        "supplier": "SUP-FR-001",
+        "item_code": "ITEM-FR-001",
+        "company": DEFAULT_COMPANY,
+        "bom_id": 1,
+        "process_name": "Main Sewing",
+        "planned_qty": Decimal("160"),
+        "status": "draft",
+        "created_at": GENERATED_AT,
+    },
+    "sales_order_fulfillment": {
+        "company": DEFAULT_COMPANY,
+        "items": [
+            {
+                "company": DEFAULT_COMPANY,
+                "sales_order": "SO-FR-001",
+                "item_code": "ITEM-FR-001",
+                "warehouse": "WH-FR-001",
+                "ordered_qty": Decimal("160"),
+                "actual_qty": Decimal("20"),
+                "fulfillment_rate": Decimal("0.125"),
+            }
+        ],
+    },
+    "dashboard": {
+        "company": DEFAULT_COMPANY,
+        "from_date": None,
+        "to_date": None,
+        "generated_at": GENERATED_AT,
+        "quality": {
+            "inspection_count": 1,
+            "accepted_qty": Decimal("20"),
+            "rejected_qty": Decimal("0"),
+            "defect_count": 0,
+            "pass_rate": Decimal("1"),
+        },
+        "sales_inventory": {
+            "item_count": 1,
+            "total_actual_qty": Decimal("160"),
+            "below_safety_count": 0,
+            "below_reorder_count": 0,
+        },
+        "warehouse": {
+            "alert_count": 0,
+            "critical_alert_count": 0,
+            "warning_alert_count": 0,
+        },
+        "source_status": [
+            {"module": "quality", "status": "frontend_readiness_seed"},
+            {"module": "sales_inventory", "status": "frontend_readiness_seed"},
+            {"module": "warehouse", "status": "frontend_readiness_seed"},
+        ],
+        "kanban": {
+            "board_name": "Bulk Production Kanban",
+            "quick_filters": ["frontend_readiness_seed"],
+            "flow_nodes": [],
+            "flow_links": [],
+            "messages": [],
+        },
+        "home_overview": {
+            "summary_title": "Frontend Readiness Overview",
+            "metric_cards": [
+                {"key": "sales_orders", "label": "Sales Orders", "value": "1", "unit": "order", "trend": "seed"},
+                {"key": "stock_qty", "label": "Stock Qty", "value": "160", "unit": "pcs", "trend": "seed"},
+                {"key": "subcontracts", "label": "Subcontracts", "value": "1", "unit": "order", "trend": "seed"},
+                {"key": "quality_pass_rate", "label": "Pass Rate", "value": "100", "unit": "%", "trend": "seed"},
+            ],
+            "todo_items": [],
+            "warnings": [],
+            "business_summary": [],
+            "recent_activities": [],
+            "trend_points": [],
+            "primary_actions": [],
+        },
+    },
+    "sales_order_chain": {
+        "customer": "CUST-FR-001",
+        "sales_order": "SO-FR-001",
+        "production_plan": "PLAN-FR-001",
+        "work_order": "WO-FR-001",
+        "delivery_note": "DN-FR-001",
+        "sales_invoice": "SINV-FR-001",
+    },
+    "procurement_chain": {
+        "material_request": "MR-FR-001",
+        "purchase_order": "PO-FR-001",
+        "purchase_receipt": "PR-FR-001",
+        "purchase_invoice": "PINV-FR-001",
+        "supplier": "SUP-FR-001",
+    },
+    "subcontract_chain": {
+        "subcontract": "SUB-FR-001",
+        "material_issue_status": "partially_issued",
+        "receipt_batch_no": "SUBRCV-FR-001",
+        "return_material_status": "pending",
+        "supplier": "SUP-FR-001",
+    },
+    "inventory_chain": {
+        "stock_entry": "STE-FR-001",
+        "warehouse": "WH-FR-001",
+        "finished_goods_inbound": "FGIN-FR-001",
+        "inventory_balance_reconciliation": "INV-BAL-FR-001",
+    },
+    "workshop_quality_chain": {
+        "work_order": "WO-FR-001",
+        "process_name": "Main Sewing",
+        "inspection_count": 1,
+        "accepted_qty": Decimal("20"),
+        "rejected_qty": Decimal("0"),
+    },
+    "style_profit_chain": {
+        "snapshot_no": "SP-FR-001",
+        "sales_order": "SO-FR-001",
+        "item_code": "ITEM-FR-001",
+        "revenue_amount": Decimal("1280.00"),
+        "actual_total_cost": Decimal("930.00"),
+        "profit_amount": Decimal("350.00"),
+    },
+}
