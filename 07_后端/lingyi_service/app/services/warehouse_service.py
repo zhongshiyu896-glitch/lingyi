@@ -13,6 +13,7 @@ from typing import Any
 from typing import Literal
 
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from app.core.error_codes import INTERNAL_ERROR
@@ -25,6 +26,7 @@ from app.models.warehouse import LyWarehouseInventoryCountItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractOrder
+from app.models.subcontract import LySubcontractReceipt
 from app.models.subcontract import LySubcontractStockOutbox
 from app.schemas.warehouse import WarehouseAlertItem
 from app.schemas.warehouse import WarehouseAlertsData
@@ -94,17 +96,18 @@ class WarehouseStockEntryOutboxClaim:
 
 @dataclass(slots=True, frozen=True)
 class WarehouseStockMovement:
-    """Normalized local stock movement derived from stock-entry draft rows."""
+    """Normalized local stock movement from all FastAPI-native inventory facts."""
 
     company: str
     warehouse: str
     item_code: str
     posting_date: date
     sort_at: datetime
-    draft_id: int
-    item_id: int
+    source_id: int
+    line_id: int
     sequence: int
-    purpose: str
+    voucher_type: str
+    voucher_no: str
     actual_qty: Decimal
     valuation_rate: Decimal
 
@@ -236,8 +239,8 @@ class WarehouseService:
                     warehouse=movement.warehouse,
                     item_code=movement.item_code,
                     posting_date=movement.posting_date,
-                    voucher_type=f"Stock Entry Draft/{movement.purpose}",
-                    voucher_no=f"DRAFT-{movement.draft_id}",
+                    voucher_type=movement.voucher_type,
+                    voucher_no=movement.voucher_no,
                     actual_qty=movement.actual_qty,
                     qty_after_transaction=next_balance,
                     valuation_rate=movement.valuation_rate,
@@ -309,10 +312,11 @@ class WarehouseService:
                     item_code=str(item.item_code),
                     posting_date=posting_date,
                     sort_at=draft.created_at or datetime.combine(posting_date, datetime.min.time(), timezone.utc),
-                    draft_id=int(draft.id),
-                    item_id=int(item.id),
+                    source_id=int(draft.id),
+                    line_id=int(item.id),
                     sequence=sequence,
-                    purpose=str(draft.purpose),
+                    voucher_type=f"Stock Entry Draft/{draft.purpose}",
+                    voucher_no=f"DRAFT-{draft.id}",
                     actual_qty=qty,
                     valuation_rate=self._material_unit_price(item_code=str(item.item_code)),
                 )
@@ -353,8 +357,147 @@ class WarehouseService:
                     sequence=1,
                 )
 
-        movements.sort(key=lambda row: (row.sort_at, row.draft_id, row.item_id, row.sequence, row.warehouse))
+        self._append_subcontract_stock_movements(
+            movements=movements,
+            company=normalized_company,
+            warehouse=normalized_warehouse,
+            item_code=normalized_item_code,
+        )
+
+        movements.sort(key=lambda row: (row.sort_at, row.source_id, row.line_id, row.sequence, row.warehouse))
         return movements
+
+    def _append_subcontract_stock_movements(
+        self,
+        *,
+        movements: list[WarehouseStockMovement],
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> None:
+        session = self._require_session()
+        if not self._has_sqlite_subcontract_stock_tables():
+            return
+
+        issue_rows = (
+            session.query(LySubcontractMaterial, LySubcontractOrder, LySubcontractStockOutbox)
+            .join(LySubcontractOrder, LySubcontractOrder.id == LySubcontractMaterial.subcontract_id)
+            .outerjoin(LySubcontractStockOutbox, LySubcontractStockOutbox.id == LySubcontractMaterial.stock_outbox_id)
+            .all()
+        )
+        for material, order, outbox in issue_rows:
+            company_value = (
+                self._text(getattr(material, "company", None))
+                or self._text(getattr(order, "company", None))
+                or self._text(getattr(outbox, "company", None) if outbox is not None else None)
+                or ""
+            )
+            warehouse_value = self._text(getattr(outbox, "warehouse", None) if outbox is not None else None)
+            material_code = self._text(getattr(material, "material_item_code", None))
+            if not company_value or not warehouse_value or not material_code:
+                continue
+            if company and company_value != company:
+                continue
+            if warehouse and warehouse_value != warehouse:
+                continue
+            if item_code and material_code != item_code:
+                continue
+            issued_qty = Decimal(str(getattr(material, "issued_qty", 0) or 0))
+            if issued_qty <= Decimal("0"):
+                continue
+            sort_at = (
+                getattr(material, "created_at", None)
+                or getattr(outbox, "created_at", None)
+                or datetime.combine(date.today(), datetime.min.time(), timezone.utc)
+            )
+            movements.append(
+                WarehouseStockMovement(
+                    company=company_value,
+                    warehouse=warehouse_value,
+                    item_code=material_code,
+                    posting_date=sort_at.date(),
+                    sort_at=sort_at,
+                    source_id=int(getattr(material, "id", 0) or 0),
+                    line_id=int(getattr(material, "id", 0) or 0),
+                    sequence=1,
+                    voucher_type="Subcontract/Material Issue",
+                    voucher_no=self._text(getattr(material, "issue_batch_no", None))
+                    or self._text(getattr(order, "subcontract_no", None))
+                    or f"SUBCONTRACT-ISSUE-{getattr(material, 'id', 0)}",
+                    actual_qty=-issued_qty,
+                    valuation_rate=self._material_unit_price(item_code=material_code),
+                )
+            )
+
+        receipt_rows = (
+            session.query(LySubcontractReceipt, LySubcontractOrder, LySubcontractStockOutbox)
+            .join(LySubcontractOrder, LySubcontractOrder.id == LySubcontractReceipt.subcontract_id)
+            .outerjoin(LySubcontractStockOutbox, LySubcontractStockOutbox.id == LySubcontractReceipt.stock_outbox_id)
+            .all()
+        )
+        for receipt, order, outbox in receipt_rows:
+            company_value = (
+                self._text(getattr(receipt, "company", None))
+                or self._text(getattr(order, "company", None))
+                or self._text(getattr(outbox, "company", None) if outbox is not None else None)
+                or ""
+            )
+            warehouse_value = (
+                self._text(getattr(receipt, "receipt_warehouse", None))
+                or self._text(getattr(outbox, "warehouse", None) if outbox is not None else None)
+            )
+            receipt_item_code = self._text(getattr(receipt, "item_code", None)) or self._text(
+                getattr(order, "item_code", None)
+            )
+            if not company_value or not warehouse_value or not receipt_item_code:
+                continue
+            if company and company_value != company:
+                continue
+            if warehouse and warehouse_value != warehouse:
+                continue
+            if item_code and receipt_item_code != item_code:
+                continue
+            received_qty = Decimal(str(getattr(receipt, "received_qty", 0) or 0))
+            if received_qty <= Decimal("0"):
+                continue
+            sort_at = (
+                getattr(receipt, "received_at", None)
+                or getattr(receipt, "created_at", None)
+                or getattr(outbox, "created_at", None)
+                or datetime.combine(date.today(), datetime.min.time(), timezone.utc)
+            )
+            movements.append(
+                WarehouseStockMovement(
+                    company=company_value,
+                    warehouse=warehouse_value,
+                    item_code=receipt_item_code,
+                    posting_date=sort_at.date(),
+                    sort_at=sort_at,
+                    source_id=int(getattr(receipt, "id", 0) or 0),
+                    line_id=int(getattr(receipt, "id", 0) or 0),
+                    sequence=2,
+                    voucher_type="Subcontract/Material Receipt",
+                    voucher_no=self._text(getattr(receipt, "receipt_batch_no", None))
+                    or self._text(getattr(order, "subcontract_no", None))
+                    or f"SUBCONTRACT-RECEIPT-{getattr(receipt, 'id', 0)}",
+                    actual_qty=received_qty,
+                    valuation_rate=self._material_unit_price(item_code=receipt_item_code),
+                )
+            )
+
+    def _has_sqlite_subcontract_stock_tables(self) -> bool:
+        session = self._require_session()
+        bind = session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        table_names = set(inspect(bind).get_table_names())
+        required_tables = {
+            LySubcontractMaterial.__tablename__,
+            LySubcontractOrder.__tablename__,
+            LySubcontractReceipt.__tablename__,
+            LySubcontractStockOutbox.__tablename__,
+        }
+        return required_tables.issubset(table_names)
 
     def _local_draft_posting_date(self, *, draft: LyWarehouseStockEntryDraft) -> date:
         outbox = self._latest_outbox_for_draft(int(draft.id))
