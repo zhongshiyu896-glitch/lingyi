@@ -619,6 +619,22 @@ def _build_local_stock_summary_fallback(
     )
 
 
+def _build_local_factory_return_material_report(
+    *,
+    session: Session,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+    status: str | None,
+) -> WarehouseFactoryReturnMaterialReportData:
+    return WarehouseService(session=session).list_local_factory_return_material_report(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+        status=_scope_text(status),
+    )
+
+
 def _normalize_alert_type_for_fallback(alert_type: str | None) -> str | None:
     normalized = _scope_text(alert_type)
     if normalized is None:
@@ -1775,22 +1791,13 @@ def list_factory_return_material_report(
             detail={"code": "INVALID_QUERY_PARAMETER", "message": "status 参数非法", "data": None},
         )
 
-    try:
-        data: WarehouseFactoryReturnMaterialReportData = _write_service(session, request=request).list_factory_return_material_report(
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
-            status=normalized_status,
-        )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="WarehouseFactoryReturnMaterialReport",
-        )
+    data = _build_local_factory_return_material_report(
+        session=session,
+        company=company,
+        warehouse=warehouse,
+        item_code=item_code,
+        status=normalized_status,
+    )
 
     data.items = [
         row

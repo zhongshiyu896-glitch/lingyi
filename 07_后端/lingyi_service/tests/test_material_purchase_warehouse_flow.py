@@ -6,6 +6,7 @@ from datetime import date
 from decimal import Decimal
 import os
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -254,6 +255,59 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("material_purchase:write", audit_actions)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
+
+    def test_factory_return_material_report_uses_fastapi_native_stock_summary(self) -> None:
+        receipt_idem = f"{self.SCENARIO_TAG}:receipt:FRR-LOCAL-IDEM"
+        receipt_source_ref = f"{self.SCENARIO_TAG}:receipt:FRR-LOCAL-SRC"
+        receipt = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                )
+            ),
+            json={
+                "operation": "create_stock_entry_draft",
+                "company": "默认公司",
+                "purpose": "Material Receipt",
+                "source_type": "factory_return_report_proof",
+                "source_id": receipt_source_ref,
+                "source_ref": receipt_source_ref,
+                "warehouse": self.WAREHOUSE,
+                "item_code": self.ITEM_CODE,
+                "quantity": "20",
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "create",
+                "scenario_tag": self.SCENARIO_TAG,
+                "target_warehouse": self.WAREHOUSE,
+                "idempotency_key": receipt_idem,
+                "items": [
+                    {
+                        "item_code": self.ITEM_CODE,
+                        "qty": "20",
+                        "uom": "米",
+                        "target_warehouse": self.WAREHOUSE,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(receipt.status_code, 201, receipt.text)
+
+        with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("ERPNext adapter must not be used")):
+            response = self.client.get(
+                "/api/warehouse/factory-return-material-report?item_code=FAB-A",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        rows = payload["data"]["items"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["material_code"], self.ITEM_CODE)
+        self.assertEqual(rows[0]["warehouse"], self.WAREHOUSE)
 
 
 if __name__ == "__main__":

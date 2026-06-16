@@ -515,6 +515,40 @@ class WarehouseService:
         status: str | None,
     ) -> WarehouseFactoryReturnMaterialReportData:
         summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        return self._factory_return_material_report_from_summary(
+            summary=summary,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status,
+        )
+
+    def list_local_factory_return_material_report(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+    ) -> WarehouseFactoryReturnMaterialReportData:
+        summary = self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        return self._factory_return_material_report_from_summary(
+            summary=summary,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status,
+        )
+
+    def _factory_return_material_report_from_summary(
+        self,
+        *,
+        summary: WarehouseStockSummaryData,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+    ) -> WarehouseFactoryReturnMaterialReportData:
         status_filter = (status or "").strip().lower() or None
         rows: list[WarehouseFactoryReturnMaterialReportItem] = []
         for index, row in enumerate(summary.items, start=1):
