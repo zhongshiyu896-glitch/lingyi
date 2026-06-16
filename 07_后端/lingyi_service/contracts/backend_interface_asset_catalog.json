@@ -1,0 +1,7466 @@
+{
+  "source": "FastAPI app.routes",
+  "routes": [
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/auth/actions",
+      "name": "get_actions",
+      "tags": [
+        "auth"
+      ],
+      "endpoint_module": "app.routers.auth",
+      "request_params": {
+        "path": [],
+        "query": [
+          "module",
+          "resource_type",
+          "resource_id"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "认证/会话真实接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 3
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/auth/actions/bom/{bom_id}",
+      "name": "get_bom_actions",
+      "tags": [
+        "auth"
+      ],
+      "endpoint_module": "app.routers.auth",
+      "request_params": {
+        "path": [
+          "bom_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "认证/会话真实接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 4
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "name": "login",
+      "tags": [
+        "auth"
+      ],
+      "endpoint_module": "app.routers.auth",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": false,
+      "is_real_write_db": false,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "认证/会话真实接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 0
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "name": "logout",
+      "tags": [
+        "auth"
+      ],
+      "endpoint_module": "app.routers.auth",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": false,
+      "is_real_write_db": false,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "认证/会话真实接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 1
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "name": "get_me",
+      "tags": [
+        "auth"
+      ],
+      "endpoint_module": "app.routers.auth",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "认证/会话真实接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 2
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/",
+      "name": "list_bom",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "bom_no",
+        "item_code",
+        "version_no",
+        "is_default",
+        "status",
+        "effective_date"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 70
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/bom/",
+      "name": "create_bom",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 69
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/accessories-packaging",
+      "name": "list_bom_accessories_packaging",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "material_item_code",
+          "material_name",
+          "category",
+          "supplier_name",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "bom_id",
+        "bom_no",
+        "item_code",
+        "material_item_code",
+        "material_name",
+        "category",
+        "color",
+        "specification",
+        "supplier_name",
+        "uom",
+        "qty_per_piece",
+        "loss_rate",
+        "status",
+        "is_default"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 73
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/colors",
+      "name": "frontend_readiness_colors",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 8
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/fabrics",
+      "name": "list_bom_fabrics",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "material_item_code",
+          "fabric_name",
+          "color",
+          "specification",
+          "supplier_name",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "bom_id",
+        "bom_no",
+        "item_code",
+        "material_item_code",
+        "fabric_name",
+        "color",
+        "specification",
+        "supplier_name",
+        "uom",
+        "qty_per_piece",
+        "loss_rate",
+        "status",
+        "is_default"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 72
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/material-categories",
+      "name": "frontend_readiness_material_categories",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 11
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/material-deduction",
+      "name": "list_bom_material_deduction",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "deduction_no",
+          "material_item_code",
+          "warehouse_name",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 78
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/material-gallery",
+      "name": "list_bom_material_gallery",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "material_item_code",
+          "color",
+          "size",
+          "category",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "bom_id",
+        "bom_no",
+        "item_code",
+        "material_item_code",
+        "category",
+        "color",
+        "size",
+        "uom",
+        "qty_per_piece",
+        "loss_rate",
+        "status",
+        "is_default",
+        "thumbnail_url"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 71
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/material-processing",
+      "name": "list_bom_material_processing",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "process_no",
+          "process_name",
+          "processing_supplier",
+          "processing_mode",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 76
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/material-processing-inbound",
+      "name": "list_bom_material_processing_inbound",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "inbound_no",
+          "material_item_code",
+          "processing_supplier",
+          "warehouse_name",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 77
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/material-requests",
+      "name": "frontend_readiness_material_requests",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "request_no",
+        "company",
+        "item_code",
+        "material_item_code",
+        "supplier_name",
+        "qty",
+        "uom",
+        "expected_delivery_date",
+        "status",
+        "bom_no"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 16
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/material-sales-outbound",
+      "name": "list_bom_material_sales_outbound",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "outbound_no",
+          "sales_order_no",
+          "customer_name",
+          "warehouse_name",
+          "material_item_code",
+          "status",
+          "audit_status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 79
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/material-types",
+      "name": "list_bom_material_types",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "material_item_code",
+          "material_type_name",
+          "material_group",
+          "applicable_scene",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 80
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/material-units",
+      "name": "list_bom_material_units",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "material_item_code",
+          "unit_name",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 81
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/materials",
+      "name": "frontend_readiness_materials",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "bom_id",
+        "bom_no",
+        "item_code",
+        "material_item_code",
+        "material_type_code",
+        "material_type_name",
+        "material_group",
+        "applicable_scene",
+        "supplier_name",
+        "status",
+        "is_default"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 6
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/process-requirement-templates",
+      "name": "frontend_readiness_process_requirement_templates",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "process_type_code",
+        "process_type_name",
+        "process_name",
+        "sequence_no",
+        "subcontract_mode",
+        "pricing_mode",
+        "unit_rate",
+        "status",
+        "is_default"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 34
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/processing-types",
+      "name": "list_bom_processing_types",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "process_type_name",
+          "process_name",
+          "subcontract_mode",
+          "pricing_mode",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 75
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/purchase-orders",
+      "name": "list_bom_purchase_orders",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [],
+        "query": [
+          "purchase_no",
+          "supplier_name",
+          "material_keyword",
+          "status",
+          "delivery_date_from",
+          "delivery_date_to",
+          "min_qty",
+          "max_qty",
+          "min_amount",
+          "max_amount",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "bom_id",
+        "purchase_no",
+        "supplier_name",
+        "item_code",
+        "material_item_code",
+        "material_name",
+        "qty",
+        "uom",
+        "unit_price",
+        "total_amount",
+        "expected_delivery_date",
+        "status",
+        "bom_no"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 74
+    },
+    {
+      "class": "C",
+      "method": "POST",
+      "path": "/api/bom/readiness/procurement-flow",
+      "name": "frontend_readiness_write_procurement_flow",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "request_no",
+        "purchase_no",
+        "receipt_no",
+        "purchase_invoice_name",
+        "supplier",
+        "supplier_name",
+        "item_code",
+        "material_item_code",
+        "received_qty",
+        "grand_total",
+        "outstanding_amount",
+        "status"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "do_not_connect_as_write",
+      "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 38
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/sample-orders",
+      "name": "frontend_readiness_sample_orders",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 36
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/sample-progress",
+      "name": "frontend_readiness_sample_progress",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "sample_order_no",
+        "sample_type",
+        "item_code",
+        "status",
+        "owner",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 13
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/sample-types",
+      "name": "frontend_readiness_sample_types",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 30
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/size-chart-templates",
+      "name": "frontend_readiness_size_chart_templates",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 35
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/size-sortings",
+      "name": "frontend_readiness_size_sortings",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 32
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/sizes",
+      "name": "frontend_readiness_sizes",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 9
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/style-bom-process",
+      "name": "frontend_readiness_style_bom_process",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "bom_id",
+        "bom_no",
+        "item_code",
+        "version_no",
+        "process_type_code",
+        "process_type_name",
+        "process_name",
+        "sequence_no",
+        "subcontract_mode",
+        "pricing_mode",
+        "unit_rate",
+        "status",
+        "is_default"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 12
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/styles",
+      "name": "frontend_readiness_styles",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "bom_no",
+        "item_code",
+        "version_no",
+        "is_default",
+        "status",
+        "effective_date"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 7
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/bom/units",
+      "name": "frontend_readiness_units",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 10
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/bom/{bom_id}",
+      "name": "get_bom_detail",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [
+          "bom_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 82
+    },
+    {
+      "class": "A",
+      "method": "PUT",
+      "path": "/api/bom/{bom_id}",
+      "name": "update_bom_draft",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [
+          "bom_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 83
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/bom/{bom_id}/activate",
+      "name": "activate_bom",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [
+          "bom_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 85
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/bom/{bom_id}/deactivate",
+      "name": "deactivate_bom",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [
+          "bom_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 86
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/bom/{bom_id}/explode",
+      "name": "explode_bom",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [
+          "bom_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 87
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/bom/{bom_id}/set-default",
+      "name": "set_default_bom",
+      "tags": [
+        "bom"
+      ],
+      "endpoint_module": "app.routers.bom",
+      "request_params": {
+        "path": [
+          "bom_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 84
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/cross-module/sales-order-trail/{sales_order_id}",
+      "name": "get_sales_order_trail",
+      "tags": [
+        "cross_module_view"
+      ],
+      "endpoint_module": "app.routers.cross_module_view",
+      "request_params": {
+        "path": [
+          "sales_order_id"
+        ],
+        "query": [
+          "company"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 164
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/cross-module/work-order-trail/{work_order_id}",
+      "name": "get_work_order_trail",
+      "tags": [
+        "cross_module_view"
+      ],
+      "endpoint_module": "app.routers.cross_module_view",
+      "request_params": {
+        "path": [
+          "work_order_id"
+        ],
+        "query": [
+          "company"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 163
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/dashboard/overview",
+      "name": "get_dashboard_overview",
+      "tags": [
+        "dashboard"
+      ],
+      "endpoint_module": "app.routers.dashboard",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "from_date",
+          "to_date",
+          "item_code",
+          "warehouse",
+          "keyword"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "company",
+        "from_date",
+        "to_date",
+        "generated_at",
+        "quality",
+        "sales_inventory",
+        "warehouse",
+        "source_status",
+        "kanban",
+        "home_overview"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 192
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/",
+      "name": "list_factory_statements",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "supplier",
+          "from_date",
+          "to_date",
+          "statement_status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 107
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/factory-statements/",
+      "name": "create_factory_statement",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 102
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/bank-deposits",
+      "name": "list_bank_deposits",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "deposit_no",
+          "statement_no",
+          "bank_name",
+          "account_name",
+          "deposit_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 109
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/bank-ledgers",
+      "name": "list_bank_ledgers",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "ledger_no",
+          "statement_no",
+          "bank_name",
+          "account_name",
+          "transaction_type",
+          "ledger_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 121
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/bank-withdrawals",
+      "name": "list_bank_withdrawals",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "withdrawal_no",
+          "statement_no",
+          "bank_name",
+          "account_name",
+          "withdrawal_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 110
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/factory-statements/cashier-accounts",
+      "name": "frontend_readiness_cashier_accounts",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "bank_name",
+        "account_name",
+        "account_no",
+        "currency",
+        "owner",
+        "remark"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 33
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/customer-evaluations",
+      "name": "list_customer_evaluations",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "evaluation_no",
+          "statement_no",
+          "customer_name",
+          "assessor",
+          "score_level",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 111
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/customer-receivable-summaries",
+      "name": "list_customer_receivable_summaries",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "summary_no",
+          "statement_no",
+          "customer_name",
+          "risk_level",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 114
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/factory-statements/customer-receivables",
+      "name": "frontend_readiness_customer_receivables",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "summary_no",
+        "statement_no",
+        "company",
+        "customer_name",
+        "customer_code",
+        "currency",
+        "opening_receivable",
+        "current_receivable",
+        "received_amount",
+        "ending_receivable",
+        "aging_30",
+        "aging_60",
+        "aging_90_plus",
+        "risk_level",
+        "review_status",
+        "summary_date",
+        "owner",
+        "remark"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 25
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/customer-reconciliations",
+      "name": "list_customer_reconciliations",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "reconciliation_no",
+          "statement_no",
+          "customer_name",
+          "settlement_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 112
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/customer-unpaid-reports",
+      "name": "list_customer_unpaid_reports",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "report_no",
+          "statement_no",
+          "customer_name",
+          "collection_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 113
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/expense-reimbursement-payments",
+      "name": "list_expense_reimbursement_payments",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "payment_no",
+          "reimbursement_no",
+          "statement_no",
+          "supplier",
+          "payment_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 108
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/factory-statements/expense-types",
+      "name": "frontend_readiness_expense_types",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 31
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/factory-evaluations",
+      "name": "list_factory_evaluations",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "evaluation_no",
+          "statement_no",
+          "factory_name",
+          "assessor",
+          "score_level",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "evaluation_no",
+        "statement_no",
+        "company",
+        "supplier",
+        "factory_name",
+        "factory_code",
+        "assessor",
+        "score",
+        "score_level",
+        "review_status",
+        "follow_up_status",
+        "evaluation_date",
+        "expiry_date",
+        "owner",
+        "remark"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 115
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/factory-payable-summaries",
+      "name": "list_factory_payable_summaries",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "summary_no",
+          "statement_no",
+          "supplier",
+          "factory_name",
+          "risk_level",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "summary_no",
+        "statement_no",
+        "company",
+        "supplier",
+        "factory_name",
+        "factory_code",
+        "currency",
+        "opening_payable",
+        "current_payable",
+        "paid_amount",
+        "ending_payable",
+        "aging_30",
+        "aging_60",
+        "aging_90_plus",
+        "risk_level",
+        "review_status",
+        "summary_date",
+        "owner",
+        "remark"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 117
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/factory-reconciliations",
+      "name": "list_factory_reconciliations",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "reconciliation_no",
+          "statement_no",
+          "supplier",
+          "factory_name",
+          "settlement_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "reconciliation_no",
+        "statement_no",
+        "company",
+        "supplier",
+        "factory_name",
+        "factory_code",
+        "currency",
+        "reconciliation_amount",
+        "settled_amount",
+        "pending_amount",
+        "settlement_status",
+        "review_status",
+        "follow_up_status",
+        "reconciled_at",
+        "due_date",
+        "owner",
+        "remark"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 116
+    },
+    {
+      "class": "D",
+      "method": "POST",
+      "path": "/api/factory-statements/internal/payable-draft-sync/run-once",
+      "name": "run_factory_statement_payable_worker_once",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
+      "duplicate_method_path_count": 1,
+      "registered_order": 106
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/factory-statements/invoice-types",
+      "name": "frontend_readiness_invoice_types",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 29
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/factory-statements/purchase-invoices",
+      "name": "frontend_readiness_purchase_invoices",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "purchase_invoice_name",
+        "company",
+        "supplier",
+        "supplier_name",
+        "currency",
+        "grand_total",
+        "paid_amount",
+        "outstanding_amount",
+        "status",
+        "posting_date"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 18
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/factory-statements/settlement-methods",
+      "name": "frontend_readiness_settlement_methods",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 28
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/supplier-evaluations",
+      "name": "list_supplier_evaluations",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "evaluation_no",
+          "statement_no",
+          "supplier",
+          "assessor",
+          "score_level",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "evaluation_no",
+        "statement_no",
+        "company",
+        "supplier",
+        "supplier_code",
+        "assessor",
+        "score",
+        "score_level",
+        "review_status",
+        "follow_up_status",
+        "evaluation_date",
+        "expiry_date",
+        "owner",
+        "remark"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 118
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/supplier-payable-summaries",
+      "name": "list_supplier_payable_summaries",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "summary_no",
+          "statement_no",
+          "supplier",
+          "supplier_code",
+          "risk_level",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "summary_no",
+        "statement_no",
+        "company",
+        "supplier",
+        "supplier_code",
+        "currency",
+        "opening_payable",
+        "current_payable",
+        "paid_amount",
+        "ending_payable",
+        "aging_30",
+        "aging_60",
+        "aging_90_plus",
+        "risk_level",
+        "review_status",
+        "follow_up_status",
+        "summary_date",
+        "owner",
+        "remark"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 120
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/supplier-reconciliations",
+      "name": "list_supplier_reconciliations",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [],
+        "query": [
+          "reconciliation_no",
+          "statement_no",
+          "supplier",
+          "supplier_code",
+          "settlement_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 119
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/factory-statements/{statement_id}",
+      "name": "get_factory_statement_detail",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [
+          "statement_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 122
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/factory-statements/{statement_id}/cancel",
+      "name": "cancel_factory_statement",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [
+          "statement_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 104
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/factory-statements/{statement_id}/confirm",
+      "name": "confirm_factory_statement",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [
+          "statement_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 103
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/factory-statements/{statement_id}/payable-draft",
+      "name": "create_factory_statement_payable_draft",
+      "tags": [
+        "factory_statement"
+      ],
+      "endpoint_module": "app.routers.factory_statement",
+      "request_params": {
+        "path": [
+          "statement_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 105
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/permissions/actions/catalog",
+      "name": "get_permission_action_catalog",
+      "tags": [
+        "permission_governance"
+      ],
+      "endpoint_module": "app.routers.permission_governance",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 199
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/permissions/audit/operations",
+      "name": "get_permission_operation_audit",
+      "tags": [
+        "permission_governance"
+      ],
+      "endpoint_module": "app.routers.permission_governance",
+      "request_params": {
+        "path": [],
+        "query": [
+          "from_date",
+          "to_date",
+          "module",
+          "action",
+          "request_id",
+          "resource_type",
+          "resource_id",
+          "operator",
+          "result",
+          "error_code",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 206
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/permissions/audit/operations/export",
+      "name": "export_permission_operation_audit",
+      "tags": [
+        "permission_governance"
+      ],
+      "endpoint_module": "app.routers.permission_governance",
+      "request_params": {
+        "path": [],
+        "query": [
+          "from_date",
+          "to_date",
+          "module",
+          "action",
+          "request_id",
+          "resource_type",
+          "resource_id",
+          "operator",
+          "result",
+          "error_code",
+          "limit"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 204
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/permissions/audit/security",
+      "name": "get_permission_security_audit",
+      "tags": [
+        "permission_governance"
+      ],
+      "endpoint_module": "app.routers.permission_governance",
+      "request_params": {
+        "path": [],
+        "query": [
+          "from_date",
+          "to_date",
+          "module",
+          "action",
+          "request_id",
+          "resource_type",
+          "resource_id",
+          "event_type",
+          "user_id",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 205
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/permissions/audit/security/export",
+      "name": "export_permission_security_audit",
+      "tags": [
+        "permission_governance"
+      ],
+      "endpoint_module": "app.routers.permission_governance",
+      "request_params": {
+        "path": [],
+        "query": [
+          "from_date",
+          "to_date",
+          "module",
+          "action",
+          "request_id",
+          "resource_type",
+          "resource_id",
+          "event_type",
+          "user_id",
+          "limit"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 203
+    },
+    {
+      "class": "D",
+      "method": "GET",
+      "path": "/api/permissions/diagnostic",
+      "name": "get_permission_governance_diagnostic",
+      "tags": [
+        "permission_governance"
+      ],
+      "endpoint_module": "app.routers.permission_governance",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "诊断接口; 运维排障用途",
+      "duplicate_method_path_count": 1,
+      "registered_order": 202
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/permissions/menu-management",
+      "name": "get_permission_menu_management",
+      "tags": [
+        "permission_governance"
+      ],
+      "endpoint_module": "app.routers.permission_governance",
+      "request_params": {
+        "path": [],
+        "query": [
+          "module",
+          "status",
+          "keyword"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 201
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/permissions/roles/matrix",
+      "name": "get_permission_roles_matrix",
+      "tags": [
+        "permission_governance"
+      ],
+      "endpoint_module": "app.routers.permission_governance",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 200
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/production/followup-templates",
+      "name": "list_production_followup_templates",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [
+          "template_no",
+          "template_name",
+          "template_type",
+          "item_code",
+          "keyword",
+          "from_date",
+          "to_date",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "template_id",
+        "template_no",
+        "template_name",
+        "template_type",
+        "trigger_node",
+        "followup_role",
+        "followup_frequency",
+        "sla_hours",
+        "item_code",
+        "company",
+        "status",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 2,
+      "registered_order": 61
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/production/followup-templates",
+      "name": "frontend_readiness_followup_templates",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "template_id",
+        "template_no",
+        "template_name",
+        "template_type",
+        "trigger_node",
+        "followup_role",
+        "followup_frequency",
+        "sla_hours",
+        "item_code",
+        "company",
+        "status",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 2,
+      "registered_order": 223
+    },
+    {
+      "class": "D",
+      "method": "POST",
+      "path": "/api/production/internal/work-order-sync/run-once",
+      "name": "run_work_order_sync_once",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.dry_run",
+        "data.processed_count",
+        "data.succeeded_count",
+        "data.failed_count",
+        "data.dead_count"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
+      "duplicate_method_path_count": 1,
+      "registered_order": 68
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/production/material-cost-details",
+      "name": "list_production_material_cost_details",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [
+          "sales_order",
+          "keyword",
+          "turnover_no",
+          "material_item_code",
+          "supplier",
+          "from_date",
+          "to_date",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.items",
+        "data.items.plan_id",
+        "data.items.plan_no",
+        "data.items.company",
+        "data.items.sales_order",
+        "data.items.sales_order_item",
+        "data.items.item_code",
+        "data.items.material_item_code",
+        "data.items.supplier",
+        "data.items.qty_per_piece",
+        "data.items.loss_rate",
+        "data.items.required_qty",
+        "data.items.estimated_unit_price",
+        "data.items.estimated_material_cost",
+        "data.items.currency",
+        "data.items.status",
+        "data.items.planned_start_date",
+        "data.items.checked_at",
+        "data.total",
+        "data.page",
+        "data.page_size"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 58
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/production/material-issues",
+      "name": "frontend_readiness_production_material_issues",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "plan_id",
+        "plan_no",
+        "work_order",
+        "company",
+        "item_code",
+        "material_item_code",
+        "warehouse",
+        "required_qty",
+        "available_qty",
+        "issued_qty",
+        "shortage_qty",
+        "status"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 15
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/production/order-io-quantities",
+      "name": "list_production_order_io_quantities",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [
+          "sales_order",
+          "keyword",
+          "turnover_no",
+          "item_code",
+          "customer",
+          "from_date",
+          "to_date",
+          "status",
+          "io_status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "plan_id",
+        "plan_no",
+        "company",
+        "sales_order",
+        "sales_order_item",
+        "customer",
+        "item_code",
+        "ordered_qty",
+        "inbound_qty",
+        "outbound_qty",
+        "pending_inbound_qty",
+        "pending_outbound_qty",
+        "inbound_progress",
+        "outbound_progress",
+        "io_status",
+        "status",
+        "planned_start_date",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 62
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/production/plans",
+      "name": "list_production_plans",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [
+          "sales_order",
+          "keyword",
+          "turnover_no",
+          "item_code",
+          "company",
+          "from_date",
+          "to_date",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "plan_no",
+        "company",
+        "sales_order",
+        "sales_order_item",
+        "customer",
+        "item_code",
+        "bom_id",
+        "bom_version",
+        "planned_qty",
+        "planned_start_date",
+        "status",
+        "latest_work_order_outbox",
+        "created_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 57
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/production/plans",
+      "name": "create_production_plan",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.plan_id",
+        "data.plan_no",
+        "data.status",
+        "data.company"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 56
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/production/plans/{plan_id}",
+      "name": "get_production_plan_detail",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [
+          "plan_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.id",
+        "data.plan_no",
+        "data.company",
+        "data.sales_order",
+        "data.sales_order_item",
+        "data.customer",
+        "data.item_code",
+        "data.bom_id",
+        "data.bom_version",
+        "data.planned_qty",
+        "data.planned_start_date",
+        "data.status",
+        "data.work_order",
+        "data.erpnext_docstatus",
+        "data.erpnext_status",
+        "data.sync_status",
+        "data.last_synced_at",
+        "data.latest_work_order_outbox",
+        "data.write_entry_frozen",
+        "data.write_entry_frozen_reason",
+        "data.material_snapshots",
+        "data.material_snapshots.bom_item_id",
+        "data.material_snapshots.material_item_code",
+        "data.material_snapshots.warehouse",
+        "data.material_snapshots.qty_per_piece",
+        "data.material_snapshots.loss_rate",
+        "data.material_snapshots.required_qty",
+        "data.material_snapshots.available_qty",
+        "data.material_snapshots.shortage_qty",
+        "data.material_snapshots.checked_at",
+        "data.job_cards",
+        "data.job_cards.job_card",
+        "data.job_cards.operation",
+        "data.job_cards.operation_sequence",
+        "data.job_cards.company",
+        "data.job_cards.item_code",
+        "data.job_cards.expected_qty",
+        "data.job_cards.completed_qty",
+        "data.job_cards.erpnext_status",
+        "data.job_cards.synced_at",
+        "data.created_at",
+        "data.updated_at"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 64
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/production/plans/{plan_id}/create-work-order",
+      "name": "create_work_order_outbox",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [
+          "plan_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.plan_id",
+        "data.outbox_id",
+        "data.event_key",
+        "data.sync_status",
+        "data.work_order"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 66
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/production/plans/{plan_id}/material-check",
+      "name": "material_check_plan",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [
+          "plan_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.plan_id",
+        "data.snapshot_count",
+        "data.items",
+        "data.items.bom_item_id",
+        "data.items.material_item_code",
+        "data.items.warehouse",
+        "data.items.qty_per_piece",
+        "data.items.loss_rate",
+        "data.items.required_qty",
+        "data.items.available_qty",
+        "data.items.shortage_qty",
+        "data.items.checked_at"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 65
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/production/quotes",
+      "name": "list_production_quotes",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [
+          "quote_no",
+          "sales_order",
+          "keyword",
+          "turnover_no",
+          "item_code",
+          "customer",
+          "from_date",
+          "to_date",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.items",
+        "data.items.plan_id",
+        "data.items.quote_no",
+        "data.items.plan_no",
+        "data.items.company",
+        "data.items.sales_order",
+        "data.items.sales_order_item",
+        "data.items.customer",
+        "data.items.item_code",
+        "data.items.quote_qty",
+        "data.items.quote_unit_price",
+        "data.items.quote_amount",
+        "data.items.currency",
+        "data.items.quoted_at",
+        "data.items.delivery_date",
+        "data.items.status",
+        "data.total",
+        "data.page",
+        "data.page_size"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 60
+    },
+    {
+      "class": "C",
+      "method": "POST",
+      "path": "/api/production/readiness/inventory-finance-flow",
+      "name": "frontend_readiness_write_inventory_finance_flow",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "reservation_no",
+        "delivery_note",
+        "sales_invoice",
+        "summary_no",
+        "warehouse",
+        "item_code",
+        "inbound_qty",
+        "delivered_qty",
+        "book_qty",
+        "actual_qty",
+        "diff_qty",
+        "outstanding_amount",
+        "status"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "do_not_connect_as_write",
+      "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 40
+    },
+    {
+      "class": "C",
+      "method": "POST",
+      "path": "/api/production/readiness/work-order-flow",
+      "name": "frontend_readiness_write_sales_to_production_flow",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "plan_id",
+        "plan_no",
+        "outbox_id",
+        "event_key",
+        "sync_status",
+        "work_order",
+        "sales_order",
+        "sales_order_item",
+        "item_code",
+        "planned_qty",
+        "status"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "do_not_connect_as_write",
+      "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 37
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/production/sales-forecast-details",
+      "name": "list_production_sales_forecast_details",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [
+          "sales_order",
+          "keyword",
+          "turnover_no",
+          "item_code",
+          "customer",
+          "from_date",
+          "to_date",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.items",
+        "data.items.plan_id",
+        "data.items.plan_no",
+        "data.items.company",
+        "data.items.sales_order",
+        "data.items.sales_order_item",
+        "data.items.customer",
+        "data.items.item_code",
+        "data.items.forecast_qty",
+        "data.items.forecast_unit_price",
+        "data.items.forecast_amount",
+        "data.items.currency",
+        "data.items.delivery_date",
+        "data.items.status",
+        "data.items.checked_at",
+        "data.total",
+        "data.page",
+        "data.page_size"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 59
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/production/salesperson-performance",
+      "name": "list_production_salesperson_performance",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [],
+        "query": [
+          "salesperson",
+          "keyword",
+          "item_code",
+          "customer",
+          "status",
+          "performance_status",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.items",
+        "data.items.plan_id",
+        "data.items.plan_no",
+        "data.items.company",
+        "data.items.salesperson",
+        "data.items.sales_order",
+        "data.items.sales_order_item",
+        "data.items.customer",
+        "data.items.item_code",
+        "data.items.ordered_qty",
+        "data.items.completed_qty",
+        "data.items.completion_rate",
+        "data.items.settled_amount",
+        "data.items.pending_amount",
+        "data.items.currency",
+        "data.items.performance_status",
+        "data.items.status",
+        "data.items.updated_at",
+        "data.total",
+        "data.page",
+        "data.page_size"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 63
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/production/work-orders",
+      "name": "frontend_readiness_work_orders",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "plan_id",
+        "plan_no",
+        "company",
+        "sales_order",
+        "sales_order_item",
+        "item_code",
+        "work_order",
+        "planned_qty",
+        "produced_qty",
+        "status",
+        "created_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 14
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/production/work-orders/{work_order}/sync-job-cards",
+      "name": "sync_job_cards",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [
+          "work_order"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.work_order",
+        "data.plan_id",
+        "data.synced_count",
+        "data.items",
+        "data.items.job_card",
+        "data.items.operation",
+        "data.items.operation_sequence",
+        "data.items.company",
+        "data.items.item_code",
+        "data.items.expected_qty",
+        "data.items.completed_qty",
+        "data.items.erpnext_status",
+        "data.items.synced_at"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 67
+    },
+    {
+      "class": "D",
+      "method": "GET",
+      "path": "/api/quality/diagnostic",
+      "name": "diagnostic_quality_inspections",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "item_code",
+          "supplier",
+          "warehouse",
+          "source_type",
+          "source_id",
+          "from_date",
+          "to_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "诊断接口; 运维排障用途",
+      "duplicate_method_path_count": 1,
+      "registered_order": 162
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/quality/export",
+      "name": "export_quality_inspections",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [],
+        "query": [
+          "format",
+          "inspection_id",
+          "company",
+          "item_code",
+          "supplier",
+          "warehouse",
+          "source_type",
+          "source_id",
+          "status",
+          "from_date",
+          "to_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 161
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/quality/inspections",
+      "name": "list_quality_inspections",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "item_code",
+          "supplier",
+          "warehouse",
+          "source_type",
+          "source_id",
+          "status",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "inspection_no",
+        "company",
+        "source_type",
+        "source_id",
+        "item_code",
+        "supplier",
+        "warehouse",
+        "inspection_date",
+        "inspected_qty",
+        "accepted_qty",
+        "rejected_qty",
+        "defect_qty",
+        "defect_rate",
+        "rejected_rate",
+        "result",
+        "status",
+        "created_by",
+        "created_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 151
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/quality/inspections",
+      "name": "create_quality_inspection",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 150
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/quality/inspections/{inspection_id}",
+      "name": "get_quality_inspection",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [
+          "inspection_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 152
+    },
+    {
+      "class": "A",
+      "method": "PATCH",
+      "path": "/api/quality/inspections/{inspection_id}",
+      "name": "update_quality_inspection",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [
+          "inspection_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 153
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/quality/inspections/{inspection_id}/cancel",
+      "name": "cancel_quality_inspection",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [
+          "inspection_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 155
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/quality/inspections/{inspection_id}/confirm",
+      "name": "confirm_quality_inspection",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [
+          "inspection_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 154
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/quality/inspections/{inspection_id}/defects",
+      "name": "add_quality_inspection_defects",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [
+          "inspection_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 156
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/quality/inspections/{inspection_id}/outbox-status",
+      "name": "get_quality_inspection_outbox_status",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [
+          "inspection_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 158
+    },
+    {
+      "class": "D",
+      "method": "POST",
+      "path": "/api/quality/internal/outbox-sync/run-once",
+      "name": "run_quality_outbox_sync_once",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
+      "duplicate_method_path_count": 1,
+      "registered_order": 157
+    },
+    {
+      "class": "C",
+      "method": "POST",
+      "path": "/api/quality/readiness/quality-flow",
+      "name": "frontend_readiness_write_quality_flow",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "inspection_no",
+        "work_order",
+        "subcontract_no",
+        "item_code",
+        "inspected_qty",
+        "accepted_qty",
+        "rejected_qty",
+        "status"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "do_not_connect_as_write",
+      "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 41
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/quality/statistics",
+      "name": "get_quality_statistics",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "item_code",
+          "supplier",
+          "warehouse",
+          "source_type",
+          "source_id",
+          "from_date",
+          "to_date"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "total_count",
+        "total_inspected_qty",
+        "total_accepted_qty",
+        "total_rejected_qty",
+        "total_defect_qty",
+        "overall_defect_rate",
+        "inspected_qty",
+        "accepted_qty",
+        "rejected_qty",
+        "defect_qty",
+        "defect_rate",
+        "rejected_rate",
+        "by_result"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 159
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/quality/statistics/trend",
+      "name": "get_quality_statistics_trend",
+      "tags": [
+        "quality"
+      ],
+      "endpoint_module": "app.routers.quality",
+      "request_params": {
+        "path": [],
+        "query": [
+          "period",
+          "company",
+          "item_code",
+          "supplier",
+          "warehouse",
+          "source_type",
+          "source_id",
+          "from_date",
+          "to_date"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "period",
+        "points.period_key",
+        "points.inspection_count",
+        "points.defect_rate",
+        "points.rejected_rate",
+        "points.total_inspected_qty"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 160
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/reports/approval-reports",
+      "name": "get_approval_reports",
+      "tags": [
+        "reports"
+      ],
+      "endpoint_module": "app.routers.report",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "approver_keyword",
+          "approval_status",
+          "from_date",
+          "to_date"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "approval_no",
+        "approval_type",
+        "related_doc_no",
+        "applicant",
+        "approver",
+        "department",
+        "amount",
+        "priority",
+        "submitted_at",
+        "completed_at",
+        "status",
+        "remark"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 196
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/reports/catalog",
+      "name": "get_report_catalog",
+      "tags": [
+        "reports"
+      ],
+      "endpoint_module": "app.routers.report",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "source_module",
+          "report_type"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "report_key",
+        "name",
+        "source_modules",
+        "report_type",
+        "required_filters",
+        "optional_filters",
+        "metric_summary",
+        "permission_action",
+        "status",
+        "ui_placeholders",
+        "ui_buttons",
+        "ui_table_headers",
+        "status_tags",
+        "preview_rows"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 193
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/reports/catalog/export",
+      "name": "export_report_catalog",
+      "tags": [
+        "reports"
+      ],
+      "endpoint_module": "app.routers.report",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "source_module",
+          "report_type"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 194
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/reports/catalog/{report_key}",
+      "name": "get_report_catalog_item",
+      "tags": [
+        "reports"
+      ],
+      "endpoint_module": "app.routers.report",
+      "request_params": {
+        "path": [
+          "report_key"
+        ],
+        "query": [
+          "company"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 198
+    },
+    {
+      "class": "D",
+      "method": "GET",
+      "path": "/api/reports/diagnostic",
+      "name": "get_report_health_summary",
+      "tags": [
+        "reports"
+      ],
+      "endpoint_module": "app.routers.report",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "诊断接口; 运维排障用途",
+      "duplicate_method_path_count": 1,
+      "registered_order": 197
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/reports/employee-task-statistics",
+      "name": "get_employee_task_statistics",
+      "tags": [
+        "reports"
+      ],
+      "endpoint_module": "app.routers.report",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "department",
+          "task_status",
+          "employee_keyword",
+          "from_date",
+          "to_date"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "employee_id",
+        "employee_name",
+        "department",
+        "pending_tasks",
+        "in_progress_tasks",
+        "completed_tasks",
+        "overdue_tasks",
+        "completion_rate",
+        "latest_task_no",
+        "latest_task_title",
+        "latest_due_date",
+        "updated_at",
+        "status"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 195
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/reports/style-profit/snapshots",
+      "name": "list_snapshots",
+      "tags": [
+        "style_profit"
+      ],
+      "endpoint_module": "app.routers.style_profit",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "item_code",
+          "sales_order",
+          "from_date",
+          "to_date",
+          "snapshot_status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 99
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/reports/style-profit/snapshots",
+      "name": "create_snapshot",
+      "tags": [
+        "style_profit"
+      ],
+      "endpoint_module": "app.routers.style_profit",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 101
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/reports/style-profit/snapshots/{snapshot_id}",
+      "name": "get_snapshot_detail",
+      "tags": [
+        "style_profit"
+      ],
+      "endpoint_module": "app.routers.style_profit",
+      "request_params": {
+        "path": [
+          "snapshot_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 100
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/aggregation",
+      "name": "get_inventory_aggregation",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "item_code",
+          "warehouse"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 146
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/customer-return-applications",
+      "name": "get_customer_return_applications",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "application_no",
+          "item_code",
+          "warehouse",
+          "application_status",
+          "approval_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 135
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/customer-return-inbound",
+      "name": "get_customer_return_inbound",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "inbound_no",
+          "application_no",
+          "item_code",
+          "warehouse",
+          "inbound_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 136
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/customers",
+      "name": "list_customers",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "name",
+        "customer_name",
+        "disabled"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 145
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/sales-inventory/delivery-addresses",
+      "name": "frontend_readiness_delivery_addresses",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 220
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/sales-inventory/delivery-notes",
+      "name": "frontend_readiness_delivery_notes",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "delivery_note",
+        "company",
+        "sales_order",
+        "customer",
+        "item_code",
+        "warehouse",
+        "delivered_qty",
+        "posting_date",
+        "status"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 23
+    },
+    {
+      "class": "D",
+      "method": "GET",
+      "path": "/api/sales-inventory/diagnostic",
+      "name": "read_diagnostic",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "诊断接口; 运维排障用途",
+      "duplicate_method_path_count": 1,
+      "registered_order": 149
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/finished-goods-adjustment",
+      "name": "get_finished_goods_adjustment",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "adjustment_no",
+          "item_code",
+          "warehouse",
+          "adjustment_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 139
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/finished-goods-count",
+      "name": "get_finished_goods_count",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "count_no",
+          "item_code",
+          "warehouse",
+          "count_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 138
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/finished-goods-other-inbound",
+      "name": "get_finished_goods_other_inbound",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "inbound_no",
+          "item_code",
+          "warehouse",
+          "inbound_status",
+          "settlement_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 134
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/finished-goods-other-outbound",
+      "name": "get_finished_goods_other_outbound",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "outbound_no",
+          "item_code",
+          "warehouse",
+          "outbound_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 137
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/finished-goods-report",
+      "name": "get_finished_goods_report",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "no",
+          "style",
+          "warehouse",
+          "from_date",
+          "to_date",
+          "keyword",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 148
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/finished-goods-reserved-inbound",
+      "name": "get_finished_goods_reserved_inbound",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "reservation_no",
+          "item_code",
+          "warehouse",
+          "reserve_status",
+          "inbound_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 132
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/finished-goods-shipping-notices",
+      "name": "get_finished_goods_shipping_notices",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "notice_no",
+          "item_code",
+          "warehouse",
+          "notice_status",
+          "logistics_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 133
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/finished-goods-transfer",
+      "name": "get_finished_goods_transfer",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "transfer_no",
+          "item_code",
+          "source_warehouse",
+          "target_warehouse",
+          "transfer_status",
+          "review_status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 140
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/inventory-material-retention-report",
+      "name": "get_inventory_material_retention_report",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "report_no",
+          "item_code",
+          "warehouse",
+          "retention_level",
+          "status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 130
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/items/{item_code}/stock-ledger",
+      "name": "list_stock_ledger",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [
+          "item_code"
+        ],
+        "query": [
+          "company",
+          "warehouse",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 143
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/items/{item_code}/stock-summary",
+      "name": "get_stock_summary",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [
+          "item_code"
+        ],
+        "query": [
+          "company",
+          "warehouse"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 142
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/material-counts",
+      "name": "get_material_counts",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "keyword",
+          "warehouse",
+          "count_status",
+          "review_status",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 128
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/material-inventory-report",
+      "name": "get_material_inventory_report",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "report_no",
+          "item_code",
+          "warehouse",
+          "business_type",
+          "status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 129
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/material-transfers",
+      "name": "get_material_transfers",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "keyword",
+          "source_warehouse",
+          "target_warehouse",
+          "status",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 127
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/sales-inventory/sales-channels",
+      "name": "frontend_readiness_sales_channels",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "dict_type",
+        "dict_code",
+        "dict_name",
+        "status",
+        "source",
+        "updated_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 222
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/sales-inventory/sales-invoices",
+      "name": "frontend_readiness_sales_invoices",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "sales_invoice",
+        "company",
+        "sales_order",
+        "customer",
+        "grand_total",
+        "paid_amount",
+        "outstanding_amount",
+        "posting_date",
+        "status"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 24
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/sales-order-fulfillment",
+      "name": "get_sales_order_fulfillment",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "item_code",
+          "warehouse",
+          "item_name"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "company",
+        "items.sales_order",
+        "items.item_code",
+        "items.warehouse",
+        "items.ordered_qty",
+        "items.actual_qty",
+        "items.fulfillment_rate"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 147
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/sales-orders",
+      "name": "list_sales_orders",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "order_no",
+          "keyword",
+          "company",
+          "customer",
+          "item_code",
+          "item_name",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "name",
+        "company",
+        "customer",
+        "transaction_date",
+        "delivery_date",
+        "status",
+        "docstatus",
+        "grand_total",
+        "currency"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 123
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/sales-inventory/sales-orders/drafts",
+      "name": "create_sales_order_draft",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 125
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+      "name": "cancel_sales_order_draft",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [
+          "draft_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 126
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/sales-orders/{name}",
+      "name": "get_sales_order_detail",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [
+          "name"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 124
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/semi-finished-inventory",
+      "name": "get_semi_finished_inventory",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "record_no",
+          "item_code",
+          "warehouse",
+          "process_stage",
+          "status",
+          "keyword",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 131
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/stock-ledger",
+      "name": "list_stock_ledger_catalog",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 141
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/sales-inventory/suppliers",
+      "name": "frontend_readiness_suppliers",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "name",
+        "supplier_name",
+        "disabled"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 219
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/sales-inventory/warehouses",
+      "name": "list_warehouses",
+      "tags": [
+        "sales_inventory"
+      ],
+      "endpoint_module": "app.routers.sales_inventory",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "name",
+        "company",
+        "warehouse_name",
+        "disabled"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 2,
+      "registered_order": 144
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/sales-inventory/warehouses",
+      "name": "frontend_readiness_warehouses",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "name",
+        "company",
+        "warehouse_name",
+        "disabled"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 2,
+      "registered_order": 221
+    },
+    {
+      "class": "C",
+      "method": "POST",
+      "path": "/api/style-profit/readiness/profit-flow",
+      "name": "frontend_readiness_write_style_profit_flow",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "snapshot_no",
+        "company",
+        "sales_order",
+        "item_code",
+        "revenue_amount",
+        "actual_total_cost",
+        "standard_total_cost",
+        "profit_amount",
+        "profit_rate",
+        "snapshot_status",
+        "allocation_status",
+        "formula_version"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "do_not_connect_as_write",
+      "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 43
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/style-profit/style-costs",
+      "name": "frontend_readiness_style_costs",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "snapshot_no",
+        "company",
+        "item_code",
+        "sales_order",
+        "from_date",
+        "to_date",
+        "revenue_amount",
+        "actual_total_cost",
+        "standard_total_cost",
+        "profit_amount",
+        "profit_rate",
+        "snapshot_status",
+        "allocation_status",
+        "formula_version"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 27
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/subcontract/",
+      "name": "list_subcontract_order",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [],
+        "query": [
+          "supplier",
+          "status",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "subcontract_no",
+        "supplier",
+        "item_code",
+        "company",
+        "bom_id",
+        "process_name",
+        "planned_qty",
+        "status",
+        "created_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 45
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/subcontract/",
+      "name": "create_subcontract_order",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 44
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/subcontract/factories",
+      "name": "frontend_readiness_factories",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "company",
+        "supplier",
+        "factory_name",
+        "factory_code",
+        "review_status",
+        "follow_up_status"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 5
+    },
+    {
+      "class": "D",
+      "method": "POST",
+      "path": "/api/subcontract/internal/stock-sync/run-once",
+      "name": "run_subcontract_stock_sync_once",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [],
+        "query": [
+          "batch_size",
+          "dry_run",
+          "stock_action"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
+      "duplicate_method_path_count": 1,
+      "registered_order": 53
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/subcontract/material-issues",
+      "name": "frontend_readiness_subcontract_material_issues",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "subcontract_no",
+        "company",
+        "supplier",
+        "item_code",
+        "material_item_code",
+        "warehouse",
+        "required_qty",
+        "issued_qty",
+        "pending_qty",
+        "status"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 19
+    },
+    {
+      "class": "C",
+      "method": "POST",
+      "path": "/api/subcontract/readiness/subcontract-flow",
+      "name": "frontend_readiness_write_subcontract_flow",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "subcontract_no",
+        "supplier",
+        "item_code",
+        "material_item_code",
+        "issued_qty",
+        "received_qty",
+        "accepted_qty",
+        "planned_return_qty",
+        "returned_qty",
+        "statement_no",
+        "ending_payable",
+        "status"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "do_not_connect_as_write",
+      "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 39
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/subcontract/receipts",
+      "name": "frontend_readiness_subcontract_receipts",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "subcontract_no",
+        "company",
+        "supplier",
+        "item_code",
+        "receipt_batch_no",
+        "received_qty",
+        "accepted_qty",
+        "rejected_qty",
+        "receipt_warehouse",
+        "status"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 20
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/subcontract/return-materials",
+      "name": "frontend_readiness_subcontract_return_materials",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "subcontract_no",
+        "company",
+        "supplier",
+        "item_code",
+        "material_item_code",
+        "planned_return_qty",
+        "returned_qty",
+        "pending_qty",
+        "status"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 21
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/subcontract/settlement-candidates",
+      "name": "list_subcontract_settlement_candidates",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "supplier",
+          "from_date",
+          "to_date",
+          "item_code",
+          "process_name",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "inspection_id",
+        "settlement_line_key",
+        "subcontract_id",
+        "subcontract_no",
+        "company",
+        "supplier",
+        "item_code",
+        "process_name",
+        "receipt_batch_no",
+        "inspected_at",
+        "inspected_by",
+        "inspected_qty",
+        "accepted_qty",
+        "rejected_qty",
+        "rejected_rate",
+        "subcontract_rate",
+        "gross_amount",
+        "deduction_amount",
+        "net_amount",
+        "settlement_status",
+        "statement_id",
+        "statement_no"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 46
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/subcontract/settlement-locks",
+      "name": "lock_subcontract_settlement",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 48
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/subcontract/settlement-locks/release",
+      "name": "release_subcontract_settlement_locks",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 49
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/subcontract/settlement-preview",
+      "name": "preview_subcontract_settlement",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 47
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/subcontract/{order_id}",
+      "name": "get_subcontract_order_detail",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [
+          "order_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 50
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/subcontract/{order_id}/inspect",
+      "name": "inspect_subcontract",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [
+          "order_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 55
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/subcontract/{order_id}/issue-material",
+      "name": "issue_material",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [
+          "order_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 51
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/subcontract/{order_id}/receive",
+      "name": "receive_subcontract",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [
+          "order_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 54
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/subcontract/{order_id}/stock-sync/retry",
+      "name": "retry_subcontract_stock_sync",
+      "tags": [
+        "subcontract"
+      ],
+      "endpoint_module": "app.routers.subcontract",
+      "request_params": {
+        "path": [
+          "order_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 52
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/approval-flows",
+      "name": "get_system_approval_flows",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "audit_type",
+          "status",
+          "keyword",
+          "start_date",
+          "end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "flow_key",
+        "title",
+        "audit_type",
+        "status",
+        "sender",
+        "created_by",
+        "created_at",
+        "sent_at",
+        "last_modified_by",
+        "last_modified_at",
+        "nodes",
+        "actions"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 210
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/configs/catalog",
+      "name": "get_system_config_catalog",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "module",
+          "config_group",
+          "source",
+          "is_sensitive"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 207
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/dictionaries/catalog",
+      "name": "get_system_dictionary_catalog",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "dict_type",
+          "status",
+          "source"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 208
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/document-codes",
+      "name": "get_system_document_codes",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "document_type",
+          "status",
+          "keyword",
+          "updated_start_date",
+          "updated_end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 216
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/health/summary",
+      "name": "get_system_health_summary",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 209
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/integration-platforms",
+      "name": "get_system_integration_platforms",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "platform_type",
+          "status",
+          "endpoint_mode",
+          "keyword",
+          "updated_start_date",
+          "updated_end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 213
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/message-notification-settings",
+      "name": "get_system_message_notification_settings",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "channel",
+          "status",
+          "target_scope",
+          "keyword",
+          "updated_start_date",
+          "updated_end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 217
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/operation-logs",
+      "name": "get_system_operation_logs",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "module",
+          "operation_type",
+          "result_status",
+          "operator",
+          "keyword",
+          "operated_start_date",
+          "operated_end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 215
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/organization-frameworks",
+      "name": "get_system_organization_frameworks",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "org_level",
+          "status",
+          "keyword",
+          "effective_start_date",
+          "effective_end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 212
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/preference-settings",
+      "name": "get_system_preference_settings",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "preference_scope",
+          "status",
+          "keyword",
+          "updated_start_date",
+          "updated_end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 218
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/system-announcements",
+      "name": "get_system_announcements",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "category",
+          "status",
+          "target_scope",
+          "keyword",
+          "published_start_date",
+          "published_end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 214
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/system/users/catalog",
+      "name": "get_system_user_catalog",
+      "tags": [
+        "system_management"
+      ],
+      "endpoint_module": "app.routers.system_management",
+      "request_params": {
+        "path": [],
+        "query": [
+          "role",
+          "status",
+          "keyword",
+          "start_date",
+          "end_date"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 211
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/alerts",
+      "name": "get_stock_alerts",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "alert_type"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 172
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/batches",
+      "name": "list_batches",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "batch_no",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 173
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/batches/{batch_no}",
+      "name": "get_batch_detail",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "batch_no"
+        ],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 174
+    },
+    {
+      "class": "D",
+      "method": "GET",
+      "path": "/api/warehouse/diagnostic",
+      "name": "get_warehouse_diagnostic",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "诊断接口; 运维排障用途",
+      "duplicate_method_path_count": 1,
+      "registered_order": 179
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/export",
+      "name": "export_warehouse_readonly_csv",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "dataset",
+          "company",
+          "warehouse",
+          "item_code",
+          "batch_no",
+          "serial_no",
+          "from_date",
+          "to_date",
+          "alert_type",
+          "limit"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 178
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/factory-return-material-report",
+      "name": "list_factory_return_material_report",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "status"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 169
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/warehouse/finished-goods-inbound",
+      "name": "frontend_readiness_finished_goods_inbound",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "reservation_no",
+        "item_code",
+        "item_name",
+        "warehouse",
+        "reserve_qty",
+        "inbound_qty",
+        "pending_inbound_qty",
+        "reserve_status",
+        "inbound_status",
+        "reserved_date",
+        "expected_inbound_date",
+        "owner",
+        "ref_no",
+        "company"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 22
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/finished-goods-inbound-candidates",
+      "name": "list_finished_goods_inbound_candidates",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "item_code"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 171
+    },
+    {
+      "class": "D",
+      "method": "POST",
+      "path": "/api/warehouse/internal/stock-entry-sync/run-once",
+      "name": "run_warehouse_stock_entry_sync_once",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
+      "duplicate_method_path_count": 1,
+      "registered_order": 184
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/warehouse/inventory-balance-reconciliation",
+      "name": "frontend_readiness_inventory_balance_reconciliation",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "company",
+        "warehouse",
+        "item_code",
+        "book_qty",
+        "actual_qty",
+        "diff_qty",
+        "status",
+        "biz_date",
+        "owner",
+        "ref_no"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 26
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/inventory-counts",
+      "name": "list_inventory_counts",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "status",
+          "from_date",
+          "to_date",
+          "item_code"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 191
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/warehouse/inventory-counts",
+      "name": "create_inventory_count",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 185
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/inventory-counts/{count_id}",
+      "name": "get_inventory_count",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "count_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 190
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/warehouse/inventory-counts/{count_id}/cancel",
+      "name": "cancel_inventory_count",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "count_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 189
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/warehouse/inventory-counts/{count_id}/confirm",
+      "name": "confirm_inventory_count",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "count_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 188
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/warehouse/inventory-counts/{count_id}/submit",
+      "name": "submit_inventory_count",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "count_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 186
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/warehouse/inventory-counts/{count_id}/variance-review",
+      "name": "variance_review_inventory_count",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "count_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 187
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/other-inbound",
+      "name": "list_other_inbound",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "status"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 167
+    },
+    {
+      "class": "B",
+      "method": "GET",
+      "path": "/api/warehouse/purchase-receipts",
+      "name": "frontend_readiness_purchase_receipts",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "receipt_no",
+        "purchase_no",
+        "company",
+        "supplier_name",
+        "item_code",
+        "material_item_code",
+        "warehouse",
+        "received_qty",
+        "accepted_qty",
+        "posting_date",
+        "status"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "temporary_dev_only",
+      "risk_note": "dev/test only; 生产环境必须关闭",
+      "duplicate_method_path_count": 1,
+      "registered_order": 17
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/purchase-return-outbound",
+      "name": "list_purchase_return_outbound",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "status"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 168
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/semi-finished-outbound",
+      "name": "list_semi_finished_outbound",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "status"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 170
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/serial-numbers",
+      "name": "list_serial_numbers",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "batch_no",
+          "serial_no",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 175
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/serial-numbers/{serial_no}",
+      "name": "get_serial_number_detail",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "serial_no"
+        ],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 176
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/warehouse/stock-entry-drafts",
+      "name": "create_stock_entry_draft",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 180
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/stock-entry-drafts/{draft_id}",
+      "name": "get_stock_entry_draft",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "draft_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 182
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+      "name": "cancel_stock_entry_draft",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "draft_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 181
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/stock-entry-drafts/{draft_id}/outbox-status",
+      "name": "get_stock_entry_outbox_status",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [
+          "draft_id"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 183
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/stock-ledger",
+      "name": "list_stock_ledger",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "company",
+        "warehouse",
+        "item_code",
+        "posting_date",
+        "voucher_type",
+        "voucher_no",
+        "actual_qty",
+        "qty_after_transaction",
+        "valuation_rate"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 165
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/stock-summary",
+      "name": "get_stock_summary",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 166
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/warehouse/traceability",
+      "name": "list_traceability",
+      "tags": [
+        "warehouse"
+      ],
+      "endpoint_module": "app.routers.warehouse",
+      "request_params": {
+        "path": [],
+        "query": [
+          "company",
+          "warehouse",
+          "item_code",
+          "batch_no",
+          "serial_no",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 177
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/workshop/daily-wages",
+      "name": "list_daily_wages",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [],
+        "query": [
+          "employee",
+          "from_date",
+          "to_date",
+          "process_name",
+          "item_code",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "employee",
+        "work_date",
+        "process_name",
+        "item_code",
+        "register_qty",
+        "reversal_qty",
+        "net_qty",
+        "wage_amount"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 92
+    },
+    {
+      "class": "D",
+      "method": "POST",
+      "path": "/api/workshop/internal/job-card-sync/run-once",
+      "name": "run_job_card_sync_once",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [],
+        "query": [
+          "batch_size",
+          "dry_run",
+          "include_forbidden_diagnostics"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.dry_run",
+        "data.forbidden_diagnostics_enabled",
+        "data.would_process_count",
+        "data.processed_count",
+        "data.succeeded_count",
+        "data.failed_count",
+        "data.forbidden_diagnostic_count",
+        "data.skipped_forbidden_count",
+        "data.blocked_scope_count",
+        "data.dead_count",
+        "data.would_process",
+        "data.processed",
+        "data.succeeded",
+        "data.failed",
+        "data.forbidden_diagnostic",
+        "data.skipped_forbidden",
+        "data.blocked_scope",
+        "data.dead"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "not_for_page_direct_use",
+      "risk_note": "内部 worker/运维接口; 不给前端页面直接接入",
+      "duplicate_method_path_count": 1,
+      "registered_order": 95
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/workshop/job-cards/{job_card}/summary",
+      "name": "get_job_card_summary",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [
+          "job_card"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 93
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/workshop/job-cards/{job_card}/sync",
+      "name": "retry_job_card_sync",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [
+          "job_card"
+        ],
+        "query": [],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 94
+    },
+    {
+      "class": "C",
+      "method": "POST",
+      "path": "/api/workshop/readiness/wage-flow",
+      "name": "frontend_readiness_write_workshop_wage_flow",
+      "tags": [
+        "frontend_readiness"
+      ],
+      "endpoint_module": "app.routers.frontend_readiness",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "work_order",
+        "job_card",
+        "process_name",
+        "item_code",
+        "completed_qty",
+        "unit_rate",
+        "wage_amount",
+        "status"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "do_not_connect_as_write",
+      "risk_note": "readiness flow 回执桩; 不得当作真实写接口",
+      "duplicate_method_path_count": 1,
+      "registered_order": 42
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/workshop/tickets",
+      "name": "list_tickets",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [],
+        "query": [
+          "employee",
+          "job_card",
+          "item_code",
+          "process_name",
+          "operation_type",
+          "work_date",
+          "from_date",
+          "to_date",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [
+        "id",
+        "ticket_no",
+        "ticket_key",
+        "job_card",
+        "work_order",
+        "bom_id",
+        "item_code",
+        "employee",
+        "process_name",
+        "color",
+        "size",
+        "operation_type",
+        "qty",
+        "unit_wage",
+        "wage_amount",
+        "work_date",
+        "source",
+        "source_ref",
+        "sync_status",
+        "created_by",
+        "created_at"
+      ],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 91
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/workshop/tickets/batch",
+      "name": "batch_tickets",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 90
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/workshop/tickets/register",
+      "name": "register_ticket",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 88
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/workshop/tickets/reversal",
+      "name": "reverse_ticket",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 89
+    },
+    {
+      "class": "A",
+      "method": "GET",
+      "path": "/api/workshop/wage-rates",
+      "name": "list_wage_rates",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [],
+        "query": [
+          "item_code",
+          "company",
+          "is_global",
+          "process_name",
+          "status",
+          "page",
+          "page_size"
+        ],
+        "body": []
+      },
+      "response_fields": [],
+      "is_paginated": true,
+      "requires_login": true,
+      "is_real_write_db": false,
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选",
+      "duplicate_method_path_count": 1,
+      "registered_order": 96
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/workshop/wage-rates",
+      "name": "create_wage_rate",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 97
+    },
+    {
+      "class": "A",
+      "method": "POST",
+      "path": "/api/workshop/wage-rates/{rate_id}/deactivate",
+      "name": "deactivate_wage_rate",
+      "tags": [
+        "workshop"
+      ],
+      "endpoint_module": "app.routers.workshop",
+      "request_params": {
+        "path": [
+          "rate_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 98
+    }
+  ]
+}
