@@ -87,6 +87,7 @@ FRONTEND_CONTRACT_MANAGE = "frontend_contract:manage"
 FRONTEND_CONTRACT_DIAGNOSTIC = "frontend_contract:diagnostic"
 
 SALES_INVENTORY_READ = "sales_inventory:read"
+SALES_INVENTORY_WRITE = "sales_inventory:write"
 SALES_INVENTORY_EXPORT = "sales_inventory:export"
 SALES_INVENTORY_DIAGNOSTIC = "sales_inventory:diagnostic"
 
@@ -226,6 +227,7 @@ ALL_FRONTEND_CONTRACT_ACTIONS = {
 
 ALL_SALES_INVENTORY_ACTIONS = {
     SALES_INVENTORY_READ,
+    SALES_INVENTORY_WRITE,
     SALES_INVENTORY_EXPORT,
     SALES_INVENTORY_DIAGNOSTIC,
 }
@@ -359,6 +361,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_JOB_CARD_SYNC,
         STYLE_PROFIT_READ,
         SALES_INVENTORY_READ,
+        SALES_INVENTORY_WRITE,
     },
     "Finance Manager": {
         STYLE_PROFIT_READ,
@@ -374,6 +377,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
     "Sales Manager": {
         STYLE_PROFIT_READ,
         SALES_INVENTORY_READ,
+        SALES_INVENTORY_WRITE,
         SALES_INVENTORY_EXPORT,
         MASTER_DATA_READ,
         SAMPLE_READ,

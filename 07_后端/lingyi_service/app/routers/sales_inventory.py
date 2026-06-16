@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi import Body
 from fastapi import Depends
+from fastapi import Header
 from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Request
@@ -29,6 +30,7 @@ from app.core.error_codes import RESOURCE_ACCESS_DENIED
 from app.core.error_codes import message_of
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
+from app.core.permissions import SALES_INVENTORY_WRITE
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import is_request_id_valid
@@ -53,6 +55,8 @@ from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
 from app.services.frontend_readiness_seed_reader import dev_seed_page_for_user
 from app.services.permission_service import PermissionService
+from app.services.audit_service import AuditContext
+from app.services.audit_service import AuditService
 from app.services.sales_inventory_service import SalesInventoryService
 from app.services.sales_inventory_service import SalesInventoryServiceError
 
@@ -173,6 +177,17 @@ def _validate_local_sales_order_write_gate(
     draft_id: int | None = None,
     cancel_reason: str | None = None,
 ) -> str:
+    normalized_scenario_tag = _scope_text(scenario_tag)
+    legacy_gate_requested = bool(
+        normalized_scenario_tag and SALES_ORDER_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag)
+    )
+    if not legacy_gate_requested:
+        if expected_operation not in {"create_draft", "cancel_draft"}:
+            _raise_sales_order_idempotency_conflict("operation 非法")
+        if not _scope_text(idempotency_key):
+            _raise_sales_order_idempotency_conflict("idempotency_key 不能为空")
+        return normalized_scenario_tag or ""
+
     if not _is_local_sales_order_write_enabled():
         _raise_sales_order_idempotency_conflict("仅允许本地开发测试库执行销售订单写入")
 
@@ -198,7 +213,6 @@ def _validate_local_sales_order_write_gate(
     if request_id != request_id_header:
         _raise_sales_order_idempotency_conflict("request_id 与 Header 不一致")
 
-    normalized_scenario_tag = _scope_text(scenario_tag)
     if normalized_scenario_tag is None:
         _raise_sales_order_idempotency_conflict("scenario_tag 载体缺失")
     if SALES_ORDER_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag) is None:
@@ -626,6 +640,20 @@ def list_sales_orders(
     parsed_from_date = _parse_optional_date(from_date, "from_date")
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
+    native_items = _write_service(session).list_local_sales_orders(
+        order_no=_scope_text(order_no),
+        keyword=_scope_text(keyword),
+        company=company,
+        customer=customer,
+        item_code=item_code,
+        item_name=_scope_text(item_name),
+        from_date=parsed_from_date,
+        to_date=parsed_to_date,
+    )
+    if native_items:
+        filtered_items = [item for item in native_items if _scope_allowed(item, permissions)]
+        paged_items, total = _paginate_list_items(filtered_items, page=page, page_size=page_size)
+        return _ok({"items": paged_items, "total": total, "page": page, "page_size": page_size})
     if _is_local_sales_inventory_read_enabled():
         local_items = _write_service(session).list_local_sales_orders(
             order_no=_scope_text(order_no),
@@ -708,7 +736,10 @@ def get_sales_order_detail(
         module="sales_inventory",
         resource_type="sales_order",
     )
-    if _is_local_sales_inventory_read_enabled():
+    local_first = _write_service(session).get_local_sales_order(name=name)
+    if local_first is not None:
+        data = local_first
+    elif _is_local_sales_inventory_read_enabled():
         data = _write_service(session).get_local_sales_order(name=name)
         if data is None:
             _raise_hidden_sales_order_not_found()
@@ -889,10 +920,13 @@ def list_sales_invoices(
 def create_sales_order_draft(
     request: Request,
     payload: SalesOrderDraftCreateRequest = Body(...),
+    idempotency_key_header: str | None = Header(default=None, alias="Idempotency-Key"),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
-    action = SALES_INVENTORY_READ
+    action = SALES_INVENTORY_WRITE
+    if not payload.idempotency_key and idempotency_key_header:
+        payload.idempotency_key = idempotency_key_header
     permission_service = PermissionService(session=session)
     permission_service.require_action(
         current_user=current_user,
@@ -917,9 +951,35 @@ def create_sales_order_draft(
             current_user=current_user.username,
             scenario_tag=scenario_tag,
         )
+        AuditService(session).record_success(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_order",
+            resource_id=int(data.id),
+            resource_no=str(data.sales_order_no),
+            before_data=None,
+            after_data=jsonable_encoder(data),
+            context=AuditContext.from_request(request),
+        )
         session.commit()
     except SalesInventoryServiceError as exc:
         session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_order",
+            resource_id=None,
+            resource_no=payload.sales_order_no,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
         _raise_sales_inventory_service_error(exc)
     except Exception:
         session.rollback()
@@ -937,7 +997,7 @@ def cancel_sales_order_draft(
 ):
     if draft_id <= 0:
         _raise_sales_order_idempotency_conflict("draft_id 载体缺失或格式非法")
-    action = SALES_INVENTORY_READ
+    action = SALES_INVENTORY_WRITE
     permission_service = PermissionService(session=session)
     permission_service.require_action(
         current_user=current_user,
@@ -977,9 +1037,35 @@ def cancel_sales_order_draft(
             reason=payload.reason,
             cancelled_by=current_user.username,
         )
+        AuditService(session).record_success(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_order",
+            resource_id=int(data.id),
+            resource_no=str(data.sales_order_no),
+            before_data=None,
+            after_data=jsonable_encoder(data),
+            context=AuditContext.from_request(request),
+        )
         session.commit()
     except SalesInventoryServiceError as exc:
         session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_order",
+            resource_id=int(draft_id),
+            resource_no=payload.sales_order_no_or_source_order_ref,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
         _raise_sales_inventory_service_error(exc)
     except Exception:
         session.rollback()

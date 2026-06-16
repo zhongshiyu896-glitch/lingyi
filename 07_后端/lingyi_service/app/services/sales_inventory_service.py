@@ -7,11 +7,15 @@ from datetime import datetime
 from datetime import timezone
 from decimal import Decimal
 import hashlib
+import json
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderIdempotency
+from app.models.sales_order import LySalesOrderItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
@@ -183,6 +187,161 @@ class SalesInventoryService:
         session = self._require_session()
 
         company = self._require_text(payload.company, "company")
+        operation = self._text(payload.operation) or "create_draft"
+        if operation not in {"create", "create_draft"}:
+            raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "operation 非法")
+        sales_order_no = self._text(payload.sales_order_no) or self._next_sales_order_no(company=company)
+        source_order_ref = self._text(payload.source_order_ref) or sales_order_no
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        customer = self._text(payload.customer)
+        currency = self._text(payload.currency) or "CNY"
+        transaction_date = payload.transaction_date
+        delivery_date = payload.delivery_date
+
+        line_rows: list[dict[str, Any]] = []
+        grand_total = Decimal("0")
+        for index, line in enumerate(payload.items, start=1):
+            item_code = self._require_text(line.item_code, f"items[{index}].item_code")
+            qty = self._positive_decimal(line.qty, f"items[{index}].qty")
+            rate = self._decimal_or_none(line.rate)
+            amount = qty * rate if rate is not None else None
+            if amount is not None:
+                grand_total += amount
+            line_rows.append(
+                {
+                    "item_code": item_code,
+                    "item_name": self._text(line.item_name),
+                    "qty": qty,
+                    "rate": rate,
+                    "amount": amount,
+                    "uom": self._require_text(line.uom, f"items[{index}].uom"),
+                    "warehouse": self._text(line.warehouse),
+                    "delivery_date": line.delivery_date,
+                }
+            )
+
+        request_hash = self._native_sales_order_request_hash(
+            {
+                "company": company,
+                "sales_order_no": sales_order_no,
+                "source_order_ref": source_order_ref,
+                "customer": customer,
+                "currency": currency,
+                "transaction_date": transaction_date.isoformat() if transaction_date else None,
+                "delivery_date": delivery_date.isoformat() if delivery_date else None,
+                "items": [
+                    {
+                        "item_code": row["item_code"],
+                        "item_name": row["item_name"],
+                        "qty": str(row["qty"]),
+                        "rate": str(row["rate"]) if row["rate"] is not None else None,
+                        "uom": row["uom"],
+                        "warehouse": row["warehouse"],
+                        "delivery_date": row["delivery_date"].isoformat() if row["delivery_date"] else None,
+                    }
+                    for row in line_rows
+                ],
+            }
+        )
+
+        existing_idem = (
+            session.query(LySalesOrderIdempotency)
+            .filter(
+                LySalesOrderIdempotency.company == company,
+                LySalesOrderIdempotency.operation == "create_draft",
+                LySalesOrderIdempotency.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing_idem is not None:
+            if str(existing_idem.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "幂等键冲突且请求内容不一致")
+            existing_order = session.query(LySalesOrder).filter(LySalesOrder.id == int(existing_idem.sales_order_id)).first()
+            if existing_order is None:
+                raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
+            return self._build_native_sales_order_draft_data(existing_order)
+
+        existing_by_no = (
+            session.query(LySalesOrder)
+            .filter(
+                LySalesOrder.company == company,
+                LySalesOrder.sales_order_no == sales_order_no,
+            )
+            .first()
+        )
+        if existing_by_no is not None:
+            raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "销售订单号已存在")
+
+        row = LySalesOrder(
+            company=company,
+            sales_order_no=sales_order_no,
+            source_order_ref=source_order_ref,
+            customer=customer,
+            status="draft",
+            docstatus=0,
+            transaction_date=transaction_date,
+            delivery_date=delivery_date,
+            currency=currency,
+            grand_total=grand_total,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            scenario_tag=self._text(scenario_tag),
+            payload={
+                "scenario_tag": self._text(scenario_tag),
+                "source_order_ref": source_order_ref,
+            },
+            created_by=current_user,
+        )
+        session.add(row)
+        session.flush()
+
+        for index, item in enumerate(line_rows, start=1):
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(row.id),
+                    company=company,
+                    line_no=index,
+                    sales_order_item=f"{sales_order_no}-{index:03d}",
+                    item_code=item["item_code"],
+                    item_name=item["item_name"],
+                    qty=item["qty"],
+                    planned_qty=Decimal("0"),
+                    delivered_qty=Decimal("0"),
+                    rate=item["rate"],
+                    amount=item["amount"],
+                    uom=item["uom"],
+                    warehouse=item["warehouse"],
+                    delivery_date=item["delivery_date"] or delivery_date,
+                )
+            )
+        session.flush()
+
+        response = self._build_native_sales_order_draft_data(row)
+        session.add(
+            LySalesOrderIdempotency(
+                company=company,
+                operation="create_draft",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                sales_order_id=int(row.id),
+                response_json=self._sales_order_draft_response_json(response),
+                created_by=current_user,
+            )
+        )
+        session.flush()
+        return response
+
+    def create_sales_order_draft_legacy_warehouse(
+        self,
+        *,
+        payload: SalesOrderDraftCreateRequest,
+        current_user: str,
+        scenario_tag: str,
+    ) -> SalesOrderDraftData:
+        """Legacy TASK-011B warehouse-draft implementation kept for old probes."""
+        session = self._require_session()
+
+        company = self._require_text(payload.company, "company")
         sales_order_no = self._require_text(payload.sales_order_no, "sales_order_no")
         source_order_ref = self._require_text(payload.source_order_ref, "source_order_ref")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
@@ -325,6 +484,56 @@ class SalesInventoryService:
         cancelled_by: str,
     ) -> SalesOrderDraftData:
         session = self._require_session()
+        native_order = session.query(LySalesOrder).filter(LySalesOrder.id == int(draft_id)).first()
+        if native_order is not None:
+            if str(native_order.status) == "cancelled":
+                raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_ALREADY_CANCELLED", "草稿已取消")
+            if str(native_order.status) not in {"draft", "planned"}:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_INVALID_STATUS", "当前状态不允许取消")
+            now = datetime.now(timezone.utc)
+            cancel_reason = self._require_text(reason, "reason")
+            request_hash = self._native_sales_order_request_hash(
+                {
+                    "draft_id": int(native_order.id),
+                    "company": str(native_order.company),
+                    "sales_order_no": str(native_order.sales_order_no),
+                    "reason": cancel_reason,
+                }
+            )
+            idem_key = f"cancel:{native_order.id}:{cancel_reason}"
+            existing_idem = (
+                session.query(LySalesOrderIdempotency)
+                .filter(
+                    LySalesOrderIdempotency.company == str(native_order.company),
+                    LySalesOrderIdempotency.operation == "cancel_draft",
+                    LySalesOrderIdempotency.idempotency_key == idem_key,
+                )
+                .first()
+            )
+            if existing_idem is not None and str(existing_idem.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "幂等键冲突且请求内容不一致")
+            native_order.status = "cancelled"
+            native_order.docstatus = 2
+            native_order.cancelled_by = cancelled_by
+            native_order.cancelled_at = now
+            native_order.cancel_reason = cancel_reason
+            native_order.updated_by = cancelled_by
+            response = self._build_native_sales_order_draft_data(native_order)
+            if existing_idem is None:
+                session.add(
+                    LySalesOrderIdempotency(
+                        company=str(native_order.company),
+                        operation="cancel_draft",
+                        idempotency_key=idem_key,
+                        request_hash=request_hash,
+                        sales_order_id=int(native_order.id),
+                        response_json=self._sales_order_draft_response_json(response),
+                        created_by=cancelled_by,
+                    )
+                )
+            session.flush()
+            return response
+
         draft = self._find_sales_order_draft(draft_id=draft_id)
         if draft is None:
             raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
@@ -348,6 +557,15 @@ class SalesInventoryService:
         return self._build_sales_order_draft_data(draft)
 
     def get_sales_order_draft_gate_carriers(self, *, draft_id: int) -> dict[str, str]:
+        native = self._require_session().query(LySalesOrder).filter(LySalesOrder.id == int(draft_id)).first()
+        if native is not None:
+            return {
+                "idempotency_key": str(native.idempotency_key),
+                "source_order_ref": self._text(native.source_order_ref) or str(native.sales_order_no),
+                "sales_order_no": str(native.sales_order_no),
+                "company": str(native.company),
+                "scenario_tag": self._text(native.scenario_tag) or "",
+            }
         draft = self._find_sales_order_draft(draft_id=draft_id)
         if draft is None:
             raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
@@ -380,7 +598,13 @@ class SalesInventoryService:
         )
         if company:
             query = query.filter(LyWarehouseStockEntryDraft.company == company)
-        rows = query.order_by(LyWarehouseStockEntryDraft.id.desc()).all()
+        try:
+            rows = query.order_by(LyWarehouseStockEntryDraft.id.desc()).all()
+        except Exception as exc:
+            if self._is_missing_legacy_sales_order_table(exc):
+                rows = []
+            else:
+                raise
 
         normalized_order_no = self._text(order_no)
         normalized_keyword = self._text(keyword)
@@ -389,9 +613,50 @@ class SalesInventoryService:
         normalized_item_name = self._text(item_name)
 
         items: list[SalesOrderListItem] = []
+        try:
+            native_query = session.query(LySalesOrder)
+            if company:
+                native_query = native_query.filter(LySalesOrder.company == company)
+            native_rows = native_query.order_by(LySalesOrder.id.desc()).all()
+        except Exception as exc:
+            if self._is_missing_native_sales_order_table(exc):
+                native_rows = []
+            else:
+                raise
+        for order in native_rows:
+            if normalized_order_no and normalized_order_no.lower() not in str(order.sales_order_no).lower():
+                continue
+            if normalized_customer and self._text(order.customer) != normalized_customer:
+                continue
+            if normalized_keyword:
+                keyword_haystack = " ".join(
+                    [
+                        str(order.sales_order_no),
+                        self._text(order.customer) or "",
+                        str(order.company),
+                        str(order.status),
+                    ]
+                )
+                if not self._contains_like(keyword_haystack, normalized_keyword):
+                    continue
+            if from_date is not None and (order.transaction_date is None or order.transaction_date < from_date):
+                continue
+            if to_date is not None and (order.transaction_date is None or order.transaction_date > to_date):
+                continue
+            order_items = self._native_sales_order_items(order_id=int(order.id))
+            if normalized_item_code and not any(item.item_code == normalized_item_code for item in order_items):
+                continue
+            if normalized_item_name and not any(
+                self._contains_like(item.item_name or item.item_code, normalized_item_name) for item in order_items
+            ):
+                continue
+            items.append(self._build_native_sales_order_list_item(order))
+
         for draft in rows:
             payload = self._sales_order_payload_for_draft(draft_id=int(draft.id))
             sales_order_no = self._text(payload.get("sales_order_no")) or str(draft.source_id)
+            if any(existing.name == sales_order_no for existing in items):
+                continue
             if normalized_order_no and normalized_order_no.lower() not in sales_order_no.lower():
                 continue
             payload_customer = self._text(payload.get("customer"))
@@ -438,12 +703,34 @@ class SalesInventoryService:
 
     def get_local_sales_order(self, *, name: str) -> SalesOrderDetailData | None:
         session = self._require_session()
-        drafts = (
-            session.query(LyWarehouseStockEntryDraft)
-            .filter(LyWarehouseStockEntryDraft.source_type == self._LOCAL_SALES_ORDER_SOURCE_TYPE)
-            .order_by(LyWarehouseStockEntryDraft.id.desc())
-            .all()
-        )
+        try:
+            native_order = (
+                session.query(LySalesOrder)
+                .filter(
+                    (LySalesOrder.sales_order_no == name) | (LySalesOrder.source_order_ref == name),
+                )
+                .order_by(LySalesOrder.id.desc())
+                .first()
+            )
+        except Exception as exc:
+            if self._is_missing_native_sales_order_table(exc):
+                native_order = None
+            else:
+                raise
+        if native_order is not None:
+            return self._build_native_sales_order_detail(native_order)
+
+        try:
+            drafts = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == self._LOCAL_SALES_ORDER_SOURCE_TYPE)
+                .order_by(LyWarehouseStockEntryDraft.id.desc())
+                .all()
+            )
+        except Exception as exc:
+            if self._is_missing_legacy_sales_order_table(exc):
+                return None
+            raise
         selected: LyWarehouseStockEntryDraft | None = None
         selected_payload: dict[str, Any] | None = None
         for draft in drafts:
@@ -3494,6 +3781,143 @@ class SalesInventoryService:
             cancel_reason=self._text(draft.cancel_reason),
             items=self._sales_order_draft_items(draft_id=int(draft.id)),
         )
+
+    def _native_sales_order_items(self, *, order_id: int) -> list[LySalesOrderItem]:
+        return (
+            self._require_session()
+            .query(LySalesOrderItem)
+            .filter(LySalesOrderItem.sales_order_id == int(order_id))
+            .order_by(LySalesOrderItem.line_no.asc(), LySalesOrderItem.id.asc())
+            .all()
+        )
+
+    @classmethod
+    def _native_status_display(cls, status: Any) -> str:
+        normalized = (str(status or "")).strip().lower()
+        if normalized == "cancelled":
+            return "Cancelled"
+        if normalized == "planned":
+            return "生产计划"
+        return "Draft"
+
+    @classmethod
+    def _native_draft_status(cls, status: Any) -> str:
+        return "cancelled" if (str(status or "").strip().lower() == "cancelled") else "draft"
+
+    def _build_native_sales_order_list_item(self, order: LySalesOrder) -> SalesOrderListItem:
+        return SalesOrderListItem(
+            name=str(order.sales_order_no),
+            company=str(order.company),
+            customer=self._text(order.customer),
+            transaction_date=order.transaction_date,
+            delivery_date=order.delivery_date,
+            status=self._native_status_display(order.status),
+            docstatus=int(order.docstatus or 0),
+            grand_total=Decimal(str(order.grand_total or 0)),
+            currency=self._text(order.currency) or "CNY",
+        )
+
+    def _build_native_sales_order_detail(self, order: LySalesOrder) -> SalesOrderDetailData:
+        return SalesOrderDetailData(
+            name=str(order.sales_order_no),
+            company=str(order.company),
+            customer=self._text(order.customer),
+            transaction_date=order.transaction_date,
+            delivery_date=order.delivery_date,
+            status=self._native_status_display(order.status),
+            docstatus=int(order.docstatus or 0),
+            grand_total=Decimal(str(order.grand_total or 0)),
+            currency=self._text(order.currency) or "CNY",
+            items=[
+                SalesOrderLineItem(
+                    name=str(item.sales_order_item),
+                    item_code=str(item.item_code),
+                    item_name=self._text(item.item_name) or str(item.item_code),
+                    qty=Decimal(str(item.qty)),
+                    delivered_qty=Decimal(str(item.delivered_qty or 0)),
+                    rate=self._decimal_or_none(item.rate),
+                    amount=self._decimal_or_none(item.amount),
+                    warehouse=self._text(item.warehouse),
+                    delivery_date=item.delivery_date or order.delivery_date,
+                )
+                for item in self._native_sales_order_items(order_id=int(order.id))
+            ],
+        )
+
+    def _build_native_sales_order_draft_data(self, order: LySalesOrder) -> SalesOrderDraftData:
+        return SalesOrderDraftData(
+            id=int(order.id),
+            sales_order_no=str(order.sales_order_no),
+            source_order_ref=self._text(order.source_order_ref) or str(order.sales_order_no),
+            company=str(order.company),
+            customer=self._text(order.customer),
+            status=self._native_draft_status(order.status),  # type: ignore[arg-type]
+            transaction_date=order.transaction_date,
+            delivery_date=order.delivery_date,
+            currency=self._text(order.currency) or "CNY",
+            grand_total=Decimal(str(order.grand_total or 0)),
+            idempotency_key=str(order.idempotency_key),
+            scenario_tag=self._text(order.scenario_tag) or "",
+            created_by=str(order.created_by),
+            created_at=order.created_at,
+            cancelled_by=self._text(order.cancelled_by),
+            cancelled_at=order.cancelled_at,
+            cancel_reason=self._text(order.cancel_reason),
+            items=[
+                SalesOrderDraftLineItemData(
+                    id=int(item.id),
+                    draft_id=int(order.id),
+                    item_code=str(item.item_code),
+                    qty=Decimal(str(item.qty)),
+                    rate=self._decimal_or_none(item.rate),
+                    amount=self._decimal_or_none(item.amount),
+                    uom=str(item.uom),
+                    warehouse=self._text(item.warehouse),
+                )
+                for item in self._native_sales_order_items(order_id=int(order.id))
+            ],
+        )
+
+    @staticmethod
+    def _native_sales_order_request_hash(payload: dict[str, Any]) -> str:
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
+    @staticmethod
+    def _sales_order_draft_response_json(response: SalesOrderDraftData) -> dict[str, Any]:
+        if hasattr(response, "model_dump"):
+            return response.model_dump(mode="json")
+        return json.loads(response.json())
+
+    def _next_sales_order_no(self, *, company: str) -> str:
+        today = date.today().strftime("%Y%m%d")
+        prefix = f"SO-{today}-"
+        latest = (
+            self._require_session()
+            .query(LySalesOrder)
+            .filter(
+                LySalesOrder.company == company,
+                LySalesOrder.sales_order_no.like(f"{prefix}%"),
+            )
+            .order_by(LySalesOrder.id.desc())
+            .first()
+        )
+        next_seq = 1
+        if latest is not None:
+            tail = str(latest.sales_order_no).replace(prefix, "", 1)
+            if tail.isdigit():
+                next_seq = int(tail) + 1
+        return f"{prefix}{next_seq:03d}"
+
+    @staticmethod
+    def _is_missing_native_sales_order_table(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "ly_sales_order" in message and ("no such table" in message or "does not exist" in message)
+
+    @staticmethod
+    def _is_missing_legacy_sales_order_table(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "ly_warehouse_stock_entry" in message and ("no such table" in message or "does not exist" in message)
 
     @classmethod
     def _normalize_reference_type(cls, value: str) -> str:

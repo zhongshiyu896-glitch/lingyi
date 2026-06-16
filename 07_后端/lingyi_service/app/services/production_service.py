@@ -42,6 +42,8 @@ from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionWorkOrderLink
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionFollowupTemplateListData
@@ -186,6 +188,12 @@ class ProductionService:
             from_status="planned",
             to_status="planned",
             action="plan_create",
+            operator=operator,
+        )
+        self._apply_native_sales_order_planned_qty(
+            sales_order=str(sales_order.name),
+            sales_order_item=str(target_item.name),
+            planned_qty=planned_qty,
             operator=operator,
         )
 
@@ -1779,6 +1787,10 @@ class ProductionService:
         request_id: str | None = None,
     ) -> tuple[Any, ERPNextSalesOrderItem, str]:
         sales_order_name = payload.sales_order.strip()
+        native_context = self._build_native_sales_order_context(payload=payload)
+        if native_context is not None:
+            return native_context
+
         sales_order = None
         try:
             sales_order = self.erp_adapter.get_sales_order(sales_order=sales_order_name)
@@ -1808,6 +1820,104 @@ class ProductionService:
         if not company:
             raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order company 缺失")
         return sales_order, target_item, company
+
+    def _build_native_sales_order_context(
+        self,
+        *,
+        payload: ProductionPlanCreateRequest,
+    ) -> tuple[ERPNextSalesOrder, ERPNextSalesOrderItem, str] | None:
+        try:
+            order = (
+                self.session.query(LySalesOrder)
+                .filter(LySalesOrder.sales_order_no == payload.sales_order.strip())
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_missing_native_sales_order_table(exc):
+                return None
+            raise DatabaseReadFailed() from exc
+        if order is None:
+            return None
+
+        status = str(order.status or "").strip().lower()
+        if status == "cancelled":
+            raise BusinessException(code=PRODUCTION_SO_CLOSED_OR_CANCELLED, message="Sales Order 已关闭或已取消")
+
+        try:
+            item_rows = (
+                self.session.query(LySalesOrderItem)
+                .filter(LySalesOrderItem.sales_order_id == int(order.id))
+                .order_by(LySalesOrderItem.line_no.asc(), LySalesOrderItem.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_missing_native_sales_order_table(exc):
+                return None
+            raise DatabaseReadFailed() from exc
+        if not item_rows:
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="Sales Order 行不存在")
+
+        sales_items = [
+            ERPNextSalesOrderItem(
+                name=str(row.sales_order_item),
+                item_code=str(row.item_code),
+                qty=Decimal(str(row.qty)),
+            )
+            for row in item_rows
+        ]
+        target_item = self._select_sales_order_item(
+            sales_items=sales_items,
+            item_code=payload.item_code.strip(),
+            sales_order_item=(payload.sales_order_item.strip() if payload.sales_order_item else None),
+        )
+        company = str(order.company or "").strip()
+        if not company:
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order company 缺失")
+        sales_order = ERPNextSalesOrder(
+            name=str(order.sales_order_no),
+            docstatus=int(order.docstatus or 0),
+            status="Draft" if status == "draft" else "To Deliver and Bill",
+            company=company,
+            customer=(str(order.customer) if order.customer else None),
+            items=tuple(sales_items),
+        )
+        return sales_order, target_item, company
+
+    def _apply_native_sales_order_planned_qty(
+        self,
+        *,
+        sales_order: str,
+        sales_order_item: str,
+        planned_qty: Decimal,
+        operator: str,
+    ) -> None:
+        try:
+            order = self.session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == sales_order).first()
+            if order is None:
+                return
+            line = (
+                self.session.query(LySalesOrderItem)
+                .filter(
+                    LySalesOrderItem.sales_order_id == int(order.id),
+                    LySalesOrderItem.sales_order_item == sales_order_item,
+            )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_missing_native_sales_order_table(exc):
+                return
+            raise DatabaseReadFailed() from exc
+        if line is None:
+            return
+        line.planned_qty = Decimal(str(line.planned_qty or 0)) + Decimal(str(planned_qty))
+        if str(order.status) == "draft":
+            order.status = "planned"
+        order.updated_by = operator
+
+    @staticmethod
+    def _is_missing_native_sales_order_table(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "ly_sales_order" in message and ("no such table" in message or "does not exist" in message)
 
     def _build_local_scenario_sales_order_context(
         self,
@@ -1899,6 +2009,16 @@ class ProductionService:
         payload: ProductionPlanCreateRequest,
         request_id: str | None,
     ) -> None:
+        scenario_value = (payload.scenario_tag or "").strip()
+        if not scenario_value or PRODUCTION_PLAN_SCENARIO_TAG_PATTERN.fullmatch(scenario_value) is None:
+            if not (payload.idempotency_key or "").strip():
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED, message="幂等键不能为空")
+            if payload.operation and payload.operation.strip() not in {"create", "create_plan"}:
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="operation 非法")
+            if not payload.sales_order.strip() or not payload.item_code.strip():
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="订单与款号不能为空")
+            return
+
         self._ensure_local_dev_write_gate()
         scenario_tag = self._require_non_blank(
             payload.scenario_tag,

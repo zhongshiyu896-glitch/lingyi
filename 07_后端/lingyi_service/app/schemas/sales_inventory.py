@@ -125,10 +125,12 @@ class SalesOrderDraftLineItemCreateRequest(BaseModel):
     """Create local sales-order draft line payload."""
 
     item_code: str
+    item_name: str | None = None
     qty: Decimal
     rate: Decimal | None = None
     uom: str = "Nos"
     warehouse: str | None = None
+    delivery_date: date | None = None
 
 
 class SalesOrderDraftCreateRequest(BaseModel):
@@ -136,11 +138,11 @@ class SalesOrderDraftCreateRequest(BaseModel):
 
     company: str
     customer: str | None = None
-    operation: str
-    scenario_tag: str
-    sales_order_no: str
-    source_order_ref: str
-    idempotency_key: str
+    operation: str | None = None
+    scenario_tag: str | None = None
+    sales_order_no: str | None = None
+    source_order_ref: str | None = None
+    idempotency_key: str | None = None
     transaction_date: date | None = None
     delivery_date: date | None = None
     currency: str | None = None
