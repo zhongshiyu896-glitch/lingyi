@@ -12,12 +12,17 @@
 | 基础资料 | 加工厂评估 | GET | `/api/factory-statements/factory-evaluations` | `evaluation_no, factory_name, score, review_status` | 是 |
 | 物料开发 | BOM | GET | `/api/bom/` | `bom_no, item_code, version_no, status` | 既有 |
 | 物料开发 | 物料档案 | GET | `/api/bom/materials` | `item_code, material_item_code, material_type_name` | 真实 |
+| 物料开发 | 物料分类 | GET | `/api/bom/material-categories` | `material_type_code, material_type_name, material_group` | 真实 |
+| 物料开发 | 物料单位 | GET | `/api/bom/units` | `unit_code, unit_name, base_unit, precision` | 真实 |
+| 物料开发 | 颜色 | GET | `/api/bom/colors` | `dict_type, dict_code, dict_name, status` | 是 |
+| 物料开发 | 尺码 | GET | `/api/bom/sizes` | `dict_type, dict_code, dict_name, status` | 是 |
 | 物料开发 | 款式档案 | GET | `/api/bom/styles` | `bom_no, item_code, version_no` | 真实 |
 | 物料开发 | 物料图库 | GET | `/api/bom/material-gallery` | `bom_no, material_item_code, qty_per_piece` | 是 |
 | 物料开发 | 面料 | GET | `/api/bom/fabrics` | `fabric_name, material_item_code, supplier_name` | 是 |
 | 物料开发 | 辅料包材 | GET | `/api/bom/accessories-packaging` | `material_name, category, supplier_name` | 是 |
 | 物料开发 | 采购单 | GET | `/api/bom/purchase-orders` | `purchase_no, supplier_name, total_amount` | 是 |
-| 物料开发 | 款式-BOM-工艺 | GET | `/api/bom/style-bom-process` | `bom_no, item_code, process_name, unit_rate` | 是 |
+| 物料开发 | 款式-BOM-工艺 | GET | `/api/bom/style-bom-process` | `bom_no, item_code, process_name, unit_rate` | 真实 |
+| 物料开发 | 工艺要求模板 | GET | `/api/bom/process-requirement-templates` | `process_type_code, process_type_name, process_name, unit_rate` | 真实 |
 | 物料开发 | 打样进度 | GET | `/api/bom/sample-progress` | `sample_order_no, sample_type, item_code, status` | 是 |
 | 销售生产 | 销售订单 | GET | `/api/sales-inventory/sales-orders` | `name, customer, transaction_date, grand_total` | 是 |
 | 销售生产 | 生产计划 | GET | `/api/production/plans` | `plan_no, sales_order, item_code, planned_qty` | 是 |

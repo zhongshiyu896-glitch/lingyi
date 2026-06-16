@@ -2,8 +2,8 @@
 
 来源：FastAPI `app.routes` 自动导出；readiness/stub 以 `app/routers/frontend_readiness.py` 为准。
 
-- A 类真实业务接口：174
-- B 类 dev/test readiness 只读接口：31
+- A 类真实业务接口：178
+- B 类 dev/test readiness 只读接口：27
 - C 类 readiness flow 回执桩：7
 - D 类内部/诊断/不建议前端直连接口：11
 
@@ -19,7 +19,7 @@
 | A | GET | `/api/bom/accessories-packaging` | 是 | 是 | 否 | candidate | id, bom_id, bom_no, item_code, material_item_code, material_name, category, color, specification, supplier_name, uom, qty_per_piece, ... | 真实业务只读接口候选 |
 | B | GET | `/api/bom/colors` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
 | A | GET | `/api/bom/fabrics` | 是 | 是 | 否 | candidate | id, bom_id, bom_no, item_code, material_item_code, fabric_name, color, specification, supplier_name, uom, qty_per_piece, loss_rate, ... | 真实业务只读接口候选 |
-| B | GET | `/api/bom/material-categories` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/bom/material-categories` | 是 | 是 | 否 | candidate | dict_type, dict_code, dict_name, status, source, updated_at | 真实业务只读接口候选 |
 | A | GET | `/api/bom/material-deduction` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/bom/material-gallery` | 是 | 是 | 否 | candidate | id, bom_id, bom_no, item_code, material_item_code, category, color, size, uom, qty_per_piece, loss_rate, status, ... | 真实业务只读接口候选 |
 | A | GET | `/api/bom/material-processing` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
@@ -29,7 +29,7 @@
 | A | GET | `/api/bom/material-types` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/bom/material-units` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/bom/materials` | 是 | 是 | 否 | candidate | id, bom_id, bom_no, item_code, material_item_code, material_type_code, material_type_name, material_group, applicable_scene, supplier_name, status, is_default | 真实业务只读接口候选 |
-| B | GET | `/api/bom/process-requirement-templates` | 是 | 是 | 否 | temporary_dev_only | process_type_code, process_type_name, process_name, sequence_no, subcontract_mode, pricing_mode, unit_rate, status, is_default | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/bom/process-requirement-templates` | 是 | 是 | 否 | candidate | process_type_code, process_type_name, process_name, sequence_no, subcontract_mode, pricing_mode, unit_rate, status, is_default | 真实业务只读接口候选 |
 | A | GET | `/api/bom/processing-types` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/bom/purchase-orders` | 是 | 是 | 否 | candidate | id, bom_id, purchase_no, supplier_name, item_code, material_item_code, material_name, qty, uom, unit_price, total_amount, expected_delivery_date, ... | 真实业务只读接口候选 |
 | C | POST | `/api/bom/readiness/procurement-flow` | 否 | 是 | 否 | do_not_connect_as_write | request_no, purchase_no, receipt_no, purchase_invoice_name, supplier, supplier_name, item_code, material_item_code, received_qty, grand_total, outstanding_amount, status | readiness flow 回执桩; 不得当作真实写接口 |
@@ -39,9 +39,9 @@
 | B | GET | `/api/bom/size-chart-templates` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
 | B | GET | `/api/bom/size-sortings` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
 | B | GET | `/api/bom/sizes` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
-| B | GET | `/api/bom/style-bom-process` | 是 | 是 | 否 | temporary_dev_only | id, bom_id, bom_no, item_code, version_no, process_type_code, process_type_name, process_name, sequence_no, subcontract_mode, pricing_mode, unit_rate, ... | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/bom/style-bom-process` | 是 | 是 | 否 | candidate | id, bom_id, bom_no, item_code, version_no, process_type_code, process_type_name, process_name, sequence_no, subcontract_mode, pricing_mode, unit_rate, ... | 真实业务只读接口候选 |
 | A | GET | `/api/bom/styles` | 是 | 是 | 否 | candidate | id, bom_no, item_code, version_no, is_default, status, effective_date | 真实业务只读接口候选 |
-| B | GET | `/api/bom/units` | 是 | 是 | 否 | temporary_dev_only | dict_type, dict_code, dict_name, status, source, updated_at | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/bom/units` | 是 | 是 | 否 | candidate | dict_type, dict_code, dict_name, status, source, updated_at | 真实业务只读接口候选 |
 | A | GET | `/api/bom/{bom_id}` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | PUT | `/api/bom/{bom_id}` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | POST | `/api/bom/{bom_id}/activate` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |

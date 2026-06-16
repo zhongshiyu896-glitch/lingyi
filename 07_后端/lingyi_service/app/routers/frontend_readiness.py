@@ -31,9 +31,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
     "/api/subcontract/factories": "factories",
     "/api/bom/colors": "colors",
     "/api/bom/sizes": "sizes",
-    "/api/bom/units": "units",
-    "/api/bom/material-categories": "material_categories",
-    "/api/bom/style-bom-process": "style_bom_process",
     "/api/bom/sample-progress": "sample_progress",
     "/api/production/material-issues": "production_material_issues",
     "/api/bom/material-requests": "material_requests",
@@ -53,7 +50,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
     "/api/factory-statements/expense-types": "expense_types",
     "/api/bom/size-sortings": "size_sortings",
     "/api/factory-statements/cashier-accounts": "cashier_accounts",
-    "/api/bom/process-requirement-templates": "process_requirement_templates",
     "/api/bom/size-chart-templates": "size_chart_templates",
     "/api/bom/sample-orders": "sample_orders",
 }

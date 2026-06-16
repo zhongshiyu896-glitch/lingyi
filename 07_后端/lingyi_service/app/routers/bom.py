@@ -800,6 +800,8 @@ def list_bom_purchase_orders(
         return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
 
 
+@router.get("/style-bom-process")
+@router.get("/process-requirement-templates")
 @router.get("/processing-types")
 def list_bom_processing_types(
     request: Request,
@@ -1067,6 +1069,7 @@ def list_bom_material_sales_outbound(
         return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
 
 
+@router.get("/material-categories")
 @router.get("/materials")
 @router.get("/material-types")
 def list_bom_material_types(
@@ -1121,6 +1124,7 @@ def list_bom_material_types(
         return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
 
 
+@router.get("/units")
 @router.get("/material-units")
 def list_bom_material_units(
     request: Request,

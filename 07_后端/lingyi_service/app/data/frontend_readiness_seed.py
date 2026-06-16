@@ -178,6 +178,22 @@ GAP_LIST_ROWS: dict[str, list[dict[str, Any]]] = {
             "is_default": True,
         }
     ],
+    "material_units": [
+        {
+            "id": 1,
+            "bom_id": 1,
+            "bom_no": "BOM-FR-001",
+            "item_code": "ITEM-FR-001",
+            "material_item_code": "MAT-FR-FABRIC-001",
+            "unit_code": "UNIT-FR-PCS",
+            "unit_name": "Pcs",
+            "base_unit": "Pcs",
+            "conversion_text": "1 Pcs = 1 Pcs",
+            "precision": 0,
+            "status": "active",
+            "is_default": True,
+        }
+    ],
     "styles": [
         {
             "id": 1,

@@ -96,9 +96,6 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/subcontract/factories",
         "/api/bom/colors",
         "/api/bom/sizes",
-        "/api/bom/units",
-        "/api/bom/material-categories",
-        "/api/bom/style-bom-process",
         "/api/bom/sample-progress",
         "/api/production/material-issues",
         "/api/bom/material-requests",
@@ -120,7 +117,6 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/bom/size-sortings",
         "/api/sales-inventory/sales-channels",
         "/api/factory-statements/cashier-accounts",
-        "/api/bom/process-requirement-templates",
         "/api/bom/size-chart-templates",
         "/api/bom/sample-orders",
         "/api/production/followup-templates",
@@ -141,7 +137,18 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/bom/fabrics": {"fabric_name", "material_item_code", "supplier_name", "qty_per_piece"},
         "/api/bom/accessories-packaging": {"material_name", "category", "supplier_name", "qty_per_piece"},
         "/api/bom/materials": {"item_code", "material_item_code", "material_type_name", "supplier_name", "status"},
+        "/api/bom/material-categories": {"material_type_code", "material_type_name", "material_group", "status"},
+        "/api/bom/units": {"unit_code", "unit_name", "base_unit", "precision", "status"},
         "/api/bom/styles": {"bom_no", "item_code", "version_no", "is_default", "status"},
+        "/api/bom/style-bom-process": {"bom_no", "item_code", "process_name", "sequence_no", "unit_rate"},
+        "/api/bom/process-requirement-templates": {
+            "process_type_code",
+            "process_type_name",
+            "process_name",
+            "sequence_no",
+            "unit_rate",
+            "status",
+        },
         "/api/bom/purchase-orders": {"purchase_no", "supplier_name", "material_item_code", "total_amount"},
         "/api/production/plans": {"plan_no", "sales_order", "item_code", "planned_qty"},
         "/api/production/work-orders": {"plan_no", "sales_order", "item_code", "work_order", "planned_qty"},
@@ -317,7 +324,6 @@ class FrontendReadinessTest(unittest.TestCase):
 
     def test_six_module_supplement_fields_are_available(self) -> None:
         field_expectations = {
-            "/api/bom/style-bom-process": {"bom_no", "item_code", "process_name", "sequence_no", "unit_rate"},
             "/api/production/material-issues": {"work_order", "material_item_code", "required_qty", "issued_qty"},
             "/api/bom/material-requests": {"request_no", "material_item_code", "supplier_name", "qty", "status"},
             "/api/warehouse/purchase-receipts": {"receipt_no", "purchase_no", "material_item_code", "received_qty"},
@@ -365,6 +371,8 @@ class FrontendReadinessTest(unittest.TestCase):
         patches = [
             patch("app.services.bom_service.BomService.list_bom", return_value=_DumpablePage(_page_payload("styles"))),
             patch("app.services.bom_service.BomService.list_material_types", return_value=_DumpablePage(_page_payload("materials"))),
+            patch("app.services.bom_service.BomService.list_material_units", return_value=_DumpablePage(_page_payload("material_units"))),
+            patch("app.services.bom_service.BomService.list_processing_types", return_value=_DumpablePage(_page_payload("style_bom_process"))),
             patch("app.services.bom_service.BomService.list_material_gallery", return_value=_DumpablePage(_page_payload("material_gallery"))),
             patch("app.services.bom_service.BomService.list_fabrics", return_value=_DumpablePage(_page_payload("fabrics"))),
             patch(
