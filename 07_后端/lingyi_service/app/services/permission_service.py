@@ -1474,8 +1474,8 @@ class PermissionService:
         return set()
 
     def _actions_from_static(self, *, current_user: CurrentUser) -> set[str]:
-        if not PermissionService._static_warning_emitted:
-            # 临时方案，生产前替换为 ERPNext 权限来源。
+        if get_permission_source() == "static" and not PermissionService._static_warning_emitted:
+            # 仅用于本地/测试；生产使用 FastAPI 原生权限源。
             logger.warning("LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产")
             PermissionService._static_warning_emitted = True
         return get_static_actions_for_roles(current_user.roles)

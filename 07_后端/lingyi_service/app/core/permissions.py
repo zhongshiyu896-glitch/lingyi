@@ -423,9 +423,9 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
 
 
 def get_permission_source() -> str:
-    """Return permission source: static or erpnext."""
+    """Return permission source: fastapi, static, or erpnext."""
     value = os.getenv("LINGYI_PERMISSION_SOURCE", "static").strip().lower()
-    if value not in {"static", "erpnext"}:
+    if value not in {"fastapi", "static", "erpnext"}:
         return "static"
     return value
 

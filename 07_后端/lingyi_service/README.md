@@ -69,6 +69,14 @@ bash scripts/run_postgresql_ci_gate.sh
 
 仅用于本地开发联调，禁止用于生产环境。
 
+## Permission Source
+
+生产环境权限源采用 FastAPI 自建口径：
+
+- `APP_ENV=production` 时 `LINGYI_PERMISSION_SOURCE` 必须为 `fastapi`。
+- `erpnext` 不再是生产强制权限源。
+- `static` 仅用于本地开发和测试联调。
+
 ### 启动顺序（本地）
 
 1. 启动后端本地 dev runtime（127.0.0.1:8000）：
