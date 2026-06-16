@@ -70,6 +70,7 @@ from app.services.style_profit_service import STYLE_PROFIT_SOURCE_READ_FAILED
 from app.services.style_profit_service import StyleProfitService
 
 router = APIRouter(prefix="/api/reports/style-profit", tags=["style_profit"])
+compatibility_router = APIRouter(prefix="/api/style-profit", tags=["style_profit"])
 STYLE_PROFIT_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 STYLE_PROFIT_SCENARIO_PATTERN = re.compile(r"(Z003-STYLE-PROFIT-\d{8}-\d{3})")
 STYLE_PROFIT_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-STYLE-PROFIT-\d{8}-\d{3}$")
@@ -407,6 +408,50 @@ def _to_list_item(row: LyStyleProfitSnapshot) -> StyleProfitSnapshotListItem:
     )
 
 
+def _empty_snapshot_list_data(*, page: int, page_size: int) -> StyleProfitSnapshotListData:
+    return StyleProfitSnapshotListData(items=[], total=0, page=page, page_size=page_size)
+
+
+def _query_snapshot_list_data(
+    *,
+    session: Session,
+    company: str,
+    item_code: str,
+    sales_order: str | None,
+    from_date: datetime | None,
+    to_date: datetime | None,
+    snapshot_status: str | None,
+    page: int,
+    page_size: int,
+) -> StyleProfitSnapshotListData:
+    query = session.query(LyStyleProfitSnapshot).filter(
+        LyStyleProfitSnapshot.company == company,
+        LyStyleProfitSnapshot.item_code == item_code,
+    )
+    if sales_order and str(sales_order).strip():
+        query = query.filter(LyStyleProfitSnapshot.sales_order == str(sales_order).strip())
+    if snapshot_status and str(snapshot_status).strip():
+        query = query.filter(LyStyleProfitSnapshot.snapshot_status == str(snapshot_status).strip())
+    if from_date is not None:
+        query = query.filter(LyStyleProfitSnapshot.from_date >= from_date.date())
+    if to_date is not None:
+        query = query.filter(LyStyleProfitSnapshot.to_date <= to_date.date())
+
+    total = query.count()
+    rows = (
+        query.order_by(LyStyleProfitSnapshot.created_at.desc(), LyStyleProfitSnapshot.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return StyleProfitSnapshotListData(
+        items=[_to_list_item(row) for row in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
 def _to_detail_item(row: LyStyleProfitDetail) -> StyleProfitDetailItem:
     return StyleProfitDetailItem(
         id=int(row.id),
@@ -545,29 +590,14 @@ def list_snapshots(
             enforce_action=False,
         )
 
-        query = session.query(LyStyleProfitSnapshot).filter(
-            LyStyleProfitSnapshot.company == normalized_company,
-            LyStyleProfitSnapshot.item_code == normalized_item_code,
-        )
-        if sales_order and str(sales_order).strip():
-            query = query.filter(LyStyleProfitSnapshot.sales_order == str(sales_order).strip())
-        if snapshot_status and str(snapshot_status).strip():
-            query = query.filter(LyStyleProfitSnapshot.snapshot_status == str(snapshot_status).strip())
-        if from_date is not None:
-            query = query.filter(LyStyleProfitSnapshot.from_date >= from_date.date())
-        if to_date is not None:
-            query = query.filter(LyStyleProfitSnapshot.to_date <= to_date.date())
-
-        total = query.count()
-        rows = (
-            query.order_by(LyStyleProfitSnapshot.created_at.desc(), LyStyleProfitSnapshot.id.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-            .all()
-        )
-        data = StyleProfitSnapshotListData(
-            items=[_to_list_item(row) for row in rows],
-            total=total,
+        data = _query_snapshot_list_data(
+            session=session,
+            company=normalized_company,
+            item_code=normalized_item_code,
+            sales_order=sales_order,
+            from_date=from_date,
+            to_date=to_date,
+            snapshot_status=snapshot_status,
             page=page,
             page_size=page_size,
         )
@@ -646,6 +676,54 @@ def list_snapshots(
         except AuditWriteFailed as audit_exc:
             return _app_err(audit_exc)
         return _err(code, message_of(code), status_of(code))
+
+
+@compatibility_router.get("/style-costs")
+def list_style_costs(
+    request: Request,
+    company: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    sales_order: str | None = Query(default=None),
+    from_date: datetime | None = Query(default=None),
+    to_date: datetime | None = Query(default=None),
+    snapshot_status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    normalized_company = str(company or "").strip()
+    normalized_item_code = str(item_code or "").strip()
+    if not normalized_company or not normalized_item_code:
+        try:
+            PermissionService(session=session).require_action(
+                current_user=current_user,
+                request_obj=request,
+                action=STYLE_PROFIT_READ,
+                module="style_profit",
+                resource_type="style_profit_snapshot",
+                resource_id=None,
+            )
+        except HTTPException as exc:
+            return _http_exc_err(exc)
+        except AppException as exc:
+            return _app_err(exc)
+        data = _empty_snapshot_list_data(page=page, page_size=page_size)
+        return _ok(data.model_dump(mode="json"))
+
+    return list_snapshots(
+        request=request,
+        company=normalized_company,
+        item_code=normalized_item_code,
+        sales_order=sales_order,
+        from_date=from_date,
+        to_date=to_date,
+        snapshot_status=snapshot_status,
+        page=page,
+        page_size=page_size,
+        current_user=current_user,
+        session=session,
+    )
 
 
 @router.get("/snapshots/{snapshot_id}")

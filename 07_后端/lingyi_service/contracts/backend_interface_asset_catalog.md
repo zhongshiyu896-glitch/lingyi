@@ -2,8 +2,8 @@
 
 来源：FastAPI `app.routes` 自动导出；readiness/stub 以 `app/routers/frontend_readiness.py` 为准。
 
-- A 类真实业务接口：178
-- B 类 dev/test readiness 只读接口：26
+- A 类真实业务接口：179
+- B 类 dev/test readiness 只读接口：25
 - C 类 readiness flow 回执桩：7
 - D 类内部/诊断/不建议前端直连接口：11
 
@@ -159,7 +159,7 @@
 | A | GET | `/api/sales-inventory/suppliers` | 是 | 是 | 否 | candidate | name, supplier_name, disabled | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/warehouses` | 是 | 是 | 否 | candidate | name, company, warehouse_name, disabled | 真实业务只读接口候选 |
 | C | POST | `/api/style-profit/readiness/profit-flow` | 否 | 是 | 否 | do_not_connect_as_write | snapshot_no, company, sales_order, item_code, revenue_amount, actual_total_cost, standard_total_cost, profit_amount, profit_rate, snapshot_status, allocation_status, formula_version | readiness flow 回执桩; 不得当作真实写接口 |
-| B | GET | `/api/style-profit/style-costs` | 是 | 是 | 否 | temporary_dev_only | snapshot_no, company, item_code, sales_order, from_date, to_date, revenue_amount, actual_total_cost, standard_total_cost, profit_amount, profit_rate, snapshot_status, ... | dev/test only; 生产环境必须关闭 |
+| A | GET | `/api/style-profit/style-costs` | 是 | 是 | 否 | candidate | snapshot_no, company, item_code, sales_order, from_date, to_date, revenue_amount, actual_total_cost, standard_total_cost, profit_amount, profit_rate, snapshot_status, ... | 真实业务只读接口候选 |
 | A | GET | `/api/subcontract/` | 是 | 是 | 否 | candidate | id, subcontract_no, supplier, item_code, company, bom_id, process_name, planned_qty, status, created_at | 真实业务只读接口候选 |
 | A | POST | `/api/subcontract/` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | B | GET | `/api/subcontract/factories` | 是 | 是 | 否 | temporary_dev_only | company, supplier, factory_name, factory_code, review_status, follow_up_status | dev/test only; 生产环境必须关闭 |

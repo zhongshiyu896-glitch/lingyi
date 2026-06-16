@@ -108,7 +108,6 @@ GAP_PATHS = [
     "/api/sales-inventory/delivery-notes",
     "/api/sales-inventory/sales-invoices",
     "/api/warehouse/inventory-balance-reconciliation",
-    "/api/style-profit/style-costs",
     "/api/sales-inventory/delivery-addresses",
     "/api/factory-statements/settlement-methods",
     "/api/factory-statements/invoice-types",
@@ -153,7 +152,6 @@ FIELD_EXPECTATIONS = {
     "/api/sales-inventory/delivery-notes": {"delivery_note", "sales_order", "customer", "delivered_qty"},
     "/api/sales-inventory/sales-invoices": {"sales_invoice", "sales_order", "grand_total", "outstanding_amount"},
     "/api/warehouse/inventory-balance-reconciliation": {"warehouse", "item_code", "book_qty", "actual_qty", "diff_qty"},
-    "/api/style-profit/style-costs": {"snapshot_no", "item_code", "actual_total_cost", "profit_amount"},
 }
 
 WRITE_FLOW_EXPECTATIONS = {
@@ -259,6 +257,12 @@ REAL_REUSE_EXPECTATIONS = {
     "/api/reports/style-profit/snapshots?company=LY-FRONTEND-DEV&item_code=ITEM-FR-001": {
         "snapshot_no",
         "item_code",
+        "profit_amount",
+    },
+    "/api/style-profit/style-costs?company=LY-FRONTEND-DEV&item_code=ITEM-FR-001": {
+        "snapshot_no",
+        "item_code",
+        "actual_total_cost",
         "profit_amount",
     },
 }
@@ -560,6 +564,13 @@ def main() -> int:
                 _assert(bool(items), f"{path} should include dev seed rows")
                 missing = expected_fields - set(items[0].keys())
                 _assert(not missing, f"{path} missing contract fields: {sorted(missing)}")
+
+            style_costs_empty = client.get("/api/style-profit/style-costs", headers=_headers())
+            _assert(style_costs_empty.status_code == 200, style_costs_empty.text)
+            _assert(
+                style_costs_empty.json()["data"] == {"items": [], "total": 0, "page": 1, "page_size": 20},
+                "style-costs empty scope pagination mismatch",
+            )
 
             stats = client.get("/api/quality/statistics", headers=_headers())
             _assert(stats.status_code == 200, stats.text)

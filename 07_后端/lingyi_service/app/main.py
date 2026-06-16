@@ -101,6 +101,7 @@ from app.routers.production import router as production_router
 from app.routers.workshop import get_db_session as workshop_router_session_dep
 from app.routers.workshop import router as workshop_router
 from app.routers.style_profit import get_db_session as style_profit_router_session_dep
+from app.routers.style_profit import compatibility_router as style_profit_compatibility_router
 from app.routers.style_profit import router as style_profit_router
 from app.routers.factory_statement import get_db_session as factory_statement_router_session_dep
 from app.routers.factory_statement import router as factory_statement_router
@@ -173,6 +174,7 @@ app.include_router(production_router)
 app.include_router(bom_router)
 app.include_router(workshop_router)
 app.include_router(style_profit_router)
+app.include_router(style_profit_compatibility_router)
 app.include_router(factory_statement_router)
 app.include_router(sales_inventory_router)
 app.include_router(quality_router)

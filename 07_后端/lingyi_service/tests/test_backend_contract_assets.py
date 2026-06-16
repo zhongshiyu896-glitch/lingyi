@@ -56,6 +56,7 @@ class BackendContractAssetsTest(unittest.TestCase):
             "/api/sales-inventory/suppliers": "app.routers.sales_inventory",
             "/api/sales-inventory/warehouses": "app.routers.sales_inventory",
             "/api/factory-statements/customer-receivables": "app.routers.factory_statement",
+            "/api/style-profit/style-costs": "app.routers.style_profit",
         }.items():
             with self.subTest(path=path):
                 real_productized_row = catalog[("GET", path, module_name)]
@@ -83,6 +84,7 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertIn(("GET", "/api/bom/units"), dev_paths)
         self.assertIn(("GET", "/api/bom/style-bom-process"), dev_paths)
         self.assertIn(("GET", "/api/production/followup-templates"), dev_paths)
+        self.assertIn(("GET", "/api/style-profit/style-costs"), dev_paths)
         self.assertIn(("POST", "/api/production/readiness/work-order-flow"), dev_paths)
 
         prod_app = load_app_for_env("production")
@@ -93,6 +95,7 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertIn(("GET", "/api/bom/units"), prod_paths)
         self.assertIn(("GET", "/api/bom/style-bom-process"), prod_paths)
         self.assertIn(("GET", "/api/production/followup-templates"), prod_paths)
+        self.assertIn(("GET", "/api/style-profit/style-costs"), prod_paths)
         self.assertNotIn(("POST", "/api/production/readiness/work-order-flow"), prod_paths)
 
     def test_core_real_routes_are_not_shadowed_by_frontend_readiness_router(self) -> None:
@@ -113,6 +116,7 @@ class BackendContractAssetsTest(unittest.TestCase):
             "/api/sales-inventory/suppliers",
             "/api/warehouse/stock-summary",
             "/api/reports/catalog",
+            "/api/style-profit/style-costs",
         ]
         for path in core_paths:
             with self.subTest(path=path):

@@ -43,7 +43,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
     "/api/sales-inventory/delivery-notes": "delivery_notes",
     "/api/sales-inventory/sales-invoices": "sales_invoices",
     "/api/warehouse/inventory-balance-reconciliation": "inventory_balance_reconciliation",
-    "/api/style-profit/style-costs": "style_costs",
     "/api/factory-statements/settlement-methods": "settlement_methods",
     "/api/factory-statements/invoice-types": "invoice_types",
     "/api/bom/sample-types": "sample_types",

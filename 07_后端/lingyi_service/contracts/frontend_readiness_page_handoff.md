@@ -58,7 +58,7 @@
 | 报表看板 | 员工任务统计 | GET | `/api/reports/employee-task-statistics` | `employee_id, pending_tasks, completion_rate` | 是 |
 | 报表看板 | 审批报表 | GET | `/api/reports/approval-reports` | `approval_no, approval_type, approver, status` | 是 |
 | 报表看板 | 审批流程 | GET | `/api/system/approval-flows` | `flow_key, title, audit_type, nodes, actions` | 是 |
-| 报表看板 | 款式成本 | GET | `/api/style-profit/style-costs` | `snapshot_no, item_code, actual_total_cost, profit_amount` | 是 |
+| 报表看板 | 款式成本 | GET | `/api/style-profit/style-costs` | `snapshot_no, item_code, actual_total_cost, profit_amount` | 真实 |
 | 报表看板 | 订单毛利 | GET | `/api/reports/style-profit/snapshots?company=LY-FRONTEND-DEV&item_code=ITEM-FR-001` | `snapshot_no, sales_order, profit_amount, profit_rate` | 是 |
 
 说明：`*/readiness/*-flow` 的 POST 端点只用于 dev 闭环联调回执，不代表生产写闭环已上线。

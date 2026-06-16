@@ -109,7 +109,6 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/sales-inventory/delivery-notes",
         "/api/sales-inventory/sales-invoices",
         "/api/warehouse/inventory-balance-reconciliation",
-        "/api/style-profit/style-costs",
         "/api/sales-inventory/delivery-addresses",
         "/api/factory-statements/settlement-methods",
         "/api/factory-statements/invoice-types",
@@ -197,6 +196,12 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/reports/style-profit/snapshots?company=LY-FRONTEND-DEV&item_code=ITEM-FR-001": {
             "snapshot_no",
             "item_code",
+            "profit_amount",
+        },
+        "/api/style-profit/style-costs?company=LY-FRONTEND-DEV&item_code=ITEM-FR-001": {
+            "snapshot_no",
+            "item_code",
+            "actual_total_cost",
             "profit_amount",
         },
     }
@@ -363,7 +368,6 @@ class FrontendReadinessTest(unittest.TestCase):
                 "actual_qty",
                 "diff_qty",
             },
-            "/api/style-profit/style-costs": {"snapshot_no", "item_code", "actual_total_cost", "profit_amount"},
         }
 
         for path, expected_fields in field_expectations.items():
@@ -373,6 +377,13 @@ class FrontendReadinessTest(unittest.TestCase):
                 items = response.json()["data"]["items"]
                 self.assertTrue(items, f"{path} should include dev seed rows")
                 self.assertTrue(expected_fields.issubset(items[0].keys()), items[0])
+
+    def test_style_costs_without_scope_returns_empty_page(self) -> None:
+        response = self.client.get("/api/style-profit/style-costs", headers=self._headers())
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        self.assertEqual(payload["data"], {"items": [], "total": 0, "page": 1, "page_size": 20})
 
     def test_real_reuse_page_endpoints_are_contract_ready(self) -> None:
         patches = [
