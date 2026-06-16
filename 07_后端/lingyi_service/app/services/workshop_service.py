@@ -1376,8 +1376,6 @@ class WorkshopService:
         work_date: date,
         local_scenario_tag: str | None = None,
     ) -> Decimal:
-        if local_scenario_tag and self._is_local_synthetic_context_enabled():
-            return self._round(WORKSHOP_LOCAL_DEFAULT_UNIT_WAGE)
         try:
             specific_rows = (
                 self.session.query(LyOperationWageRate)
@@ -1460,6 +1458,8 @@ class WorkshopService:
             raise DatabaseReadFailed() from exc
         if common_rows:
             return self._round(Decimal(common_rows[0].wage_rate))
+        if local_scenario_tag and self._is_local_synthetic_context_enabled():
+            return self._round(WORKSHOP_LOCAL_DEFAULT_UNIT_WAGE)
         raise BusinessException(code=WORKSHOP_WAGE_RATE_NOT_FOUND, message="未找到生效工价")
 
     def _resolve_reversal_wage(

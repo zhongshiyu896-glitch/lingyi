@@ -253,6 +253,33 @@ class WorkshopWageApiTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
+    def test_local_synthetic_ticket_uses_fastapi_wage_rate_table(self) -> None:
+        create_payload = self._wage_payload(
+            item_code="ITEM-A",
+            company="LY-LOCAL-TEST",
+            wage_rate="2.25",
+            effective_from="2026-01-01",
+            effective_to=None,
+            carrier_suffix="LOCAL-ITEM-A-LY-LOCAL-TEST-20260101",
+        )
+        create_response = self.client.post(
+            "/api/workshop/wage-rates",
+            headers=self._headers_for_wage_payload(create_payload),
+            json=create_payload,
+        )
+        self.assertEqual(create_response.status_code, 200)
+
+        ticket_payload = self._ticket_payload(operation="register", ticket_key="LOCAL-WAGE-RG-001", qty="10")
+        ticket_payload["item_code"] = "ITEM-A"
+        ticket_response = self.client.post(
+            "/api/workshop/tickets/register",
+            headers=self._headers_for_ticket_payload(ticket_payload),
+            json=ticket_payload,
+        )
+        self.assertEqual(ticket_response.status_code, 200)
+        self.assertEqual(Decimal(str(ticket_response.json()["data"]["unit_wage"])), Decimal("2.250000"))
+        self.assertEqual(Decimal(str(ticket_response.json()["data"]["wage_amount"])), Decimal("22.500000"))
+
     def test_daily_wage_formula_and_snapshot_not_changed(self) -> None:
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
             ERPNextJobCardAdapter,
