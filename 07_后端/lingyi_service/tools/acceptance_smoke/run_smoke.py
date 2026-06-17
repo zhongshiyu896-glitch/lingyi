@@ -37,6 +37,8 @@ from app.data.frontend_readiness_seed import WORK_ORDER_TRAIL_SEED  # noqa: E402
 from app.models.audit import Base as AuditBase  # noqa: E402
 from app.models.bom import Base as BomBase  # noqa: E402
 from app.models.bom import LyApparelBom  # noqa: E402
+from app.models.bom import LyApparelBomItem  # noqa: E402
+from app.models.bom import LyBomOperation  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.factory_statement import LyFactoryStatement  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
@@ -566,6 +568,35 @@ def _workshop_wage_request_id(payload: dict[str, object]) -> str:
         f"P{_carrier_code(payload['process_name'], length=4)}-"
         f"I{_carrier_code(item_scope, length=4)}-"
         f"D{effective_from}"
+    )
+
+
+def _subcontract_request_id(
+    *,
+    scenario_tag: str,
+    operation: str,
+    idempotency_key: str,
+    source_ref: str,
+    subcontract_ref: str,
+    supplier_ref: str,
+    work_order_ref: str,
+    item_code: str,
+    status_action: str,
+) -> str:
+    operation_code = {"create": "CR", "issue_material": "IM", "receive": "RV"}[operation]
+    return "-".join(
+        [
+            scenario_tag,
+            "SC",
+            operation_code,
+            _carrier_code(idempotency_key),
+            _carrier_code(source_ref),
+            _carrier_code(subcontract_ref),
+            _carrier_code(supplier_ref),
+            _carrier_code(work_order_ref),
+            _carrier_code(item_code),
+            _carrier_code(status_action),
+        ]
     )
 
 
@@ -1247,6 +1278,214 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
         sales_order = session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == "SO-SAMPLE-SMOKE-001").one_or_none()
         _assert(sales_order is not None, "sample convert sales draft missing")
         _assert(sales_order.source_order_ref == "SAMPLE-SMP-SMOKE-CONVERT-001", "sample convert source ref mismatch")
+
+
+def _exercise_subcontract_return_material_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
+    scenario = "Z003-SUBCONTRACT-20260617-901"
+    company = "COMP-SUB-SMOKE"
+    supplier = "FAC-SUB-SMOKE"
+    item_code = "ITEM-SUB-SMOKE"
+    material_code = "MAT-SUB-SMOKE"
+    process_name = "外发车缝"
+    issue_warehouse = "WH-SUB-SMOKE"
+    work_order_ref = "NO-WORK-ORDER"
+    bom_id = 801
+
+    with session_local() as session:
+        session.add(
+            LyApparelBom(
+                id=bom_id,
+                bom_no="BOM-SUB-SMOKE-001",
+                item_code=item_code,
+                version_no="v1",
+                is_default=True,
+                status="active",
+                created_by="frontend.readiness.smoke",
+                updated_by="frontend.readiness.smoke",
+            )
+        )
+        session.add(
+            LyApparelBomItem(
+                id=801,
+                bom_id=bom_id,
+                material_item_code=material_code,
+                color=None,
+                size=None,
+                qty_per_piece=Decimal("1"),
+                loss_rate=Decimal("0"),
+                uom="米",
+                remark=None,
+            )
+        )
+        session.add(
+            LyBomOperation(
+                id=801,
+                bom_id=bom_id,
+                process_name=process_name,
+                sequence_no=1,
+                is_subcontract=True,
+                subcontract_cost_per_piece=Decimal("5"),
+            )
+        )
+        session.commit()
+
+    subcontract_env = {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}
+    create_idem = f"{scenario}:create:001"
+    create_source_ref = f"{scenario}:create:subcontract-smoke"
+    create_subcontract_ref = "SC-SUB-SMOKE-NEW"
+    create_request_id = _subcontract_request_id(
+        scenario_tag=scenario,
+        operation="create",
+        idempotency_key=create_idem,
+        source_ref=create_source_ref,
+        subcontract_ref=create_subcontract_ref,
+        supplier_ref=supplier,
+        work_order_ref=work_order_ref,
+        item_code=item_code,
+        status_action="create",
+    )
+    with patch.dict("os.environ", subcontract_env):
+        created = client.post(
+            "/api/subcontract/",
+            headers=_headers(request_id=create_request_id),
+            json={
+                "request_id": create_request_id,
+                "idempotency_key": create_idem,
+                "scenario_tag": scenario,
+                "source_ref": create_source_ref,
+                "subcontract_ref": create_subcontract_ref,
+                "supplier_ref": supplier,
+                "work_order_ref": work_order_ref,
+                "operation": "create",
+                "item_code": item_code,
+                "quantity": "100",
+                "status_action": "create",
+                "supplier": supplier,
+                "company": company,
+                "bom_id": bom_id,
+                "planned_qty": "100",
+                "process_name": process_name,
+            },
+        )
+    _assert(created.status_code == 200, created.text)
+    subcontract_no = str(created.json()["data"]["name"])
+
+    listed = client.get(
+        f"/api/subcontract/?supplier={supplier}&page=1&page_size=10",
+        headers=_headers(request_id=f"{scenario}-LIST-001"),
+    )
+    _assert(listed.status_code == 200, listed.text)
+    order_rows = listed.json()["data"]["items"]
+    _assert(order_rows and order_rows[0]["subcontract_no"] == subcontract_no, "subcontract create readback missing")
+    order_id = int(order_rows[0]["id"])
+
+    issue_idem = f"{scenario}:issue:001"
+    issue_source_ref = f"{scenario}:issue:{order_id}:001"
+    issue_request_id = _subcontract_request_id(
+        scenario_tag=scenario,
+        operation="issue_material",
+        idempotency_key=issue_idem,
+        source_ref=issue_source_ref,
+        subcontract_ref=str(order_id),
+        supplier_ref=supplier,
+        work_order_ref=work_order_ref,
+        item_code=item_code,
+        status_action="issue_material",
+    )
+    issue_payload = {
+        "request_id": issue_request_id,
+        "idempotency_key": issue_idem,
+        "scenario_tag": scenario,
+        "source_ref": issue_source_ref,
+        "subcontract_ref": str(order_id),
+        "supplier_ref": supplier,
+        "work_order_ref": work_order_ref,
+        "operation": "issue_material",
+        "item_code": item_code,
+        "quantity": "100",
+        "status_action": "issue_material",
+        "warehouse": issue_warehouse,
+        "materials": [
+            {
+                "material_item_code": material_code,
+                "required_qty": "100",
+                "issued_qty": "100",
+            }
+        ],
+    }
+    with patch.dict("os.environ", subcontract_env):
+        issued = client.post(
+            f"/api/subcontract/{order_id}/issue-material",
+            headers=_headers(request_id=issue_request_id),
+            json=issue_payload,
+        )
+    _assert(issued.status_code == 200, issued.text)
+    _assert(issued.json()["data"]["sync_status"] == "pending", "subcontract issue sync_status mismatch")
+
+    receive_idem = f"{scenario}:receive:001"
+    receive_source_ref = f"{scenario}:receive:{order_id}:001"
+    receive_request_id = _subcontract_request_id(
+        scenario_tag=scenario,
+        operation="receive",
+        idempotency_key=receive_idem,
+        source_ref=receive_source_ref,
+        subcontract_ref=str(order_id),
+        supplier_ref=supplier,
+        work_order_ref=work_order_ref,
+        item_code=item_code,
+        status_action="receive",
+    )
+    with patch.dict("os.environ", subcontract_env):
+        received = client.post(
+            f"/api/subcontract/{order_id}/receive",
+            headers=_headers(request_id=receive_request_id),
+            json={
+                "request_id": receive_request_id,
+                "idempotency_key": receive_idem,
+                "scenario_tag": scenario,
+                "source_ref": receive_source_ref,
+                "subcontract_ref": str(order_id),
+                "supplier_ref": supplier,
+                "work_order_ref": work_order_ref,
+                "operation": "receive",
+                "item_code": item_code,
+                "quantity": "60",
+                "status_action": "receive",
+                "receipt_warehouse": "WH-SUB-RECV-SMOKE",
+                "received_qty": "60",
+                "uom": "件",
+            },
+        )
+    _assert(received.status_code == 200, received.text)
+    _assert(received.json()["data"]["sync_status"] == "succeeded", "subcontract receive sync_status mismatch")
+
+    detail = client.get(
+        f"/api/subcontract/{order_id}",
+        headers=_headers(request_id=f"{scenario}-DETAIL-001"),
+    )
+    _assert(detail.status_code == 200, detail.text)
+    detail_data = detail.json()["data"]
+    _assert(Decimal(str(detail_data["issued_qty"])) == Decimal("100.000000"), "subcontract issued_qty mismatch")
+    _assert(Decimal(str(detail_data["received_qty"])) == Decimal("60.000000"), "subcontract received_qty mismatch")
+    _assert(detail_data["status"] == "waiting_inspection", "subcontract status after receive mismatch")
+
+    report = client.get(
+        (
+            "/api/warehouse/factory-return-material-report?"
+            f"company={company}&warehouse={issue_warehouse}&item_code={material_code}"
+        ),
+        headers=_headers(request_id=f"{scenario}-RETURN-001"),
+    )
+    _assert(report.status_code == 200, report.text)
+    report_rows = report.json()["data"]["items"]
+    _assert(report_rows and report_rows[0]["subcontract_no"] == subcontract_no, "subcontract return report readback missing")
+    report_row = report_rows[0]
+    _assert(report_row["material_code"] == material_code, "subcontract return material code mismatch")
+    _assert(Decimal(str(report_row["issued_qty"])) == Decimal("100.00"), "subcontract return issued_qty mismatch")
+    _assert(Decimal(str(report_row["theoretical_usage_qty"])) == Decimal("60.00"), "subcontract return theoretical usage mismatch")
+    _assert(Decimal(str(report_row["planned_return_qty"])) == Decimal("40.00"), "subcontract return planned qty mismatch")
+    _assert(Decimal(str(report_row["pending_qty"])) == Decimal("40.00"), "subcontract return pending qty mismatch")
+    _assert(report_row["status"] == "pending", "subcontract return status mismatch")
 
 
 def _exercise_sales_delivery_payment_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
@@ -1941,6 +2180,7 @@ def main() -> int:
         _exercise_finished_goods_inbound_smoke(client)
         _exercise_inventory_count_smoke(client)
         _exercise_sample_workflow_smoke(client, session_local)
+        _exercise_subcontract_return_material_smoke(client, session_local)
         _exercise_sales_delivery_payment_smoke(client, session_local)
         _exercise_factory_statement_payment_smoke(client, session_local)
 
