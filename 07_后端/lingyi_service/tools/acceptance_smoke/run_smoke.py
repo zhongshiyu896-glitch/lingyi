@@ -54,6 +54,7 @@ from app.models.warehouse import LyWarehouseInventoryCountItem  # noqa: E402
 from app.models.warehouse import LyWarehouseStockEntryDraft  # noqa: E402
 from app.models.warehouse import LyWarehouseStockEntryDraftItem  # noqa: E402
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent  # noqa: E402
+from app.models.workshop import Base as WorkshopBase  # noqa: E402
 from app.routers.auth import get_db_session as auth_db_dep  # noqa: E402
 from app.routers.bom import get_db_session as bom_db_dep  # noqa: E402
 from app.routers.cross_module_view import get_db_session as cross_module_db_dep  # noqa: E402
@@ -523,6 +524,37 @@ def _quality_request_id(
     )
 
 
+def _workshop_ticket_request_id(payload: dict[str, object]) -> str:
+    operation_code = {"register": "R", "reversal": "V", "batch": "B"}[str(payload["operation"])]
+    operator_id = payload.get("operator_id") or payload["employee"]
+    return "-".join(
+        [
+            str(payload["scenario_tag"]),
+            "RW",
+            operation_code,
+            _carrier_code(payload["idempotency_key"]),
+            _carrier_code(payload["source_ref"]),
+            _carrier_code(payload["ticket_key"]),
+            _carrier_code(payload["job_card"]),
+            _carrier_code(operator_id),
+            _carrier_code(payload["batch_no"]),
+        ]
+    )
+
+
+def _workshop_wage_request_id(payload: dict[str, object]) -> str:
+    company = payload.get("company") or "GLOBAL"
+    item_scope = payload.get("item_code") or "GLOBAL"
+    effective_from = str(payload["effective_from"]).replace("-", "")
+    return (
+        f"{payload['scenario_tag']}-RW-"
+        f"C{_carrier_code(company, length=4)}-"
+        f"P{_carrier_code(payload['process_name'], length=4)}-"
+        f"I{_carrier_code(item_scope, length=4)}-"
+        f"D{effective_from}"
+    )
+
+
 def _assert(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
@@ -738,6 +770,98 @@ def _exercise_quality_smoke(client: TestClient) -> None:
     _assert(confirmed.json()["data"]["result"] == "fail", "quality confirm result mismatch")
 
 
+def _exercise_workshop_smoke(client: TestClient) -> None:
+    ticket_scenario = "Z003-WORKSHOP-TICKET-20260617-401"
+    wage_scenario = "Z002-WORKSHOP-WAGE-20260617-401"
+    company = "LY-LOCAL-TEST"
+    item_code = "ITEM-WORKSHOP-SMOKE"
+    process_name = "sew"
+    work_date = date(2026, 6, 17).isoformat()
+
+    wage_payload = {
+        "scenario_tag": wage_scenario,
+        "idempotency_key": f"{wage_scenario}-IDEMP-CREATE",
+        "source_ref": f"{wage_scenario}-SRC-CREATE",
+        "item_code": item_code,
+        "company": company,
+        "process_name": process_name,
+        "wage_rate": "2.5",
+        "effective_from": "2026-01-01",
+        "effective_to": None,
+    }
+    workshop_env = {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}
+    with patch.dict("os.environ", workshop_env):
+        wage_created = client.post(
+            "/api/workshop/wage-rates",
+            headers=_headers(request_id=_workshop_wage_request_id(wage_payload)),
+            json=wage_payload,
+        )
+    _assert(wage_created.status_code == 200, wage_created.text)
+    wage_data = wage_created.json()["data"]
+    _assert(wage_data["status"] == "active", "workshop wage rate status mismatch")
+
+    wage_listed = client.get(
+        f"/api/workshop/wage-rates?item_code={item_code}&company={company}&status=active&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(wage_listed.status_code == 200, wage_listed.text)
+    wage_rows = wage_listed.json()["data"]["items"]
+    _assert(wage_rows and wage_rows[0]["item_code"] == item_code, "workshop wage rate readback missing")
+    _assert(Decimal(str(wage_rows[0]["wage_rate"])) == Decimal("2.500000"), "workshop wage rate value mismatch")
+
+    ticket_payload = {
+        "scenario_tag": ticket_scenario,
+        "idempotency_key": f"{ticket_scenario}-IDEMP-REGISTER",
+        "ticket_key": f"{ticket_scenario}-TICKET-001",
+        "job_card": "JC-WORKSHOP-SMOKE",
+        "item_code": item_code,
+        "employee": "EMP-WORKSHOP-SMOKE",
+        "process_name": process_name,
+        "color": "black",
+        "size": "M",
+        "qty": "12",
+        "work_date": work_date,
+        "source": "manual",
+        "source_ref": f"{ticket_scenario}-SRC-REGISTER",
+        "operation": "register",
+        "operator_id": "frontend.readiness.smoke",
+        "batch_no": f"{ticket_scenario}-BATCH-001",
+    }
+    with patch.dict("os.environ", workshop_env):
+        ticket_created = client.post(
+            "/api/workshop/tickets/register",
+            headers=_headers(request_id=_workshop_ticket_request_id(ticket_payload)),
+            json=ticket_payload,
+        )
+    _assert(ticket_created.status_code == 200, ticket_created.text)
+    ticket_data = ticket_created.json()["data"]
+    _assert(Decimal(str(ticket_data["unit_wage"])) == Decimal("2.500000"), "workshop ticket unit_wage mismatch")
+    _assert(Decimal(str(ticket_data["wage_amount"])) == Decimal("30.000000"), "workshop ticket wage_amount mismatch")
+
+    ticket_listed = client.get(
+        f"/api/workshop/tickets?employee=EMP-WORKSHOP-SMOKE&item_code={item_code}&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(ticket_listed.status_code == 200, ticket_listed.text)
+    ticket_rows = ticket_listed.json()["data"]["items"]
+    _assert(ticket_rows and ticket_rows[0]["ticket_key"] == ticket_payload["ticket_key"], "workshop ticket readback missing")
+
+    daily_wages = client.get(
+        (
+            "/api/workshop/daily-wages?"
+            f"employee=EMP-WORKSHOP-SMOKE&from_date={work_date}&to_date={work_date}"
+            f"&process_name={process_name}&item_code={item_code}&page=1&page_size=10"
+        ),
+        headers=_headers(),
+    )
+    _assert(daily_wages.status_code == 200, daily_wages.text)
+    daily_rows = daily_wages.json()["data"]["items"]
+    _assert(daily_rows, "workshop daily wage readback missing")
+    _assert(Decimal(str(daily_rows[0]["net_qty"])) == Decimal("12.000000"), "workshop daily wage net_qty mismatch")
+    _assert(Decimal(str(daily_rows[0]["wage_amount"])) == Decimal("30.000000"), "workshop daily wage amount mismatch")
+    _assert(Decimal(str(daily_wages.json()["data"]["total_amount"])) == Decimal("30.000000"), "workshop total_amount mismatch")
+
+
 def main() -> int:
     engine = create_engine(
         "sqlite+pysqlite://",
@@ -755,6 +879,7 @@ def main() -> int:
     MasterDataBase.metadata.create_all(bind=engine)
     MaterialPurchaseBase.metadata.create_all(bind=engine)
     SalesOrderBase.metadata.create_all(bind=engine)
+    WorkshopBase.metadata.create_all(bind=engine)
 
     def _override_db():
         db = session_local()
@@ -1102,6 +1227,7 @@ def main() -> int:
             _assert(trail.json()["data"]["work_order"]["work_order_id"] == "WO-FR-001", "work-order trail id mismatch")
 
         _exercise_quality_smoke(client)
+        _exercise_workshop_smoke(client)
 
         order_rows = [
             {
