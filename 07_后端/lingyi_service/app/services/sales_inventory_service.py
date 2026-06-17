@@ -4434,31 +4434,26 @@ class SalesInventoryService:
         keyword: str | None,
     ) -> list[LyDeliveryInvoice]:
         session = self._require_session()
-        try:
-            query = session.query(LyDeliveryInvoice)
-            normalized_company = self._text(company)
-            normalized_sales_order = self._text(sales_order)
-            normalized_customer = self._text(customer)
-            normalized_item_code = self._text(item_code)
-            normalized_warehouse = self._text(warehouse)
-            normalized_status = self._text(status)
-            if normalized_company:
-                query = query.filter(LyDeliveryInvoice.company == normalized_company)
-            if normalized_sales_order:
-                query = query.filter(LyDeliveryInvoice.sales_order == normalized_sales_order)
-            if normalized_customer:
-                query = query.filter(LyDeliveryInvoice.customer == normalized_customer)
-            if normalized_item_code:
-                query = query.filter(LyDeliveryInvoice.item_code == normalized_item_code)
-            if normalized_warehouse:
-                query = query.filter(LyDeliveryInvoice.warehouse == normalized_warehouse)
-            if normalized_status:
-                query = query.filter(LyDeliveryInvoice.status == normalized_status)
-            rows = query.order_by(LyDeliveryInvoice.id.desc()).all()
-        except Exception as exc:
-            if self._is_missing_delivery_invoice_table(exc):
-                return []
-            raise
+        query = session.query(LyDeliveryInvoice)
+        normalized_company = self._text(company)
+        normalized_sales_order = self._text(sales_order)
+        normalized_customer = self._text(customer)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_status = self._text(status)
+        if normalized_company:
+            query = query.filter(LyDeliveryInvoice.company == normalized_company)
+        if normalized_sales_order:
+            query = query.filter(LyDeliveryInvoice.sales_order == normalized_sales_order)
+        if normalized_customer:
+            query = query.filter(LyDeliveryInvoice.customer == normalized_customer)
+        if normalized_item_code:
+            query = query.filter(LyDeliveryInvoice.item_code == normalized_item_code)
+        if normalized_warehouse:
+            query = query.filter(LyDeliveryInvoice.warehouse == normalized_warehouse)
+        if normalized_status:
+            query = query.filter(LyDeliveryInvoice.status == normalized_status)
+        rows = query.order_by(LyDeliveryInvoice.id.desc()).all()
         normalized_keyword = self._text(keyword)
         if normalized_keyword:
             rows = [
@@ -4490,25 +4485,20 @@ class SalesInventoryService:
         keyword: str | None,
     ) -> list[LySalesPaymentEntry]:
         session = self._require_session()
-        try:
-            query = session.query(LySalesPaymentEntry)
-            normalized_company = self._text(company)
-            normalized_sales_invoice = self._text(sales_invoice)
-            normalized_customer = self._text(customer)
-            normalized_status = self._text(status)
-            if normalized_company:
-                query = query.filter(LySalesPaymentEntry.company == normalized_company)
-            if normalized_sales_invoice:
-                query = query.filter(LySalesPaymentEntry.sales_invoice == normalized_sales_invoice)
-            if normalized_customer:
-                query = query.filter(LySalesPaymentEntry.customer == normalized_customer)
-            if normalized_status:
-                query = query.filter(LySalesPaymentEntry.status == normalized_status)
-            rows = query.order_by(LySalesPaymentEntry.id.desc()).all()
-        except Exception as exc:
-            if self._is_missing_sales_payment_entry_table(exc):
-                return []
-            raise
+        query = session.query(LySalesPaymentEntry)
+        normalized_company = self._text(company)
+        normalized_sales_invoice = self._text(sales_invoice)
+        normalized_customer = self._text(customer)
+        normalized_status = self._text(status)
+        if normalized_company:
+            query = query.filter(LySalesPaymentEntry.company == normalized_company)
+        if normalized_sales_invoice:
+            query = query.filter(LySalesPaymentEntry.sales_invoice == normalized_sales_invoice)
+        if normalized_customer:
+            query = query.filter(LySalesPaymentEntry.customer == normalized_customer)
+        if normalized_status:
+            query = query.filter(LySalesPaymentEntry.status == normalized_status)
+        rows = query.order_by(LySalesPaymentEntry.id.desc()).all()
         normalized_keyword = self._text(keyword)
         if normalized_keyword:
             rows = [
@@ -4775,16 +4765,6 @@ class SalesInventoryService:
     def _is_missing_native_sales_order_table(exc: BaseException) -> bool:
         message = str(exc).lower()
         return "ly_sales_order" in message and ("no such table" in message or "does not exist" in message)
-
-    @staticmethod
-    def _is_missing_delivery_invoice_table(exc: BaseException) -> bool:
-        message = str(exc).lower()
-        return "ly_delivery_invoice" in message and ("no such table" in message or "does not exist" in message)
-
-    @staticmethod
-    def _is_missing_sales_payment_entry_table(exc: BaseException) -> bool:
-        message = str(exc).lower()
-        return "ly_sales_payment_entry" in message and ("no such table" in message or "does not exist" in message)
 
     @staticmethod
     def _is_missing_legacy_sales_order_table(exc: BaseException) -> bool:

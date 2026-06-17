@@ -37,14 +37,12 @@ from app.core.request_id import is_request_id_valid
 from app.schemas.sales_inventory import DiagnosticData
 from app.schemas.sales_inventory import DeliveryInvoiceCreateRequest
 from app.schemas.sales_inventory import DeliveryInvoiceListData
-from app.schemas.sales_inventory import DeliveryNoteListData
 from app.schemas.sales_inventory import InventoryAggregationData
 from app.schemas.sales_inventory import ReferenceDraftCreateRequest
 from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
 from app.schemas.sales_inventory import SupplierItem
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
-from app.schemas.sales_inventory import SalesInvoiceListData
 from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryListData
 from app.schemas.sales_inventory import StockLedgerData
@@ -57,7 +55,6 @@ from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
-from app.services.frontend_readiness_seed_reader import dev_seed_page_for_user
 from app.services.permission_service import PermissionService
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
@@ -1010,27 +1007,9 @@ def list_delivery_notes(
         page=page_number,
         page_size=page_size_number,
     )
-    if local_data.items:
-        local_data.items = [item for item in local_data.items if _scope_allowed(item, permissions)]
-        local_data.total = len(local_data.items)
-        return _ok(local_data)
-    data = DeliveryNoteListData(
-        **dev_seed_page_for_user(
-            seed_key="delivery_notes",
-            current_user=current_user,
-            page=page,
-            page_size=page_size,
-            filters={
-                "company": company,
-                "sales_order": sales_order,
-                "customer": customer,
-                "item_code": item_code,
-                "warehouse": warehouse,
-                "status": status,
-            },
-        )
-    )
-    return _ok(data)
+    local_data.items = [item for item in local_data.items if _scope_allowed(item, permissions)]
+    local_data.total = len(local_data.items)
+    return _ok(local_data)
 
 
 @router.get("/delivery-invoices")
@@ -1229,25 +1208,9 @@ def list_sales_invoices(
         page=page_number,
         page_size=page_size_number,
     )
-    if local_data.items:
-        local_data.items = [item for item in local_data.items if _scope_allowed(item, permissions)]
-        local_data.total = len(local_data.items)
-        return _ok(local_data)
-    data = SalesInvoiceListData(
-        **dev_seed_page_for_user(
-            seed_key="sales_invoices",
-            current_user=current_user,
-            page=page,
-            page_size=page_size,
-            filters={
-                "company": company,
-                "sales_order": sales_order,
-                "customer": customer,
-                "status": status,
-            },
-        )
-    )
-    return _ok(data)
+    local_data.items = [item for item in local_data.items if _scope_allowed(item, permissions)]
+    local_data.total = len(local_data.items)
+    return _ok(local_data)
 
 
 @router.get("/payment-entries")

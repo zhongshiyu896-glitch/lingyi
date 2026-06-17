@@ -192,6 +192,23 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         payload.update(overrides)
         return payload
 
+    def test_delivery_and_invoice_lists_do_not_fallback_to_readiness_seed(self) -> None:
+        delivery_notes = self.client.get(
+            "/api/sales-inventory/delivery-notes",
+            headers=self._headers(),
+        )
+        sales_invoices = self.client.get(
+            "/api/sales-inventory/sales-invoices",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(delivery_notes.status_code, 200, delivery_notes.text)
+        self.assertEqual(delivery_notes.json()["data"]["items"], [])
+        self.assertEqual(delivery_notes.json()["data"]["total"], 0)
+        self.assertEqual(sales_invoices.status_code, 200, sales_invoices.text)
+        self.assertEqual(sales_invoices.json()["data"]["items"], [])
+        self.assertEqual(sales_invoices.json()["data"]["total"], 0)
+
     def test_delivery_invoice_create_replay_and_local_readbacks(self) -> None:
         created = self.client.post(
             "/api/sales-inventory/delivery-invoices",

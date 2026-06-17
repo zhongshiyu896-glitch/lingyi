@@ -42,6 +42,8 @@ from app.models.material_purchase import LyMaterialPurchaseOrderItem  # noqa: E4
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 from app.models.quality import LyQualityInspection  # noqa: E402
+from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
+from app.models.sales_order import LyDeliveryInvoice  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.style_profit import LyStyleProfitSnapshot  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCount  # noqa: E402
@@ -245,6 +247,7 @@ class FrontendReadinessTest(unittest.TestCase):
         AuditBase.metadata.create_all(bind=cls.engine)
         FactoryStatementBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         StyleProfitBase.metadata.create_all(bind=cls.engine)
@@ -304,6 +307,7 @@ class FrontendReadinessTest(unittest.TestCase):
             session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyWarehouseInventoryCountItem).delete()
             session.query(LyWarehouseInventoryCount).delete()
+            session.query(LyDeliveryInvoice).delete()
             session.query(LyFactoryStatementPayment).delete()
             session.query(LyFactoryStatementPayableOutbox).delete()
             session.query(LyFactoryStatement).delete()
@@ -472,6 +476,34 @@ class FrontendReadinessTest(unittest.TestCase):
                     counted_qty=Decimal("20"),
                     variance_qty=Decimal("0"),
                     review_status="accepted",
+                )
+            )
+            session.add(
+                LyDeliveryInvoice(
+                    id=1,
+                    company=DEFAULT_COMPANY,
+                    delivery_note="DN-FR-001",
+                    sales_invoice="SINV-FR-001",
+                    sales_order="SO-FR-001",
+                    customer="CUST-FR-001",
+                    item_code="ITEM-FR-001",
+                    item_name="Frontend Readiness Shirt",
+                    warehouse="WH-FR-001",
+                    delivered_qty=Decimal("20"),
+                    uom="Pcs",
+                    rate=Decimal("8"),
+                    grand_total=Decimal("160.00"),
+                    paid_amount=Decimal("0"),
+                    outstanding_amount=Decimal("160.00"),
+                    posting_date=date(2026, 6, 21),
+                    due_date=date(2026, 7, 21),
+                    status="submitted",
+                    docstatus=1,
+                    source_ref="FR-DI-SRC-001",
+                    idempotency_key="FR-DI-IDEM-001",
+                    request_hash="fr-delivery-invoice-hash",
+                    scenario_tag="FRONTEND-READINESS",
+                    created_by="frontend.readiness",
                 )
             )
             session.add(
