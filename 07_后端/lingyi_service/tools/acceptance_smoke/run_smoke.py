@@ -87,6 +87,7 @@ from app.schemas.style_profit import StyleProfitSnapshotListData  # noqa: E402
 from app.schemas.system_management import SystemApprovalFlowCatalogData  # noqa: E402
 from app.schemas.warehouse import WarehouseStockSummaryData  # noqa: E402
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter  # noqa: E402
+from app.services.quality_service import QualitySourceValidationSnapshot  # noqa: E402
 
 
 class _DumpablePage:
@@ -497,6 +498,31 @@ def _warehouse_request_id(
     )
 
 
+def _quality_request_id(
+    *,
+    scenario_tag: str,
+    operation: str,
+    idempotency_key: str,
+    source_ref: str,
+    inspection_ref: str,
+    item_code: str,
+    result: str,
+) -> str:
+    operation_code = {"create": "C", "confirm": "F", "cancel": "X", "defects": "D"}[operation]
+    return "-".join(
+        [
+            scenario_tag,
+            "QI",
+            operation_code,
+            _carrier_code(idempotency_key),
+            _carrier_code(source_ref),
+            _carrier_code(inspection_ref),
+            _carrier_code(item_code),
+            _carrier_code(result),
+        ]
+    )
+
+
 def _assert(condition: bool, message: str) -> None:
     if not condition:
         raise AssertionError(message)
@@ -580,6 +606,136 @@ def _exercise_master_data_smoke(client: TestClient) -> None:
         _assert(inactive.status_code == 200, f"master data {entity_path} inactive list failed: {inactive.text}")
         inactive_rows = inactive.json()["data"]["items"]
         _assert(inactive_rows and inactive_rows[0]["disabled"], f"master data {entity_path} inactive readback missing")
+
+
+def _exercise_quality_smoke(client: TestClient) -> None:
+    scenario_tag = "Z003-QUALITY-INSPECTION-20260617-301"
+    company = "COMP-QC-SMOKE"
+    item_code = "ITEM-QC-SMOKE"
+    source_ref = f"manual:{scenario_tag}:quality-ui-smoke"
+    inspection_ref = f"QI:{scenario_tag}:quality-ui-smoke"
+    idempotency_key = f"{scenario_tag}:create:smoke"
+    create_request_id = _quality_request_id(
+        scenario_tag=scenario_tag,
+        operation="create",
+        idempotency_key=idempotency_key,
+        source_ref=source_ref,
+        inspection_ref=inspection_ref,
+        item_code=item_code,
+        result="fail",
+    )
+    create_payload = {
+        "request_id": create_request_id,
+        "idempotency_key": idempotency_key,
+        "scenario_tag": scenario_tag,
+        "source_ref": source_ref,
+        "inspection_ref": inspection_ref,
+        "source_doc": source_ref,
+        "operation": "create",
+        "company": company,
+        "source_type": "manual",
+        "source_id": None,
+        "item_code": item_code,
+        "supplier": "SUP-QC-SMOKE",
+        "warehouse": "WH-QC-SMOKE",
+        "inspection_date": date(2026, 6, 17).isoformat(),
+        "inspected_qty": "20",
+        "accepted_qty": "18",
+        "rejected_qty": "2",
+        "defect_qty": "2",
+        "result": "fail",
+        "remark": "acceptance-smoke rework",
+        "items": [
+            {
+                "item_code": item_code,
+                "sample_qty": "20",
+                "accepted_qty": "18",
+                "rejected_qty": "2",
+                "defect_qty": "2",
+                "result": "fail",
+                "remark": "acceptance-smoke rework",
+            }
+        ],
+        "defects": [
+            {
+                "defect_code": "QC-SMOKE",
+                "defect_name": "Smoke Defect",
+                "defect_qty": "2",
+                "severity": "major",
+                "item_line_no": 1,
+                "remark": "acceptance-smoke rework",
+            }
+        ],
+    }
+    quality_env = {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}
+    source_snapshot = QualitySourceValidationSnapshot(
+        master_data={
+            "company": {"name": company},
+            "item": {"name": item_code},
+            "supplier": {"name": "SUP-QC-SMOKE", "supplier_name": "SUP-QC-SMOKE"},
+            "warehouse": {"name": "WH-QC-SMOKE", "warehouse_name": "WH-QC-SMOKE", "company": company},
+        },
+        source=None,
+    )
+    with patch.dict("os.environ", quality_env), patch(
+        "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+        return_value=source_snapshot,
+    ):
+        created = client.post(
+            "/api/quality/inspections",
+            headers=_headers(request_id=create_request_id),
+            json=create_payload,
+        )
+    _assert(created.status_code == 201, created.text)
+    created_data = created.json()["data"]
+    inspection_id = int(created_data["id"])
+    inspection_no = str(created_data["inspection_no"])
+    _assert(created_data["status"] == "draft", "quality create status mismatch")
+    _assert(created_data["result"] == "fail", "quality create result mismatch")
+
+    listed = client.get(
+        f"/api/quality/inspections?item_code={item_code}&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(listed.status_code == 200, listed.text)
+    list_rows = listed.json()["data"]["items"]
+    _assert(
+        any(int(row["id"]) == inspection_id for row in list_rows),
+        f"quality list readback missing: {listed.text}",
+    )
+
+    confirm_source_ref = f"{scenario_tag}/{inspection_no}"
+    confirm_idempotency = f"{scenario_tag}:confirm:{inspection_no}:smoke"
+    confirm_request_id = _quality_request_id(
+        scenario_tag=scenario_tag,
+        operation="confirm",
+        idempotency_key=confirm_idempotency,
+        source_ref=confirm_source_ref,
+        inspection_ref=inspection_no,
+        item_code=item_code,
+        result="fail",
+    )
+    with patch.dict("os.environ", quality_env):
+        confirmed = client.post(
+            f"/api/quality/inspections/{inspection_id}/confirm",
+            headers=_headers(request_id=confirm_request_id),
+            json={
+                "request_id": confirm_request_id,
+                "idempotency_key": confirm_idempotency,
+                "scenario_tag": scenario_tag,
+                "source_ref": confirm_source_ref,
+                "inspection_ref": inspection_no,
+                "source_type": "manual",
+                "source_doc": confirm_source_ref,
+                "item_code": item_code,
+                "operation": "confirm",
+                "result": "fail",
+                "remark": "acceptance-smoke rework confirm",
+            },
+        )
+    _assert(confirmed.status_code == 200, confirmed.text)
+    _assert(confirmed.json()["data"]["status"] == "confirmed", "quality confirm status mismatch")
+    _assert(confirmed.json()["data"]["result"] == "fail", "quality confirm result mismatch")
 
 
 def main() -> int:
@@ -944,6 +1100,8 @@ def main() -> int:
             trail = client.get(f"/api/cross-module/work-order-trail/WO-FR-001?company={DEFAULT_COMPANY}", headers=_headers())
             _assert(trail.status_code == 200, trail.text)
             _assert(trail.json()["data"]["work_order"]["work_order_id"] == "WO-FR-001", "work-order trail id mismatch")
+
+        _exercise_quality_smoke(client)
 
         order_rows = [
             {
