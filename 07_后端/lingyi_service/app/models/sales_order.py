@@ -100,7 +100,7 @@ class LySalesOrderIdempotency(Base):
     __table_args__ = (
         Index("uk_ly_sales_order_idem", "company", "operation", "idempotency_key", unique=True),
         Index("idx_ly_sales_order_idem_order", "sales_order_id"),
-        CheckConstraint("operation IN ('create_draft','cancel_draft')", name="ck_ly_sales_order_idem_operation"),
+        CheckConstraint("operation IN ('create_draft','update_draft','cancel_draft')", name="ck_ly_sales_order_idem_operation"),
         {"schema": "ly_schema", "comment": "FastAPI 原生大货销售订单幂等记录"},
     )
 

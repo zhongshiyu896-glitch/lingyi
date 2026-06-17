@@ -43,6 +43,7 @@ from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
 from app.schemas.sales_inventory import SupplierItem
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
+from app.schemas.sales_inventory import SalesOrderDraftUpdateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryListData
 from app.schemas.sales_inventory import StockLedgerData
@@ -225,7 +226,7 @@ def _validate_local_sales_order_write_gate(
         normalized_scenario_tag and SALES_ORDER_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag)
     )
     if not legacy_gate_requested:
-        if expected_operation not in {"create_draft", "cancel_draft"}:
+        if expected_operation not in {"create_draft", "update_draft", "cancel_draft"}:
             _raise_sales_order_idempotency_conflict("operation 非法")
         if not _scope_text(idempotency_key):
             _raise_sales_order_idempotency_conflict("idempotency_key 不能为空")
@@ -288,7 +289,7 @@ def _validate_local_sales_order_write_gate(
     normalized_operation = _scope_text(operation)
     if normalized_operation is None:
         _raise_sales_order_idempotency_conflict("operation 载体缺失")
-    if normalized_operation not in {"create_draft", "cancel_draft"}:
+    if normalized_operation not in {"create_draft", "update_draft", "cancel_draft"}:
         _raise_sales_order_idempotency_conflict("operation 载体缺失或格式非法")
     if normalized_operation != expected_operation:
         _raise_sales_order_idempotency_conflict("operation 载体与路由动作不一致")
@@ -1419,6 +1420,99 @@ def create_sales_order_draft(
         session.rollback()
         raise
     return _created(data)
+
+
+@router.patch("/sales-orders/drafts/{draft_id}")
+def update_sales_order_draft(
+    draft_id: int,
+    request: Request,
+    payload: SalesOrderDraftUpdateRequest = Body(...),
+    idempotency_key_header: str | None = Header(default=None, alias="Idempotency-Key"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    if draft_id <= 0:
+        _raise_sales_order_idempotency_conflict("draft_id 载体缺失或格式非法")
+    if not payload.idempotency_key and idempotency_key_header:
+        payload.idempotency_key = idempotency_key_header
+    action = SALES_INVENTORY_WRITE
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="sales_order",
+    )
+    try:
+        gate_fields = _write_service(session).get_sales_order_draft_gate_carriers(draft_id=draft_id)
+    except SalesInventoryServiceError as exc:
+        _raise_sales_inventory_service_error(exc)
+    scenario_tag = _validate_local_sales_order_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        source_order_ref=gate_fields.get("source_order_ref"),
+        sales_order_no=gate_fields.get("sales_order_no"),
+        company=payload.company,
+        operation=payload.operation,
+        expected_operation="update_draft",
+        draft_id=draft_id,
+    )
+    if payload.company.strip() != gate_fields.get("company", ""):
+        _raise_sales_order_idempotency_conflict("company 载体与草稿上下文不一致")
+    payload_scenario_tag = _scope_text(payload.scenario_tag)
+    gate_scenario_tag = gate_fields.get("scenario_tag", "")
+    if payload_scenario_tag and payload_scenario_tag != gate_scenario_tag:
+        _raise_sales_order_idempotency_conflict("scenario_tag 载体与草稿上下文不一致")
+    order_carrier = _scope_text(payload.sales_order_no_or_source_order_ref)
+    if order_carrier and order_carrier not in {
+        gate_fields.get("sales_order_no", ""),
+        gate_fields.get("source_order_ref", ""),
+    }:
+        _raise_sales_order_idempotency_conflict("sales_order_no_or_source_order_ref 载体与草稿上下文不一致")
+    try:
+        before = _write_service(session).get_local_sales_order(name=gate_fields.get("sales_order_no", ""))
+        data = _write_service(session).update_sales_order_draft(
+            draft_id=draft_id,
+            payload=payload,
+            current_user=current_user.username,
+            scenario_tag=scenario_tag,
+        )
+        AuditService(session).record_success(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_order",
+            resource_id=int(data.id),
+            resource_no=str(data.sales_order_no),
+            before_data=jsonable_encoder(before),
+            after_data=jsonable_encoder(data),
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_order",
+            resource_id=int(draft_id),
+            resource_no=payload.sales_order_no_or_source_order_ref,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _ok(data)
 
 
 @router.post("/sales-orders/drafts/{draft_id}/cancel")

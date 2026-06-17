@@ -74,6 +74,7 @@ from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
 from app.schemas.sales_inventory import SalesOrderDraftData
 from app.schemas.sales_inventory import SalesOrderDraftLineItemData
+from app.schemas.sales_inventory import SalesOrderDraftUpdateRequest
 from app.schemas.sales_inventory import SalesOrderFulfillmentData
 from app.schemas.sales_inventory import SalesOrderFulfillmentItem
 from app.schemas.sales_inventory import SalesOrderLineItem
@@ -346,6 +347,187 @@ class SalesInventoryService:
                 idempotency_key=idempotency_key,
                 request_hash=request_hash,
                 sales_order_id=int(row.id),
+                response_json=self._sales_order_draft_response_json(response),
+                created_by=current_user,
+            )
+        )
+        session.flush()
+        return response
+
+    def update_sales_order_draft(
+        self,
+        *,
+        draft_id: int,
+        payload: SalesOrderDraftUpdateRequest,
+        current_user: str,
+        scenario_tag: str,
+    ) -> SalesOrderDraftData:
+        session = self._require_session()
+        order = session.query(LySalesOrder).filter(LySalesOrder.id == int(draft_id)).first()
+        if order is None:
+            raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
+        if str(order.status) == "cancelled":
+            raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_ALREADY_CANCELLED", "草稿已取消")
+        if str(order.status) not in {"draft", "planned"}:
+            raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_INVALID_STATUS", "当前状态不允许编辑")
+
+        company = self._require_text(payload.company, "company")
+        if company != str(order.company):
+            raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "company 与草稿不一致")
+        operation = self._text(payload.operation) or "update_draft"
+        if operation != "update_draft":
+            raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "operation 非法")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        customer = self._text(payload.customer)
+        currency = self._text(payload.currency) or "CNY"
+
+        line_rows: list[dict[str, Any]] = []
+        grand_total = Decimal("0")
+        for index, line in enumerate(payload.items, start=1):
+            item_code = self._require_text(line.item_code, f"items[{index}].item_code")
+            style = self._resolve_enabled_style(company=company, style_no=item_code)
+            qty = self._positive_decimal(line.qty, f"items[{index}].qty")
+            rate = self._decimal_or_none(line.rate)
+            amount = qty * rate if rate is not None else None
+            if amount is not None:
+                grand_total += amount
+            line_rows.append(
+                {
+                    "item_code": str(style.ys_style_no),
+                    "item_name": str(style.ys_style_name_cn),
+                    "color": self._text(line.color),
+                    "size": self._text(line.size),
+                    "qty": qty,
+                    "rate": rate,
+                    "amount": amount,
+                    "uom": self._require_text(line.uom, f"items[{index}].uom"),
+                    "warehouse": self._text(line.warehouse),
+                    "delivery_date": line.delivery_date,
+                }
+            )
+
+        request_hash = self._native_sales_order_request_hash(
+            {
+                "draft_id": int(order.id),
+                "company": company,
+                "sales_order_no": str(order.sales_order_no),
+                "source_order_ref": self._text(order.source_order_ref) or str(order.sales_order_no),
+                "customer": customer,
+                "currency": currency,
+                "transaction_date": payload.transaction_date.isoformat() if payload.transaction_date else None,
+                "delivery_date": payload.delivery_date.isoformat() if payload.delivery_date else None,
+                "items": [
+                    {
+                        "item_code": row["item_code"],
+                        "item_name": row["item_name"],
+                        "color": row["color"],
+                        "size": row["size"],
+                        "qty": str(row["qty"]),
+                        "rate": str(row["rate"]) if row["rate"] is not None else None,
+                        "uom": row["uom"],
+                        "warehouse": row["warehouse"],
+                        "delivery_date": row["delivery_date"].isoformat() if row["delivery_date"] else None,
+                    }
+                    for row in line_rows
+                ],
+            }
+        )
+
+        existing_idem = (
+            session.query(LySalesOrderIdempotency)
+            .filter(
+                LySalesOrderIdempotency.company == company,
+                LySalesOrderIdempotency.operation == "update_draft",
+                LySalesOrderIdempotency.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing_idem is not None:
+            if str(existing_idem.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "幂等键冲突且请求内容不一致")
+            return self._build_native_sales_order_draft_data(order)
+
+        existing_items = {int(item.line_no): item for item in self._native_sales_order_items(order_id=int(order.id))}
+        for index, row in enumerate(line_rows, start=1):
+            existing_item = existing_items.get(index)
+            if existing_item is None:
+                session.add(
+                    LySalesOrderItem(
+                        sales_order_id=int(order.id),
+                        company=company,
+                        line_no=index,
+                        sales_order_item=f"{order.sales_order_no}-{index:03d}",
+                        item_code=row["item_code"],
+                        item_name=row["item_name"],
+                        color=row["color"],
+                        size=row["size"],
+                        ys_material_calc_state="待算料",
+                        qty=row["qty"],
+                        planned_qty=Decimal("0"),
+                        delivered_qty=Decimal("0"),
+                        rate=row["rate"],
+                        amount=row["amount"],
+                        uom=row["uom"],
+                        warehouse=row["warehouse"],
+                        delivery_date=row["delivery_date"] or payload.delivery_date,
+                    )
+                )
+                continue
+
+            planned_qty = Decimal(str(existing_item.planned_qty or 0))
+            delivered_qty = Decimal(str(existing_item.delivered_qty or 0))
+            if planned_qty > row["qty"]:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_QTY_BELOW_PLANNED", "订单数量不得小于已排产数量")
+            if delivered_qty > row["qty"]:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_QTY_BELOW_DELIVERED", "订单数量不得小于已交付数量")
+            if (planned_qty > 0 or delivered_qty > 0) and str(existing_item.item_code) != row["item_code"]:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_PLANNED_ITEM_LOCKED", "已排产或已交付订单行不允许改款号")
+
+            existing_item.item_code = row["item_code"]
+            existing_item.item_name = row["item_name"]
+            existing_item.color = row["color"]
+            existing_item.size = row["size"]
+            existing_item.qty = row["qty"]
+            existing_item.rate = row["rate"]
+            existing_item.amount = row["amount"]
+            existing_item.uom = row["uom"]
+            existing_item.warehouse = row["warehouse"]
+            existing_item.delivery_date = row["delivery_date"] or payload.delivery_date
+            existing_item.ys_material_calc_state = "待算料"
+
+        for line_no, existing_item in existing_items.items():
+            if line_no <= len(line_rows):
+                continue
+            planned_qty = Decimal(str(existing_item.planned_qty or 0))
+            delivered_qty = Decimal(str(existing_item.delivered_qty or 0))
+            if planned_qty > 0 or delivered_qty > 0:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_PLANNED_ITEM_LOCKED", "已排产或已交付订单行不允许删除")
+            session.delete(existing_item)
+
+        order.customer = customer
+        order.transaction_date = payload.transaction_date
+        order.delivery_date = payload.delivery_date
+        order.currency = currency
+        order.grand_total = grand_total
+        order.request_hash = request_hash
+        order.updated_by = current_user
+        order.updated_at = datetime.now(timezone.utc)
+        order.payload = {
+            **(order.payload or {}),
+            "scenario_tag": self._text(scenario_tag),
+            "source_order_ref": self._text(order.source_order_ref) or str(order.sales_order_no),
+            "last_update_idempotency_key": idempotency_key,
+        }
+        session.flush()
+
+        response = self._build_native_sales_order_draft_data(order)
+        session.add(
+            LySalesOrderIdempotency(
+                company=company,
+                operation="update_draft",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                sales_order_id=int(order.id),
                 response_json=self._sales_order_draft_response_json(response),
                 created_by=current_user,
             )
@@ -710,6 +892,7 @@ class SalesInventoryService:
 
             items.append(
                 SalesOrderListItem(
+                    id=int(draft.id),
                     name=sales_order_no,
                     company=str(draft.company),
                     customer=payload_customer,
@@ -4289,6 +4472,7 @@ class SalesInventoryService:
     def _build_native_sales_order_list_item(self, order: LySalesOrder) -> SalesOrderListItem:
         items = self._native_sales_order_items(order_id=int(order.id))
         return SalesOrderListItem(
+            id=int(order.id),
             name=str(order.sales_order_no),
             company=str(order.company),
             customer=self._text(order.customer),

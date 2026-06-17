@@ -89,6 +89,7 @@ def _create_local_tables() -> None:
     SubcontractBase.metadata.create_all(bind=main_module.engine)
     _ensure_local_sample_idempotency_supports_seal()
     _ensure_local_sales_order_item_calc_columns()
+    _ensure_local_sales_order_idempotency_supports_update()
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
     _ensure_local_bom_company_style_columns()
@@ -169,6 +170,49 @@ def _ensure_local_sales_order_item_calc_columns() -> None:
             )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ly_sales_order_item_material_calc ON ly_sales_order_item(company, ys_material_calc_state)"
+        )
+
+
+def _ensure_local_sales_order_idempotency_supports_update() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_sales_order_idempotency'"
+        ).fetchone()
+        existing_sql = str(row[0]) if row else ""
+        if not row or "'update_draft'" in existing_sql:
+            return
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            CREATE TABLE ly_sales_order_idempotency_new (
+                id INTEGER NOT NULL,
+                company VARCHAR(140) NOT NULL,
+                operation VARCHAR(32) NOT NULL,
+                idempotency_key VARCHAR(140) NOT NULL,
+                request_hash VARCHAR(64) NOT NULL,
+                sales_order_id INTEGER NOT NULL,
+                response_json JSON NOT NULL,
+                created_by VARCHAR(140) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ck_ly_sales_order_idem_operation CHECK (operation IN ('create_draft','update_draft','cancel_draft'))
+            );
+            INSERT INTO ly_sales_order_idempotency_new (
+                id, company, operation, idempotency_key, request_hash, sales_order_id, response_json, created_by, created_at
+            )
+            SELECT id, company, operation, idempotency_key, request_hash, sales_order_id, response_json, created_by, created_at
+            FROM ly_sales_order_idempotency;
+            DROP TABLE ly_sales_order_idempotency;
+            ALTER TABLE ly_sales_order_idempotency_new RENAME TO ly_sales_order_idempotency;
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_sales_order_idem
+                ON ly_sales_order_idempotency (company, operation, idempotency_key);
+            CREATE INDEX IF NOT EXISTS idx_ly_sales_order_idem_order
+                ON ly_sales_order_idempotency (sales_order_id);
+            PRAGMA foreign_keys=on;
+            """
         )
 
 

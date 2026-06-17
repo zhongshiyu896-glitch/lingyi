@@ -198,6 +198,7 @@ class SalesPaymentEntryListData(BaseModel):
 class SalesOrderListItem(BaseModel):
     """Read-only Sales Order list row."""
 
+    id: int | None = None
     name: str
     company: str
     customer: str | None = None
@@ -282,6 +283,21 @@ class SalesOrderDraftCancelRequest(BaseModel):
     sales_order_no_or_source_order_ref: str
     company: str
     reason: str
+
+
+class SalesOrderDraftUpdateRequest(BaseModel):
+    """Update local sales-order draft payload."""
+
+    operation: str
+    scenario_tag: str | None = None
+    idempotency_key: str | None = None
+    sales_order_no_or_source_order_ref: str | None = None
+    company: str
+    customer: str | None = None
+    transaction_date: date | None = None
+    delivery_date: date | None = None
+    currency: str | None = None
+    items: list[SalesOrderDraftLineItemCreateRequest] = Field(min_length=1)
 
 
 class SalesOrderDraftLineItemData(BaseModel):
