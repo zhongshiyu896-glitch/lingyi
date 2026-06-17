@@ -32,6 +32,8 @@ class LySubcontractOrder(Base):
         Index("idx_ly_subcontract_company_status", "company", "status"),
         Index("idx_ly_subcontract_company_supplier_status", "company", "supplier", "status"),
         Index("idx_ly_subcontract_company_item_status", "company", "item_code", "status"),
+        Index("uk_ly_subcontract_company_idem", "company", "idempotency_key", unique=True),
+        Index("uk_ly_subcontract_company_source", "company", "source_ref", unique=True),
         Index(
             "idx_ly_subcontract_profit_scope_order",
             "company",
@@ -65,6 +67,9 @@ class LySubcontractOrder(Base):
     settlement_status = Column(String(32), nullable=False, default="unsettled")
     resource_scope_status = Column(String(32), nullable=False, default="ready")
     scope_error_code = Column(String(64), nullable=True)
+    source_ref = Column(String(140), nullable=True)
+    idempotency_key = Column(String(128), nullable=True)
+    request_hash = Column(String(64), nullable=True)
     sales_order = Column(String(140), nullable=True)
     sales_order_item = Column(String(140), nullable=True)
     production_plan_id = Column(BigInteger, nullable=True)

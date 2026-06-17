@@ -428,6 +428,59 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertEqual(row.result, "success")
         self.assertIn("Subcontract Manager", row.operator_roles)
 
+    def test_create_replays_same_idempotency_without_duplicate_order_or_status_log(self) -> None:
+        payload = self._create_payload(planned_qty="70")
+        first = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(request_id=payload["request_id"]),
+            json=payload,
+        )
+        second = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(request_id=payload["request_id"]),
+            json=payload,
+        )
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual(first.json()["data"]["name"], second.json()["data"]["name"])
+
+        with self.SessionLocal() as session:
+            created_orders = session.query(LySubcontractOrder).filter(LySubcontractOrder.id > 102).all()
+            created_order = created_orders[0]
+            status_logs = (
+                session.query(LySubcontractStatusLog)
+                .filter(LySubcontractStatusLog.subcontract_id == int(created_order.id))
+                .all()
+            )
+        self.assertEqual(len(created_orders), 1)
+        self.assertEqual(created_order.idempotency_key, payload["idempotency_key"])
+        self.assertEqual(created_order.source_ref, payload["source_ref"])
+        self.assertEqual(len(status_logs), 1)
+
+    def test_create_same_idempotency_with_different_payload_returns_conflict(self) -> None:
+        payload = self._create_payload(planned_qty="72")
+        first = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(request_id=payload["request_id"]),
+            json=payload,
+        )
+        self.assertEqual(first.status_code, 200, first.text)
+
+        conflict_payload = dict(payload)
+        conflict_payload["planned_qty"] = "73"
+        conflict_payload["quantity"] = "73"
+        second = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(request_id=payload["request_id"]),
+            json=conflict_payload,
+        )
+        self.assertEqual(second.status_code, 409, second.text)
+        self.assertEqual(second.json()["code"], "SUBCONTRACT_IDEMPOTENCY_CONFLICT")
+
+        with self.SessionLocal() as session:
+            created_orders = session.query(LySubcontractOrder).filter(LySubcontractOrder.id > 102).all()
+        self.assertEqual(len(created_orders), 1)
+
     def test_issue_material_creates_pending_outbox_and_success_audit(self) -> None:
         payload = self._issue_payload(idem="idem-audit-001", issued_qty="10")
         response = self.client.post(

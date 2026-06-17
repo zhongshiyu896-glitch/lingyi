@@ -89,6 +89,7 @@ def _create_local_tables() -> None:
     SubcontractBase.metadata.create_all(bind=main_module.engine)
     _ensure_local_sample_idempotency_supports_seal()
     _ensure_local_sales_order_item_calc_columns()
+    _ensure_local_subcontract_create_idempotency_columns()
 
 
 def _ensure_local_sample_idempotency_supports_seal() -> None:
@@ -158,6 +159,34 @@ def _ensure_local_sales_order_item_calc_columns() -> None:
             )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ly_sales_order_item_material_calc ON ly_sales_order_item(company, ys_material_calc_state)"
+        )
+
+
+def _ensure_local_subcontract_create_idempotency_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_subcontract_order'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_subcontract_order)").fetchall()
+        }
+        if "source_ref" not in existing_columns:
+            conn.execute("ALTER TABLE ly_subcontract_order ADD COLUMN source_ref VARCHAR(140)")
+        if "idempotency_key" not in existing_columns:
+            conn.execute("ALTER TABLE ly_subcontract_order ADD COLUMN idempotency_key VARCHAR(128)")
+        if "request_hash" not in existing_columns:
+            conn.execute("ALTER TABLE ly_subcontract_order ADD COLUMN request_hash VARCHAR(64)")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_subcontract_company_idem ON ly_subcontract_order(company, idempotency_key)"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_subcontract_company_source ON ly_subcontract_order(company, source_ref)"
         )
 
 

@@ -121,6 +121,8 @@ class SubcontractService:
         company = self._normalize_company(payload.company)
         if company is None:
             raise BusinessException(code=SUBCONTRACT_COMPANY_REQUIRED, message="外发单 company 不能为空")
+        idempotency_key = payload.idempotency_key.strip()
+        source_ref = payload.source_ref.strip()
 
         bridge_scope = self._resolve_profit_scope_bridge(
             company=company,
@@ -132,6 +134,39 @@ class SubcontractService:
             work_order=payload.work_order,
             job_card=payload.job_card,
         )
+        request_hash = self._build_create_order_request_hash(
+            {
+                "operation": "create",
+                "company": company,
+                "supplier": payload.supplier.strip(),
+                "item_code": item_code,
+                "bom_id": payload.bom_id,
+                "planned_qty": payload.planned_qty,
+                "process_name": process_name,
+                "subcontract_rate": subcontract_rate,
+                "source_ref": source_ref,
+                "subcontract_ref": payload.subcontract_ref.strip(),
+                "supplier_ref": payload.supplier_ref.strip(),
+                "work_order_ref": payload.work_order_ref.strip(),
+                "quantity": payload.quantity,
+                "status_action": payload.status_action.strip(),
+                "sales_order": payload.sales_order.strip() if payload.sales_order else None,
+                "sales_order_item": payload.sales_order_item.strip() if payload.sales_order_item else None,
+                "production_plan_id": payload.production_plan_id,
+                "work_order": payload.work_order.strip() if payload.work_order else None,
+                "job_card": payload.job_card.strip() if payload.job_card else None,
+            }
+        )
+        existing_order = self._get_order_by_idempotency(company=company, idempotency_key=idempotency_key)
+        if existing_order is not None:
+            if str(existing_order.request_hash or "") != request_hash:
+                raise BusinessException(code=SUBCONTRACT_IDEMPOTENCY_CONFLICT, message="外发创建幂等键重复但载荷不一致")
+            return SubcontractCreateData(name=str(existing_order.subcontract_no), company=company)
+        existing_source = self._get_order_by_source_ref(company=company, source_ref=source_ref)
+        if existing_source is not None:
+            if str(existing_source.request_hash or "") != request_hash:
+                raise BusinessException(code=SUBCONTRACT_IDEMPOTENCY_CONFLICT, message="外发创建 source_ref 已存在但载荷不一致")
+            return SubcontractCreateData(name=str(existing_source.subcontract_no), company=company)
 
         now = datetime.utcnow()
         subcontract_no = f"SC-{now.strftime('%Y%m%d%H%M%S%f')}"
@@ -155,6 +190,9 @@ class SubcontractService:
             status="draft",
             resource_scope_status="ready",
             scope_error_code=None,
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
             sales_order=bridge_scope["sales_order"],
             sales_order_item=bridge_scope["sales_order_item"],
             production_plan_id=bridge_scope["production_plan_id"],
@@ -1173,6 +1211,47 @@ class SubcontractService:
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
+    def _get_order_by_idempotency(self, *, company: str, idempotency_key: str) -> LySubcontractOrder | None:
+        try:
+            return (
+                self.session.query(LySubcontractOrder)
+                .filter(
+                    LySubcontractOrder.company == company,
+                    LySubcontractOrder.idempotency_key == idempotency_key,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    def _get_order_by_source_ref(self, *, company: str, source_ref: str) -> LySubcontractOrder | None:
+        try:
+            return (
+                self.session.query(LySubcontractOrder)
+                .filter(
+                    LySubcontractOrder.company == company,
+                    LySubcontractOrder.source_ref == source_ref,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    @classmethod
+    def _build_create_order_request_hash(cls, payload: dict[str, Any]) -> str:
+        canonical = cls._canonicalize_create_order_value(payload)
+        return hashlib.sha256(
+            json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
+
+    @classmethod
+    def _canonicalize_create_order_value(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {str(key): cls._canonicalize_create_order_value(child) for key, child in value.items()}
+        if isinstance(value, list):
+            return [cls._canonicalize_create_order_value(item) for item in value]
+        return cls._normalize_decimal_text(value)
+
     def get_order_snapshot(self, *, order_id: int) -> dict[str, object]:
         order = self._must_get_order(order_id=order_id)
         latest_issue_outbox = self.latest_issue_outbox(order_id=order_id)
@@ -1199,6 +1278,9 @@ class SubcontractService:
             "settlement_status": str(order.settlement_status or ""),
             "resource_scope_status": str(order.resource_scope_status),
             "scope_error_code": (str(order.scope_error_code) if order.scope_error_code else None),
+            "source_ref": (str(order.source_ref) if getattr(order, "source_ref", None) else None),
+            "idempotency_key": (str(order.idempotency_key) if getattr(order, "idempotency_key", None) else None),
+            "request_hash": (str(order.request_hash) if getattr(order, "request_hash", None) else None),
             "sales_order": (str(order.sales_order) if getattr(order, "sales_order", None) else None),
             "sales_order_item": (str(order.sales_order_item) if getattr(order, "sales_order_item", None) else None),
             "production_plan_id": (
