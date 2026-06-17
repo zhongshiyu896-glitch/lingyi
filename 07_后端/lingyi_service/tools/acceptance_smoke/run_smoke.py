@@ -687,6 +687,200 @@ def _exercise_master_data_smoke(client: TestClient) -> None:
         _assert(inactive_rows and inactive_rows[0]["disabled"], f"master data {entity_path} inactive readback missing")
 
 
+def _exercise_sales_order_to_material_issue_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
+    company = "COMP-A4-SMOKE"
+    customer = "CUST-A4-SMOKE"
+    sales_order_no = "SO-A4-SMOKE-001"
+    item_code = "ITEM-A4-SMOKE"
+    material_code = "MAT-A4-SMOKE"
+    warehouse = "WH-A4-SMOKE"
+    warehouse_scenario = "Z003-WAREHOUSE-20260617-801"
+
+    with session_local() as session:
+        session.add(
+            LyApparelBom(
+                id=1101,
+                bom_no="BOM-A4-SMOKE-001",
+                item_code=item_code,
+                version_no="v1",
+                is_default=True,
+                status="active",
+                created_by="frontend.readiness.smoke",
+                updated_by="frontend.readiness.smoke",
+            )
+        )
+        session.add(
+            LyApparelBomItem(
+                id=1101,
+                bom_id=1101,
+                material_item_code=material_code,
+                qty_per_piece=Decimal("2"),
+                loss_rate=Decimal("0.05"),
+                uom="米",
+            )
+        )
+        session.commit()
+
+    order_payload = {
+        "company": company,
+        "customer": customer,
+        "operation": "create_draft",
+        "sales_order_no": sales_order_no,
+        "source_order_ref": sales_order_no,
+        "idempotency_key": "sales-order-draft:a4-smoke:001",
+        "transaction_date": "2026-06-17",
+        "delivery_date": "2026-06-30",
+        "currency": "CNY",
+        "items": [
+            {
+                "item_code": item_code,
+                "item_name": "A4 Smoke Finished Goods",
+                "qty": 100,
+                "rate": 80,
+                "uom": "件",
+                "warehouse": warehouse,
+            }
+        ],
+    }
+    created_order = client.post("/api/sales-inventory/sales-orders/drafts", headers=_headers(), json=order_payload)
+    _assert(created_order.status_code == 201, created_order.text)
+    replayed_order = client.post("/api/sales-inventory/sales-orders/drafts", headers=_headers(), json=order_payload)
+    _assert(replayed_order.status_code == 201, replayed_order.text)
+    _assert(
+        int(created_order.json()["data"]["id"]) == int(replayed_order.json()["data"]["id"]),
+        "sales order draft idempotent replay mismatch",
+    )
+
+    order_detail = client.get(f"/api/sales-inventory/sales-orders/{sales_order_no}", headers=_headers())
+    _assert(order_detail.status_code == 200, order_detail.text)
+    order_data = order_detail.json()["data"]
+    sales_order_item = str(order_data["items"][0]["name"])
+    _assert(order_data["name"] == sales_order_no, "sales order draft detail name mismatch")
+    _assert(order_data["items"][0]["item_code"] == item_code, "sales order draft item mismatch")
+
+    plan_payload = {
+        "sales_order": sales_order_no,
+        "sales_order_item": sales_order_item,
+        "item_code": item_code,
+        "bom_id": 1101,
+        "planned_qty": 40,
+        "planned_start_date": "2026-06-18",
+        "scenario_tag": None,
+        "operation": "create_plan",
+        "idempotency_key": "production-plan:a4-smoke:001",
+        "company": company,
+    }
+    created_plan = client.post("/api/production/plans", headers=_headers(), json=plan_payload)
+    _assert(created_plan.status_code == 200, created_plan.text)
+    replayed_plan = client.post("/api/production/plans", headers=_headers(), json=plan_payload)
+    _assert(replayed_plan.status_code == 200, replayed_plan.text)
+    plan_id = int(created_plan.json()["data"]["plan_id"])
+    _assert(plan_id == int(replayed_plan.json()["data"]["plan_id"]), "production plan idempotent replay mismatch")
+
+    over_plan_payload = {**plan_payload, "planned_qty": 70, "idempotency_key": "production-plan:a4-smoke:002"}
+    over_plan = client.post("/api/production/plans", headers=_headers(), json=over_plan_payload)
+    _assert(over_plan.status_code == 409, over_plan.text)
+    _assert(over_plan.json()["code"] == "PRODUCTION_PLANNED_QTY_EXCEEDED", "production over-plan code mismatch")
+
+    listed_plans = client.get(f"/api/production/plans?sales_order={sales_order_no}&page=1&page_size=10", headers=_headers())
+    _assert(listed_plans.status_code == 200, listed_plans.text)
+    plan_rows = listed_plans.json()["data"]["items"]
+    _assert(plan_rows and int(plan_rows[0]["id"]) == plan_id, "production plan readback missing")
+
+    detail_scenario = "Z003-PROD-PLAN-DETAIL-20260617-001"
+    material_check_payload = {
+        "warehouse": warehouse,
+        "idempotency_key": f"{detail_scenario}:production-material-check:a4-smoke:001",
+        "scenario_tag": detail_scenario,
+        "operation": "material_check",
+        "plan_id": plan_id,
+        "sales_order": sales_order_no,
+        "sales_order_item": sales_order_item,
+        "item_code": item_code,
+        "bom_id": 1101,
+    }
+    local_env = {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}
+    with patch.dict("os.environ", local_env):
+        material_checked = client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=_headers(request_id=f"req-{detail_scenario}-a4-smoke-material-check"),
+            json=material_check_payload,
+        )
+    _assert(material_checked.status_code == 200, material_checked.text)
+    material_data = material_checked.json()["data"]
+    _assert(material_data["snapshot_count"] == 1, "production material check snapshot_count mismatch")
+    material_row = material_data["items"][0]
+    _assert(material_row["material_item_code"] == material_code, "production material check material mismatch")
+    _assert(Decimal(str(material_row["required_qty"])) == Decimal("84.000000"), "production material required qty mismatch")
+    _assert(Decimal(str(material_row["shortage_qty"])) == Decimal("84.000000"), "production material shortage qty mismatch")
+
+    issue_idempotency = f"{warehouse_scenario}:stock:material-issue:001"
+    issue_source_ref = f"{warehouse_scenario}:production-plan:{plan_id}:material-issue"
+    issue_request_id = _warehouse_request_id(
+        scenario_tag=warehouse_scenario,
+        idempotency_key=issue_idempotency,
+        source_ref=issue_source_ref,
+        warehouse=warehouse,
+        item_code=material_code,
+        quantity="12",
+        business_date="2026-06-18",
+    )
+    with patch.dict("os.environ", local_env):
+        material_issue = client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=_headers(request_id=issue_request_id),
+            json={
+                "company": company,
+                "purpose": "Material Issue",
+                "source_type": "production_plan_material_issue",
+                "source_id": issue_source_ref,
+                "source_ref": issue_source_ref,
+                "warehouse": warehouse,
+                "item_code": material_code,
+                "operation": "create_stock_entry_draft",
+                "quantity": "12",
+                "business_date": "2026-06-18",
+                "status_action": "create",
+                "scenario_tag": warehouse_scenario,
+                "source_warehouse": warehouse,
+                "target_warehouse": None,
+                "idempotency_key": issue_idempotency,
+                "items": [
+                    {
+                        "item_code": material_code,
+                        "qty": "12",
+                        "uom": "米",
+                        "source_warehouse": warehouse,
+                        "target_warehouse": None,
+                    }
+                ],
+            },
+        )
+    _assert(material_issue.status_code == 201, material_issue.text)
+    issue_data = material_issue.json()["data"]
+    _assert(issue_data["purpose"] == "Material Issue", "material issue purpose mismatch")
+    _assert(issue_data["source_warehouse"] == warehouse, "material issue source warehouse mismatch")
+    _assert(issue_data["outbox"]["status"] == "in_pending", "material issue outbox status mismatch")
+
+    issue_listed = client.get(
+        f"/api/warehouse/stock-entry-drafts?purpose=Material%20Issue&keyword={issue_source_ref}&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(issue_listed.status_code == 200, issue_listed.text)
+    issue_rows = issue_listed.json()["data"]["items"]
+    _assert(issue_rows and issue_rows[0]["source_id"] == issue_source_ref, "material issue draft readback missing")
+
+    with session_local() as session:
+        order = session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == sales_order_no).one()
+        order_item = session.query(LySalesOrderItem).filter(LySalesOrderItem.sales_order_id == int(order.id)).one()
+        plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one()
+        material = session.query(LyProductionPlanMaterial).filter(LyProductionPlanMaterial.plan_id == plan_id).one()
+        _assert(order.status == "planned", "sales order status after plan mismatch")
+        _assert(Decimal(str(order_item.planned_qty)) == Decimal("40.000000"), "sales order planned qty mismatch")
+        _assert(plan.status == "material_checked", "production plan material checked status mismatch")
+        _assert(material.material_item_code == material_code, "production material DB row mismatch")
+
+
 def _exercise_quality_smoke(client: TestClient) -> None:
     scenario_tag = "Z003-QUALITY-INSPECTION-20260617-301"
     company = "COMP-QC-SMOKE"
@@ -2415,6 +2609,7 @@ def main() -> int:
         _assert(dashboard.json()["data"]["company"] == "LY-FRONTEND-DEV", "dashboard default company mismatch")
 
         _exercise_master_data_smoke(client)
+        _exercise_sales_order_to_material_issue_smoke(client, session_local)
 
         purchase_company = "COMP-SMOKE"
         purchase_no = "PO-SMOKE-001"
