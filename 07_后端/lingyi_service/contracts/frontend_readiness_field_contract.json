@@ -275,14 +275,20 @@
       "status"
     ],
     "GET /api/subcontract/return-materials": [
+      "report_no",
       "subcontract_no",
       "company",
       "supplier",
       "item_code",
       "material_item_code",
+      "warehouse",
+      "issued_qty",
+      "theoretical_usage_qty",
       "planned_return_qty",
       "returned_qty",
       "pending_qty",
+      "report_date",
+      "source_doc_no",
       "status"
     ],
     "GET /api/warehouse/finished-goods-inbound": [

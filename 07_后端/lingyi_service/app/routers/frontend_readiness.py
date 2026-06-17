@@ -36,7 +36,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
     "/api/bom/material-requests": "material_requests",
     "/api/subcontract/material-issues": "subcontract_material_issues",
     "/api/subcontract/receipts": "subcontract_receipts",
-    "/api/subcontract/return-materials": "subcontract_return_materials",
     "/api/factory-statements/settlement-methods": "settlement_methods",
     "/api/factory-statements/invoice-types": "invoice_types",
     "/api/bom/sample-types": "sample_types",

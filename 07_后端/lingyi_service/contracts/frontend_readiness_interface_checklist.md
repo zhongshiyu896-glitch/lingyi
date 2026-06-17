@@ -27,7 +27,7 @@
 | `GET /api/factory-statements/purchase-invoices` | `purchase_invoice_name, company, supplier, supplier_name, currency, grand_total, paid_amount, outstanding_amount, status, posting_date` | 真实只读路由就绪 |
 | `GET /api/subcontract/material-issues` | `subcontract_no, company, supplier, item_code, material_item_code, warehouse, required_qty, issued_qty, pending_qty, status` | dev-gated 只读就绪 |
 | `GET /api/subcontract/receipts` | `subcontract_no, company, supplier, item_code, receipt_batch_no, received_qty, accepted_qty, rejected_qty, receipt_warehouse, status` | dev-gated 只读就绪 |
-| `GET /api/subcontract/return-materials` | `subcontract_no, company, supplier, item_code, material_item_code, planned_return_qty, returned_qty, pending_qty, status` | dev-gated 只读就绪 |
+| `GET /api/subcontract/return-materials` | `report_no, subcontract_no, company, supplier, item_code, material_item_code, warehouse, issued_qty, theoretical_usage_qty, planned_return_qty, returned_qty, pending_qty, report_date, source_doc_no, status` | 真实只读路由就绪 |
 | `GET /api/warehouse/finished-goods-inbound` | `reservation_no, item_code, item_name, warehouse, reserve_qty, inbound_qty, pending_inbound_qty, reserve_status, inbound_status, reserved_date, expected_inbound_date, owner, ref_no, company` | 真实只读路由就绪 |
 | `GET /api/sales-inventory/delivery-notes` | `delivery_note, company, sales_order, customer, item_code, warehouse, delivered_qty, posting_date, status` | 真实只读路由就绪 |
 | `GET /api/sales-inventory/sales-invoices` | `sales_invoice, company, sales_order, customer, grand_total, paid_amount, outstanding_amount, posting_date, status` | 真实只读路由就绪 |

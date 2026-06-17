@@ -5560,38 +5560,49 @@
       "registered_order": 12
     },
     {
-      "class": "B",
+      "class": "A",
       "method": "GET",
       "path": "/api/subcontract/return-materials",
-      "name": "frontend_readiness_subcontract_return_materials",
+      "name": "list_subcontract_return_materials",
       "tags": [
-        "frontend_readiness"
+        "subcontract"
       ],
-      "endpoint_module": "app.routers.frontend_readiness",
+      "endpoint_module": "app.routers.subcontract",
       "request_params": {
         "path": [],
         "query": [
+          "company",
+          "supplier",
+          "warehouse",
+          "item_code",
+          "status",
           "page",
           "page_size"
         ],
         "body": []
       },
       "response_fields": [
+        "report_no",
         "subcontract_no",
         "company",
         "supplier",
         "item_code",
         "material_item_code",
+        "warehouse",
+        "issued_qty",
+        "theoretical_usage_qty",
         "planned_return_qty",
         "returned_qty",
         "pending_qty",
+        "report_date",
+        "source_doc_no",
         "status"
       ],
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
+      "frontend_connect_status": "candidate",
+      "risk_note": "真实业务只读接口候选；由 FastAPI 外发发料/收货事实推导，不读 readiness seed",
       "duplicate_method_path_count": 1,
       "registered_order": 13
     },

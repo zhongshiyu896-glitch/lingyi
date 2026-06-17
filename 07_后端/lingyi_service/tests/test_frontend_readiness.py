@@ -119,7 +119,6 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/bom/material-requests",
         "/api/subcontract/material-issues",
         "/api/subcontract/receipts",
-        "/api/subcontract/return-materials",
         "/api/sales-inventory/delivery-addresses",
         "/api/factory-statements/settlement-methods",
         "/api/factory-statements/invoice-types",
@@ -594,12 +593,6 @@ class FrontendReadinessTest(unittest.TestCase):
             },
             "/api/subcontract/material-issues": {"subcontract_no", "material_item_code", "issued_qty", "pending_qty"},
             "/api/subcontract/receipts": {"subcontract_no", "receipt_batch_no", "received_qty", "accepted_qty"},
-            "/api/subcontract/return-materials": {
-                "subcontract_no",
-                "material_item_code",
-                "planned_return_qty",
-                "returned_qty",
-            },
             "/api/warehouse/finished-goods-inbound": {
                 "reservation_no",
                 "item_code",

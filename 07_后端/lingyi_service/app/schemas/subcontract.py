@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from typing import Generic
@@ -120,6 +121,35 @@ class SubcontractListData(BaseModel):
     """List result payload."""
 
     items: List[SubcontractListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class SubcontractReturnMaterialItem(BaseModel):
+    """Return material row inferred from subcontract issue facts."""
+
+    report_no: str
+    subcontract_no: str
+    company: Optional[str] = None
+    supplier: str
+    item_code: str
+    material_item_code: str
+    warehouse: str
+    issued_qty: Decimal = Decimal("0")
+    theoretical_usage_qty: Decimal = Decimal("0")
+    planned_return_qty: Decimal = Decimal("0")
+    returned_qty: Decimal = Decimal("0")
+    pending_qty: Decimal = Decimal("0")
+    report_date: date
+    source_doc_no: str
+    status: str
+
+
+class SubcontractReturnMaterialData(BaseModel):
+    """Paginated return material report payload."""
+
+    items: List[SubcontractReturnMaterialItem]
     total: int
     page: int
     page_size: int

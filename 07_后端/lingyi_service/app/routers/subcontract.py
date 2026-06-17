@@ -13,6 +13,7 @@ from fastapi import APIRouter
 from fastapi import Body
 from fastapi import Depends
 from fastapi import HTTPException
+from fastapi import Query
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError
@@ -68,6 +69,7 @@ from app.schemas.subcontract import ReceiveRequest
 from app.schemas.subcontract import SubcontractCreateRequest
 from app.schemas.subcontract import SubcontractDetailData
 from app.schemas.subcontract import SubcontractListQuery
+from app.schemas.subcontract import SubcontractReturnMaterialData
 from app.schemas.subcontract import SubcontractSettlementLockRequest
 from app.schemas.subcontract import SubcontractSettlementPreviewRequest
 from app.schemas.subcontract import SubcontractSettlementReleaseRequest
@@ -884,6 +886,68 @@ def list_subcontract_order(
             readable_item_codes=readable_item_codes,
             readable_companies=readable_companies,
             readable_suppliers=readable_suppliers,
+        )
+        return _ok(result.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, SUBCONTRACT_READ, exc))
+
+
+@router.get("/return-materials")
+def list_subcontract_return_materials(
+    request: Request,
+    company: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询外发应退料，基于真实外发发料和收货事实推导。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SUBCONTRACT_READ,
+        module="subcontract",
+        resource_type="subcontract_return_material",
+    )
+
+    readable_item_codes: set[str] | None = None
+    readable_companies: set[str] | None = None
+    readable_suppliers: set[str] | None = None
+    readable_warehouses: set[str] | None = None
+    if get_permission_source() == "erpnext":
+        user_permissions = permission_service.get_subcontract_user_permissions(
+            current_user=current_user,
+            request_obj=request,
+            action=SUBCONTRACT_READ,
+            resource_type="subcontract_return_material",
+        )
+        if user_permissions is not None and not user_permissions.unrestricted:
+            readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+                user_permissions=user_permissions
+            )
+            readable_warehouses = set(user_permissions.allowed_warehouses) if user_permissions.allowed_warehouses else None
+
+    service = SubcontractService(session=session)
+    try:
+        result: SubcontractReturnMaterialData = service.list_return_materials(
+            company=company,
+            supplier=supplier,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status,
+            page=page,
+            page_size=page_size,
+            readable_item_codes=readable_item_codes,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+            readable_warehouses=readable_warehouses,
         )
         return _ok(result.model_dump())
     except AppException as exc:

@@ -37,7 +37,7 @@
 | 外发加工 | 外发单 | GET | `/api/subcontract/` | `subcontract_no, supplier, item_code, status` | 既有 |
 | 外发加工 | 外发发料 | GET | `/api/subcontract/material-issues` | `subcontract_no, material_item_code, issued_qty` | 是 |
 | 外发加工 | 外发收货 | GET | `/api/subcontract/receipts` | `subcontract_no, receipt_batch_no, accepted_qty` | 是 |
-| 外发加工 | 应退料 | GET | `/api/subcontract/return-materials` | `subcontract_no, planned_return_qty, returned_qty` | 是 |
+| 外发加工 | 应退料 | GET | `/api/subcontract/return-materials` | `subcontract_no, planned_return_qty, returned_qty` | 真实 |
 | 外发加工 | 结算候选 | GET | `/api/subcontract/settlement-candidates` | `subcontract_no, receipt_batch_no, net_amount` | 是 |
 | 外发加工 | 加工厂对账 | GET | `/api/factory-statements/factory-reconciliations` | `reconciliation_no, factory_name, pending_amount` | 是 |
 | 外发加工 | 加工厂应付 | GET | `/api/factory-statements/factory-payable-summaries` | `summary_no, factory_name, ending_payable` | 是 |
