@@ -58,6 +58,7 @@ from app.routers.bom import get_db_session as bom_db_dep  # noqa: E402
 from app.routers.cross_module_view import get_db_session as cross_module_db_dep  # noqa: E402
 from app.routers.dashboard import get_db_session as dashboard_db_dep  # noqa: E402
 from app.routers.factory_statement import get_db_session as factory_statement_db_dep  # noqa: E402
+from app.routers.material_purchase import get_db_session as material_purchase_db_dep  # noqa: E402
 from app.routers.production import get_db_session as production_db_dep  # noqa: E402
 from app.routers.quality import get_db_session as quality_db_dep  # noqa: E402
 from app.routers.report import get_db_session as report_db_dep  # noqa: E402
@@ -442,11 +443,56 @@ def _patches_for_real_reuse_endpoints():
     ]
 
 
-def _headers() -> dict[str, str]:
-    return {
+def _headers(*, request_id: str | None = None) -> dict[str, str]:
+    headers = {
         "X-LY-Dev-User": "frontend.readiness.smoke",
         "X-LY-Dev-Roles": "System Manager",
     }
+    if request_id:
+        headers["X-Request-ID"] = request_id
+    return headers
+
+
+def _carrier_code(value: object, *, length: int = 3) -> str:
+    normalized = str(value).strip()
+    hash_value = 2166136261
+    for byte in normalized.encode("utf-8"):
+        hash_value ^= byte
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    return f"{hash_value:08X}"[-length:]
+
+
+def _decimal_text(value: object) -> str:
+    normalized = format(Decimal(str(value)).normalize(), "f")
+    if "." in normalized:
+        normalized = normalized.rstrip("0").rstrip(".")
+    return normalized or "0"
+
+
+def _warehouse_request_id(
+    *,
+    scenario_tag: str,
+    idempotency_key: str,
+    source_ref: str,
+    warehouse: str,
+    item_code: str,
+    quantity: object,
+    business_date: str,
+) -> str:
+    return "-".join(
+        [
+            scenario_tag,
+            "RW",
+            "C",
+            _carrier_code(idempotency_key),
+            _carrier_code(source_ref),
+            _carrier_code(warehouse),
+            _carrier_code(item_code),
+            _carrier_code(_decimal_text(quantity)),
+            _carrier_code(business_date),
+            _carrier_code("C"),
+        ]
+    )
 
 
 def _assert(condition: bool, message: str) -> None:
@@ -487,6 +533,7 @@ def main() -> int:
     app.dependency_overrides[dashboard_db_dep] = _override_db
     app.dependency_overrides[production_db_dep] = _override_db
     app.dependency_overrides[factory_statement_db_dep] = _override_db
+    app.dependency_overrides[material_purchase_db_dep] = _override_db
     app.dependency_overrides[quality_db_dep] = _override_db
     app.dependency_overrides[report_db_dep] = _override_db
     app.dependency_overrides[style_profit_db_dep] = _override_db
@@ -849,6 +896,184 @@ def main() -> int:
         _assert(dashboard.status_code == 200, dashboard.text)
         _assert(dashboard.json()["data"]["company"] == "LY-FRONTEND-DEV", "dashboard default company mismatch")
 
+        purchase_company = "COMP-SMOKE"
+        purchase_no = "PO-SMOKE-001"
+        purchase_supplier = "SUP-SMOKE"
+        purchase_item = "FAB-SMOKE"
+        purchase_warehouse = "WH-SMOKE"
+        purchase_scenario = "Z003-WAREHOUSE-20260617-201"
+        purchase_business_date = date(2026, 6, 17).isoformat()
+        purchase_order = client.post(
+            "/api/material-purchase/orders",
+            headers=_headers(),
+            json={
+                "operation": "create",
+                "company": purchase_company,
+                "purchase_no": purchase_no,
+                "supplier_name": purchase_supplier,
+                "transaction_date": purchase_business_date,
+                "expected_delivery_date": None,
+                "currency": "CNY",
+                "idempotency_key": "material-purchase:smoke:order:001",
+                "items": [
+                    {
+                        "material_item_code": purchase_item,
+                        "material_name": "Smoke Fabric",
+                        "qty": "20",
+                        "uom": "米",
+                        "unit_price": "12.5",
+                        "warehouse": purchase_warehouse,
+                    }
+                ],
+            },
+        )
+        _assert(purchase_order.status_code == 201, purchase_order.text)
+
+        stock_idempotency = f"{purchase_scenario}:stock:stock-entry:smoke:001"
+        stock_source_ref = f"{purchase_scenario}:purchase:{purchase_no}"
+        stock_request_id = _warehouse_request_id(
+            scenario_tag=purchase_scenario,
+            idempotency_key=stock_idempotency,
+            source_ref=stock_source_ref,
+            warehouse=purchase_warehouse,
+            item_code=purchase_item,
+            quantity="20",
+            business_date=purchase_business_date,
+        )
+        previous_app_env = os.environ.get("APP_ENV")
+        previous_db_url = os.environ.get("LINGYI_DB_URL")
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
+        try:
+            stock_receipt = client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=_headers(request_id=stock_request_id),
+                json={
+                    "company": purchase_company,
+                    "purpose": "Material Receipt",
+                    "source_type": "material_purchase_order",
+                    "source_id": stock_source_ref,
+                    "source_ref": stock_source_ref,
+                    "warehouse": purchase_warehouse,
+                    "item_code": purchase_item,
+                    "operation": "create_stock_entry_draft",
+                    "quantity": "20",
+                    "business_date": purchase_business_date,
+                    "status_action": "create",
+                    "scenario_tag": purchase_scenario,
+                    "target_warehouse": purchase_warehouse,
+                    "idempotency_key": stock_idempotency,
+                    "items": [
+                        {
+                            "item_code": purchase_item,
+                            "qty": "20",
+                            "uom": "米",
+                            "target_warehouse": purchase_warehouse,
+                        }
+                    ],
+                },
+            )
+        finally:
+            if previous_app_env is None:
+                os.environ.pop("APP_ENV", None)
+            else:
+                os.environ["APP_ENV"] = previous_app_env
+            if previous_db_url is None:
+                os.environ.pop("LINGYI_DB_URL", None)
+            else:
+                os.environ["LINGYI_DB_URL"] = previous_db_url
+        _assert(stock_receipt.status_code == 201, stock_receipt.text)
+
+        purchase_orders = client.get(
+            f"/api/material-purchase/orders?page=1&page_size=100&keyword={purchase_no}",
+            headers=_headers(),
+        )
+        _assert(purchase_orders.status_code == 200, purchase_orders.text)
+        purchase_order_rows = purchase_orders.json()["data"]["items"]
+        _assert(purchase_order_rows and purchase_order_rows[0]["purchase_no"] == purchase_no, "purchase order readback missing")
+        _assert(Decimal(str(purchase_order_rows[0]["received_qty"])) == Decimal("20.000000"), "purchase received qty mismatch")
+        _assert(purchase_order_rows[0]["status"] == "received", "purchase order status should be received")
+
+        stock_drafts = client.get(
+            "/api/warehouse/stock-entry-drafts?purpose=Material%20Receipt&page=1&page_size=100",
+            headers=_headers(),
+        )
+        _assert(stock_drafts.status_code == 200, stock_drafts.text)
+        _assert(
+            any(row["source_id"] == stock_source_ref for row in stock_drafts.json()["data"]["items"]),
+            "warehouse stock receipt draft readback missing",
+        )
+
+        purchase_invoice = client.post(
+            "/api/material-purchase/purchase-invoices",
+            headers=_headers(request_id="req-material-purchase-invoice-smoke-001"),
+            json={
+                "operation": "create_purchase_invoice",
+                "company": purchase_company,
+                "purchase_no": purchase_no,
+                "supplier_name": purchase_supplier,
+                "material_item_code": purchase_item,
+                "qty": "20",
+                "rate": "12.5",
+                "posting_date": purchase_business_date,
+                "due_date": date(2026, 7, 17).isoformat(),
+                "purchase_invoice": "PINV-SMOKE-001",
+                "source_ref": "PINV-SMOKE-SRC-001",
+                "idempotency_key": "material-purchase-invoice:smoke:001",
+                "scenario_tag": None,
+            },
+        )
+        _assert(purchase_invoice.status_code == 201, purchase_invoice.text)
+        _assert(
+            Decimal(str(purchase_invoice.json()["data"]["outstanding_amount"])) == Decimal("250.000000"),
+            "purchase invoice outstanding mismatch",
+        )
+
+        purchase_payment = client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=_headers(request_id="req-material-purchase-payment-smoke-001"),
+            json={
+                "operation": "create_purchase_payment",
+                "company": purchase_company,
+                "purchase_invoice": "PINV-SMOKE-001",
+                "supplier_name": purchase_supplier,
+                "posting_date": purchase_business_date,
+                "paid_amount": "100",
+                "mode_of_payment": "Bank Transfer",
+                "reference_no": "BANK-SMOKE-001",
+                "reference_date": purchase_business_date,
+                "payment_entry": "PP-SMOKE-001",
+                "source_ref": "PP-SMOKE-SRC-001",
+                "idempotency_key": "material-purchase-payment:smoke:001",
+                "scenario_tag": None,
+            },
+        )
+        _assert(purchase_payment.status_code == 201, purchase_payment.text)
+        _assert(
+            Decimal(str(purchase_payment.json()["data"]["outstanding_after"])) == Decimal("150.000000"),
+            "purchase payment outstanding_after mismatch",
+        )
+
+        refreshed_invoice = client.get(
+            "/api/material-purchase/purchase-invoices?page=1&page_size=100&keyword=PINV-SMOKE-001",
+            headers=_headers(),
+        )
+        _assert(refreshed_invoice.status_code == 200, refreshed_invoice.text)
+        invoice_rows = refreshed_invoice.json()["data"]["items"]
+        _assert(invoice_rows and invoice_rows[0]["status"] == "partly_paid", "purchase invoice payment status mismatch")
+        _assert(
+            Decimal(str(invoice_rows[0]["outstanding_amount"])) == Decimal("150.000000"),
+            "purchase invoice refreshed outstanding mismatch",
+        )
+
+        purchase_payments = client.get(
+            "/api/material-purchase/purchase-payments?page=1&page_size=100&keyword=PP-SMOKE-001",
+            headers=_headers(),
+        )
+        _assert(purchase_payments.status_code == 200, purchase_payments.text)
+        payment_rows = purchase_payments.json()["data"]["items"]
+        _assert(payment_rows and payment_rows[0]["payment_entry"] == "PP-SMOKE-001", "purchase payment readback missing")
+
         print("acceptance_smoke: OK")
         return 0
     finally:
@@ -860,6 +1085,7 @@ def main() -> int:
         app.dependency_overrides.pop(dashboard_db_dep, None)
         app.dependency_overrides.pop(production_db_dep, None)
         app.dependency_overrides.pop(factory_statement_db_dep, None)
+        app.dependency_overrides.pop(material_purchase_db_dep, None)
         app.dependency_overrides.pop(quality_db_dep, None)
         app.dependency_overrides.pop(report_db_dep, None)
         app.dependency_overrides.pop(style_profit_db_dep, None)
