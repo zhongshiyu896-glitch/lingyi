@@ -29,6 +29,8 @@ from app.core.permissions import QUALITY_WORKER
 from app.core.permissions import REPORT_DIAGNOSTIC
 from app.core.permissions import REPORT_EXPORT
 from app.core.permissions import REPORT_READ
+from app.core.permissions import STYLE_MASTER_MANAGE
+from app.core.permissions import STYLE_MASTER_READ
 from app.core.permissions import SUBCONTRACT_READ
 from app.core.permissions import SYSTEM_CONFIG_READ
 from app.core.permissions import SYSTEM_DIAGNOSTIC
@@ -167,6 +169,12 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
         self.assertIn(REPORT_READ, actions or set())
         self.assertIn(REPORT_EXPORT, actions or set())
         self.assertIn(REPORT_DIAGNOSTIC, actions or set())
+
+    def test_style_master_actions_registered(self) -> None:
+        actions = MODULE_ACTION_REGISTRY.get("style_master")
+        self.assertIsNotNone(actions)
+        self.assertIn(STYLE_MASTER_READ, actions or set())
+        self.assertIn(STYLE_MASTER_MANAGE, actions or set())
 
     def test_permission_actions_registered(self) -> None:
         actions = MODULE_ACTION_REGISTRY.get("permission")

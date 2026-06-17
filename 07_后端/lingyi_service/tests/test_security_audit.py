@@ -13,12 +13,15 @@ os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
 os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
 os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
 
+from fastapi import Request
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.main as main_module
+from app.core.permissions import SAMPLE_MANAGE
+from app.core.permissions import SAMPLE_READ
 from app.core.exceptions import PermissionSourceUnavailable
 from app.main import app
 from app.models.audit import Base as AuditBase
@@ -230,6 +233,37 @@ class SecurityAuditTest(unittest.TestCase):
             if not row:
                 self.fail("expected security audit log row")
             return row
+
+    def test_sample_routes_infer_security_target(self) -> None:
+        read_request = Request(
+            {
+                "type": "http",
+                "http_version": "1.1",
+                "method": "GET",
+                "scheme": "http",
+                "path": "/api/sample/orders",
+                "raw_path": b"/api/sample/orders",
+                "query_string": b"",
+                "headers": [],
+                "client": ("127.0.0.1", 12345),
+                "server": ("testserver", 80),
+            }
+        )
+        module, action, resource_type, resource_id = main_module._infer_security_target(read_request)
+        self.assertEqual(module, "sample")
+        self.assertEqual(action, SAMPLE_READ)
+        self.assertEqual(resource_type, "SampleOrder")
+        self.assertIsNone(resource_id)
+
+        write_scope = dict(read_request.scope)
+        write_scope["method"] = "POST"
+        write_scope["path"] = "/api/sample/tracking-templates"
+        write_scope["raw_path"] = b"/api/sample/tracking-templates"
+        module, action, resource_type, resource_id = main_module._infer_security_target(Request(write_scope))
+        self.assertEqual(module, "sample")
+        self.assertEqual(action, SAMPLE_MANAGE)
+        self.assertEqual(resource_type, "SampleTrackingTemplate")
+        self.assertIsNone(resource_id)
 
     def test_unauthorized_get_bom_list_writes_security_audit(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"

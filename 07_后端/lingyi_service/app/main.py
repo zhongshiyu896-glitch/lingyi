@@ -66,6 +66,8 @@ from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
+from app.core.permissions import SAMPLE_MANAGE
+from app.core.permissions import SAMPLE_READ
 from app.core.permissions import MATERIAL_PURCHASE_READ
 from app.core.permissions import MATERIAL_PURCHASE_WRITE
 from app.core.permissions import STYLE_MASTER_MANAGE
@@ -488,6 +490,15 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         if path.endswith("/customers"):
             return "sales_inventory", SALES_INVENTORY_READ, "Customer", None
         return "sales_inventory", SALES_INVENTORY_READ, "SalesInventory", None
+
+    if path.startswith("/api/sample"):
+        if method in {"POST", "PATCH"}:
+            if "/tracking-templates" in path:
+                return "sample", SAMPLE_MANAGE, "SampleTrackingTemplate", None
+            return "sample", SAMPLE_MANAGE, "SampleOrder", None
+        if path.startswith("/api/sample/tracking-templates"):
+            return "sample", SAMPLE_READ, "SampleTrackingTemplate", None
+        return "sample", SAMPLE_READ, "SampleOrder", None
 
     if path.startswith("/api/material-purchase"):
         if path in {"/api/material-purchase/requirements", "/api/material-purchase/requirements/"}:

@@ -476,6 +476,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "sales_inventory": set(ALL_SALES_INVENTORY_ACTIONS),
     "master_data": set(ALL_MASTER_DATA_ACTIONS),
     "sample": set(ALL_SAMPLE_ACTIONS),
+    "style_master": set(ALL_STYLE_MASTER_ACTIONS),
     "material_purchase": set(ALL_MATERIAL_PURCHASE_ACTIONS),
     "sales": set(ALL_SALES_ACTIONS),
     "inventory": set(ALL_INVENTORY_ACTIONS),
