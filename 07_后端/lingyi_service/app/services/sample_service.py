@@ -171,7 +171,11 @@ class SampleService:
 
         if self._get_order_by_no(company=company, sample_no=sample_no):
             raise BusinessException(code=SAMPLE_CONFLICT, message=f"{sample_no} 已存在")
-        style = self._resolve_enabled_style(company=company, style_no=payload.style_no)
+        style = self._resolve_enabled_style(
+            company=company,
+            style_no=payload.style_no,
+            style_master_id=payload.style_master_id,
+        )
 
         try:
             row = LySampleOrder(
@@ -179,6 +183,7 @@ class SampleService:
                 sample_no=sample_no,
                 style_no=str(style.ys_style_no),
                 style_name=str(style.ys_style_name_cn),
+                style_master_id=int(style.id),
                 customer=self._require_text(payload.customer, "customer"),
                 factory=self._optional_text(payload.factory) or "",
                 sample_type=str(payload.sample_type),
@@ -217,9 +222,18 @@ class SampleService:
         if row.status not in self.EDITABLE_ORDER_STATUSES:
             raise BusinessException(code=SAMPLE_INVALID_STATUS, message="当前样板单状态不允许编辑")
         next_values = self._order_next_values(row=row, payload=payload)
-        style = self._resolve_enabled_style(company=company, style_no=next_values.get("style_no", row.style_no))
-        next_values["style_no"] = str(style.ys_style_no)
-        next_values["style_name"] = str(style.ys_style_name_cn)
+        if self._style_change_requested(row=row, values=next_values):
+            target_style_master_id = next_values.get("style_master_id")
+            if "style_master_id" not in next_values and "style_no" not in next_values:
+                target_style_master_id = row.style_master_id
+            style = self._resolve_enabled_style(
+                company=company,
+                style_no=next_values.get("style_no", row.style_no),
+                style_master_id=target_style_master_id,
+            )
+            next_values["style_master_id"] = int(style.id)
+            next_values["style_no"] = str(style.ys_style_no)
+            next_values["style_name"] = str(style.ys_style_name_cn)
         request_hash = self._request_hash(operation="update", entity_type="order", company=company, order_id=order_id, payload=next_values)
         idem = self._get_idempotency(entity_type="order", company=company, idempotency_key=idempotency_key)
         if idem:
@@ -891,8 +905,36 @@ class SampleService:
             .first()
         )
 
-    def _resolve_enabled_style(self, *, company: str, style_no: str | None) -> LyStyleMaster:
-        normalized_style_no = self._require_text(style_no, "style_no")
+    def _style_change_requested(self, *, row: LySampleOrder, values: dict[str, Any]) -> bool:
+        if "style_master_id" in values and values["style_master_id"] != row.style_master_id:
+            return True
+        if "style_no" in values and self._optional_text(values["style_no"]) != self._optional_text(row.style_no):
+            return True
+        if "style_name" in values and self._optional_text(values["style_name"]) != self._optional_text(row.style_name):
+            return True
+        return False
+
+    def _resolve_enabled_style(
+        self,
+        *,
+        company: str,
+        style_no: str | None,
+        style_master_id: int | None = None,
+    ) -> LyStyleMaster:
+        normalized_style_no = self._optional_text(style_no)
+        if style_master_id is not None:
+            row = (
+                self.session.query(LyStyleMaster)
+                .filter(LyStyleMaster.id == int(style_master_id), LyStyleMaster.company == company)
+                .first()
+            )
+            if not row or row.ys_style_status != "enabled":
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{style_master_id} 款式主档不存在或未启用")
+            if normalized_style_no and normalized_style_no != str(row.ys_style_no):
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="样板单款式主档与款号不一致")
+            return row
+
+        normalized_style_no = self._require_text(normalized_style_no, "style_no")
         row = (
             self.session.query(LyStyleMaster)
             .filter(LyStyleMaster.company == company, LyStyleMaster.ys_style_no == normalized_style_no)
@@ -969,6 +1011,7 @@ class SampleService:
     def _order_next_values(self, *, row: LySampleOrder, payload: SampleOrderUpdateRequest) -> dict[str, Any]:
         values: dict[str, Any] = {}
         for key in [
+            "style_master_id",
             "style_no",
             "style_name",
             "customer",
@@ -1039,6 +1082,7 @@ class SampleService:
                 "id": int(row.id),
                 "company": row.company,
                 "sample_no": row.sample_no,
+                "style_master_id": int(row.style_master_id) if row.style_master_id is not None else None,
                 "style_no": row.style_no,
                 "style_name": row.style_name,
                 "customer": row.customer,
@@ -1119,6 +1163,7 @@ class SampleService:
             id=int(row.id),
             company=row.company,
             sample_no=row.sample_no,
+            style_master_id=int(row.style_master_id) if row.style_master_id is not None else None,
             style_no=row.style_no,
             style_name=row.style_name,
             customer=row.customer,

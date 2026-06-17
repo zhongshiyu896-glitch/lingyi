@@ -20,6 +20,7 @@ class SampleOrderWriteBase(BaseModel):
 
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     sample_no: str | None = Field(default=None, max_length=140)
+    style_master_id: int | None = None
     style_no: str = Field(..., min_length=1, max_length=140)
     style_name: str = Field(..., min_length=1, max_length=255)
     customer: str = Field(..., min_length=1, max_length=255)
@@ -48,6 +49,7 @@ class SampleOrderUpdateRequest(BaseModel):
     operation: Literal["update"] = "update"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
+    style_master_id: int | None = None
     style_no: str | None = Field(default=None, min_length=1, max_length=140)
     style_name: str | None = Field(default=None, min_length=1, max_length=255)
     customer: str | None = Field(default=None, min_length=1, max_length=255)
@@ -86,6 +88,7 @@ class SampleOrderItem(BaseModel):
     id: int
     company: str
     sample_no: str
+    style_master_id: int | None = None
     style_no: str
     style_name: str
     customer: str

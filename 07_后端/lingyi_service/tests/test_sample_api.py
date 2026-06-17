@@ -150,6 +150,18 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(body["code"], "0")
         self.assertEqual(body["data"]["sample_no"], "SMP-A3-001")
         order_id = int(body["data"]["id"])
+        with self.SessionLocal() as session:
+            first_style_id = int(
+                session.query(LyStyleMaster.id)
+                .filter(LyStyleMaster.company == "COMP-A", LyStyleMaster.ys_style_no == "ST-A3-001")
+                .scalar()
+            )
+            second_style_id = int(
+                session.query(LyStyleMaster.id)
+                .filter(LyStyleMaster.company == "COMP-A", LyStyleMaster.ys_style_no == "ST-A3-002")
+                .scalar()
+            )
+        self.assertEqual(body["data"]["style_master_id"], first_style_id)
 
         listed = self.client.get(
             "/api/sample/orders?company=COMP-A&keyword=SMP-A3&page=1&page_size=10",
@@ -157,6 +169,7 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json()["data"]["total"], 1)
+        self.assertEqual(listed.json()["data"]["items"][0]["style_master_id"], first_style_id)
 
         updated = self.client.patch(
             f"/api/sample/orders/{order_id}",
@@ -174,6 +187,7 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(updated.status_code, 200)
         self.assertEqual(updated.json()["data"]["style_no"], "ST-A3-002")
         self.assertEqual(updated.json()["data"]["style_name"], "A3 样衣款修改")
+        self.assertEqual(updated.json()["data"]["style_master_id"], second_style_id)
         self.assertEqual(updated.json()["data"]["version"], 2)
 
         submitted = self.client.post(
@@ -204,6 +218,7 @@ class SampleApiTest(unittest.TestCase):
             row = session.query(LySampleOrder).one()
             self.assertEqual(row.status, "reversed")
             self.assertEqual(row.reverse_reason, "返改")
+            self.assertEqual(row.style_master_id, second_style_id)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 4)
 
     def test_sample_order_idempotency_conflict_and_permission(self) -> None:
@@ -240,6 +255,28 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(denied.json()["code"], "AUTH_FORBIDDEN")
 
     def test_sample_order_requires_enabled_style_master(self) -> None:
+        with self.SessionLocal() as session:
+            enabled_style_id = int(
+                session.query(LyStyleMaster.id)
+                .filter(LyStyleMaster.company == "COMP-A", LyStyleMaster.ys_style_no == "ST-A3-001")
+                .scalar()
+            )
+            disabled_style_id = int(
+                session.query(LyStyleMaster.id)
+                .filter(LyStyleMaster.company == "COMP-A", LyStyleMaster.ys_style_no == "ST-A3-DISABLED")
+                .scalar()
+            )
+
+        valid_by_id = self._order_payload(sample_no="SMP-A3-BY-ID", idempotency_key="IDEMP-SMP-A3-BY-ID")
+        valid_by_id["style_master_id"] = enabled_style_id
+        valid_by_id_response = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-STYLE-BY-ID"),
+            json=valid_by_id,
+        )
+        self.assertEqual(valid_by_id_response.status_code, 201)
+        self.assertEqual(valid_by_id_response.json()["data"]["style_master_id"], enabled_style_id)
+
         missing = self._order_payload(sample_no="SMP-A3-MISSING", idempotency_key="IDEMP-SMP-A3-MISSING")
         missing["style_no"] = "ST-A3-MISSING"
         missing_response = self.client.post(
@@ -259,6 +296,28 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(disabled_response.status_code, 409)
         self.assertEqual(disabled_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
+        disabled_by_id = self._order_payload(sample_no="SMP-A3-DISABLED-ID", idempotency_key="IDEMP-SMP-A3-DISABLED-ID")
+        disabled_by_id["style_no"] = "ST-A3-DISABLED"
+        disabled_by_id["style_master_id"] = disabled_style_id
+        disabled_by_id_response = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-STYLE-DISABLED-ID"),
+            json=disabled_by_id,
+        )
+        self.assertEqual(disabled_by_id_response.status_code, 409)
+        self.assertEqual(disabled_by_id_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
+        mismatch = self._order_payload(sample_no="SMP-A3-MISMATCH", idempotency_key="IDEMP-SMP-A3-MISMATCH")
+        mismatch["style_no"] = "ST-A3-002"
+        mismatch["style_master_id"] = enabled_style_id
+        mismatch_response = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-STYLE-MISMATCH"),
+            json=mismatch,
+        )
+        self.assertEqual(mismatch_response.status_code, 409)
+        self.assertEqual(mismatch_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
 
     def test_sample_order_cannot_directly_write_flow_status(self) -> None:
         direct_sealed = self._order_payload(sample_no="SMP-A3-DIRECT-SEAL", idempotency_key="IDEMP-SMP-A3-DIRECT-SEAL")

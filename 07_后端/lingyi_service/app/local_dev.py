@@ -92,6 +92,7 @@ def _create_local_tables() -> None:
     _ensure_local_sales_order_item_calc_columns()
     _ensure_local_sales_order_idempotency_supports_update()
     _ensure_local_style_dictionary_color_size_types()
+    _ensure_local_sample_style_master_link()
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
     _ensure_local_bom_company_style_columns()
@@ -270,6 +271,46 @@ def _ensure_local_style_dictionary_color_size_types() -> None:
                 ON ly_style_dictionary (company, dict_type, status);
             PRAGMA foreign_keys=on;
             """
+        )
+
+
+def _ensure_local_sample_style_master_link() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_sample_order'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_sample_order)").fetchall()
+        }
+        if "style_master_id" not in existing_columns:
+            conn.execute("ALTER TABLE ly_sample_order ADD COLUMN style_master_id INTEGER")
+        style_table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_style_master'"
+        ).fetchone()
+        if style_table_exists:
+            conn.execute(
+                """
+                UPDATE ly_sample_order
+                SET style_master_id = (
+                    SELECT sm.id
+                    FROM ly_style_master sm
+                    WHERE sm.company = ly_sample_order.company
+                      AND sm.ys_style_no = ly_sample_order.style_no
+                      AND sm.ys_style_status = 'enabled'
+                    ORDER BY sm.id
+                    LIMIT 1
+                )
+                WHERE style_master_id IS NULL
+                """
+            )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ly_sample_order_style_master ON ly_sample_order(company, style_master_id)"
         )
 
 

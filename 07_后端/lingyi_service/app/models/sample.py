@@ -28,6 +28,7 @@ class LySampleOrder(Base):
         Index("uk_ly_sample_order_company_no", "company", "sample_no", unique=True),
         Index("idx_ly_sample_order_status", "company", "status"),
         Index("idx_ly_sample_order_style", "company", "style_no"),
+        Index("idx_ly_sample_order_style_master", "company", "style_master_id"),
         CheckConstraint(
             "status IN ('draft','pending','patterning','fitting','sealed','reversed','converted')",
             name="ck_ly_sample_order_status",
@@ -41,6 +42,7 @@ class LySampleOrder(Base):
     sample_no = Column(String(140), nullable=False)
     style_no = Column(String(140), nullable=False)
     style_name = Column(String(255), nullable=False)
+    style_master_id = Column(IDType, nullable=True)
     customer = Column(String(255), nullable=False)
     factory = Column(String(255), nullable=False)
     sample_type = Column(String(32), nullable=False)
