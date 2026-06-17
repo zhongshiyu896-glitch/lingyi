@@ -46,6 +46,8 @@ from app.models.quality import Base as QualityBase  # noqa: E402
 from app.models.quality import LyQualityInspection  # noqa: E402
 from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
 from app.models.sales_order import LyDeliveryInvoice  # noqa: E402
+from app.models.sales_order import LySalesOrder  # noqa: E402
+from app.models.sales_order import LySalesOrderItem  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.style_profit import LyStyleProfitSnapshot  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
@@ -862,6 +864,189 @@ def _exercise_workshop_smoke(client: TestClient) -> None:
     _assert(Decimal(str(daily_wages.json()["data"]["total_amount"])) == Decimal("30.000000"), "workshop total_amount mismatch")
 
 
+def _exercise_sales_delivery_payment_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
+    company = "COMP-SALES-SMOKE"
+    customer = "CUST-SALES-SMOKE"
+    sales_order = "SO-SALES-SMOKE-001"
+    item_code = "ITEM-SALES-SMOKE"
+    warehouse = "WH-SALES-SMOKE"
+    business_date = date(2026, 6, 17)
+    delivery_scenario = "Z003-DELIVERY-INVOICE-20260617-501"
+    payment_scenario = "Z003-SALES-PAYMENT-20260617-501"
+
+    with session_local() as session:
+        order = LySalesOrder(
+            sales_order_no=sales_order,
+            source_order_ref="SRC-SALES-SMOKE-ORDER-001",
+            company=company,
+            customer=customer,
+            status="planned",
+            docstatus=0,
+            transaction_date=business_date,
+            delivery_date=date(2026, 6, 30),
+            currency="CNY",
+            grand_total=Decimal("500"),
+            idempotency_key="idem-sales-smoke-order-001",
+            request_hash="hash-sales-smoke-order-001",
+            scenario_tag="SALES-SMOKE-ORDER",
+            payload={},
+            created_by="frontend.readiness.smoke",
+        )
+        session.add(order)
+        session.flush()
+        session.add(
+            LySalesOrderItem(
+                sales_order_id=int(order.id),
+                company=company,
+                line_no=1,
+                sales_order_item=f"{sales_order}-001",
+                item_code=item_code,
+                item_name="Smoke Finished Goods",
+                qty=Decimal("10"),
+                planned_qty=Decimal("10"),
+                delivered_qty=Decimal("0"),
+                rate=Decimal("50"),
+                amount=Decimal("500"),
+                uom="件",
+                warehouse=warehouse,
+                delivery_date=date(2026, 6, 30),
+            )
+        )
+        receipt = LyWarehouseStockEntryDraft(
+            company=company,
+            purpose="Material Receipt",
+            source_type="finished_goods_inbound",
+            source_id="FGIN-SALES-SMOKE-001",
+            source_warehouse=None,
+            target_warehouse=warehouse,
+            status="pending_outbox",
+            created_by="frontend.readiness.smoke",
+            created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+            idempotency_key="idem-sales-smoke-fg-in-001",
+            event_key="sales-smoke-fg-in-001",
+        )
+        session.add(receipt)
+        session.flush()
+        session.add(
+            LyWarehouseStockEntryDraftItem(
+                draft_id=int(receipt.id),
+                company=company,
+                item_code=item_code,
+                qty=Decimal("10"),
+                uom="件",
+                source_warehouse=None,
+                target_warehouse=warehouse,
+            )
+        )
+        session.add(
+            LyWarehouseStockEntryOutboxEvent(
+                draft_id=int(receipt.id),
+                event_type="finished_goods_inbound_sync",
+                event_key="sales-smoke-fg-in-001",
+                payload={"business_date": business_date.isoformat()},
+                status="in_pending",
+                retry_count=0,
+                created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
+            )
+        )
+        session.commit()
+
+    delivery_payload = {
+        "company": company,
+        "sales_order": sales_order,
+        "customer": customer,
+        "item_code": item_code,
+        "item_name": "Smoke Finished Goods",
+        "warehouse": warehouse,
+        "delivered_qty": 4,
+        "uom": "件",
+        "rate": 50,
+        "posting_date": business_date.isoformat(),
+        "due_date": date(2026, 7, 17).isoformat(),
+        "delivery_note": "DN-SALES-SMOKE-001",
+        "sales_invoice": "SI-SALES-SMOKE-001",
+        "source_ref": "SRC-SALES-SMOKE-DELIVERY-001",
+        "idempotency_key": f"IDEMP-{delivery_scenario}-CREATE",
+        "scenario_tag": delivery_scenario,
+        "operation": "create_delivery_invoice",
+    }
+    sales_env = {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}
+    with patch.dict("os.environ", sales_env):
+        delivery_created = client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=_headers(request_id=f"{delivery_scenario}-SMOKE"),
+            json=delivery_payload,
+        )
+    _assert(delivery_created.status_code == 201, delivery_created.text)
+    delivery_data = delivery_created.json()["data"]
+    _assert(delivery_data["delivery_note"] == "DN-SALES-SMOKE-001", "delivery note mismatch")
+    _assert(delivery_data["sales_invoice"] == "SI-SALES-SMOKE-001", "sales invoice mismatch")
+    _assert(Decimal(str(delivery_data["outstanding_amount"])) == Decimal("200.000000"), "sales receivable mismatch")
+
+    delivery_listed = client.get(
+        "/api/sales-inventory/delivery-invoices?keyword=SI-SALES-SMOKE-001&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(delivery_listed.status_code == 200, delivery_listed.text)
+    _assert(
+        delivery_listed.json()["data"]["items"][0]["delivery_note"] == "DN-SALES-SMOKE-001",
+        "delivery invoice readback missing",
+    )
+
+    sales_invoices = client.get(
+        f"/api/sales-inventory/sales-invoices?sales_order={sales_order}&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(sales_invoices.status_code == 200, sales_invoices.text)
+    _assert(
+        sales_invoices.json()["data"]["items"][0]["sales_invoice"] == "SI-SALES-SMOKE-001",
+        "sales invoice readback missing",
+    )
+
+    payment_payload = {
+        "company": company,
+        "sales_invoice": "SI-SALES-SMOKE-001",
+        "customer": customer,
+        "posting_date": business_date.isoformat(),
+        "paid_amount": 120,
+        "mode_of_payment": "Bank Transfer",
+        "reference_no": "BANK-SALES-SMOKE-001",
+        "reference_date": business_date.isoformat(),
+        "payment_entry": "PE-SALES-SMOKE-001",
+        "source_ref": "SRC-SALES-SMOKE-PAYMENT-001",
+        "idempotency_key": f"IDEMP-{payment_scenario}-CREATE",
+        "scenario_tag": payment_scenario,
+        "operation": "create_payment_entry",
+    }
+    with patch.dict("os.environ", sales_env):
+        payment_created = client.post(
+            "/api/sales-inventory/payment-entries",
+            headers=_headers(request_id=f"{payment_scenario}-SMOKE"),
+            json=payment_payload,
+        )
+    _assert(payment_created.status_code == 201, payment_created.text)
+    payment_data = payment_created.json()["data"]
+    _assert(Decimal(str(payment_data["outstanding_before"])) == Decimal("200.000000"), "payment outstanding_before mismatch")
+    _assert(Decimal(str(payment_data["outstanding_after"])) == Decimal("80.000000"), "payment outstanding_after mismatch")
+
+    payments = client.get(
+        "/api/sales-inventory/payment-entries?keyword=PE-SALES-SMOKE-001&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(payments.status_code == 200, payments.text)
+    _assert(payments.json()["data"]["items"][0]["payment_entry"] == "PE-SALES-SMOKE-001", "payment readback missing")
+
+    refreshed_invoices = client.get(
+        f"/api/sales-inventory/sales-invoices?sales_order={sales_order}&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(refreshed_invoices.status_code == 200, refreshed_invoices.text)
+    invoice_row = refreshed_invoices.json()["data"]["items"][0]
+    _assert(invoice_row["status"] == "partly_paid", "sales invoice status after payment mismatch")
+    _assert(Decimal(str(invoice_row["paid_amount"])) == Decimal("120.000000"), "sales invoice paid amount mismatch")
+    _assert(Decimal(str(invoice_row["outstanding_amount"])) == Decimal("80.000000"), "sales invoice outstanding mismatch")
+
+
 def main() -> int:
     engine = create_engine(
         "sqlite+pysqlite://",
@@ -1228,6 +1413,7 @@ def main() -> int:
 
         _exercise_quality_smoke(client)
         _exercise_workshop_smoke(client)
+        _exercise_sales_delivery_payment_smoke(client, session_local)
 
         order_rows = [
             {
