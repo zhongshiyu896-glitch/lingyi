@@ -869,6 +869,76 @@ def _exercise_workshop_smoke(client: TestClient) -> None:
     _assert(Decimal(str(daily_wages.json()["data"]["total_amount"])) == Decimal("30.000000"), "workshop total_amount mismatch")
 
 
+def _exercise_finished_goods_inbound_smoke(client: TestClient) -> None:
+    scenario_tag = "Z003-WAREHOUSE-20260617-701"
+    company = "COMP-FG-SMOKE"
+    source_ref = f"{scenario_tag}:finished-goods:FGIN-SMOKE-001"
+    warehouse = "WH-FG-SMOKE"
+    item_code = "ITEM-FG-SMOKE"
+    quantity = "7"
+    business_date = date(2026, 6, 17).isoformat()
+    idempotency_key = f"{scenario_tag}:fg-inbound:001"
+    request_id = _warehouse_request_id(
+        scenario_tag=scenario_tag,
+        idempotency_key=idempotency_key,
+        source_ref=source_ref,
+        warehouse=warehouse,
+        item_code=item_code,
+        quantity=quantity,
+        business_date=business_date,
+    )
+    warehouse_env = {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}
+    with patch.dict("os.environ", warehouse_env):
+        created = client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=_headers(request_id=request_id),
+            json={
+                "company": company,
+                "purpose": "Material Receipt",
+                "source_type": "manual",
+                "source_id": source_ref,
+                "source_ref": source_ref,
+                "warehouse": warehouse,
+                "item_code": item_code,
+                "operation": "create_stock_entry_draft",
+                "quantity": quantity,
+                "business_date": business_date,
+                "status_action": "create",
+                "scenario_tag": scenario_tag,
+                "finished_goods_source_id": source_ref,
+                "source_warehouse": None,
+                "target_warehouse": warehouse,
+                "idempotency_key": idempotency_key,
+                "items": [
+                    {
+                        "item_code": item_code,
+                        "qty": quantity,
+                        "uom": "件",
+                        "source_warehouse": None,
+                        "target_warehouse": warehouse,
+                    }
+                ],
+            },
+        )
+    _assert(created.status_code == 201, created.text)
+    created_data = created.json()["data"]
+    draft_id = int(created_data["id"])
+    _assert(created_data["source_type"] == "finished_goods_inbound", "finished goods source_type mismatch")
+    _assert(created_data["source_id"] == source_ref, "finished goods source_id mismatch")
+    _assert(created_data["target_warehouse"] == warehouse, "finished goods target warehouse mismatch")
+    _assert(created_data["status"] == "pending_outbox", "finished goods draft status mismatch")
+    _assert(created_data["outbox"]["status"] == "in_pending", "finished goods outbox status mismatch")
+
+    listed = client.get(
+        f"/api/warehouse/stock-entry-drafts?purpose=Material%20Receipt&keyword=FGIN-SMOKE-001&page=1&page_size=20",
+        headers=_headers(),
+    )
+    _assert(listed.status_code == 200, listed.text)
+    rows = listed.json()["data"]["items"]
+    _assert(rows and int(rows[0]["id"]) == draft_id, "finished goods inbound readback missing")
+    _assert(rows[0]["source_type"] == "finished_goods_inbound", "finished goods readback source_type mismatch")
+
+
 def _exercise_sales_delivery_payment_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
     company = "COMP-SALES-SMOKE"
     customer = "CUST-SALES-SMOKE"
@@ -1556,6 +1626,7 @@ def main() -> int:
 
         _exercise_quality_smoke(client)
         _exercise_workshop_smoke(client)
+        _exercise_finished_goods_inbound_smoke(client)
         _exercise_sales_delivery_payment_smoke(client, session_local)
         _exercise_factory_statement_payment_smoke(client, session_local)
 
