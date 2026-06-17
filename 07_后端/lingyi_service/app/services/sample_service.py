@@ -25,11 +25,13 @@ from app.core.error_codes import SAMPLE_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import SAMPLE_INTERNAL_ERROR
 from app.core.error_codes import SAMPLE_INVALID_STATUS
 from app.core.error_codes import SAMPLE_NOT_FOUND
+from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
 from app.core.exceptions import BusinessException
 from app.models.sample import LySampleIdempotency
 from app.models.sample import LySampleOrder
 from app.models.sample import LySampleTrackingNode
 from app.models.sample import LySampleTrackingTemplate
+from app.models.style_master import LyStyleMaster
 from app.schemas.sample import SampleOrderConvertRequest
 from app.schemas.sample import SampleOrderCreateRequest
 from app.schemas.sample import SampleOrderItem
@@ -130,13 +132,14 @@ class SampleService:
 
         if self._get_order_by_no(company=company, sample_no=sample_no):
             raise BusinessException(code=SAMPLE_CONFLICT, message=f"{sample_no} 已存在")
+        style = self._resolve_enabled_style(company=company, style_no=payload.style_no)
 
         try:
             row = LySampleOrder(
                 company=company,
                 sample_no=sample_no,
-                style_no=self._require_text(payload.style_no, "style_no"),
-                style_name=self._require_text(payload.style_name, "style_name"),
+                style_no=str(style.ys_style_no),
+                style_name=str(style.ys_style_name_cn),
                 customer=self._require_text(payload.customer, "customer"),
                 factory=self._optional_text(payload.factory) or "",
                 sample_type=str(payload.sample_type),
@@ -175,6 +178,9 @@ class SampleService:
         if row.status not in self.EDITABLE_ORDER_STATUSES:
             raise BusinessException(code=SAMPLE_INVALID_STATUS, message="当前样板单状态不允许编辑")
         next_values = self._order_next_values(row=row, payload=payload)
+        style = self._resolve_enabled_style(company=company, style_no=next_values.get("style_no", row.style_no))
+        next_values["style_no"] = str(style.ys_style_no)
+        next_values["style_name"] = str(style.ys_style_name_cn)
         request_hash = self._request_hash(operation="update", entity_type="order", company=company, order_id=order_id, payload=next_values)
         idem = self._get_idempotency(entity_type="order", company=company, idempotency_key=idempotency_key)
         if idem:
@@ -573,6 +579,17 @@ class SampleService:
             .filter(LySampleOrder.company == company, LySampleOrder.sample_no == sample_no)
             .first()
         )
+
+    def _resolve_enabled_style(self, *, company: str, style_no: str | None) -> LyStyleMaster:
+        normalized_style_no = self._require_text(style_no, "style_no")
+        row = (
+            self.session.query(LyStyleMaster)
+            .filter(LyStyleMaster.company == company, LyStyleMaster.ys_style_no == normalized_style_no)
+            .first()
+        )
+        if not row or row.ys_style_status != "enabled":
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{normalized_style_no} 款式不存在或未启用")
+        return row
 
     def _get_template_by_id(self, template_id: int) -> LySampleTrackingTemplate:
         row = self.session.query(LySampleTrackingTemplate).filter(LySampleTrackingTemplate.id == template_id).first()

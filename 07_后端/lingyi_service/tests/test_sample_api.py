@@ -24,6 +24,8 @@ from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
+from app.models.style_master import Base as StyleMasterBase
+from app.models.style_master import LyStyleMaster
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.sample import get_db_session as sample_db_dep
 
@@ -41,6 +43,7 @@ class SampleApiTest(unittest.TestCase):
             execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
+        StyleMasterBase.metadata.create_all(bind=cls.engine)
         SampleBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
@@ -80,6 +83,10 @@ class SampleApiTest(unittest.TestCase):
             session.query(LySampleTrackingNode).delete()
             session.query(LySampleTrackingTemplate).delete()
             session.query(LySampleOrder).delete()
+            session.query(LyStyleMaster).delete()
+            self._seed_style(session, style_no="ST-A3-001", style_name="A3 样衣款")
+            self._seed_style(session, style_no="ST-A3-002", style_name="A3 样衣款修改")
+            self._seed_style(session, style_no="ST-A3-DISABLED", style_name="停用款", status="disabled")
             session.commit()
 
     @staticmethod
@@ -111,6 +118,25 @@ class SampleApiTest(unittest.TestCase):
             "idempotency_key": idempotency_key,
         }
 
+    @staticmethod
+    def _seed_style(session, *, style_no: str, style_name: str, status: str = "enabled") -> None:
+        session.add(
+            LyStyleMaster(
+                company="COMP-A",
+                ys_style_no=style_no,
+                ys_style_name_cn=style_name,
+                ys_season="SS",
+                ys_year="2026",
+                ys_brand="LY",
+                ys_style_status=status,
+                colors=[],
+                sizes=[],
+                version=1,
+                created_by="test",
+                updated_by="test",
+            )
+        )
+
     def test_sample_order_create_list_update_submit_reverse(self) -> None:
         created = self.client.post(
             "/api/sample/orders",
@@ -136,13 +162,15 @@ class SampleApiTest(unittest.TestCase):
             json={
                 "operation": "update",
                 "company": "COMP-A",
-                "style_name": "A3 样衣款修改",
+                "style_no": "ST-A3-002",
+                "style_name": "前端传入款名不作为准",
                 "stage": "打版中",
                 "progress": 30,
                 "idempotency_key": "IDEMP-SMP-A3-001-U",
             },
         )
         self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["data"]["style_no"], "ST-A3-002")
         self.assertEqual(updated.json()["data"]["style_name"], "A3 样衣款修改")
         self.assertEqual(updated.json()["data"]["version"], 2)
 
@@ -206,6 +234,27 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(denied.status_code, 403)
         self.assertEqual(denied.json()["code"], "AUTH_FORBIDDEN")
+
+    def test_sample_order_requires_enabled_style_master(self) -> None:
+        missing = self._order_payload(sample_no="SMP-A3-MISSING", idempotency_key="IDEMP-SMP-A3-MISSING")
+        missing["style_no"] = "ST-A3-MISSING"
+        missing_response = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-STYLE-MISSING"),
+            json=missing,
+        )
+        self.assertEqual(missing_response.status_code, 409)
+        self.assertEqual(missing_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
+        disabled = self._order_payload(sample_no="SMP-A3-DISABLED", idempotency_key="IDEMP-SMP-A3-DISABLED")
+        disabled["style_no"] = "ST-A3-DISABLED"
+        disabled_response = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-STYLE-DISABLED"),
+            json=disabled,
+        )
+        self.assertEqual(disabled_response.status_code, 409)
+        self.assertEqual(disabled_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
 
     def test_sample_order_convert_creates_sales_order_draft(self) -> None:
         created = self.client.post(
