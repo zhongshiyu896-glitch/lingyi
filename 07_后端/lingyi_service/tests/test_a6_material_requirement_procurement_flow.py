@@ -16,10 +16,12 @@ import app.main as main_module
 from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
+from app.models.audit import LySecurityAuditLog
 from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchaseRequirement
@@ -102,9 +104,11 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
+            session.query(LySecurityAuditLog).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LyMaterialPurchaseIdempotency).delete()
             session.query(LyMaterialPurchaseRequirement).delete()
             session.query(LyMaterialPurchaseOrderItem).delete()
             session.query(LyMaterialPurchaseOrder).delete()
@@ -160,6 +164,82 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             "X-LY-Dev-Roles": "System Manager",
             "X-Request-ID": request_id,
         }
+
+    def _seed_requirement(
+        self,
+        *,
+        requirement_no: str = "REQ-A6-SEED-001",
+        status: str = "pending",
+        net_required_qty: str = "10",
+    ) -> int:
+        with self.SessionLocal() as session:
+            row = LyMaterialPurchaseRequirement(
+                company=self.COMPANY,
+                requirement_no=requirement_no,
+                source_type="production_plan_material",
+                source_id=requirement_no,
+                source_no="SO-A6-SEED",
+                plan_id=1,
+                bom_item_id=6011,
+                sales_order="SO-A6-SEED",
+                sales_order_item="SO-A6-SEED-ITEM",
+                item_code=self.STYLE,
+                material_item_code=self.MATERIAL,
+                material_name="A6 棉布",
+                supplier_name="SUP-A6",
+                warehouse=self.WAREHOUSE,
+                required_qty=Decimal(net_required_qty),
+                available_qty=Decimal("0"),
+                net_required_qty=Decimal(net_required_qty),
+                purchased_qty=Decimal("0"),
+                received_qty=Decimal("0"),
+                uom="米",
+                unit_price=Decimal("12.5"),
+                status=status,
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(row)
+            session.commit()
+            return int(row.id)
+
+    def _seed_purchase_order(self, *, purchase_no: str) -> int:
+        with self.SessionLocal() as session:
+            row = LyMaterialPurchaseOrder(
+                company=self.COMPANY,
+                purchase_no=purchase_no,
+                supplier_name="SUP-A6",
+                status="draft",
+                total_qty=Decimal("0"),
+                received_qty=Decimal("0"),
+                total_amount=Decimal("0"),
+                currency="CNY",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(row)
+            session.commit()
+            return int(row.id)
+
+    def _from_requirements_payload(
+        self,
+        *,
+        requirement_ids: list[int],
+        idempotency_key: str,
+        purchase_no: str | None = None,
+    ) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "operation": "create_order_from_requirements",
+            "company": self.COMPANY,
+            "requirement_ids": requirement_ids,
+            "transaction_date": "2026-06-17",
+            "expected_delivery_date": "2026-06-25",
+            "idempotency_key": idempotency_key,
+            "group_by_material": True,
+        }
+        if purchase_no:
+            payload["purchase_no"] = purchase_no
+        return payload
 
     @staticmethod
     def _carrier_code(value: object, *, length: int = 3) -> str:
@@ -382,3 +462,123 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("material_purchase:write", audit_actions)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
+
+    def test_from_requirements_unauthenticated_security_audit_is_write_requirement(self) -> None:
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            json=self._from_requirements_payload(requirement_ids=[999], idempotency_key="idem-a6-unauth"),
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).one()
+            self.assertEqual(row.module, "material_purchase")
+            self.assertEqual(row.action, "material_purchase:write")
+            self.assertEqual(row.resource_type, "MaterialPurchaseRequirement")
+            self.assertEqual(row.request_path, "/api/material-purchase/orders/from-requirements")
+
+    def test_from_requirements_requires_material_purchase_write(self) -> None:
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers={**self._headers("req-a6-forbidden"), "X-LY-Dev-Roles": "NoRole"},
+            json=self._from_requirements_payload(requirement_ids=[999], idempotency_key="idem-a6-forbidden"),
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).one()
+            self.assertEqual(row.module, "material_purchase")
+            self.assertEqual(row.action, "material_purchase:write")
+            self.assertEqual(row.resource_type, "MATERIAL_PURCHASE_REQUIREMENT")
+            self.assertEqual(row.request_path, "/api/material-purchase/orders/from-requirements")
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+
+    def test_from_requirements_rejects_idempotency_payload_mismatch(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-IDEM")
+        payload = self._from_requirements_payload(
+            requirement_ids=[requirement_id],
+            idempotency_key="idem-a6-req-idem",
+            purchase_no="PO-A6-IDEM",
+        )
+        first = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-idem-1"),
+            json=payload,
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+
+        mismatch = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-idem-2"),
+            json={**payload, "purchase_no": "PO-A6-IDEM-OTHER"},
+        )
+        self.assertEqual(mismatch.status_code, 409)
+        self.assertEqual(mismatch.json()["code"], "MATERIAL_PURCHASE_IDEMPOTENCY_CONFLICT")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 1)
+            self.assertEqual(session.query(LyMaterialPurchaseIdempotency).count(), 1)
+            failed_audit = (
+                session.query(LyOperationAuditLog)
+                .filter(LyOperationAuditLog.result == "failed")
+                .order_by(LyOperationAuditLog.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(failed_audit)
+            self.assertEqual(failed_audit.error_code, "MATERIAL_PURCHASE_IDEMPOTENCY_CONFLICT")
+            self.assertEqual(failed_audit.resource_type, "MATERIAL_PURCHASE_ORDER")
+
+    def test_from_requirements_rejects_missing_requirement(self) -> None:
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-missing"),
+            json=self._from_requirements_payload(requirement_ids=[99999], idempotency_key="idem-a6-missing"),
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_NOT_FOUND")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            failed_audit = session.query(LyOperationAuditLog).one()
+            self.assertEqual(failed_audit.result, "failed")
+            self.assertEqual(failed_audit.error_code, "MATERIAL_PURCHASE_NOT_FOUND")
+            self.assertEqual(failed_audit.resource_type, "MATERIAL_PURCHASE_ORDER")
+
+    def test_from_requirements_rejects_non_pending_requirement(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-PURCHASED", status="purchased")
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-non-pending"),
+            json=self._from_requirements_payload(requirement_ids=[requirement_id], idempotency_key="idem-a6-non-pending"),
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+
+    def test_from_requirements_rejects_zero_net_requirement(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-ZERO", net_required_qty="0")
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-zero"),
+            json=self._from_requirements_payload(requirement_ids=[requirement_id], idempotency_key="idem-a6-zero"),
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+
+    def test_from_requirements_rejects_duplicate_purchase_no(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-DUP")
+        self._seed_purchase_order(purchase_no="PO-A6-DUP")
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-duplicate-po"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-duplicate-po",
+                purchase_no="PO-A6-DUP",
+            ),
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 1)

@@ -490,10 +490,25 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         return "sales_inventory", SALES_INVENTORY_READ, "SalesInventory", None
 
     if path.startswith("/api/material-purchase"):
+        if path in {"/api/material-purchase/requirements", "/api/material-purchase/requirements/"}:
+            return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseRequirement", None
+        if path in {
+            "/api/material-purchase/orders/from-requirements",
+            "/api/material-purchase/orders/from-requirements/",
+        }:
+            return "material_purchase", MATERIAL_PURCHASE_WRITE, "MaterialPurchaseRequirement", None
         if path in {"/api/material-purchase/orders", "/api/material-purchase/orders/"}:
             if method == "POST":
                 return "material_purchase", MATERIAL_PURCHASE_WRITE, "MaterialPurchaseOrder", None
             return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseOrder", None
+        if path in {"/api/material-purchase/purchase-invoices", "/api/material-purchase/purchase-invoices/"}:
+            if method == "POST":
+                return "material_purchase", MATERIAL_PURCHASE_WRITE, "MaterialPurchaseInvoice", None
+            return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseInvoice", None
+        if path in {"/api/material-purchase/purchase-payments", "/api/material-purchase/purchase-payments/"}:
+            if method == "POST":
+                return "material_purchase", MATERIAL_PURCHASE_WRITE, "MaterialPurchasePayment", None
+            return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchasePayment", None
         return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseOrder", None
 
     if path.startswith("/api/style-master"):
