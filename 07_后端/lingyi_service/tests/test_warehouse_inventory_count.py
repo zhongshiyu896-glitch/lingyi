@@ -8,9 +8,11 @@ from datetime import timezone
 from decimal import Decimal
 import os
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -208,6 +210,119 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
                 .one()
             )
             self.assertEqual(audit.resource_no, data["count_no"])
+
+    def test_create_inventory_count_replay_returns_same_record(self) -> None:
+        payload = self._payload()
+        headers = self._headers("warehouse:inventory_count,warehouse:read")
+        first = self.client.post("/api/warehouse/inventory-counts", headers=headers, json=payload)
+        second = self.client.post("/api/warehouse/inventory-counts", headers=headers, json=payload)
+
+        self.assertEqual(first.status_code, 201, first.text)
+        self.assertEqual(second.status_code, 201, second.text)
+        first_data = first.json()["data"]
+        second_data = second.json()["data"]
+        self.assertEqual(second_data["id"], first_data["id"])
+        self.assertEqual(second_data["count_no"], first_data["count_no"])
+        self.assertEqual(second_data["idempotency_key"], payload["idempotency_key"])
+        self.assertEqual(second_data["source_ref"], payload["source_ref"])
+        self.assertRegex(second_data["request_hash"], r"^[a-f0-9]{64}$")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseInventoryCount).count(), 1)
+            self.assertEqual(session.query(LyWarehouseInventoryCountItem).count(), 2)
+
+    def test_create_inventory_count_idempotency_conflict_is_409_and_audited(self) -> None:
+        payload = self._payload()
+        headers = self._headers("warehouse:inventory_count,warehouse:read")
+        first = self.client.post("/api/warehouse/inventory-counts", headers=headers, json=payload)
+        self.assertEqual(first.status_code, 201, first.text)
+
+        changed = self._payload()
+        changed["items"][0]["counted_qty"] = "7"
+        conflict = self.client.post("/api/warehouse/inventory-counts", headers=headers, json=changed)
+        self.assertEqual(conflict.status_code, 409, conflict.text)
+        self.assertEqual(conflict.json()["code"], "WAREHOUSE_IDEMPOTENCY_CONFLICT")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseInventoryCount).count(), 1)
+            self.assertEqual(session.query(LyWarehouseInventoryCountItem).count(), 2)
+            failed_audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:inventory_count",
+                    LyOperationAuditLog.result == "failed",
+                    LyOperationAuditLog.error_code == "WAREHOUSE_IDEMPOTENCY_CONFLICT",
+                )
+                .one()
+            )
+            self.assertEqual(failed_audit.resource_no, payload["source_ref"])
+
+    def test_create_inventory_count_same_source_ref_with_different_idempotency_key_conflicts(self) -> None:
+        payload = self._payload()
+        headers = self._headers("warehouse:inventory_count,warehouse:read")
+        first = self.client.post("/api/warehouse/inventory-counts", headers=headers, json=payload)
+        self.assertEqual(first.status_code, 201, first.text)
+
+        changed = self._payload()
+        changed["idempotency_key"] = f"{changed['idempotency_key']}-ALT"
+        conflict = self.client.post("/api/warehouse/inventory-counts", headers=headers, json=changed)
+        self.assertEqual(conflict.status_code, 409, conflict.text)
+        self.assertEqual(conflict.json()["code"], "WAREHOUSE_IDEMPOTENCY_CONFLICT")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseInventoryCount).count(), 1)
+            failed_audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:inventory_count",
+                    LyOperationAuditLog.result == "failed",
+                    LyOperationAuditLog.error_code == "WAREHOUSE_IDEMPOTENCY_CONFLICT",
+                )
+                .one()
+            )
+            self.assertEqual(failed_audit.resource_no, payload["source_ref"])
+
+    def test_create_inventory_count_integrity_replay_returns_same_record(self) -> None:
+        payload = self._payload()
+        headers = self._headers("warehouse:inventory_count,warehouse:read")
+        first = self.client.post("/api/warehouse/inventory-counts", headers=headers, json=payload)
+        self.assertEqual(first.status_code, 201, first.text)
+        first_data = first.json()["data"]
+
+        with patch(
+            "app.services.warehouse_service.WarehouseService.create_inventory_count",
+            side_effect=IntegrityError("insert inventory count", {}, Exception("unique")),
+        ):
+            second = self.client.post("/api/warehouse/inventory-counts", headers=headers, json=payload)
+
+        self.assertEqual(second.status_code, 201, second.text)
+        second_data = second.json()["data"]
+        self.assertEqual(second_data["id"], first_data["id"])
+        self.assertEqual(second_data["count_no"], first_data["count_no"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseInventoryCount).count(), 1)
+            self.assertEqual(session.query(LyWarehouseInventoryCountItem).count(), 2)
+            self.assertEqual(
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:inventory_count",
+                    LyOperationAuditLog.result == "success",
+                )
+                .count(),
+                2,
+            )
+            self.assertEqual(
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:inventory_count",
+                    LyOperationAuditLog.result == "failed",
+                )
+                .count(),
+                0,
+            )
 
     def test_inventory_balance_reconciliation_reads_count_against_stock_movements(self) -> None:
         self._seed_stock_balance(item_code="ITEM-A", qty="10")

@@ -120,6 +120,8 @@ class LyWarehouseInventoryCount(Base):
     __tablename__ = "ly_warehouse_inventory_count"
     __table_args__ = (
         Index("uk_ly_whse_inv_count_company_count_no", "company", "count_no", unique=True),
+        Index("uk_ly_whse_inv_count_company_idempotency", "company", "idempotency_key", unique=True),
+        Index("uk_ly_whse_inv_count_company_source_ref", "company", "source_ref", unique=True),
         Index("idx_ly_whse_inv_count_company_warehouse", "company", "warehouse"),
         Index("idx_ly_whse_inv_count_status_date", "status", "count_date", "id"),
         CheckConstraint(
@@ -134,6 +136,9 @@ class LyWarehouseInventoryCount(Base):
     warehouse = Column(String(140), nullable=False)
     status = Column(String(32), nullable=False, server_default="draft")
     count_no = Column(String(140), nullable=False)
+    idempotency_key = Column(String(140), nullable=True)
+    source_ref = Column(String(140), nullable=True)
+    request_hash = Column(String(64), nullable=True)
     count_date = Column(Date, nullable=False)
     created_by = Column(String(140), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

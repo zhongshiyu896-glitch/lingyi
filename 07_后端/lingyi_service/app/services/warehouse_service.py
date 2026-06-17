@@ -8,6 +8,7 @@ from datetime import datetime
 from datetime import timezone
 from decimal import Decimal
 import hashlib
+import json
 import os
 from typing import Any
 from typing import Literal
@@ -2252,6 +2253,24 @@ class WarehouseService:
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         source_ref = self._require_text(payload.source_ref, "source_ref")
         item_rows = self._normalize_inventory_count_items(items=payload.items)
+        remark = self._text(payload.remark)
+        request_hash = self._inventory_count_request_hash(
+            company=company,
+            warehouse=warehouse,
+            count_date=payload.count_date,
+            source_ref=source_ref,
+            remark=remark,
+            item_rows=item_rows,
+        )
+        existing = self._find_inventory_count_create_replay(
+            company=company,
+            idempotency_key=idempotency_key,
+            source_ref=source_ref,
+            request_hash=request_hash,
+        )
+        if existing is not None:
+            return self._build_inventory_count_data(inventory_count=existing)
+
         count_no = self._build_inventory_count_no(
             company=company,
             warehouse=warehouse,
@@ -2259,7 +2278,6 @@ class WarehouseService:
             source_ref=source_ref,
         )
         now = datetime.now(timezone.utc)
-        remark = self._text(payload.remark)
         carrier_remark = f"carrier:idempotency_key={idempotency_key};source_ref={source_ref}"
         combined_remark = carrier_remark if remark is None else f"{remark} | {carrier_remark}"
 
@@ -2268,6 +2286,9 @@ class WarehouseService:
             warehouse=warehouse,
             status="draft",
             count_no=count_no,
+            idempotency_key=idempotency_key,
+            source_ref=source_ref,
+            request_hash=request_hash,
             count_date=payload.count_date,
             created_by=current_user,
             created_at=now,
@@ -2294,6 +2315,35 @@ class WarehouseService:
             )
         session.flush()
         return self._build_inventory_count_data(inventory_count=inventory_count)
+
+    def recover_inventory_count_create_replay(
+        self,
+        *,
+        payload: WarehouseInventoryCountCreateRequest,
+    ) -> WarehouseInventoryCountData | None:
+        company = self._require_text(payload.company, "company")
+        warehouse = self._require_text(payload.warehouse, "warehouse")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        source_ref = self._require_text(payload.source_ref, "source_ref")
+        item_rows = self._normalize_inventory_count_items(items=payload.items)
+        remark = self._text(payload.remark)
+        request_hash = self._inventory_count_request_hash(
+            company=company,
+            warehouse=warehouse,
+            count_date=payload.count_date,
+            source_ref=source_ref,
+            remark=remark,
+            item_rows=item_rows,
+        )
+        existing = self._find_inventory_count_create_replay(
+            company=company,
+            idempotency_key=idempotency_key,
+            source_ref=source_ref,
+            request_hash=request_hash,
+        )
+        if existing is None:
+            return None
+        return self._build_inventory_count_data(inventory_count=existing)
 
     def submit_inventory_count(
         self,
@@ -2692,6 +2742,9 @@ class WarehouseService:
             warehouse=str(inventory_count.warehouse),
             status=str(inventory_count.status),
             count_no=str(inventory_count.count_no),
+            idempotency_key=self._text(inventory_count.idempotency_key),
+            source_ref=self._text(inventory_count.source_ref),
+            request_hash=self._text(inventory_count.request_hash),
             count_date=inventory_count.count_date,
             created_by=str(inventory_count.created_by),
             created_at=inventory_count.created_at,
@@ -2777,6 +2830,112 @@ class WarehouseService:
                 }
             )
         return normalized_rows
+
+    @staticmethod
+    def _ensure_inventory_count_replay_matches(
+        inventory_count: LyWarehouseInventoryCount,
+        *,
+        idempotency_key: str,
+        source_ref: str,
+        request_hash: str,
+        message: str,
+    ) -> None:
+        if str(inventory_count.idempotency_key or "") != idempotency_key:
+            raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", message)
+        if str(inventory_count.source_ref or "") != source_ref:
+            raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", message)
+        if str(inventory_count.request_hash or "") != request_hash:
+            raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", message)
+
+    def _find_inventory_count_create_replay(
+        self,
+        *,
+        company: str,
+        idempotency_key: str,
+        source_ref: str,
+        request_hash: str,
+    ) -> LyWarehouseInventoryCount | None:
+        session = self._require_session()
+        existing_by_idempotency = (
+            session.query(LyWarehouseInventoryCount)
+            .filter(
+                LyWarehouseInventoryCount.company == company,
+                LyWarehouseInventoryCount.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing_by_idempotency is not None:
+            self._ensure_inventory_count_replay_matches(
+                existing_by_idempotency,
+                idempotency_key=idempotency_key,
+                source_ref=source_ref,
+                request_hash=request_hash,
+                message="幂等键冲突且请求内容不一致",
+            )
+            return existing_by_idempotency
+
+        existing_by_source = (
+            session.query(LyWarehouseInventoryCount)
+            .filter(
+                LyWarehouseInventoryCount.company == company,
+                LyWarehouseInventoryCount.source_ref == source_ref,
+            )
+            .first()
+        )
+        if existing_by_source is not None:
+            self._ensure_inventory_count_replay_matches(
+                existing_by_source,
+                idempotency_key=idempotency_key,
+                source_ref=source_ref,
+                request_hash=request_hash,
+                message="source_ref 已存在且请求内容不一致",
+            )
+            return existing_by_source
+
+        return None
+
+    @staticmethod
+    def _inventory_count_request_hash(
+        *,
+        company: str,
+        warehouse: str,
+        count_date: date,
+        source_ref: str,
+        remark: str | None,
+        item_rows: list[dict[str, Any]],
+    ) -> str:
+        canonical_items = [
+            {
+                "batch_no": row["batch_no"],
+                "counted_qty": str(row["counted_qty"]),
+                "item_code": row["item_code"],
+                "serial_no": row["serial_no"],
+                "system_qty": str(row["system_qty"]),
+                "variance_reason": row["variance_reason"],
+            }
+            for row in item_rows
+        ]
+        canonical_items.sort(
+            key=lambda row: (
+                str(row["item_code"]),
+                str(row["batch_no"] or ""),
+                str(row["serial_no"] or ""),
+            )
+        )
+        raw = json.dumps(
+            {
+                "company": company,
+                "warehouse": warehouse,
+                "count_date": count_date.isoformat(),
+                "source_ref": source_ref,
+                "remark": remark,
+                "items": canonical_items,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _build_inventory_count_no(*, company: str, warehouse: str, count_date: date, source_ref: str) -> str:

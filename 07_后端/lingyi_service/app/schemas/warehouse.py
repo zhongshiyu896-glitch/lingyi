@@ -670,6 +670,9 @@ class WarehouseInventoryCountData(BaseModel):
     warehouse: str
     status: Literal["draft", "counted", "variance_review", "confirmed", "cancelled"]
     count_no: str
+    idempotency_key: str | None = None
+    source_ref: str | None = None
+    request_hash: str | None = None
     count_date: date
     created_by: str
     created_at: datetime

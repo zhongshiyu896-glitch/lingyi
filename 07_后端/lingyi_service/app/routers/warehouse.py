@@ -17,6 +17,7 @@ from fastapi import Query
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.responses import StreamingResponse
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
@@ -3165,6 +3166,25 @@ def create_inventory_count(
         )
         session.commit()
         _raise_service_error(exc)
+    except IntegrityError:
+        session.rollback()
+        try:
+            data = _write_service(session).recover_inventory_count_create_replay(payload=payload)
+            if data is None:
+                raise WarehouseServiceError(500, "DATABASE_WRITE_FAILED", "盘点单写入冲突，且未找到可重放记录")
+            _record_inventory_count_success(session=session, request=request, current_user=current_user, data=data)
+            session.commit()
+        except WarehouseServiceError as recovery_exc:
+            session.rollback()
+            _record_inventory_count_failure(
+                session=session,
+                request=request,
+                current_user=current_user,
+                error_code=recovery_exc.code,
+                resource_no=payload.source_ref,
+            )
+            session.commit()
+            _raise_service_error(recovery_exc)
     except Exception:
         session.rollback()
         raise

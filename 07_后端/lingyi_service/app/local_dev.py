@@ -90,6 +90,7 @@ def _create_local_tables() -> None:
     _ensure_local_sample_idempotency_supports_seal()
     _ensure_local_sales_order_item_calc_columns()
     _ensure_local_subcontract_create_idempotency_columns()
+    _ensure_local_inventory_count_idempotency_columns()
 
 
 def _ensure_local_sample_idempotency_supports_seal() -> None:
@@ -187,6 +188,34 @@ def _ensure_local_subcontract_create_idempotency_columns() -> None:
         )
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_subcontract_company_source ON ly_subcontract_order(company, source_ref)"
+        )
+
+
+def _ensure_local_inventory_count_idempotency_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_warehouse_inventory_count'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_warehouse_inventory_count)").fetchall()
+        }
+        if "idempotency_key" not in existing_columns:
+            conn.execute("ALTER TABLE ly_warehouse_inventory_count ADD COLUMN idempotency_key VARCHAR(140)")
+        if "source_ref" not in existing_columns:
+            conn.execute("ALTER TABLE ly_warehouse_inventory_count ADD COLUMN source_ref VARCHAR(140)")
+        if "request_hash" not in existing_columns:
+            conn.execute("ALTER TABLE ly_warehouse_inventory_count ADD COLUMN request_hash VARCHAR(64)")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_whse_inv_count_company_idempotency ON ly_warehouse_inventory_count(company, idempotency_key)"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_whse_inv_count_company_source_ref ON ly_warehouse_inventory_count(company, source_ref)"
         )
 
 
