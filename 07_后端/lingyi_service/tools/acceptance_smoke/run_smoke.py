@@ -46,6 +46,8 @@ from app.models.material_purchase import LyMaterialPurchaseOrder  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrderItem  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 from app.models.quality import LyQualityInspection  # noqa: E402
+from app.models.sample import Base as SampleBase  # noqa: E402
+from app.models.sample import LySampleOrder  # noqa: E402
 from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
 from app.models.sales_order import LyDeliveryInvoice  # noqa: E402
 from app.models.sales_order import LySalesOrder  # noqa: E402
@@ -72,6 +74,7 @@ from app.routers.material_purchase import get_db_session as material_purchase_db
 from app.routers.production import get_db_session as production_db_dep  # noqa: E402
 from app.routers.quality import get_db_session as quality_db_dep  # noqa: E402
 from app.routers.report import get_db_session as report_db_dep  # noqa: E402
+from app.routers.sample import get_db_session as sample_db_dep  # noqa: E402
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep  # noqa: E402
 from app.routers.style_profit import get_db_session as style_profit_db_dep  # noqa: E402
 from app.routers.subcontract import get_db_session as subcontract_db_dep  # noqa: E402
@@ -1039,6 +1042,213 @@ def _exercise_inventory_count_smoke(client: TestClient) -> None:
     _assert(reconciliation_rows[0]["status"] == "variance_accepted", "inventory reconciliation status mismatch")
 
 
+def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
+    company = "COMP-SAMPLE-SMOKE"
+    sample_no = "SMP-SMOKE-001"
+    create_payload = {
+        "operation": "create",
+        "company": company,
+        "sample_no": sample_no,
+        "style_no": "ST-SAMPLE-SMOKE",
+        "style_name": "Smoke 样衣款",
+        "customer": "CUST-SAMPLE-SMOKE",
+        "factory": "FAC-SAMPLE-SMOKE",
+        "sample_type": "初样",
+        "stage": "建档",
+        "progress": 0,
+        "pattern_maker": "PATTERN-SMOKE",
+        "sample_maker": "SEW-SMOKE",
+        "due_date": date(2026, 6, 30).isoformat(),
+        "status": "draft",
+        "image_tone": "blue",
+        "owner_note": "acceptance-smoke sample workflow",
+        "idempotency_key": "sample-smoke:create:001",
+    }
+    created = client.post(
+        "/api/sample/orders",
+        headers=_headers(request_id="SAMPLE-SMOKE-001"),
+        json=create_payload,
+    )
+    _assert(created.status_code == 201, created.text)
+    created_data = created.json()["data"]
+    order_id = int(created_data["id"])
+    _assert(created_data["sample_no"] == sample_no, "sample create sample_no mismatch")
+
+    replay = client.post(
+        "/api/sample/orders",
+        headers=_headers(request_id="SAMPLE-SMOKE-002"),
+        json=create_payload,
+    )
+    _assert(replay.status_code == 201, replay.text)
+    _assert(int(replay.json()["data"]["id"]) == order_id, "sample create idempotent replay mismatch")
+
+    updated = client.patch(
+        f"/api/sample/orders/{order_id}",
+        headers=_headers(request_id="SAMPLE-SMOKE-003"),
+        json={
+            "operation": "update",
+            "company": company,
+            "stage": "打样跟进",
+            "progress": 60,
+            "idempotency_key": "sample-smoke:update:001",
+        },
+    )
+    _assert(updated.status_code == 200, updated.text)
+    _assert(updated.json()["data"]["stage"] == "打样跟进", "sample update stage mismatch")
+    _assert(updated.json()["data"]["progress"] == 60, "sample update progress mismatch")
+
+    submitted = client.post(
+        f"/api/sample/orders/{order_id}/submit",
+        headers=_headers(request_id="SAMPLE-SMOKE-004"),
+        json={
+            "company": company,
+            "idempotency_key": "sample-smoke:submit:001",
+        },
+    )
+    _assert(submitted.status_code == 200, submitted.text)
+    _assert(submitted.json()["data"]["status"] == "pending", "sample submit status mismatch")
+
+    reversed_response = client.post(
+        f"/api/sample/orders/{order_id}/reverse",
+        headers=_headers(request_id="SAMPLE-SMOKE-005"),
+        json={
+            "company": company,
+            "reason": "acceptance-smoke reopen",
+            "idempotency_key": "sample-smoke:reverse:001",
+        },
+    )
+    _assert(reversed_response.status_code == 200, reversed_response.text)
+    _assert(reversed_response.json()["data"]["status"] == "reversed", "sample reverse status mismatch")
+
+    sealed_payload = {
+        **create_payload,
+        "sample_no": "SMP-SMOKE-CONVERT-001",
+        "stage": "已封样",
+        "progress": 100,
+        "status": "sealed",
+        "idempotency_key": "sample-smoke:create-convert:001",
+    }
+    sealed = client.post(
+        "/api/sample/orders",
+        headers=_headers(request_id="SAMPLE-SMOKE-006"),
+        json=sealed_payload,
+    )
+    _assert(sealed.status_code == 201, sealed.text)
+    sealed_id = int(sealed.json()["data"]["id"])
+
+    converted = client.post(
+        f"/api/sample/orders/{sealed_id}/convert-to-bulk",
+        headers=_headers(request_id="SAMPLE-SMOKE-007"),
+        json={
+            "operation": "convert",
+            "company": company,
+            "target_sales_order": "SO-SAMPLE-SMOKE-001",
+            "idempotency_key": "sample-smoke:convert:001",
+        },
+    )
+    _assert(converted.status_code == 200, converted.text)
+    converted_data = converted.json()["data"]
+    _assert(converted_data["status"] == "converted", "sample convert status mismatch")
+    _assert(converted_data["bulk_handoff_no"] == "SO-SAMPLE-SMOKE-001", "sample convert sales order mismatch")
+
+    sales_order_detail = client.get(
+        "/api/sales-inventory/sales-orders/SO-SAMPLE-SMOKE-001",
+        headers=_headers(request_id="SAMPLE-SMOKE-008"),
+    )
+    _assert(sales_order_detail.status_code == 200, sales_order_detail.text)
+    sales_order_data = sales_order_detail.json()["data"]
+    _assert(sales_order_data["name"] == "SO-SAMPLE-SMOKE-001", "sample sales order detail name mismatch")
+    _assert(sales_order_data["customer"] == "CUST-SAMPLE-SMOKE", "sample sales order customer mismatch")
+    _assert(sales_order_data["items"][0]["item_code"] == "ST-SAMPLE-SMOKE", "sample sales order item mismatch")
+
+    listed = client.get(
+        f"/api/sample/orders?company={company}&keyword=SMP-SMOKE&page=1&page_size=10",
+        headers=_headers(request_id="SAMPLE-SMOKE-009"),
+    )
+    _assert(listed.status_code == 200, listed.text)
+    rows = listed.json()["data"]["items"]
+    _assert(len(rows) >= 2, "sample list readback missing")
+
+    reconcile_generated = client.post(
+        "/api/production/tracking-reconciliations/generate",
+        headers=_headers(request_id="SAMPLE-SMOKE-010"),
+        json={
+            "company": company,
+            "keyword": "SMP-SMOKE-CONVERT-001",
+            "operation": "generate",
+            "idempotency_key": "sample-smoke:tracking-reconcile:001",
+        },
+    )
+    _assert(reconcile_generated.status_code == 200, reconcile_generated.text)
+    reconcile_data = reconcile_generated.json()["data"]
+    _assert(reconcile_data["created_count"] == 1, "sample tracking reconcile created_count mismatch")
+    _assert(reconcile_data["matched_count"] == 1, "sample tracking reconcile matched_count mismatch")
+    _assert(reconcile_data["items"][0]["sample_no"] == "SMP-SMOKE-CONVERT-001", "sample tracking reconcile sample mismatch")
+    _assert(reconcile_data["items"][0]["sales_order"] == "SO-SAMPLE-SMOKE-001", "sample tracking reconcile sales order mismatch")
+    _assert(reconcile_data["items"][0]["diff_status"] == "matched", "sample tracking reconcile diff_status mismatch")
+
+    reconcile_listed = client.get(
+        f"/api/production/tracking-reconciliations?company={company}&keyword=SO-SAMPLE-SMOKE-001&page=1&page_size=10",
+        headers=_headers(request_id="SAMPLE-SMOKE-011"),
+    )
+    _assert(reconcile_listed.status_code == 200, reconcile_listed.text)
+    reconcile_rows = reconcile_listed.json()["data"]["items"]
+    _assert(reconcile_rows and reconcile_rows[0]["sales_order"] == "SO-SAMPLE-SMOKE-001", "sample tracking reconcile readback missing")
+
+    template = client.post(
+        "/api/sample/tracking-templates",
+        headers=_headers(request_id="SAMPLE-SMOKE-012"),
+        json={
+            "operation": "create",
+            "company": company,
+            "template_code": "STPL-SMOKE-001",
+            "name": "Smoke 样衣跟进模板",
+            "category": "通用",
+            "group": "打样",
+            "status": "enabled",
+            "owner": "设计",
+            "version": "V1",
+            "summary": "acceptance-smoke template",
+            "idempotency_key": "sample-smoke:template:001",
+        },
+    )
+    _assert(template.status_code == 201, template.text)
+    template_id = int(template.json()["data"]["id"])
+
+    node = client.post(
+        f"/api/sample/tracking-templates/{template_id}/nodes",
+        headers=_headers(request_id="SAMPLE-SMOKE-013"),
+        json={
+            "operation": "create_node",
+            "company": company,
+            "name": "样衣确认",
+            "role": "版师",
+            "lead_time": "1天",
+            "status": "required",
+            "gate": "确认样衣版型",
+            "output": "封样记录",
+            "reminder": "到期提醒",
+            "sequence_no": 10,
+            "idempotency_key": "sample-smoke:node:001",
+        },
+    )
+    _assert(node.status_code == 201, node.text)
+
+    templates = client.get(
+        f"/api/sample/tracking-templates?company={company}&keyword=Smoke&page=1&page_size=10",
+        headers=_headers(request_id="SAMPLE-SMOKE-014"),
+    )
+    _assert(templates.status_code == 200, templates.text)
+    template_rows = templates.json()["data"]["items"]
+    _assert(template_rows and template_rows[0]["nodes"][0]["name"] == "样衣确认", "sample template node readback missing")
+
+    with session_local() as session:
+        _assert(session.query(LySampleOrder).filter(LySampleOrder.company == company).count() == 2, "sample DB rows mismatch")
+        sales_order = session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == "SO-SAMPLE-SMOKE-001").one_or_none()
+        _assert(sales_order is not None, "sample convert sales draft missing")
+        _assert(sales_order.source_order_ref == "SAMPLE-SMP-SMOKE-CONVERT-001", "sample convert source ref mismatch")
+
+
 def _exercise_sales_delivery_payment_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
     company = "COMP-SALES-SMOKE"
     customer = "CUST-SALES-SMOKE"
@@ -1376,6 +1586,7 @@ def main() -> int:
     FactoryStatementBase.metadata.create_all(bind=engine)
     MasterDataBase.metadata.create_all(bind=engine)
     MaterialPurchaseBase.metadata.create_all(bind=engine)
+    SampleBase.metadata.create_all(bind=engine)
     SalesOrderBase.metadata.create_all(bind=engine)
     WorkshopBase.metadata.create_all(bind=engine)
 
@@ -1399,6 +1610,7 @@ def main() -> int:
     app.dependency_overrides[material_purchase_db_dep] = _override_db
     app.dependency_overrides[quality_db_dep] = _override_db
     app.dependency_overrides[report_db_dep] = _override_db
+    app.dependency_overrides[sample_db_dep] = _override_db
     app.dependency_overrides[style_profit_db_dep] = _override_db
     app.dependency_overrides[subcontract_db_dep] = _override_db
     app.dependency_overrides[system_db_dep] = _override_db
@@ -1728,6 +1940,7 @@ def main() -> int:
         _exercise_workshop_smoke(client)
         _exercise_finished_goods_inbound_smoke(client)
         _exercise_inventory_count_smoke(client)
+        _exercise_sample_workflow_smoke(client, session_local)
         _exercise_sales_delivery_payment_smoke(client, session_local)
         _exercise_factory_statement_payment_smoke(client, session_local)
 
@@ -1961,6 +2174,7 @@ def main() -> int:
         app.dependency_overrides.pop(material_purchase_db_dep, None)
         app.dependency_overrides.pop(quality_db_dep, None)
         app.dependency_overrides.pop(report_db_dep, None)
+        app.dependency_overrides.pop(sample_db_dep, None)
         app.dependency_overrides.pop(style_profit_db_dep, None)
         app.dependency_overrides.pop(subcontract_db_dep, None)
         app.dependency_overrides.pop(system_db_dep, None)
