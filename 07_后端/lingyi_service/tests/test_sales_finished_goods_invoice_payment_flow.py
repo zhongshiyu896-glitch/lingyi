@@ -22,6 +22,8 @@ from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.sales_order import LySalesPaymentEntry
+from app.models.style_master import Base as StyleMasterBase
+from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
@@ -53,6 +55,7 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
+        StyleMasterBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
@@ -92,9 +95,26 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             session.query(LyDeliveryInvoice).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
+            session.query(LyStyleMaster).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.add(
+                LyStyleMaster(
+                    company=self.COMPANY,
+                    ys_style_no=self.ITEM_CODE,
+                    ys_style_name_cn="B1 Closed Tee",
+                    ys_season="SS",
+                    ys_year="2026",
+                    ys_brand="LY",
+                    ys_style_status="enabled",
+                    colors=[],
+                    sizes=[],
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
             session.commit()
 
     @staticmethod

@@ -67,7 +67,9 @@ class LySalesOrderItem(Base):
         Index("uk_ly_sales_order_item_line", "sales_order_id", "line_no", unique=True),
         Index("idx_ly_sales_order_item_order", "sales_order_id"),
         Index("idx_ly_sales_order_item_code", "company", "item_code"),
+        Index("idx_ly_sales_order_item_material_calc", "company", "ys_material_calc_state"),
         CheckConstraint("qty > 0", name="ck_ly_sales_order_item_qty_positive"),
+        CheckConstraint("ys_material_calc_state IN ('待算料','已算料')", name="ck_ly_sales_order_item_calc_state"),
         {"schema": "ly_schema", "comment": "FastAPI 原生大货销售订单明细"},
     )
 
@@ -78,9 +80,12 @@ class LySalesOrderItem(Base):
     sales_order_item = Column(String(140), nullable=False)
     item_code = Column(String(140), nullable=False)
     item_name = Column(String(255), nullable=True)
+    color = Column(String(64), nullable=True)
+    size = Column(String(64), nullable=True)
     qty = Column(Numeric(18, 6), nullable=False)
     planned_qty = Column(Numeric(18, 6), nullable=False, server_default="0")
     delivered_qty = Column(Numeric(18, 6), nullable=False, server_default="0")
+    ys_material_calc_state = Column(String(32), nullable=False, server_default="待算料")
     rate = Column(Numeric(18, 6), nullable=True)
     amount = Column(Numeric(18, 6), nullable=True)
     uom = Column(String(32), nullable=False, server_default="Nos")

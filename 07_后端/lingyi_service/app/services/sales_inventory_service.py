@@ -13,11 +13,13 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
+from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
@@ -214,6 +216,7 @@ class SalesInventoryService:
         grand_total = Decimal("0")
         for index, line in enumerate(payload.items, start=1):
             item_code = self._require_text(line.item_code, f"items[{index}].item_code")
+            style = self._resolve_enabled_style(company=company, style_no=item_code)
             qty = self._positive_decimal(line.qty, f"items[{index}].qty")
             rate = self._decimal_or_none(line.rate)
             amount = qty * rate if rate is not None else None
@@ -221,8 +224,10 @@ class SalesInventoryService:
                 grand_total += amount
             line_rows.append(
                 {
-                    "item_code": item_code,
-                    "item_name": self._text(line.item_name),
+                    "item_code": str(style.ys_style_no),
+                    "item_name": str(style.ys_style_name_cn),
+                    "color": self._text(line.color),
+                    "size": self._text(line.size),
                     "qty": qty,
                     "rate": rate,
                     "amount": amount,
@@ -245,6 +250,8 @@ class SalesInventoryService:
                     {
                         "item_code": row["item_code"],
                         "item_name": row["item_name"],
+                        "color": row["color"],
+                        "size": row["size"],
                         "qty": str(row["qty"]),
                         "rate": str(row["rate"]) if row["rate"] is not None else None,
                         "uom": row["uom"],
@@ -316,6 +323,9 @@ class SalesInventoryService:
                     sales_order_item=f"{sales_order_no}-{index:03d}",
                     item_code=item["item_code"],
                     item_name=item["item_name"],
+                    color=item["color"],
+                    size=item["size"],
+                    ys_material_calc_state="待算料",
                     qty=item["qty"],
                     planned_qty=Decimal("0"),
                     delivered_qty=Decimal("0"),
@@ -4094,12 +4104,15 @@ class SalesInventoryService:
             name=cls._text(row.get("name")),
             item_code=str(row.get("item_code") or ""),
             item_name=cls._text(row.get("item_name")),
+            color=cls._text(row.get("color")),
+            size=cls._text(row.get("size")),
             qty=Decimal(str(row.get("qty") or "0")),
             delivered_qty=cls._decimal_or_none(row.get("delivered_qty")),
             rate=cls._decimal_or_none(row.get("rate")),
             amount=cls._decimal_or_none(row.get("amount")),
             warehouse=cls._text(row.get("warehouse")),
             delivery_date=row.get("delivery_date"),
+            ys_material_calc_state=cls._text(row.get("ys_material_calc_state")) or "待算料",
         )
 
     _LOCAL_SALES_ORDER_SOURCE_TYPE = "sales_order_local"
@@ -4116,6 +4129,17 @@ class SalesInventoryService:
         if normalized is None:
             raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", f"{field_name} 不能为空")
         return normalized
+
+    def _resolve_enabled_style(self, *, company: str, style_no: str) -> LyStyleMaster:
+        session = self._require_session()
+        row = (
+            session.query(LyStyleMaster)
+            .filter(LyStyleMaster.company == company, LyStyleMaster.ys_style_no == style_no)
+            .first()
+        )
+        if row is None or str(row.ys_style_status) != "enabled":
+            raise SalesInventoryServiceError(409, STYLE_MASTER_INVALID_REFERENCE, f"{style_no} 款式不存在或未启用")
+        return row
 
     @classmethod
     def _positive_decimal(cls, value: Any, field_name: str) -> Decimal:
@@ -4243,6 +4267,12 @@ class SalesInventoryService:
             .all()
         )
 
+    @staticmethod
+    def _material_calc_state_from_items(items: list[LySalesOrderItem]) -> str:
+        if items and all(str(item.ys_material_calc_state or "") == "已算料" for item in items):
+            return "已算料"
+        return "待算料"
+
     @classmethod
     def _native_status_display(cls, status: Any) -> str:
         normalized = (str(status or "")).strip().lower()
@@ -4257,6 +4287,7 @@ class SalesInventoryService:
         return "cancelled" if (str(status or "").strip().lower() == "cancelled") else "draft"
 
     def _build_native_sales_order_list_item(self, order: LySalesOrder) -> SalesOrderListItem:
+        items = self._native_sales_order_items(order_id=int(order.id))
         return SalesOrderListItem(
             name=str(order.sales_order_no),
             company=str(order.company),
@@ -4267,9 +4298,11 @@ class SalesInventoryService:
             docstatus=int(order.docstatus or 0),
             grand_total=Decimal(str(order.grand_total or 0)),
             currency=self._text(order.currency) or "CNY",
+            ys_material_calc_state=self._material_calc_state_from_items(items),
         )
 
     def _build_native_sales_order_detail(self, order: LySalesOrder) -> SalesOrderDetailData:
+        items = self._native_sales_order_items(order_id=int(order.id))
         return SalesOrderDetailData(
             name=str(order.sales_order_no),
             company=str(order.company),
@@ -4280,23 +4313,28 @@ class SalesInventoryService:
             docstatus=int(order.docstatus or 0),
             grand_total=Decimal(str(order.grand_total or 0)),
             currency=self._text(order.currency) or "CNY",
+            ys_material_calc_state=self._material_calc_state_from_items(items),
             items=[
                 SalesOrderLineItem(
                     name=str(item.sales_order_item),
                     item_code=str(item.item_code),
                     item_name=self._text(item.item_name) or str(item.item_code),
+                    color=self._text(item.color),
+                    size=self._text(item.size),
                     qty=Decimal(str(item.qty)),
                     delivered_qty=Decimal(str(item.delivered_qty or 0)),
                     rate=self._decimal_or_none(item.rate),
                     amount=self._decimal_or_none(item.amount),
                     warehouse=self._text(item.warehouse),
                     delivery_date=item.delivery_date or order.delivery_date,
+                    ys_material_calc_state=self._text(item.ys_material_calc_state) or "待算料",
                 )
-                for item in self._native_sales_order_items(order_id=int(order.id))
+                for item in items
             ],
         )
 
     def _build_native_sales_order_draft_data(self, order: LySalesOrder) -> SalesOrderDraftData:
+        items = self._native_sales_order_items(order_id=int(order.id))
         return SalesOrderDraftData(
             id=int(order.id),
             sales_order_no=str(order.sales_order_no),
@@ -4320,13 +4358,17 @@ class SalesInventoryService:
                     id=int(item.id),
                     draft_id=int(order.id),
                     item_code=str(item.item_code),
+                    item_name=self._text(item.item_name) or str(item.item_code),
+                    color=self._text(item.color),
+                    size=self._text(item.size),
                     qty=Decimal(str(item.qty)),
                     rate=self._decimal_or_none(item.rate),
                     amount=self._decimal_or_none(item.amount),
                     uom=str(item.uom),
                     warehouse=self._text(item.warehouse),
+                    ys_material_calc_state=self._text(item.ys_material_calc_state) or "待算料",
                 )
-                for item in self._native_sales_order_items(order_id=int(order.id))
+                for item in items
             ],
         )
 

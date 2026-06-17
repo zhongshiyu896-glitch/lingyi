@@ -207,6 +207,7 @@ class SalesOrderListItem(BaseModel):
     docstatus: int
     grand_total: Decimal | None = None
     currency: str | None = None
+    ys_material_calc_state: str | None = None
 
 
 class SalesOrderLineItem(BaseModel):
@@ -215,12 +216,15 @@ class SalesOrderLineItem(BaseModel):
     name: str | None = None
     item_code: str
     item_name: str | None = None
+    color: str | None = None
+    size: str | None = None
     qty: Decimal
     delivered_qty: Decimal | None = None
     rate: Decimal | None = None
     amount: Decimal | None = None
     warehouse: str | None = None
     delivery_date: date | None = None
+    ys_material_calc_state: str | None = None
 
 
 class SalesOrderDetailData(BaseModel):
@@ -235,6 +239,7 @@ class SalesOrderDetailData(BaseModel):
     docstatus: int
     grand_total: Decimal | None = None
     currency: str | None = None
+    ys_material_calc_state: str | None = None
     items: list[SalesOrderLineItem]
 
 
@@ -243,6 +248,8 @@ class SalesOrderDraftLineItemCreateRequest(BaseModel):
 
     item_code: str
     item_name: str | None = None
+    color: str | None = None
+    size: str | None = None
     qty: Decimal
     rate: Decimal | None = None
     uom: str = "Nos"
@@ -283,11 +290,15 @@ class SalesOrderDraftLineItemData(BaseModel):
     id: int
     draft_id: int
     item_code: str
+    item_name: str | None = None
+    color: str | None = None
+    size: str | None = None
     qty: Decimal
     rate: Decimal | None = None
     amount: Decimal | None = None
     uom: str
     warehouse: str | None = None
+    ys_material_calc_state: str | None = None
 
 
 class SalesOrderDraftData(BaseModel):

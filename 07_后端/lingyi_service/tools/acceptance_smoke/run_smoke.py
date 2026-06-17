@@ -54,6 +54,8 @@ from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
 from app.models.sales_order import LyDeliveryInvoice  # noqa: E402
 from app.models.sales_order import LySalesOrder  # noqa: E402
 from app.models.sales_order import LySalesOrderItem  # noqa: E402
+from app.models.style_master import Base as StyleMasterBase  # noqa: E402
+from app.models.style_master import LyStyleMaster  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.style_profit import LyStyleProfitSnapshot  # noqa: E402
 from app.models.subcontract import Base as SubcontractBase  # noqa: E402
@@ -171,12 +173,6 @@ FIELD_EXPECTATIONS = {
     },
     "/api/subcontract/material-issues": {"subcontract_no", "material_item_code", "issued_qty", "pending_qty"},
     "/api/subcontract/receipts": {"subcontract_no", "receipt_batch_no", "received_qty", "accepted_qty"},
-    "/api/subcontract/return-materials": {
-        "subcontract_no",
-        "material_item_code",
-        "planned_return_qty",
-        "returned_qty",
-    },
     "/api/warehouse/finished-goods-inbound": {"reservation_no", "item_code", "reserve_qty", "inbound_qty"},
     "/api/sales-inventory/delivery-notes": {"delivery_note", "sales_order", "customer", "delivered_qty"},
     "/api/sales-inventory/sales-invoices": {"sales_invoice", "sales_order", "grand_total", "outstanding_amount"},
@@ -607,6 +603,48 @@ def _assert(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def _seed_style_master(
+    session,
+    *,
+    company: str,
+    style_no: str,
+    style_name: str,
+    colors: list[dict[str, str]] | None = None,
+    sizes: list[dict[str, str]] | None = None,
+) -> None:
+    existing = (
+        session.query(LyStyleMaster)
+        .filter(
+            LyStyleMaster.company == company,
+            LyStyleMaster.ys_style_no == style_no,
+        )
+        .first()
+    )
+    if existing is not None:
+        existing.ys_style_name_cn = style_name
+        existing.ys_style_status = "enabled"
+        existing.colors = colors or []
+        existing.sizes = sizes or []
+        existing.updated_by = "frontend.readiness.smoke"
+        return
+    session.add(
+        LyStyleMaster(
+            company=company,
+            ys_style_no=style_no,
+            ys_style_name_cn=style_name,
+            ys_season="SS",
+            ys_year="2026",
+            ys_brand="LY",
+            ys_style_status="enabled",
+            colors=colors or [],
+            sizes=sizes or [],
+            version=1,
+            created_by="frontend.readiness.smoke",
+            updated_by="frontend.readiness.smoke",
+        )
+    )
+
+
 def _exercise_master_data_smoke(client: TestClient) -> None:
     company = "COMP-MASTER-SMOKE"
     entities = [
@@ -697,6 +735,14 @@ def _exercise_sales_order_to_material_issue_smoke(client: TestClient, session_lo
     warehouse_scenario = "Z003-WAREHOUSE-20260617-801"
 
     with session_local() as session:
+        _seed_style_master(
+            session,
+            company=company,
+            style_no=item_code,
+            style_name="A4 Smoke Finished Goods",
+            colors=[{"ys_color_code": "WHITE", "ys_color_name": "白色"}],
+            sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
+        )
         session.add(
             LyApparelBom(
                 id=1101,
@@ -813,6 +859,13 @@ def _exercise_sales_order_to_material_issue_smoke(client: TestClient, session_lo
     _assert(material_row["material_item_code"] == material_code, "production material check material mismatch")
     _assert(Decimal(str(material_row["required_qty"])) == Decimal("84.000000"), "production material required qty mismatch")
     _assert(Decimal(str(material_row["shortage_qty"])) == Decimal("84.000000"), "production material shortage qty mismatch")
+
+    order_after_material_check = client.get(f"/api/sales-inventory/sales-orders/{sales_order_no}", headers=_headers())
+    _assert(order_after_material_check.status_code == 200, order_after_material_check.text)
+    _assert(
+        order_after_material_check.json()["data"]["ys_material_calc_state"] == "已算料",
+        "sales order material calc state not updated",
+    )
 
     issue_idempotency = f"{warehouse_scenario}:stock:material-issue:001"
     issue_source_ref = f"{warehouse_scenario}:production-plan:{plan_id}:material-issue"
@@ -1272,6 +1325,16 @@ def _exercise_inventory_count_smoke(client: TestClient) -> None:
 def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
     company = "COMP-SAMPLE-SMOKE"
     sample_no = "SMP-SMOKE-001"
+    with session_local() as session:
+        _seed_style_master(
+            session,
+            company=company,
+            style_no="ST-SAMPLE-SMOKE",
+            style_name="Smoke 样衣款",
+            colors=[{"ys_color_code": "BLUE", "ys_color_name": "蓝色"}],
+            sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
+        )
+        session.commit()
     create_payload = {
         "operation": "create",
         "company": company,
@@ -1350,9 +1413,9 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
     sealed_payload = {
         **create_payload,
         "sample_no": "SMP-SMOKE-CONVERT-001",
-        "stage": "已封样",
-        "progress": 100,
-        "status": "sealed",
+        "stage": "建档",
+        "progress": 0,
+        "status": "draft",
         "idempotency_key": "sample-smoke:create-convert:001",
     }
     sealed = client.post(
@@ -1362,6 +1425,28 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
     )
     _assert(sealed.status_code == 201, sealed.text)
     sealed_id = int(sealed.json()["data"]["id"])
+
+    sealed_submitted = client.post(
+        f"/api/sample/orders/{sealed_id}/submit",
+        headers=_headers(request_id="SAMPLE-SMOKE-006A"),
+        json={
+            "company": company,
+            "idempotency_key": "sample-smoke:submit-convert:001",
+        },
+    )
+    _assert(sealed_submitted.status_code == 200, sealed_submitted.text)
+    _assert(sealed_submitted.json()["data"]["status"] == "pending", "sample convert submit status mismatch")
+
+    sealed_response = client.post(
+        f"/api/sample/orders/{sealed_id}/seal",
+        headers=_headers(request_id="SAMPLE-SMOKE-006B"),
+        json={
+            "company": company,
+            "idempotency_key": "sample-smoke:seal-convert:001",
+        },
+    )
+    _assert(sealed_response.status_code == 200, sealed_response.text)
+    _assert(sealed_response.json()["data"]["status"] == "sealed", "sample seal status mismatch")
 
     converted = client.post(
         f"/api/sample/orders/{sealed_id}/convert-to-bulk",
@@ -1664,6 +1749,23 @@ def _exercise_subcontract_return_material_smoke(client: TestClient, session_loca
     _assert(Decimal(str(detail_data["issued_qty"])) == Decimal("100.000000"), "subcontract issued_qty mismatch")
     _assert(Decimal(str(detail_data["received_qty"])) == Decimal("60.000000"), "subcontract received_qty mismatch")
     _assert(detail_data["status"] == "waiting_inspection", "subcontract status after receive mismatch")
+
+    return_materials = client.get(
+        (
+            "/api/subcontract/return-materials?"
+            f"company={company}&warehouse={issue_warehouse}&item_code={material_code}"
+        ),
+        headers=_headers(request_id=f"{scenario}-RETURN-MATERIALS-001"),
+    )
+    _assert(return_materials.status_code == 200, return_materials.text)
+    return_rows = return_materials.json()["data"]["items"]
+    _assert(return_rows and return_rows[0]["subcontract_no"] == subcontract_no, "subcontract return-material readback missing")
+    return_row = return_rows[0]
+    _assert(return_row["material_item_code"] == material_code, "subcontract return-material code mismatch")
+    _assert(Decimal(str(return_row["planned_return_qty"])) == Decimal("40.00"), "subcontract return-material planned qty mismatch")
+    _assert(Decimal(str(return_row["returned_qty"])) == Decimal("0.00"), "subcontract return-material returned qty mismatch")
+    _assert(Decimal(str(return_row["pending_qty"])) == Decimal("40.00"), "subcontract return-material pending qty mismatch")
+    _assert(return_row["status"] == "pending", "subcontract return-material status mismatch")
 
     report = client.get(
         (
@@ -2213,6 +2315,7 @@ def main() -> int:
     FactoryStatementBase.metadata.create_all(bind=engine)
     MasterDataBase.metadata.create_all(bind=engine)
     MaterialPurchaseBase.metadata.create_all(bind=engine)
+    StyleMasterBase.metadata.create_all(bind=engine)
     SampleBase.metadata.create_all(bind=engine)
     SalesOrderBase.metadata.create_all(bind=engine)
     WorkshopBase.metadata.create_all(bind=engine)

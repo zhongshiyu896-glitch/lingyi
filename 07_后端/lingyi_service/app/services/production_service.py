@@ -2208,6 +2208,7 @@ class ProductionService:
 
         previous = str(plan.status)
         plan.status = "material_checked"
+        self._mark_native_sales_order_item_material_checked(plan=plan, operator=operator)
         self._log_status(
             plan_id=int(plan.id),
             from_status=previous,
@@ -2540,6 +2541,39 @@ class ProductionService:
         if row is None:
             raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="生产计划不存在")
         return row
+
+    def _mark_native_sales_order_item_material_checked(self, *, plan: LyProductionPlan, operator: str) -> None:
+        sales_order = str(plan.sales_order or "").strip()
+        sales_order_item = str(plan.sales_order_item or "").strip()
+        if not sales_order or not sales_order_item:
+            return
+        try:
+            order = (
+                self.session.query(LySalesOrder)
+                .filter(
+                    LySalesOrder.company == str(plan.company),
+                    LySalesOrder.sales_order_no == sales_order,
+                )
+                .first()
+            )
+            if order is None:
+                return
+            line = (
+                self.session.query(LySalesOrderItem)
+                .filter(
+                    LySalesOrderItem.sales_order_id == int(order.id),
+                    LySalesOrderItem.sales_order_item == sales_order_item,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_missing_native_sales_order_table(exc):
+                return
+            raise DatabaseReadFailed() from exc
+        if line is None:
+            return
+        line.ys_material_calc_state = "已算料"
+        order.updated_by = operator
 
     @staticmethod
     def _ensure_material_check_status_allowed(*, plan: LyProductionPlan) -> str:

@@ -44,6 +44,7 @@ import app.models.quality_outbox  # noqa: E402,F401
 from app.models.sample import Base as SampleBase  # noqa: E402
 from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
 from app.models.style_master import Base as StyleMasterBase  # noqa: E402
+from app.models.style_master import LyStyleMaster  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.subcontract import Base as SubcontractBase  # noqa: E402
 import app.models.warehouse  # noqa: E402,F401
@@ -87,6 +88,7 @@ def _create_local_tables() -> None:
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
     SubcontractBase.metadata.create_all(bind=main_module.engine)
     _ensure_local_sample_idempotency_supports_seal()
+    _ensure_local_sales_order_item_calc_columns()
 
 
 def _ensure_local_sample_idempotency_supports_seal() -> None:
@@ -132,8 +134,79 @@ def _ensure_local_sample_idempotency_supports_seal() -> None:
         )
 
 
+def _ensure_local_sales_order_item_calc_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_sales_order_item'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_sales_order_item)").fetchall()
+        }
+        if "color" not in existing_columns:
+            conn.execute("ALTER TABLE ly_sales_order_item ADD COLUMN color VARCHAR(64)")
+        if "size" not in existing_columns:
+            conn.execute("ALTER TABLE ly_sales_order_item ADD COLUMN size VARCHAR(64)")
+        if "ys_material_calc_state" not in existing_columns:
+            conn.execute(
+                "ALTER TABLE ly_sales_order_item ADD COLUMN ys_material_calc_state VARCHAR(32) NOT NULL DEFAULT '待算料'"
+            )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ly_sales_order_item_material_calc ON ly_sales_order_item(company, ys_material_calc_state)"
+        )
+
+
 def _seed_local_bom() -> None:
     with main_module.SessionLocal() as session:
+        style = (
+            session.query(LyStyleMaster)
+            .filter(
+                LyStyleMaster.company == "默认公司",
+                LyStyleMaster.ys_style_no == "DEMO-TEE",
+            )
+            .first()
+        )
+        if style is None:
+            session.add(
+                LyStyleMaster(
+                    company="默认公司",
+                    ys_style_no="DEMO-TEE",
+                    ys_style_name_cn="本地演示T恤",
+                    ys_season="SS",
+                    ys_year="2026",
+                    ys_brand="LY",
+                    ys_style_status="enabled",
+                    colors=[
+                        {"ys_color_code": "WHITE", "ys_color_name": "白色"},
+                        {"ys_color_code": "BLACK", "ys_color_name": "黑色"},
+                    ],
+                    sizes=[
+                        {"ys_size_code": "M", "ys_size_name": "M"},
+                        {"ys_size_code": "L", "ys_size_name": "L"},
+                    ],
+                    version=1,
+                    created_by="local.dev",
+                    updated_by="local.dev",
+                )
+            )
+        else:
+            style.ys_style_name_cn = style.ys_style_name_cn or "本地演示T恤"
+            style.ys_style_status = "enabled"
+            style.colors = style.colors or [
+                {"ys_color_code": "WHITE", "ys_color_name": "白色"},
+                {"ys_color_code": "BLACK", "ys_color_name": "黑色"},
+            ]
+            style.sizes = style.sizes or [
+                {"ys_size_code": "M", "ys_size_name": "M"},
+                {"ys_size_code": "L", "ys_size_name": "L"},
+            ]
+            style.updated_by = "local.dev"
+
         existing = session.query(LyApparelBom.id).first()
         if existing:
             bom_id = int(existing[0])
