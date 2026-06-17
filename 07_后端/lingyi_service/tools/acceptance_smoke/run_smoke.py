@@ -38,6 +38,7 @@ from app.models.audit import Base as AuditBase  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.factory_statement import LyFactoryStatement  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
+from app.models.master_data import Base as MasterDataBase  # noqa: E402
 from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrder  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrderItem  # noqa: E402
@@ -58,6 +59,7 @@ from app.routers.bom import get_db_session as bom_db_dep  # noqa: E402
 from app.routers.cross_module_view import get_db_session as cross_module_db_dep  # noqa: E402
 from app.routers.dashboard import get_db_session as dashboard_db_dep  # noqa: E402
 from app.routers.factory_statement import get_db_session as factory_statement_db_dep  # noqa: E402
+from app.routers.master_data import get_db_session as master_data_db_dep  # noqa: E402
 from app.routers.material_purchase import get_db_session as material_purchase_db_dep  # noqa: E402
 from app.routers.production import get_db_session as production_db_dep  # noqa: E402
 from app.routers.quality import get_db_session as quality_db_dep  # noqa: E402
@@ -500,6 +502,86 @@ def _assert(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def _exercise_master_data_smoke(client: TestClient) -> None:
+    company = "COMP-MASTER-SMOKE"
+    entities = [
+        ("customers", "CUST-SMOKE-001", "Smoke Customer", {"customer_name": "Smoke Customer"}),
+        ("suppliers", "SUP-SMOKE-001", "Smoke Supplier", {"supplier_name": "Smoke Supplier"}),
+        ("factories", "FAC-SMOKE-001", "Smoke Factory", {"factory_name": "Smoke Factory"}),
+        ("warehouses", "WH-SMOKE-MD", "Smoke Warehouse", {"warehouse_name": "Smoke Warehouse"}),
+        (
+            "materials",
+            "MAT-SMOKE-001",
+            "Smoke Material",
+            {"material_kind": "fabric", "material_item_code": "MAT-SMOKE-001"},
+        ),
+    ]
+    for entity_path, code, name, payload in entities:
+        create_body = {
+            "operation": "create",
+            "company": company,
+            "code": code,
+            "name": name,
+            "idempotency_key": f"master-data:{entity_path}:create:smoke",
+            "payload": payload,
+        }
+        created = client.post(f"/api/master-data/{entity_path}", headers=_headers(), json=create_body)
+        _assert(created.status_code == 201, f"master data {entity_path} create failed: {created.text}")
+        created_data = created.json()["data"]
+        record_id = int(created_data["id"])
+        _assert(created_data["source"] == "fastapi_master_data", f"master data {entity_path} source mismatch")
+        _assert(created_data["code"] == code, f"master data {entity_path} code mismatch")
+
+        replay = client.post(f"/api/master-data/{entity_path}", headers=_headers(), json=create_body)
+        _assert(replay.status_code == 201, f"master data {entity_path} replay failed: {replay.text}")
+        _assert(int(replay.json()["data"]["id"]) == record_id, f"master data {entity_path} idempotent replay mismatch")
+
+        updated = client.patch(
+            f"/api/master-data/{entity_path}/{record_id}",
+            headers=_headers(),
+            json={
+                "operation": "update",
+                "company": company,
+                "name": f"{name} Updated",
+                "idempotency_key": f"master-data:{entity_path}:update:smoke",
+                "payload": {**payload, "smoke_updated": True},
+            },
+        )
+        _assert(updated.status_code == 200, f"master data {entity_path} update failed: {updated.text}")
+        _assert(updated.json()["data"]["name"] == f"{name} Updated", f"master data {entity_path} update readback mismatch")
+
+        listed = client.get(
+            f"/api/master-data/{entity_path}?company={company}&keyword={code}&page=1&page_size=10",
+            headers=_headers(),
+        )
+        _assert(listed.status_code == 200, f"master data {entity_path} list failed: {listed.text}")
+        rows = listed.json()["data"]["items"]
+        _assert(rows and rows[0]["code"] == code, f"master data {entity_path} list readback missing")
+
+        deactivated = client.post(
+            f"/api/master-data/{entity_path}/{record_id}/deactivate",
+            headers=_headers(),
+            json={
+                "operation": "deactivate",
+                "company": company,
+                "idempotency_key": f"master-data:{entity_path}:deactivate:smoke",
+                "reason": "acceptance-smoke",
+            },
+        )
+        _assert(deactivated.status_code == 200, f"master data {entity_path} deactivate failed: {deactivated.text}")
+        deactivated_data = deactivated.json()["data"]
+        _assert(deactivated_data["disabled"], f"master data {entity_path} disabled flag mismatch")
+        _assert(deactivated_data["status"] == "inactive", f"master data {entity_path} inactive status mismatch")
+
+        inactive = client.get(
+            f"/api/master-data/{entity_path}?company={company}&keyword={code}&disabled=true&page=1&page_size=10",
+            headers=_headers(),
+        )
+        _assert(inactive.status_code == 200, f"master data {entity_path} inactive list failed: {inactive.text}")
+        inactive_rows = inactive.json()["data"]["items"]
+        _assert(inactive_rows and inactive_rows[0]["disabled"], f"master data {entity_path} inactive readback missing")
+
+
 def main() -> int:
     engine = create_engine(
         "sqlite+pysqlite://",
@@ -514,6 +596,7 @@ def main() -> int:
     QualityBase.metadata.create_all(bind=engine)
     StyleProfitBase.metadata.create_all(bind=engine)
     FactoryStatementBase.metadata.create_all(bind=engine)
+    MasterDataBase.metadata.create_all(bind=engine)
     MaterialPurchaseBase.metadata.create_all(bind=engine)
     SalesOrderBase.metadata.create_all(bind=engine)
 
@@ -533,6 +616,7 @@ def main() -> int:
     app.dependency_overrides[dashboard_db_dep] = _override_db
     app.dependency_overrides[production_db_dep] = _override_db
     app.dependency_overrides[factory_statement_db_dep] = _override_db
+    app.dependency_overrides[master_data_db_dep] = _override_db
     app.dependency_overrides[material_purchase_db_dep] = _override_db
     app.dependency_overrides[quality_db_dep] = _override_db
     app.dependency_overrides[report_db_dep] = _override_db
@@ -896,6 +980,8 @@ def main() -> int:
         _assert(dashboard.status_code == 200, dashboard.text)
         _assert(dashboard.json()["data"]["company"] == "LY-FRONTEND-DEV", "dashboard default company mismatch")
 
+        _exercise_master_data_smoke(client)
+
         purchase_company = "COMP-SMOKE"
         purchase_no = "PO-SMOKE-001"
         purchase_supplier = "SUP-SMOKE"
@@ -1085,6 +1171,7 @@ def main() -> int:
         app.dependency_overrides.pop(dashboard_db_dep, None)
         app.dependency_overrides.pop(production_db_dep, None)
         app.dependency_overrides.pop(factory_statement_db_dep, None)
+        app.dependency_overrides.pop(master_data_db_dep, None)
         app.dependency_overrides.pop(material_purchase_db_dep, None)
         app.dependency_overrides.pop(quality_db_dep, None)
         app.dependency_overrides.pop(report_db_dep, None)
