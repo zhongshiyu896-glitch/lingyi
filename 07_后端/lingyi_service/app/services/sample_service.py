@@ -226,6 +226,30 @@ class SampleService:
             next_progress=20,
         )
 
+    def start_patterning_order(self, *, order_id: int, payload: SampleOrderStatusRequest, actor: str) -> SampleMutationResult:
+        return self._transition_order(
+            order_id=order_id,
+            payload=payload,
+            actor=actor,
+            operation="start_patterning",
+            allowed_from={"pending"},
+            next_status="patterning",
+            next_stage="打版中",
+            next_progress=45,
+        )
+
+    def start_fitting_order(self, *, order_id: int, payload: SampleOrderStatusRequest, actor: str) -> SampleMutationResult:
+        return self._transition_order(
+            order_id=order_id,
+            payload=payload,
+            actor=actor,
+            operation="start_fitting",
+            allowed_from={"patterning"},
+            next_status="fitting",
+            next_stage="试穿中",
+            next_progress=70,
+        )
+
     def seal_order(self, *, order_id: int, payload: SampleOrderStatusRequest, actor: str) -> SampleMutationResult:
         return self._transition_order(
             order_id=order_id,

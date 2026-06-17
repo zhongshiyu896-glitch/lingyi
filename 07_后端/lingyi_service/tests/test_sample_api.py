@@ -288,6 +288,97 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(direct_update.status_code, 409)
         self.assertEqual(direct_update.json()["code"], "SAMPLE_INVALID_STATUS")
 
+    def test_sample_order_patterning_fitting_status_flow(self) -> None:
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-FLOW-001"),
+            json=self._order_payload(sample_no="SMP-A3-FLOW", idempotency_key="IDEMP-SMP-A3-FLOW-C"),
+        )
+        self.assertEqual(created.status_code, 201)
+        order_id = int(created.json()["data"]["id"])
+
+        fitting_blocked = self.client.post(
+            f"/api/sample/orders/{order_id}/start-fitting",
+            headers=self._headers(request_id="SAMPLE-FLOW-BLOCKED"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-FLOW-FIT-BLOCK",
+            },
+        )
+        self.assertEqual(fitting_blocked.status_code, 409)
+        self.assertEqual(fitting_blocked.json()["code"], "SAMPLE_INVALID_STATUS")
+
+        submitted = self.client.post(
+            f"/api/sample/orders/{order_id}/submit",
+            headers=self._headers(request_id="SAMPLE-FLOW-002"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-FLOW-S",
+            },
+        )
+        self.assertEqual(submitted.status_code, 200)
+        self.assertEqual(submitted.json()["data"]["status"], "pending")
+
+        patterning = self.client.post(
+            f"/api/sample/orders/{order_id}/start-patterning",
+            headers=self._headers(request_id="SAMPLE-FLOW-003"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-FLOW-P",
+            },
+        )
+        self.assertEqual(patterning.status_code, 200)
+        self.assertEqual(patterning.json()["data"]["status"], "patterning")
+        self.assertEqual(patterning.json()["data"]["stage"], "打版中")
+        self.assertEqual(patterning.json()["data"]["progress"], 45)
+
+        fitting = self.client.post(
+            f"/api/sample/orders/{order_id}/start-fitting",
+            headers=self._headers(request_id="SAMPLE-FLOW-004"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-FLOW-F",
+            },
+        )
+        self.assertEqual(fitting.status_code, 200)
+        self.assertEqual(fitting.json()["data"]["status"], "fitting")
+        self.assertEqual(fitting.json()["data"]["stage"], "试穿中")
+        self.assertEqual(fitting.json()["data"]["progress"], 70)
+
+        sealed = self.client.post(
+            f"/api/sample/orders/{order_id}/seal",
+            headers=self._headers(request_id="SAMPLE-FLOW-005"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-FLOW-SEAL",
+            },
+        )
+        self.assertEqual(sealed.status_code, 200)
+        self.assertEqual(sealed.json()["data"]["status"], "sealed")
+
+        with self.SessionLocal() as session:
+            row = session.query(LySampleOrder).one()
+            self.assertEqual(row.status, "sealed")
+            self.assertEqual(row.stage, "已封样")
+            actions = [
+                item.action
+                for item in session.query(LyOperationAuditLog)
+                .filter(LyOperationAuditLog.module == "sample")
+                .filter(LyOperationAuditLog.result == "success")
+                .order_by(LyOperationAuditLog.id.asc())
+                .all()
+            ]
+            self.assertEqual(actions, ["create", "submit", "start_patterning", "start_fitting", "seal"])
+            failed_actions = [
+                item.action
+                for item in session.query(LyOperationAuditLog)
+                .filter(LyOperationAuditLog.module == "sample")
+                .filter(LyOperationAuditLog.result == "failed")
+                .order_by(LyOperationAuditLog.id.asc())
+                .all()
+            ]
+            self.assertEqual(failed_actions, ["start_fitting"])
+
     def test_sample_order_convert_creates_sales_order_draft(self) -> None:
         created = self.client.post(
             "/api/sample/orders",

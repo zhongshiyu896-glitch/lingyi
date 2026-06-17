@@ -102,7 +102,7 @@ def _ensure_local_sample_idempotency_supports_seal() -> None:
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_sample_idempotency'"
         ).fetchone()
         existing_sql = str(row[0]) if row else ""
-        required_operations = ["'seal'", "'deactivate'", "'delete_node'"]
+        required_operations = ["'start_patterning'", "'start_fitting'", "'seal'", "'deactivate'", "'delete_node'"]
         if not row or all(operation in existing_sql for operation in required_operations):
             return
         conn.executescript(
@@ -120,7 +120,7 @@ def _ensure_local_sample_idempotency_supports_seal() -> None:
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 PRIMARY KEY (id),
                 CONSTRAINT ck_ly_sample_idem_entity CHECK (entity_type IN ('order','template','node')),
-                CONSTRAINT ck_ly_sample_idem_operation CHECK (operation IN ('create','update','submit','seal','reverse','convert','deactivate','create_node','delete_node'))
+                CONSTRAINT ck_ly_sample_idem_operation CHECK (operation IN ('create','update','submit','start_patterning','start_fitting','seal','reverse','convert','deactivate','create_node','delete_node'))
             );
             INSERT INTO ly_sample_idempotency_new (
                 id, entity_type, company, idempotency_key, operation, request_hash, record_id, created_by, created_at
