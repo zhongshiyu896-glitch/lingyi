@@ -1936,6 +1936,21 @@ class WarehouseService:
                 fallback_target_warehouse=target_warehouse,
             )
 
+        expected_outbox_payload = self._build_stock_entry_replay_payload(
+            company=company,
+            purpose=purpose,
+            source_type=source_type,
+            source_id=source_id,
+            business_date=payload.business_date,
+            source_warehouse=source_warehouse,
+            target_warehouse=target_warehouse,
+            item_rows=item_rows,
+            allocation_mode=allocation_mode,
+            strict_failure_reason=strict_failure_reason,
+            show_completed_forced=show_completed_forced,
+            finished_goods_source_id=finished_goods_source_id,
+        )
+
         existing_by_idempotency = (
             session.query(LyWarehouseStockEntryDraft)
             .filter(
@@ -1945,6 +1960,11 @@ class WarehouseService:
             .first()
         )
         if existing_by_idempotency is not None:
+            self._ensure_stock_entry_replay_matches(
+                existing_by_idempotency,
+                expected_payload=expected_outbox_payload,
+                message="幂等键冲突且请求内容不一致",
+            )
             return self._build_draft_data(existing_by_idempotency)
 
         existing_by_source = (
@@ -1958,6 +1978,11 @@ class WarehouseService:
             .first()
         )
         if existing_by_source is not None:
+            self._ensure_stock_entry_replay_matches(
+                existing_by_source,
+                expected_payload=expected_outbox_payload,
+                message="source 已存在且请求内容不一致",
+            )
             return self._build_draft_data(existing_by_source)
 
         now = datetime.now(timezone.utc)
@@ -1999,38 +2024,7 @@ class WarehouseService:
                 )
             )
 
-        outbox_payload = {
-            "draft_id": int(draft.id),
-            "company": company,
-            "purpose": purpose,
-            "source_type": source_type,
-            "source_id": source_id,
-            "business_date": payload.business_date.isoformat(),
-            "source_warehouse": source_warehouse,
-            "target_warehouse": target_warehouse,
-            "items": [
-                {
-                    "item_code": row["item_code"],
-                    "qty": str(row["qty"]),
-                    "uom": row["uom"],
-                    "batch_no": row.get("batch_no"),
-                    "serial_no": row.get("serial_no"),
-                    "source_warehouse": row.get("source_warehouse"),
-                    "target_warehouse": row.get("target_warehouse"),
-                }
-                for row in item_rows
-            ],
-        }
-        if allocation_mode is not None:
-            outbox_payload["allocation_mode"] = allocation_mode
-        if strict_failure_reason is not None:
-            outbox_payload["strict_failure_reason"] = strict_failure_reason
-        if show_completed_forced is not None:
-            outbox_payload["show_completed_forced"] = show_completed_forced
-        if finished_goods_source_id is not None:
-            outbox_payload["finished_goods_source_id"] = finished_goods_source_id
-            outbox_payload["disabled_entry_label"] = self._FINISHED_GOODS_DISABLED_ENTRY_LABEL
-            outbox_payload["disabled_entry_reason"] = self._FINISHED_GOODS_DISABLED_ENTRY_REASON
+        outbox_payload = {"draft_id": int(draft.id), **expected_outbox_payload}
         session.add(
             LyWarehouseStockEntryOutboxEvent(
                 draft_id=draft.id,
@@ -2545,6 +2539,70 @@ class WarehouseService:
             .order_by(LyWarehouseStockEntryOutboxEvent.id.desc())
             .first()
         )
+
+    def _ensure_stock_entry_replay_matches(
+        self,
+        draft: LyWarehouseStockEntryDraft,
+        *,
+        expected_payload: dict[str, Any],
+        message: str,
+    ) -> None:
+        outbox = self._latest_outbox_for_draft(int(draft.id))
+        if outbox is None or not isinstance(outbox.payload, dict):
+            return
+        replay_payload = dict(outbox.payload)
+        replay_payload.pop("draft_id", None)
+        if replay_payload != expected_payload:
+            raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", message)
+
+    def _build_stock_entry_replay_payload(
+        self,
+        *,
+        company: str,
+        purpose: str,
+        source_type: str,
+        source_id: str,
+        business_date: date,
+        source_warehouse: str | None,
+        target_warehouse: str | None,
+        item_rows: list[dict[str, Any]],
+        allocation_mode: str | None,
+        strict_failure_reason: str | None,
+        show_completed_forced: bool | None,
+        finished_goods_source_id: str | None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "company": company,
+            "purpose": purpose,
+            "source_type": source_type,
+            "source_id": source_id,
+            "business_date": business_date.isoformat(),
+            "source_warehouse": source_warehouse,
+            "target_warehouse": target_warehouse,
+            "items": [
+                {
+                    "item_code": row["item_code"],
+                    "qty": str(row["qty"]),
+                    "uom": row["uom"],
+                    "batch_no": row.get("batch_no"),
+                    "serial_no": row.get("serial_no"),
+                    "source_warehouse": row.get("source_warehouse"),
+                    "target_warehouse": row.get("target_warehouse"),
+                }
+                for row in item_rows
+            ],
+        }
+        if allocation_mode is not None:
+            payload["allocation_mode"] = allocation_mode
+        if strict_failure_reason is not None:
+            payload["strict_failure_reason"] = strict_failure_reason
+        if show_completed_forced is not None:
+            payload["show_completed_forced"] = show_completed_forced
+        if finished_goods_source_id is not None:
+            payload["finished_goods_source_id"] = finished_goods_source_id
+            payload["disabled_entry_label"] = self._FINISHED_GOODS_DISABLED_ENTRY_LABEL
+            payload["disabled_entry_reason"] = self._FINISHED_GOODS_DISABLED_ENTRY_REASON
+        return payload
 
     def _list_due_stock_entry_outbox(self, *, batch_size: int) -> list[WarehouseStockEntryOutboxClaim]:
         rows = (

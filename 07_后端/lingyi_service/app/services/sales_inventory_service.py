@@ -4646,7 +4646,7 @@ class SalesInventoryService:
             .first()
         )
         if order is None:
-            return
+            raise SalesInventoryServiceError(404, "SALES_DELIVERY_ORDER_NOT_FOUND", "销售订单不存在")
         candidates = [
             item
             for item in self._native_sales_order_items(order_id=int(order.id))

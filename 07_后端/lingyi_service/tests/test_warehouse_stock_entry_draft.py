@@ -252,6 +252,30 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
             )
             self.assertEqual(str(outbox.status), "in_pending")
 
+    def test_replay_with_different_payload_returns_409(self) -> None:
+        first_payload = self._payload(qty="5")
+        first = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(first_payload),
+            ),
+            json=first_payload,
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+
+        conflict_payload = self._payload(qty="6")
+        conflict = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(conflict_payload),
+            ),
+            json=conflict_payload,
+        )
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "WAREHOUSE_IDEMPOTENCY_CONFLICT")
+
     def test_qty_lte_zero_returns_400(self) -> None:
         payload = self._payload(qty="0")
         response = self.client.post(

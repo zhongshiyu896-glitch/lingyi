@@ -279,6 +279,23 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SALES_DELIVERY_INVOICE_STOCK_SHORTAGE")
 
+    def test_delivery_invoice_requires_local_sales_order(self) -> None:
+        response = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(
+                sales_order="SO-B4-MISSING",
+                delivery_note="DN-B4-MISSING",
+                sales_invoice="SI-B4-MISSING",
+                source_ref="SRC-B4-MISSING",
+                idempotency_key="idem-b4-delivery-missing-order",
+            ),
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["code"], "SALES_DELIVERY_ORDER_NOT_FOUND")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyDeliveryInvoice).count(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

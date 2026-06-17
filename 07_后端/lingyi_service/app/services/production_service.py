@@ -1489,7 +1489,7 @@ class ProductionService:
                 "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
             ],
             pending_b_phase_fields=[
-                "工票/质检/成品入库/发货开票未建页面时，完工、入库、发货执行量只展示本地已有 Job Card 或 Sales Order delivered_qty",
+                "已建页面的成品入库、发货开票、回款纳入本地 FastAPI 闭环；工票、加工厂对账、财务总账仍按 B 期补齐口径披露",
                 "样衣成本与样衣偏差等待 B 期样衣成本口径合并后补齐",
             ],
         )
@@ -1857,7 +1857,7 @@ class ProductionService:
             "grossMargin": gross_margin,
             "progress": Decimal("0"),
             "delayDays": Decimal("0"),
-            "remark": "A期只读：利润按本地真实订单、BOM/利润快照计算；执行端缺页字段待B期补齐。",
+            "remark": "B期推进：利润按本地真实订单、BOM/利润快照计算；成品入库、发货开票、回款已接本地闭环，剩余执行端按待补口径披露。",
         }
 
     def _estimated_costs(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> tuple[Decimal, Decimal, Decimal]:
