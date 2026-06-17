@@ -196,10 +196,12 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(reversed_response.status_code, 200)
         self.assertEqual(reversed_response.json()["data"]["status"], "reversed")
+        self.assertEqual(reversed_response.json()["data"]["reverse_reason"], "返改")
 
         with self.SessionLocal() as session:
             row = session.query(LySampleOrder).one()
             self.assertEqual(row.status, "reversed")
+            self.assertEqual(row.reverse_reason, "返改")
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 4)
 
     def test_sample_order_idempotency_conflict_and_permission(self) -> None:
@@ -256,19 +258,76 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(disabled_response.status_code, 409)
         self.assertEqual(disabled_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
 
+    def test_sample_order_cannot_directly_write_flow_status(self) -> None:
+        direct_sealed = self._order_payload(sample_no="SMP-A3-DIRECT-SEAL", idempotency_key="IDEMP-SMP-A3-DIRECT-SEAL")
+        direct_sealed["status"] = "sealed"
+        direct_response = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-DIRECT-SEAL-001"),
+            json=direct_sealed,
+        )
+        self.assertEqual(direct_response.status_code, 409)
+        self.assertEqual(direct_response.json()["code"], "SAMPLE_INVALID_STATUS")
+
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-DIRECT-SEAL-002"),
+            json=self._order_payload(sample_no="SMP-A3-DIRECT-EDIT", idempotency_key="IDEMP-SMP-A3-DIRECT-EDIT-C"),
+        )
+        order_id = int(created.json()["data"]["id"])
+        direct_update = self.client.patch(
+            f"/api/sample/orders/{order_id}",
+            headers=self._headers(request_id="SAMPLE-DIRECT-SEAL-003"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "status": "sealed",
+                "idempotency_key": "IDEMP-SMP-A3-DIRECT-EDIT-U",
+            },
+        )
+        self.assertEqual(direct_update.status_code, 409)
+        self.assertEqual(direct_update.json()["code"], "SAMPLE_INVALID_STATUS")
+
     def test_sample_order_convert_creates_sales_order_draft(self) -> None:
         created = self.client.post(
             "/api/sample/orders",
             headers=self._headers(request_id="SAMPLE-CONVERT-001"),
-            json={
-                **self._order_payload(sample_no="SMP-A3-CONVERT", idempotency_key="IDEMP-SMP-A3-CONVERT-C"),
-                "status": "sealed",
-                "stage": "已封样",
-                "progress": 100,
-            },
+            json=self._order_payload(sample_no="SMP-A3-CONVERT", idempotency_key="IDEMP-SMP-A3-CONVERT-C"),
         )
         self.assertEqual(created.status_code, 201)
         order_id = int(created.json()["data"]["id"])
+
+        blocked = self.client.post(
+            f"/api/sample/orders/{order_id}/convert-to-bulk",
+            headers=self._headers(request_id="SAMPLE-CONVERT-BLOCKED"),
+            json={
+                "operation": "convert",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-CONVERT-BLOCKED",
+            },
+        )
+        self.assertEqual(blocked.status_code, 409)
+        self.assertEqual(blocked.json()["code"], "SAMPLE_INVALID_STATUS")
+
+        submitted = self.client.post(
+            f"/api/sample/orders/{order_id}/submit",
+            headers=self._headers(request_id="SAMPLE-CONVERT-SUBMIT"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-CONVERT-S",
+            },
+        )
+        self.assertEqual(submitted.status_code, 200)
+        sealed = self.client.post(
+            f"/api/sample/orders/{order_id}/seal",
+            headers=self._headers(request_id="SAMPLE-CONVERT-SEAL"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-CONVERT-SEAL",
+            },
+        )
+        self.assertEqual(sealed.status_code, 200)
+        self.assertEqual(sealed.json()["data"]["status"], "sealed")
 
         converted = self.client.post(
             f"/api/sample/orders/{order_id}/convert-to-bulk",
@@ -297,21 +356,34 @@ class SampleApiTest(unittest.TestCase):
             self.assertEqual(sales_item.item_code, "ST-A3-001")
             self.assertEqual(str(sales_item.qty), "1.000000")
             self.assertEqual(session.query(LySalesOrderIdempotency).count(), 1)
-            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 2)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 5)
 
     def test_sample_order_convert_can_use_target_sales_order_no(self) -> None:
         created = self.client.post(
             "/api/sample/orders",
             headers=self._headers(request_id="SAMPLE-CONVERT-TARGET-001"),
-            json={
-                **self._order_payload(sample_no="SMP-A3-CONVERT-TARGET", idempotency_key="IDEMP-SMP-A3-CONVERT-TARGET-C"),
-                "status": "sealed",
-                "stage": "已封样",
-                "progress": 100,
-            },
+            json=self._order_payload(sample_no="SMP-A3-CONVERT-TARGET", idempotency_key="IDEMP-SMP-A3-CONVERT-TARGET-C"),
         )
         self.assertEqual(created.status_code, 201)
         order_id = int(created.json()["data"]["id"])
+        submitted = self.client.post(
+            f"/api/sample/orders/{order_id}/submit",
+            headers=self._headers(request_id="SAMPLE-CONVERT-TARGET-SUBMIT"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-CONVERT-TARGET-S",
+            },
+        )
+        self.assertEqual(submitted.status_code, 200)
+        sealed = self.client.post(
+            f"/api/sample/orders/{order_id}/seal",
+            headers=self._headers(request_id="SAMPLE-CONVERT-TARGET-SEAL"),
+            json={
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-CONVERT-TARGET-SEAL",
+            },
+        )
+        self.assertEqual(sealed.status_code, 200)
 
         converted = self.client.post(
             f"/api/sample/orders/{order_id}/convert-to-bulk",

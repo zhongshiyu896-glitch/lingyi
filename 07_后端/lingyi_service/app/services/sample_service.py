@@ -66,6 +66,7 @@ class SampleService:
     """Read and mutate sample orders and templates."""
 
     ORDER_STATUSES = {"draft", "pending", "patterning", "fitting", "sealed", "reversed", "converted"}
+    FORM_WRITABLE_ORDER_STATUSES = {"draft"}
     EDITABLE_ORDER_STATUSES = {"draft", "reversed"}
 
     def __init__(self, session: Session):
@@ -148,7 +149,7 @@ class SampleService:
                 pattern_maker=self._optional_text(payload.pattern_maker) or "",
                 sample_maker=self._optional_text(payload.sample_maker) or "",
                 due_date=payload.due_date,
-                status=self._normalize_order_status(str(payload.status)),
+                status=self._normalize_writable_order_status(str(payload.status)),
                 image_tone=str(payload.image_tone),
                 owner_note=self._optional_text(payload.owner_note) or "",
                 created_by=actor,
@@ -222,8 +223,20 @@ class SampleService:
             next_progress=20,
         )
 
+    def seal_order(self, *, order_id: int, payload: SampleOrderStatusRequest, actor: str) -> SampleMutationResult:
+        return self._transition_order(
+            order_id=order_id,
+            payload=payload,
+            actor=actor,
+            operation="seal",
+            allowed_from={"pending", "patterning", "fitting"},
+            next_status="sealed",
+            next_stage="已封样",
+            next_progress=100,
+        )
+
     def reverse_order(self, *, order_id: int, payload: SampleOrderStatusRequest, actor: str) -> SampleMutationResult:
-        result = self._transition_order(
+        return self._transition_order(
             order_id=order_id,
             payload=payload,
             actor=actor,
@@ -233,12 +246,6 @@ class SampleService:
             next_stage="已反审核",
             next_progress=0,
         )
-        row = self._get_order_by_id(result.resource_id)
-        row.reversed_by = actor
-        row.reversed_at = datetime.now(UTC)
-        row.reverse_reason = payload.reason or "反审核"
-        result.after.update(self._snapshot_order(row))
-        return result
 
     def convert_order(self, *, order_id: int, payload: SampleOrderConvertRequest, actor: str) -> SampleMutationResult:
         company = self._require_text(payload.company, "company")
@@ -464,6 +471,10 @@ class SampleService:
             if operation == "submit":
                 row.submitted_by = actor
                 row.submitted_at = datetime.now(UTC)
+            if operation == "reverse":
+                row.reversed_by = actor
+                row.reversed_at = datetime.now(UTC)
+                row.reverse_reason = payload.reason or "反审核"
             self._insert_idempotency(
                 entity_type="order",
                 company=company,
@@ -498,6 +509,13 @@ class SampleService:
         status = str(value or "").strip()
         if status not in cls.ORDER_STATUSES:
             raise BusinessException(code=SAMPLE_INVALID_STATUS, message="样板单状态非法")
+        return status
+
+    @classmethod
+    def _normalize_writable_order_status(cls, value: str) -> str:
+        status = cls._normalize_order_status(value)
+        if status not in cls.FORM_WRITABLE_ORDER_STATUSES:
+            raise BusinessException(code=SAMPLE_INVALID_STATUS, message="创建/编辑不能直接写入流程状态，请使用提交、封样、反审核或转大货动作")
         return status
 
     @staticmethod
@@ -640,7 +658,7 @@ class SampleService:
             value = getattr(payload, key)
             if value is None:
                 continue
-            values[key] = self._normalize_order_status(str(value)) if key == "status" else value
+            values[key] = self._normalize_writable_order_status(str(value)) if key == "status" else value
         if not values:
             return {}
         return values
@@ -665,6 +683,10 @@ class SampleService:
                 "status": row.status,
                 "bulk_handoff_no": row.bulk_handoff_no,
                 "bulk_handoff_status": row.bulk_handoff_status,
+                "submitted_at": row.submitted_at,
+                "reversed_at": row.reversed_at,
+                "reverse_reason": row.reverse_reason,
+                "converted_at": row.converted_at,
                 "version": int(row.version or 0),
             }
         )
@@ -724,6 +746,10 @@ class SampleService:
             owner_note=row.owner_note,
             bulk_handoff_no=row.bulk_handoff_no,
             bulk_handoff_status=row.bulk_handoff_status,
+            submitted_at=row.submitted_at,
+            reversed_at=row.reversed_at,
+            reverse_reason=row.reverse_reason,
+            converted_at=row.converted_at,
             version=int(row.version or 0),
         )
 

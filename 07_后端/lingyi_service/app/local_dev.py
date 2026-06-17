@@ -86,6 +86,48 @@ def _create_local_tables() -> None:
     if "ly_schema.ly_apparel_bom" not in SubcontractBase.metadata.tables:
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
     SubcontractBase.metadata.create_all(bind=main_module.engine)
+    _ensure_local_sample_idempotency_supports_seal()
+
+
+def _ensure_local_sample_idempotency_supports_seal() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_sample_idempotency'"
+        ).fetchone()
+        if not row or "'seal'" in str(row[0]):
+            return
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            CREATE TABLE ly_sample_idempotency_new (
+                id INTEGER NOT NULL,
+                entity_type VARCHAR(32) NOT NULL,
+                company VARCHAR(140) NOT NULL,
+                idempotency_key VARCHAR(140) NOT NULL,
+                operation VARCHAR(32) NOT NULL,
+                request_hash VARCHAR(64) NOT NULL,
+                record_id INTEGER NOT NULL,
+                created_by VARCHAR(140) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ck_ly_sample_idem_entity CHECK (entity_type IN ('order','template','node')),
+                CONSTRAINT ck_ly_sample_idem_operation CHECK (operation IN ('create','update','submit','seal','reverse','convert','create_node'))
+            );
+            INSERT INTO ly_sample_idempotency_new (
+                id, entity_type, company, idempotency_key, operation, request_hash, record_id, created_by, created_at
+            )
+            SELECT id, entity_type, company, idempotency_key, operation, request_hash, record_id, created_by, created_at
+            FROM ly_sample_idempotency;
+            DROP TABLE ly_sample_idempotency;
+            ALTER TABLE ly_sample_idempotency_new RENAME TO ly_sample_idempotency;
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_sample_idem_key
+                ON ly_sample_idempotency (entity_type, company, idempotency_key);
+            PRAGMA foreign_keys=on;
+            """
+        )
 
 
 def _seed_local_bom() -> None:

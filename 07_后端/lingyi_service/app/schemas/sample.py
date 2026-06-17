@@ -101,6 +101,10 @@ class SampleOrderItem(BaseModel):
     owner_note: str
     bulk_handoff_no: str | None = None
     bulk_handoff_status: str | None = None
+    submitted_at: datetime | None = None
+    reversed_at: datetime | None = None
+    reverse_reason: str | None = None
+    converted_at: datetime | None = None
     version: int
 
 

@@ -296,6 +296,26 @@ def reverse_sample_order(
     return _ok(result.item)
 
 
+@router.post("/orders/{order_id}/seal")
+def seal_sample_order(
+    order_id: int,
+    payload: SampleOrderStatusRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    result = _mutate_order(
+        order_id=order_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        action="seal",
+        mutate=lambda service: service.seal_order(order_id=order_id, payload=payload, actor=current_user.username),
+    )
+    return _ok(result.item)
+
+
 @router.post("/orders/{order_id}/convert-to-bulk")
 def convert_sample_order_to_bulk(
     order_id: int,
