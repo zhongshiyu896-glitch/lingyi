@@ -187,6 +187,85 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
 
     @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
     @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_purchase_invoice_readback_uses_payable_outbox_rows(self, _mock_account, _mock_center) -> None:
+        statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-readback")
+        create_outbox = self.client.post(
+            f"/api/factory-statements/{statement_id}/payable-draft",
+            headers=self._headers(),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-readback-op"),
+        )
+        self.assertEqual(create_outbox.status_code, 200)
+        outbox_id = int(create_outbox.json()["data"]["payable_outbox_id"])
+
+        response = self.client.get(
+            "/api/factory-statements/purchase-invoices",
+            headers=self._headers(),
+            params={"company": "COMP-A", "supplier": "SUP-A"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+        data = response.json()["data"]
+        self.assertEqual(data["total"], 1)
+        item = data["items"][0]
+        self.assertEqual(item["purchase_invoice_name"], f"LY-FS-PAYABLE-{outbox_id}")
+        self.assertNotEqual(item["purchase_invoice_name"], "PINV-FR-001")
+        self.assertEqual(item["company"], "COMP-A")
+        self.assertEqual(item["supplier"], "SUP-A")
+        self.assertEqual(item["supplier_name"], "SUP-A")
+        self.assertEqual(item["currency"], "CNY")
+        self.assertEqual(Decimal(str(item["grand_total"])), Decimal("4700.000000"))
+        self.assertEqual(Decimal(str(item["paid_amount"])), Decimal("0"))
+        self.assertEqual(Decimal(str(item["outstanding_amount"])), Decimal("4700.000000"))
+        self.assertEqual(item["status"], "outbox_pending")
+        self.assertEqual(item["posting_date"], "2026-04-15")
+
+        status_filter = self.client.get(
+            "/api/factory-statements/purchase-invoices",
+            headers=self._headers(),
+            params={"company": "COMP-A", "status": "outbox_pending"},
+        )
+        self.assertEqual(status_filter.status_code, 200)
+        self.assertEqual(status_filter.json()["data"]["total"], 1)
+
+        supplier_filter = self.client.get(
+            "/api/factory-statements/purchase-invoices",
+            headers=self._headers(),
+            params={"company": "COMP-A", "supplier": "SUP-NO-ROW"},
+        )
+        self.assertEqual(supplier_filter.status_code, 200)
+        self.assertEqual(supplier_filter.json()["data"]["total"], 0)
+
+        with self.SessionLocal() as session:
+            outbox = (
+                session.query(LyFactoryStatementPayableOutbox)
+                .filter(LyFactoryStatementPayableOutbox.id == outbox_id)
+                .one()
+            )
+            outbox.status = FactoryStatementPayableOutboxService.STATUS_SUCCEEDED
+            outbox.erpnext_purchase_invoice = "PINV-FS-REAL-001"
+            outbox.erpnext_status = "unpaid"
+            session.commit()
+
+        mapped_response = self.client.get(
+            "/api/factory-statements/purchase-invoices",
+            headers=self._headers(),
+            params={"company": "COMP-A", "status": "unpaid"},
+        )
+        self.assertEqual(mapped_response.status_code, 200)
+        mapped_item = mapped_response.json()["data"]["items"][0]
+        self.assertEqual(mapped_item["purchase_invoice_name"], "PINV-FS-REAL-001")
+        self.assertEqual(mapped_item["status"], "unpaid")
+
+    def test_purchase_invoice_readback_requires_read_permission(self) -> None:
+        response = self.client.get(
+            "/api/factory-statements/purchase-invoices",
+            headers=self._headers(role="BOM Editor"),
+            params={"company": "COMP-A"},
+        )
+        self.assertEqual(response.status_code, 403)
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
     def test_same_key_same_hash_replays_same_payable_outbox(self, _mock_account, _mock_center) -> None:
         statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-replay-create")
         payload = self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-replay", remark="same")

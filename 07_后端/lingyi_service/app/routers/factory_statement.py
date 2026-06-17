@@ -61,7 +61,6 @@ from app.schemas.factory_statement import FactoryStatementCustomerUnpaidReportDa
 from app.schemas.factory_statement import FactoryStatementFactoryEvaluationData
 from app.schemas.factory_statement import FactoryStatementFactoryPayableSummaryData
 from app.schemas.factory_statement import FactoryStatementFactoryReconciliationData
-from app.schemas.factory_statement import FactoryStatementPurchaseInvoiceListData
 from app.schemas.factory_statement import FactoryStatementSupplierEvaluationData
 from app.schemas.factory_statement import FactoryStatementSupplierPayableSummaryData
 from app.schemas.factory_statement import FactoryStatementSupplierReconciliationData
@@ -76,7 +75,6 @@ from app.services.audit_service import AuditService
 from app.services.erpnext_purchase_invoice_adapter import ERPNextPurchaseInvoiceAdapter
 from app.services.factory_statement_payable_worker import FactoryStatementPayableWorker
 from app.services.factory_statement_service import FactoryStatementService
-from app.services.frontend_readiness_seed_reader import dev_seed_page_for_user
 from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/factory-statements", tags=["factory_statement"])
@@ -1416,13 +1414,14 @@ def list_purchase_invoices(
     supplier: str | None = Query(default=None),
     supplier_name: str | None = Query(default=None),
     status: str | None = Query(default=None),
-    page: Any = Query(default=1),
-    page_size: Any = Query(default=20),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
     action = FACTORY_STATEMENT_READ
     permission_service = PermissionService(session=session)
+    service = FactoryStatementService(session=session)
     permission_service.require_action(
         current_user=current_user,
         request_obj=request,
@@ -1436,30 +1435,16 @@ def list_purchase_invoices(
         current_user=current_user,
         request=request,
     )
-    rows = dev_seed_page_for_user(
-        seed_key="purchase_invoices",
-        current_user=current_user,
+    data = service.list_purchase_invoices(
+        company=company,
+        supplier=supplier,
+        supplier_name=supplier_name,
+        status=status,
         page=page,
         page_size=page_size,
-        filters={
-            "company": company,
-            "supplier": supplier,
-            "supplier_name": supplier_name,
-            "status": status,
-        },
+        readable_companies=readable_companies,
+        readable_suppliers=readable_suppliers,
     )
-    if readable_companies is not None or readable_suppliers is not None:
-        filtered_items = []
-        for row in rows["items"]:
-            row_company = _scope_text(row.get("company"))
-            row_supplier = _scope_text(row.get("supplier"))
-            if readable_companies is not None and row_company not in readable_companies:
-                continue
-            if readable_suppliers is not None and row_supplier not in readable_suppliers:
-                continue
-            filtered_items.append(row)
-        rows = {**rows, "items": filtered_items, "total": len(filtered_items)}
-    data = FactoryStatementPurchaseInvoiceListData(**rows)
     return _ok(data)
 
 

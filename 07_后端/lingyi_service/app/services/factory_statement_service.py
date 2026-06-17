@@ -95,6 +95,8 @@ from app.schemas.factory_statement import FactoryStatementPayableDraftRequest
 from app.schemas.factory_statement import FactoryStatementPaymentCreateRequest
 from app.schemas.factory_statement import FactoryStatementPaymentData
 from app.schemas.factory_statement import FactoryStatementPaymentListData
+from app.schemas.factory_statement import FactoryStatementPurchaseInvoiceItem
+from app.schemas.factory_statement import FactoryStatementPurchaseInvoiceListData
 from app.services.erpnext_purchase_invoice_adapter import ERPNextPurchaseInvoiceAdapter
 from app.services.factory_statement_payable_outbox_service import FactoryStatementPayableOutboxService
 
@@ -3841,6 +3843,76 @@ class FactoryStatementService:
             page_size=page_size,
         )
 
+    def list_purchase_invoices(
+        self,
+        *,
+        company: str | None,
+        supplier: str | None,
+        supplier_name: str | None,
+        status: str | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementPurchaseInvoiceListData:
+        """List payable outbox / purchase invoice readback from local facts."""
+        normalized_company = self._normalize_text(company)
+        normalized_supplier = self._normalize_text(supplier) or self._normalize_text(supplier_name)
+        normalized_status = self._normalize_text(status)
+
+        try:
+            query = (
+                self.session.query(LyFactoryStatementPayableOutbox, LyFactoryStatement)
+                .join(LyFactoryStatement, LyFactoryStatement.id == LyFactoryStatementPayableOutbox.statement_id)
+            )
+            if normalized_company:
+                query = query.filter(LyFactoryStatementPayableOutbox.company == normalized_company)
+            if normalized_supplier:
+                query = query.filter(LyFactoryStatementPayableOutbox.supplier == normalized_supplier)
+
+            if readable_companies is not None:
+                if not readable_companies:
+                    return FactoryStatementPurchaseInvoiceListData(items=[], total=0, page=page, page_size=page_size)
+                query = query.filter(LyFactoryStatementPayableOutbox.company.in_(sorted(readable_companies)))
+            if readable_suppliers is not None:
+                if not readable_suppliers:
+                    return FactoryStatementPurchaseInvoiceListData(items=[], total=0, page=page, page_size=page_size)
+                query = query.filter(LyFactoryStatementPayableOutbox.supplier.in_(sorted(readable_suppliers)))
+
+            rows = (
+                query.order_by(
+                    LyFactoryStatementPayableOutbox.created_at.desc(),
+                    LyFactoryStatementPayableOutbox.id.desc(),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+        except Exception as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_INTERNAL_ERROR) from exc
+
+        statement_ids = [int(statement.id) for _, statement in rows]
+        paid_amount_map = self._fetch_paid_amount_map(statement_ids=statement_ids)
+        items: list[FactoryStatementPurchaseInvoiceItem] = []
+        for outbox, statement in rows:
+            item = self._to_purchase_invoice_item(
+                outbox=outbox,
+                statement=statement,
+                paid_amount=paid_amount_map.get(int(statement.id), Decimal("0")),
+            )
+            if normalized_status and item.status != normalized_status:
+                continue
+            items.append(item)
+
+        total = len(items)
+        start = max((page - 1) * page_size, 0)
+        return FactoryStatementPurchaseInvoiceListData(
+            items=items[start : start + page_size],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
     def _has_locked_source(
         self,
         *,
@@ -4491,6 +4563,68 @@ class FactoryStatementService:
             net_amount=self._to_decimal(statement.net_amount),
             idempotent_replay=idempotent_replay,
         )
+
+    def _to_purchase_invoice_item(
+        self,
+        *,
+        outbox: LyFactoryStatementPayableOutbox,
+        statement: LyFactoryStatement,
+        paid_amount: Decimal,
+    ) -> FactoryStatementPurchaseInvoiceItem:
+        grand_total = self._to_decimal(statement.net_amount)
+        paid = self._to_decimal(paid_amount)
+        outstanding = self._compute_outstanding_amount(net_amount=grand_total, paid_amount=paid)
+        payload = outbox.payload_json if isinstance(outbox.payload_json, dict) else {}
+        return FactoryStatementPurchaseInvoiceItem(
+            purchase_invoice_name=(
+                self._normalize_text(outbox.erpnext_purchase_invoice) or f"LY-FS-PAYABLE-{int(outbox.id)}"
+            ),
+            company=str(outbox.company),
+            supplier=str(outbox.supplier),
+            supplier_name=str(outbox.supplier),
+            currency=str(payload.get("currency") or "CNY"),
+            grand_total=grand_total,
+            paid_amount=paid,
+            outstanding_amount=outstanding,
+            status=self._purchase_invoice_readback_status(
+                outbox=outbox,
+                grand_total=grand_total,
+                paid_amount=paid,
+            ),
+            posting_date=self._purchase_invoice_posting_date(outbox=outbox, statement=statement),
+        )
+
+    def _purchase_invoice_readback_status(
+        self,
+        *,
+        outbox: LyFactoryStatementPayableOutbox,
+        grand_total: Decimal,
+        paid_amount: Decimal,
+    ) -> str:
+        outbox_status = self._normalize_text(outbox.status) or "unknown"
+        if outbox_status in {"pending", "processing", "failed", "dead"}:
+            return f"outbox_{outbox_status}"
+        erp_status = self._normalize_text(outbox.erpnext_status)
+        if erp_status:
+            return erp_status
+        return self._payment_status(net_amount=grand_total, paid_amount=paid_amount)
+
+    @staticmethod
+    def _purchase_invoice_posting_date(
+        *,
+        outbox: LyFactoryStatementPayableOutbox,
+        statement: LyFactoryStatement,
+    ) -> date:
+        payload = outbox.payload_json if isinstance(outbox.payload_json, dict) else {}
+        raw_posting_date = payload.get("posting_date")
+        if isinstance(raw_posting_date, date):
+            return raw_posting_date
+        if isinstance(raw_posting_date, str):
+            try:
+                return date.fromisoformat(raw_posting_date)
+            except ValueError:
+                pass
+        return statement.to_date
 
     def _to_payment_data(self, row: LyFactoryStatementPayment) -> FactoryStatementPaymentData:
         return FactoryStatementPaymentData(

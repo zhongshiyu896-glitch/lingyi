@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import ExitStack
+from datetime import date
 from decimal import Decimal
 import os
 from pathlib import Path
@@ -32,6 +33,9 @@ from app.data.frontend_readiness_seed import QUALITY_STATISTICS_SEED  # noqa: E4
 from app.data.frontend_readiness_seed import QUALITY_TREND_SEED  # noqa: E402
 from app.data.frontend_readiness_seed import WORK_ORDER_TRAIL_SEED  # noqa: E402
 from app.models.audit import Base as AuditBase  # noqa: E402
+from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
+from app.models.factory_statement import LyFactoryStatement  # noqa: E402
+from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 from app.models.quality import LyQualityInspection  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
@@ -451,6 +455,7 @@ def main() -> int:
     ProductionBase.metadata.create_all(bind=engine)
     QualityBase.metadata.create_all(bind=engine)
     StyleProfitBase.metadata.create_all(bind=engine)
+    FactoryStatementBase.metadata.create_all(bind=engine)
 
     def _override_db():
         db = session_local()
@@ -551,6 +556,45 @@ def main() -> int:
                     request_hash="fr-style-profit-hash",
                     created_by=style_seed["created_by"],
                     created_at=style_seed["created_at"],
+                )
+            )
+            session.add(
+                LyFactoryStatement(
+                    id=1,
+                    statement_no="FS-FR-001",
+                    company=DEFAULT_COMPANY,
+                    supplier="SUP-FR-001",
+                    from_date=date(2026, 6, 1),
+                    to_date=date(2026, 6, 30),
+                    source_type="subcontract_inspection",
+                    source_count=1,
+                    inspected_qty=Decimal("180"),
+                    rejected_qty=Decimal("0"),
+                    accepted_qty=Decimal("180"),
+                    gross_amount=Decimal("1530.00"),
+                    deduction_amount=Decimal("0"),
+                    net_amount=Decimal("1530.00"),
+                    rejected_rate=Decimal("0"),
+                    statement_status="confirmed",
+                    idempotency_key="FR-FACTORY-STMT-001",
+                    request_hash="fr-factory-stmt-hash",
+                    created_by="frontend.readiness.smoke",
+                )
+            )
+            session.add(
+                LyFactoryStatementPayableOutbox(
+                    id=1,
+                    company=DEFAULT_COMPANY,
+                    statement_id=1,
+                    statement_no="FS-FR-001",
+                    supplier="SUP-FR-001",
+                    idempotency_key="FR-FACTORY-PAYABLE-001",
+                    request_hash="fr-factory-payable-request-hash",
+                    event_key="FR-FACTORY-PAYABLE-EVENT-001",
+                    payload_json={"posting_date": "2026-06-19", "currency": "CNY"},
+                    payload_hash="fr-factory-payable-payload-hash",
+                    status="pending",
+                    created_by="frontend.readiness.smoke",
                 )
             )
             session.commit()
