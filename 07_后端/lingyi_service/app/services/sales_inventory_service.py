@@ -684,18 +684,16 @@ class SalesInventoryService:
         self,
         *,
         draft_id: int,
+        idempotency_key: str,
         reason: str,
         cancelled_by: str,
     ) -> SalesOrderDraftData:
         session = self._require_session()
         native_order = session.query(LySalesOrder).filter(LySalesOrder.id == int(draft_id)).first()
         if native_order is not None:
-            if str(native_order.status) == "cancelled":
-                raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_ALREADY_CANCELLED", "草稿已取消")
-            if str(native_order.status) not in {"draft", "planned"}:
-                raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_INVALID_STATUS", "当前状态不允许取消")
             now = datetime.now(timezone.utc)
             cancel_reason = self._require_text(reason, "reason")
+            idem_key = self._require_text(idempotency_key, "idempotency_key")
             request_hash = self._native_sales_order_request_hash(
                 {
                     "draft_id": int(native_order.id),
@@ -704,7 +702,6 @@ class SalesInventoryService:
                     "reason": cancel_reason,
                 }
             )
-            idem_key = f"cancel:{native_order.id}:{cancel_reason}"
             existing_idem = (
                 session.query(LySalesOrderIdempotency)
                 .filter(
@@ -716,6 +713,12 @@ class SalesInventoryService:
             )
             if existing_idem is not None and str(existing_idem.request_hash) != request_hash:
                 raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "幂等键冲突且请求内容不一致")
+            if existing_idem is not None:
+                return self._build_native_sales_order_draft_data(native_order)
+            if str(native_order.status) == "cancelled":
+                raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_ALREADY_CANCELLED", "草稿已取消")
+            if str(native_order.status) not in {"draft", "planned"}:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_INVALID_STATUS", "当前状态不允许取消")
             native_order.status = "cancelled"
             native_order.docstatus = 2
             native_order.cancelled_by = cancelled_by

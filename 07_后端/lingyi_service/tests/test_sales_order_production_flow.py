@@ -30,6 +30,7 @@ from app.models.production import LyProductionPlan
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleMaster
@@ -477,3 +478,91 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertIn("production:plan_create", audit_actions)
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("production:material_issue", audit_actions)
+
+    def test_sales_order_cancel_uses_payload_idempotency_key(self) -> None:
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-CANCEL-001",
+            "source_order_ref": "SO-A4-CANCEL-001",
+            "idempotency_key": "idem-so-a4-cancel-create",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "DEMO-TEE",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 10,
+                    "rate": 80,
+                    "uom": "件",
+                }
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+
+        cancel_payload = {
+            "company": "COMP-A",
+            "operation": "cancel_draft",
+            "scenario_tag": "",
+            "idempotency_key": "idem-so-a4-cancel-001",
+            "sales_order_no_or_source_order_ref": "SO-A4-CANCEL-001",
+            "reason": "用户撤单",
+        }
+        cancel_order = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+            headers=self._headers(),
+            json=cancel_payload,
+        )
+        replay_cancel = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+            headers=self._headers(),
+            json=cancel_payload,
+        )
+        conflict_cancel = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+            headers=self._headers(),
+            json={**cancel_payload, "reason": "重复撤单但内容不同"},
+        )
+        second_key_cancel = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+            headers=self._headers(),
+            json={**cancel_payload, "idempotency_key": "idem-so-a4-cancel-002"},
+        )
+
+        self.assertEqual(cancel_order.status_code, 200, cancel_order.text)
+        self.assertEqual(replay_cancel.status_code, 200, replay_cancel.text)
+        self.assertEqual(cancel_order.json()["data"]["id"], replay_cancel.json()["data"]["id"])
+        self.assertEqual(cancel_order.json()["data"]["status"], "cancelled")
+        self.assertEqual(replay_cancel.json()["data"]["cancel_reason"], "用户撤单")
+        self.assertEqual(conflict_cancel.status_code, 409, conflict_cancel.text)
+        self.assertEqual(conflict_cancel.json()["code"], "SALES_ORDER_IDEMPOTENCY_CONFLICT")
+        self.assertEqual(second_key_cancel.status_code, 409, second_key_cancel.text)
+        self.assertEqual(second_key_cancel.json()["code"], "SALES_ORDER_DRAFT_ALREADY_CANCELLED")
+
+        with self.SessionLocal() as session:
+            order = session.query(LySalesOrder).one()
+            idem = (
+                session.query(LySalesOrderIdempotency)
+                .filter(
+                    LySalesOrderIdempotency.operation == "cancel_draft",
+                    LySalesOrderIdempotency.idempotency_key == "idem-so-a4-cancel-001",
+                )
+                .one()
+            )
+            audits = session.query(LyOperationAuditLog).order_by(LyOperationAuditLog.id.asc()).all()
+            self.assertEqual(order.status, "cancelled")
+            self.assertEqual(order.cancel_reason, "用户撤单")
+            self.assertEqual(idem.sales_order_id, draft_id)
+            self.assertGreaterEqual(len([row for row in audits if row.result == "success"]), 3)
+            self.assertTrue(
+                any(row.result == "failed" and row.error_code == "SALES_ORDER_IDEMPOTENCY_CONFLICT" for row in audits)
+            )

@@ -420,11 +420,15 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         }
         self.assertTrue(methods_by_path)
         local_write_routes = {
-            "/api/sales-inventory/sales-orders/drafts",
-            "/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+            "/api/sales-inventory/delivery-invoices": {"POST"},
+            "/api/sales-inventory/payment-entries": {"POST"},
+            "/api/sales-inventory/sales-orders/drafts": {"POST"},
+            "/api/sales-inventory/sales-orders/drafts/{draft_id}": {"PATCH"},
+            "/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel": {"POST"},
         }
         post_routes = {path for path, methods in methods_by_path.items() if "POST" in methods}
-        self.assertEqual(post_routes, local_write_routes)
+        self.assertEqual(post_routes, {path for path, methods in local_write_routes.items() if "POST" in methods})
+        self.assertLessEqual(set(local_write_routes), set(methods_by_path))
         for path, methods in methods_by_path.items():
-            expected_methods = {"POST"} if path in local_write_routes else {"GET", "HEAD", "OPTIONS"}
+            expected_methods = local_write_routes.get(path, {"GET", "HEAD", "OPTIONS"})
             self.assertLessEqual(set(methods), expected_methods, path)

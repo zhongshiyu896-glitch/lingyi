@@ -1562,6 +1562,7 @@ def cancel_sales_order_draft(
     try:
         data = _write_service(session).cancel_sales_order_draft(
             draft_id=draft_id,
+            idempotency_key=payload.idempotency_key,
             reason=payload.reason,
             cancelled_by=current_user.username,
         )
