@@ -60,6 +60,8 @@ from app.models.subcontract import Base as SubcontractBase  # noqa: E402
 from app.models.subcontract import LySubcontractInspection  # noqa: E402
 from app.models.subcontract import LySubcontractOrder  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
+from app.models.production import LyProductionPlan  # noqa: E402
+from app.models.production import LyProductionPlanMaterial  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCount  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCountItem  # noqa: E402
 from app.models.warehouse import LyWarehouseStockEntryDraft  # noqa: E402
@@ -1488,6 +1490,198 @@ def _exercise_subcontract_return_material_smoke(client: TestClient, session_loca
     _assert(report_row["status"] == "pending", "subcontract return status mismatch")
 
 
+def _exercise_profit_report_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
+    company = "COMP-PROFIT-SMOKE"
+    sales_order_no = "SO-PROFIT-SMOKE-001"
+    sales_order_item = "SO-PROFIT-SMOKE-001-001"
+    item_code = "ITEM-PROFIT-SMOKE"
+    material_code = "MAT-PROFIT-SMOKE"
+    bom_id = 901
+
+    with session_local() as session:
+        order = LySalesOrder(
+            sales_order_no=sales_order_no,
+            source_order_ref=sales_order_no,
+            company=company,
+            customer="CUST-PROFIT-SMOKE",
+            status="planned",
+            docstatus=0,
+            transaction_date=date(2026, 6, 17),
+            delivery_date=date(2026, 6, 30),
+            currency="CNY",
+            grand_total=Decimal("2000"),
+            idempotency_key="profit-smoke-sales-order",
+            request_hash="profit-smoke-sales-order-hash",
+            created_by="frontend.readiness.smoke",
+        )
+        session.add(order)
+        session.flush()
+        session.add(
+            LySalesOrderItem(
+                sales_order_id=int(order.id),
+                company=company,
+                line_no=1,
+                sales_order_item=sales_order_item,
+                item_code=item_code,
+                item_name="Profit Smoke Style",
+                qty=Decimal("100"),
+                planned_qty=Decimal("80"),
+                delivered_qty=Decimal("12"),
+                rate=Decimal("20"),
+                amount=Decimal("2000"),
+                uom="件",
+                warehouse="FG-PROFIT-SMOKE",
+                delivery_date=date(2026, 6, 30),
+            )
+        )
+        bom = LyApparelBom(
+            id=bom_id,
+            bom_no="BOM-PROFIT-SMOKE-001",
+            item_code=item_code,
+            version_no="V1",
+            is_default=True,
+            status="active",
+            effective_date=date(2026, 6, 1),
+            created_by="frontend.readiness.smoke",
+            updated_by="frontend.readiness.smoke",
+        )
+        session.add(bom)
+        session.flush()
+        material = LyApparelBomItem(
+            id=901,
+            bom_id=int(bom.id),
+            material_item_code=material_code,
+            qty_per_piece=Decimal("2"),
+            loss_rate=Decimal("0.1"),
+            uom="米",
+            remark="单价:5 供应商:Profit Smoke Supplier",
+        )
+        session.add(material)
+        session.add(
+            LyBomOperation(
+                id=902,
+                bom_id=int(bom.id),
+                process_name="车缝",
+                sequence_no=1,
+                is_subcontract=False,
+                wage_rate=Decimal("1"),
+            )
+        )
+        session.add(
+            LyBomOperation(
+                id=903,
+                bom_id=int(bom.id),
+                process_name="外发压胶",
+                sequence_no=2,
+                is_subcontract=True,
+                subcontract_cost_per_piece=Decimal("2"),
+            )
+        )
+        session.flush()
+        plan = LyProductionPlan(
+            plan_no="PP-PROFIT-SMOKE-001",
+            company=company,
+            sales_order=sales_order_no,
+            sales_order_item=sales_order_item,
+            customer="CUST-PROFIT-SMOKE",
+            item_code=item_code,
+            bom_id=int(bom.id),
+            bom_version="V1",
+            planned_qty=Decimal("80"),
+            planned_start_date=date(2026, 6, 18),
+            status="planned",
+            idempotency_key="profit-smoke-production-plan",
+            request_hash="profit-smoke-production-plan-hash",
+            created_by="frontend.readiness.smoke",
+        )
+        session.add(plan)
+        session.flush()
+        session.add(
+            LyProductionPlanMaterial(
+                plan_id=int(plan.id),
+                bom_item_id=int(material.id),
+                material_item_code=material_code,
+                warehouse="WH-PROFIT-SMOKE",
+                qty_per_piece=Decimal("2"),
+                loss_rate=Decimal("0.1"),
+                required_qty=Decimal("176"),
+                available_qty=Decimal("150"),
+                shortage_qty=Decimal("26"),
+            )
+        )
+        session.add(
+            LyStyleProfitSnapshot(
+                snapshot_no="SP-PROFIT-SMOKE-001",
+                company=company,
+                sales_order=sales_order_no,
+                item_code=item_code,
+                revenue_status="estimated",
+                estimated_revenue_amount=Decimal("2000"),
+                actual_revenue_amount=Decimal("0"),
+                revenue_amount=Decimal("2000"),
+                from_date=date(2026, 6, 1),
+                to_date=date(2026, 6, 30),
+                revenue_mode="actual_first",
+                standard_material_cost=Decimal("880"),
+                standard_operation_cost=Decimal("240"),
+                standard_total_cost=Decimal("1120"),
+                actual_material_cost=Decimal("900"),
+                actual_workshop_cost=Decimal("80"),
+                actual_subcontract_cost=Decimal("160"),
+                allocated_overhead_amount=Decimal("0"),
+                actual_total_cost=Decimal("1140"),
+                profit_amount=Decimal("860"),
+                profit_rate=Decimal("0.43"),
+                snapshot_status="complete",
+                allocation_status="not_enabled",
+                formula_version="STYLE_PROFIT_V1",
+                include_provisional_subcontract=False,
+                unresolved_count=0,
+                idempotency_key="profit-smoke-style-profit",
+                request_hash="profit-smoke-style-profit-hash",
+                created_by="frontend.readiness.smoke",
+            )
+        )
+        session.commit()
+
+    profit_report = client.get(
+        f"/api/production/report-suite?report_key=productOrderProfitReport&company={company}&keyword={sales_order_no}",
+        headers=_headers(request_id="PROFIT-SMOKE-001"),
+    )
+    _assert(profit_report.status_code == 200, profit_report.text)
+    profit_data = profit_report.json()["data"]
+    _assert(profit_data["report_key"] == "productOrderProfitReport", "profit report key mismatch")
+    _assert(profit_data["total"] == 1, "profit report total mismatch")
+    profit_row = profit_data["items"][0]
+    _assert(profit_row["sales_order"] == sales_order_no, "profit report sales_order mismatch")
+    _assert(Decimal(str(profit_row["amount"])) == Decimal("2000"), "profit report amount mismatch")
+    _assert(Decimal(str(profit_row["materialCost"])) == Decimal("900"), "profit report material cost mismatch")
+    _assert(Decimal(str(profit_row["laborCost"])) == Decimal("80"), "profit report labor cost mismatch")
+    _assert(Decimal(str(profit_row["outsourceCost"])) == Decimal("160"), "profit report outsource cost mismatch")
+    _assert(Decimal(str(profit_row["totalCost"])) == Decimal("1140"), "profit report total cost mismatch")
+    _assert(Decimal(str(profit_row["profit"])) == Decimal("860"), "profit report profit mismatch")
+    _assert(Decimal(str(profit_row["grossMargin"])) == Decimal("43.00"), "profit report gross margin mismatch")
+    _assert(profit_row["risk"] == "低风险", "profit report risk mismatch")
+
+    material_report = client.get(
+        (
+            "/api/production/report-suite?"
+            f"report_key=productionCostMaterialDetailReport&company={company}&keyword={sales_order_no}"
+        ),
+        headers=_headers(request_id="PROFIT-SMOKE-002"),
+    )
+    _assert(material_report.status_code == 200, material_report.text)
+    material_rows = material_report.json()["data"]["items"]
+    _assert(material_rows and material_rows[0]["item_code"] == material_code, "material report readback missing")
+    material_row = material_rows[0]
+    _assert(Decimal(str(material_row["requiredQty"])) == Decimal("176"), "material report required qty mismatch")
+    _assert(Decimal(str(material_row["availableQty"])) == Decimal("150"), "material report available qty mismatch")
+    _assert(Decimal(str(material_row["gapQty"])) == Decimal("-26"), "material report gap qty mismatch")
+    _assert(Decimal(str(material_row["unitPrice"])) == Decimal("5"), "material report unit price mismatch")
+    _assert(Decimal(str(material_row["materialCost"])) == Decimal("880"), "material report material cost mismatch")
+    _assert(material_row["status"] == "缺口", "material report status mismatch")
+
+
 def _exercise_sales_delivery_payment_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
     company = "COMP-SALES-SMOKE"
     customer = "CUST-SALES-SMOKE"
@@ -2181,6 +2375,7 @@ def main() -> int:
         _exercise_inventory_count_smoke(client)
         _exercise_sample_workflow_smoke(client, session_local)
         _exercise_subcontract_return_material_smoke(client, session_local)
+        _exercise_profit_report_smoke(client, session_local)
         _exercise_sales_delivery_payment_smoke(client, session_local)
         _exercise_factory_statement_payment_smoke(client, session_local)
 
