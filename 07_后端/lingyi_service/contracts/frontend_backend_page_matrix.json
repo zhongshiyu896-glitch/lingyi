@@ -1,6 +1,22 @@
 {
   "source": "/Users/hh/Desktop/lingyi-frontend-1to1/src/page-registry.ts",
+  "synced_on": "2026-06-17",
   "frontend_readonly": true,
+  "route_validation": {
+    "method": "FastAPI app route introspection",
+    "api_path_count": 48,
+    "api_path_miss": 0
+  },
+  "counts": {
+    "total_pages": 57,
+    "real_backend_route": 48,
+    "dev_readiness_only": 0,
+    "api_path_miss": 0,
+    "missing_api_path": 9,
+    "p1_existing_page_real_backend": 27,
+    "p1_existing_page_real_backend_partial": 21,
+    "p3_needs_product_contract_or_b_phase": 9
+  },
   "pages": [
     {
       "index": 1,
@@ -16,7 +32,7 @@
         "DashboardOverviewData"
       ],
       "field_gaps": [],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 2,
@@ -33,7 +49,7 @@
         "PageData"
       ],
       "field_gaps": [],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 3,
@@ -41,15 +57,18 @@
       "page": "加工厂",
       "page_route": "/foundation/factory",
       "template": "config_list",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
-      "contract_schemas": [],
-      "field_gaps": [
-        "Factory: contract 缺少 Factory schema"
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/factories",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest"
       ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 4,
@@ -57,17 +76,18 @@
       "page": "供应商",
       "page_route": "/foundation/supplier",
       "template": "config_list",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/suppliers",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "SupplierItem"
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest"
       ],
-      "field_gaps": [
-        "SupplierEndpoint: SupplierItem 仅确认 name/supplier_name/disabled；list_local_suppliers / reference-drafts/suppliers 路径连接阶段确认，暂不写 apiPath"
-      ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 5,
@@ -81,9 +101,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "CommonAddress: contract 缺少 CommonAddress schema"
+        "CommonAddress: 候选 /api/sales-inventory/delivery-addresses 为 temporary_dev_only；A期不接桩，待B期补 CommonAddress 真实表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 6,
@@ -97,9 +117,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "TradeTerm: contract 缺少 TradeTerm schema"
+        "TradeTerm: 候选 settlement-methods 为 temporary_dev_only；A期不接桩，待B期补 TradeTerm 真实字典表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 7,
@@ -113,9 +133,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "InvoiceType: contract 缺少 InvoiceType schema"
+        "InvoiceType: 候选 /api/factory-statements/invoice-types 为 temporary_dev_only；A期不接桩，待B期补 InvoiceType 真实字典表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 8,
@@ -129,9 +149,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "SampleType: contract 缺少 SampleType schema"
+        "SampleType: 候选 /api/bom/sample-types 为 temporary_dev_only；A期不接桩，待B期补 SampleType 真实字典表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 9,
@@ -145,9 +165,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "CostType: contract 缺少 CostType schema"
+        "CostType: 费用类型暂无生产可用真实接口；A期保留缺口，待B期补 CostType 真实字典表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 10,
@@ -161,9 +181,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "SizeSort: contract 缺少 SizeSort schema"
+        "SizeSort: 候选 /api/bom/size-sortings 为 temporary_dev_only；A期不接桩，待B期补 SizeSort 真实字典表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 11,
@@ -171,17 +191,21 @@
       "page": "仓库管理",
       "page_route": "/foundation/warehouse",
       "template": "config_list",
-      "data_kind": "contractGap",
-      "api_path": "/api/sales-inventory/warehouses",
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/warehouses",
       "backend_status": "real_backend_route",
       "backend_class": "A",
       "contract_schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
         "WarehouseItem"
       ],
       "field_gaps": [
-        "WarehouseLocation: WarehouseItem 仅含 name/company/warehouse_name/disabled，库位字段缺口回报 owner"
+        "WarehouseLocation: 仓库主数据增改停走 FastAPI MasterDataItem；仓库树子级/库位字段仍为 owner gap"
       ],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 12,
@@ -195,9 +219,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "DistributionChannel: contract 缺少 DistributionChannel schema"
+        "DistributionChannel: 候选 /api/sales-inventory/sales-channels 为 temporary_dev_only；A期不接桩，待B期补 DistributionChannel 真实字典表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 13,
@@ -211,9 +235,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "BankAccount: contract 缺少 BankAccount schema"
+        "BankAccount: 候选 /api/factory-statements/cashier-accounts 为 temporary_dev_only；A期不接桩，待B期补 BankAccount 真实财务账户表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 14,
@@ -221,15 +245,17 @@
       "page": "工艺要求模板",
       "page_route": "/foundation/workmanshipTemplate",
       "template": "config_list",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
-      "contract_schemas": [],
-      "field_gaps": [
-        "WorkmanshipTemplate: contract 缺少 WorkmanshipTemplate schema"
+      "data_kind": "bom",
+      "api_path": "/api/bom/process-requirement-templates",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "BomProcessingTypeItem"
       ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [
+        "WorkmanshipTemplate: 契约无 WorkmanshipTemplate schema；api模式只读绑定 /api/bom/process-requirement-templates，模板增改停待B期"
+      ],
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 15,
@@ -243,9 +269,9 @@
       "backend_class": null,
       "contract_schemas": [],
       "field_gaps": [
-        "SizeSpecTemplate: contract 缺少 SizeSpecTemplate schema"
+        "SizeSpecTemplate: 候选 /api/bom/size-chart-templates 为 temporary_dev_only；A期不接桩，待B期补 SizeSpecTemplate 真实模板表与接口"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P3_needs_product_contract_or_B_phase"
     },
     {
       "index": 37,
@@ -253,17 +279,21 @@
       "page": "面料",
       "page_route": "/material/materialFabric",
       "template": "list_table_filter",
-      "data_kind": "bom",
-      "api_path": "/api/bom/fabrics",
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/materials",
       "backend_status": "real_backend_route",
       "backend_class": "A",
       "contract_schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
         "BomFabricItem"
       ],
       "field_gaps": [
-        "MaterialFabricVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 —"
+        "MaterialFabricVisualOnly: 物料主数据增改停走 FastAPI MasterDataItem payload；部位/幅宽/克重后端无字段，列位保留并显示 —"
       ],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 38,
@@ -271,17 +301,21 @@
       "page": "辅料/包材",
       "page_route": "/material/materialAccessory",
       "template": "list_table_filter",
-      "data_kind": "bom",
-      "api_path": "/api/bom/accessories-packaging",
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/materials",
       "backend_status": "real_backend_route",
       "backend_class": "A",
       "contract_schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
         "BomAccessoriesPackagingItem"
       ],
       "field_gaps": [
-        "MaterialAccessoryVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 —"
+        "MaterialAccessoryVisualOnly: 物料主数据增改停走 FastAPI MasterDataItem payload；部位/幅宽/克重后端无字段，列位保留并显示 —"
       ],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 39,
@@ -289,17 +323,21 @@
       "page": "物料图库",
       "page_route": "/material/materialGalleryList",
       "template": "list_table_filter",
-      "data_kind": "bom",
-      "api_path": "/api/bom/material-gallery",
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/materials",
       "backend_status": "real_backend_route",
       "backend_class": "A",
       "contract_schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
         "BomMaterialGalleryItem"
       ],
       "field_gaps": [
-        "MaterialGalleryVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 —；图片绑定 thumbnail_url"
+        "MaterialGalleryVisualOnly: 物料图库增改停走 FastAPI MasterDataItem payload；无真实图像文件时只展示 thumbnail_url 字段和静态缩略图入口"
       ],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 40,
@@ -307,15 +345,19 @@
       "page": "物料加工类型",
       "page_route": "/material/materialProcessType",
       "template": "config_list",
-      "data_kind": "bom",
-      "api_path": "/api/bom/processing-types",
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/materials",
       "backend_status": "real_backend_route",
       "backend_class": "A",
       "contract_schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
         "BomProcessingTypeItem"
       ],
       "field_gaps": [],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 41,
@@ -323,17 +365,21 @@
       "page": "物料类型",
       "page_route": "/material/materialCategory",
       "template": "config_list",
-      "data_kind": "bom",
-      "api_path": "/api/bom/material-types",
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/materials",
       "backend_status": "real_backend_route",
       "backend_class": "A",
       "contract_schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
         "BomMaterialTypeItem"
       ],
       "field_gaps": [
-        "MaterialTypeTree: 树形层级为前端派生，后端无 children/level/order 字段"
+        "MaterialTypeTree: 物料类型增改停走 FastAPI MasterDataItem payload；树形层级为前端按 material_group 派生，后端无 children/level/order 字段"
       ],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 42,
@@ -341,53 +387,19 @@
       "page": "物料单位",
       "page_route": "/material/materialUnit",
       "template": "list_table_filter",
-      "data_kind": "bom",
-      "api_path": "/api/bom/material-units",
+      "data_kind": "masterData",
+      "api_path": "/api/master-data/materials",
       "backend_status": "real_backend_route",
       "backend_class": "A",
       "contract_schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
         "BomMaterialUnitItem"
       ],
       "field_gaps": [],
-      "priority": "P1_first_readonly_connect"
-    },
-    {
-      "index": 46,
-      "module": "设计打样",
-      "page": "样板单",
-      "page_route": "/sample/sampleListV2",
-      "template": "flow_diagram",
-      "data_kind": "sample",
-      "api_path": "/api/sample/orders",
-      "backend_status": "real_backend_route",
-      "backend_class": "A",
-      "contract_schemas": [
-        "SampleOrderItem",
-        "SampleOrderCreateRequest"
-      ],
-      "field_gaps": [
-        "SampleOrder: API 模式转大货生成 A4 销售订单草稿；样衣成本归集待 B 期"
-      ],
-      "priority": "P1_first_readonly_connect"
-    },
-    {
-      "index": 47,
-      "module": "设计打样",
-      "page": "跟进模板",
-      "page_route": "/sample/trackingTemplate",
-      "template": "config_list",
-      "data_kind": "sample",
-      "api_path": "/api/sample/tracking-templates",
-      "backend_status": "real_backend_route",
-      "backend_class": "A",
-      "contract_schemas": [
-        "SampleTrackingTemplateItem",
-        "SampleTrackingNodeItem"
-      ],
-      "field_gaps": [
-        "SampleTrackingTemplate: API 模式已接 FastAPI 原生模板和节点表"
-      ],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 48,
@@ -404,9 +416,9 @@
         "SalesOrderListItem"
       ],
       "field_gaps": [
-        "ProductionDashboard: contract 缺少 ProductionDashboard schema"
+        "ProductionDashboard: A期已用 DashboardOverviewData 接入 /api/dashboard/overview；专属 ProductionDashboard schema 与节点级业务钻取待B期补齐。"
       ],
-      "priority": "P4_hold"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 49,
@@ -414,15 +426,15 @@
       "page": "报价单",
       "page_route": "/production/productQuote",
       "template": "list_table_filter",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "data_kind": "productionPlan",
+      "api_path": "/api/production/quotes",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [],
       "field_gaps": [
-        "ProductQuote: 契约无 ProductQuote schema，不伪装为 sales-orders"
+        "ProductQuote: 契约无 ProductQuote schema；api模式只读绑定 ProductionQuoteListData，写操作待B期"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 50,
@@ -439,7 +451,7 @@
         "SalesOrderDraftCreateRequest"
       ],
       "field_gaps": [],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 51,
@@ -457,7 +469,7 @@
       "field_gaps": [
         "ProductionTracking: 跟进节点/异常/进度字段缺口；列表降级绑定 ProductionPlanListItem"
       ],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 52,
@@ -465,15 +477,15 @@
       "page": "跟进模板",
       "page_route": "/production/factoryPacking/pending",
       "template": "config_list",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "data_kind": "productionPlan",
+      "api_path": "/api/production/followup-templates",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [],
       "field_gaps": [
-        "ProductionTrackingTemplate: contract 缺少 ProductionTrackingTemplate schema"
+        "ProductionTrackingTemplate: 契约无 ProductionTrackingTemplate schema；api模式只读绑定 ProductionFollowupTemplateListData，写操作待B期"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 53,
@@ -481,15 +493,15 @@
       "page": "下单进出数量明细表",
       "page_route": "/production/factoryPacking/list",
       "template": "detail_table",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "data_kind": "productionPlan",
+      "api_path": "/api/production/order-io-quantities",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [],
       "field_gaps": [
-        "FactoryPacking: contract 缺少 FactoryPacking schema"
+        "FactoryPacking: 契约无 FactoryPacking schema；api模式只读绑定 ProductionOrderIOQuantityListData，箱数/装箱流水待B期"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 54,
@@ -497,15 +509,16 @@
       "page": "款式打板下单对账表",
       "page_route": "/production/productionTrackingTemplate",
       "template": "transaction_form_list",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
-      "contract_schemas": [],
-      "field_gaps": [
-        "ProductionTrackingReconcile: contract 缺少 ProductionTrackingReconcile schema"
+      "data_kind": "productionPlan",
+      "api_path": "/api/production/tracking-reconciliations",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "ProductionTrackingReconcileData",
+        "ProductionTrackingReconcileGenerateRequest"
       ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 55,
@@ -514,16 +527,16 @@
       "page_route": "/production/report/orderQuantityReport",
       "template": "list_table_filter",
       "data_kind": "salesOrder",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/production/report-suite",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "SalesOrderListItem"
+        "ProductionReportSuiteData"
       ],
       "field_gaps": [
-        "OrderQuantityReport: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 —"
+        "OrderQuantityReportMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 56,
@@ -532,16 +545,16 @@
       "page_route": "/production/report/productOrderSampleCompare",
       "template": "detail_table",
       "data_kind": "salesOrder",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/production/report-suite",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "SalesOrderListItem"
+        "ProductionReportSuiteData"
       ],
       "field_gaps": [
-        "ProductOrderSampleCompare: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 —"
+        "ProductOrderSampleCompareMockOnly: api模式已接 /api/production/report-suite；样衣成本差异待B期成本口径合并"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 57,
@@ -550,16 +563,16 @@
       "page_route": "/production/report/orderTrackingReport",
       "template": "detail_table",
       "data_kind": "salesOrder",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/production/report-suite",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "SalesOrderListItem"
+        "ProductionReportSuiteData"
       ],
       "field_gaps": [
-        "ProductionCostMaterialDetail: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 —"
+        "ProductionCostMaterialDetailMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 58,
@@ -568,16 +581,16 @@
       "page_route": "/production/report/productOrderProfitReport",
       "template": "detail_table",
       "data_kind": "salesOrder",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/production/report-suite",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "SalesOrderListItem"
+        "ProductionReportSuiteData"
       ],
       "field_gaps": [
-        "ProductOrderProfitReport: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 —"
+        "ProductOrderProfitReportMockOnly: api模式已接 /api/production/report-suite；利润优先取 style-profit 快照，缺快照按BOM预测"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 59,
@@ -586,16 +599,139 @@
       "page_route": "/production/report/productionCostMaterialDetailReport",
       "template": "report_table",
       "data_kind": "salesOrder",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/production/report-suite",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "SalesOrderListItem"
+        "ProductionReportSuiteData"
       ],
       "field_gaps": [
-        "SalespersonPerformanceReport: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 —"
+        "SalespersonPerformanceReportMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
+    },
+    {
+      "index": 77,
+      "module": "大货管理",
+      "page": "成品入库",
+      "page_route": "/production/finishedGoodsInbound",
+      "template": "transaction_form_list",
+      "data_kind": "stockEntry",
+      "api_path": "/api/warehouse/stock-entry-drafts",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest",
+        "WarehouseStockEntryDraftCancelRequest"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 78,
+      "module": "大货管理",
+      "page": "发货开票",
+      "page_route": "/production/deliveryInvoice",
+      "template": "transaction_form_list",
+      "data_kind": "salesOrder",
+      "api_path": "/api/sales-inventory/delivery-invoices",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "DeliveryInvoiceData",
+        "DeliveryInvoiceCreateRequest",
+        "DeliveryNoteItem",
+        "SalesInvoiceItem"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 79,
+      "module": "大货管理",
+      "page": "应收回款",
+      "page_route": "/production/receivablePayment",
+      "template": "transaction_form_list",
+      "data_kind": "salesOrder",
+      "api_path": "/api/sales-inventory/payment-entries",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "SalesInvoiceItem",
+        "SalesPaymentEntryData",
+        "SalesPaymentEntryCreateRequest"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 73,
+      "module": "车间管理",
+      "page": "工票登记",
+      "page_route": "/workshop/tickets",
+      "template": "transaction_form_list",
+      "data_kind": "workshop",
+      "api_path": "/api/workshop/tickets",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "WorkshopTicketRow",
+        "WorkshopTicketRegisterRequest"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 74,
+      "module": "车间管理",
+      "page": "工序工价",
+      "page_route": "/workshop/wageRates",
+      "template": "config_list",
+      "data_kind": "workshop",
+      "api_path": "/api/workshop/wage-rates",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "OperationWageRateRow",
+        "OperationWageRateCreateRequest"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 75,
+      "module": "车间管理",
+      "page": "计件工资",
+      "page_route": "/workshop/dailyWages",
+      "template": "report_table",
+      "data_kind": "workshop",
+      "api_path": "/api/workshop/daily-wages",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "WorkshopDailyWageRow"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 76,
+      "module": "质量管理",
+      "page": "质检登记",
+      "page_route": "/quality/inspections",
+      "template": "transaction_form_list",
+      "data_kind": "quality",
+      "api_path": "/api/quality/inspections",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "QualityInspectionListItem",
+        "QualityInspectionCreateRequest",
+        "QualityInspectionConfirmRequest"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 60,
@@ -603,15 +739,17 @@
       "page": "物料采购单",
       "page_route": "/materialPurchase/materialPurchaseProcess",
       "template": "list_table_filter",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
-      "contract_schemas": [],
-      "field_gaps": [
-        "MaterialPurchaseOrder: contract 缺少采购单列表 schema，不绑定 /api/subcontract/，采购单字段回报 owner"
+      "data_kind": "materialPurchase",
+      "api_path": "/api/material-purchase/orders",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "MaterialPurchaseOrderListItem",
+        "MaterialPurchaseOrderCreateRequest",
+        "MaterialPurchaseOrderCreateData"
       ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 61,
@@ -627,10 +765,45 @@
         "SubcontractListItem",
         "SubcontractCreateRequest"
       ],
-      "field_gaps": [
-        "MaterialProcessOrder: contract 缺少 MaterialProcessOrder schema"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 80,
+      "module": "物料采购",
+      "page": "加工厂对账应付",
+      "page_route": "/materialPurchase/factoryStatementPayment",
+      "template": "transaction_form_list",
+      "data_kind": "factoryStatement",
+      "api_path": "/api/factory-statements/payments",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "FactoryStatementListItem",
+        "FactoryStatementPaymentData",
+        "FactoryStatementPaymentCreateRequest"
       ],
-      "priority": "P1_first_readonly_connect"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 81,
+      "module": "物料采购",
+      "page": "采购发票应付",
+      "page_route": "/materialPurchase/purchaseInvoicePayable",
+      "template": "transaction_form_list",
+      "data_kind": "materialPurchase",
+      "api_path": "/api/material-purchase/purchase-invoices",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "MaterialPurchaseInvoiceData",
+        "MaterialPurchaseInvoiceCreateRequest",
+        "MaterialPurchasePaymentData",
+        "MaterialPurchasePaymentCreateRequest"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 62,
@@ -646,7 +819,7 @@
         "WarehouseStockLedgerItem"
       ],
       "field_gaps": [],
-      "priority": "P4_hold"
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 63,
@@ -655,16 +828,15 @@
       "page_route": "/materialStock/materialProcessInWarehouse",
       "template": "transaction_form_list",
       "data_kind": "stockEntry",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/stock-entry-drafts",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "WarehouseStockEntryDraftData"
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
       ],
-      "field_gaps": [
-        "StockEntryDraftList: 草稿仅有 /api/warehouse/stock-entry-drafts/{id} 单条详情读端点；列表展示用内置 mock，不写列表 apiPath"
-      ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 64,
@@ -673,16 +845,15 @@
       "page_route": "/materialStock/materialOtherInWarehouse",
       "template": "transaction_form_list",
       "data_kind": "stockEntry",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/stock-entry-drafts",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "WarehouseStockEntryDraftData"
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
       ],
-      "field_gaps": [
-        "StockEntryDraftList: 草稿仅有 /api/warehouse/stock-entry-drafts/{id} 单条详情读端点；列表展示用内置 mock，不写列表 apiPath"
-      ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 65,
@@ -691,16 +862,16 @@
       "page_route": "/materialStock/materialHoldWarehouse",
       "template": "list_table_filter",
       "data_kind": "stockEntry",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/stock-entry-drafts",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
         "WarehouseStockEntryDraftData"
       ],
       "field_gaps": [
-        "StockEntryDraftList: 草稿仅有 /api/warehouse/stock-entry-drafts/{id} 单条详情读端点；列表展示用内置 mock，不写列表 apiPath"
+        "MaterialHoldWarehouseRelease: A期列表已接 WarehouseStockEntryDraftData；释放扣仓写接口待 B 期补齐，当前不做假写入"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 66,
@@ -709,16 +880,17 @@
       "page_route": "/materialStock/materialPurchaseReturn",
       "template": "transaction_form_list",
       "data_kind": "stockEntry",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/stock-entry-drafts",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "WarehouseStockEntryDraftData"
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
       ],
       "field_gaps": [
-        "PurchaseReturnStockOut: 未提供采购退料出仓列表读模型；草稿仅有单条详情读端点，不写列表 apiPath"
+        "PurchaseReturnStockOut: 未提供采购退料出仓专属列表读模型；暂复用 WarehouseStockEntryDraftData 的 Material Issue 草稿列表"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 67,
@@ -727,16 +899,17 @@
       "page_route": "/materialStock/materialSaleOutWarehouse",
       "template": "transaction_form_list",
       "data_kind": "stockEntry",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/stock-entry-drafts",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "WarehouseStockEntryDraftData"
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
       ],
       "field_gaps": [
-        "MaterialSaleOutWarehouse: 未提供物料销售出仓列表读模型；草稿仅有单条详情读端点，不写列表 apiPath"
+        "MaterialSaleOutWarehouse: 未提供物料销售出仓专属列表读模型；暂复用 WarehouseStockEntryDraftData 的 Material Issue 草稿列表"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
     },
     {
       "index": 68,
@@ -745,16 +918,15 @@
       "page_route": "/materialStock/materialTransform/pending",
       "template": "transaction_form_list",
       "data_kind": "stockEntry",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/stock-entry-drafts",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "WarehouseStockEntryDraftData"
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
       ],
-      "field_gaps": [
-        "StockEntryDraftList: 草稿仅有 /api/warehouse/stock-entry-drafts/{id} 单条详情读端点；列表展示用内置 mock，不写列表 apiPath"
-      ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 69,
@@ -763,16 +935,15 @@
       "page_route": "/materialStock/materialTransform/list",
       "template": "transaction_form_list",
       "data_kind": "stockEntry",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/inventory-counts",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "WarehouseStockEntryDraftData"
+        "WarehouseInventoryCountData",
+        "WarehouseInventoryCountCreateRequest"
       ],
-      "field_gaps": [
-        "MaterialInventoryCount: 未提供物料盘点列表读模型；草稿仅有单条详情读端点，不写列表 apiPath"
-      ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 70,
@@ -788,7 +959,7 @@
         "WarehouseStockLedgerItem"
       ],
       "field_gaps": [],
-      "priority": "P1_first_readonly_connect"
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 71,
@@ -797,16 +968,14 @@
       "page_route": "/materialStock/materialCheck",
       "template": "report_table",
       "data_kind": "stockLedger",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/factory-return-material-report",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "WarehouseStockLedgerItem"
+        "WarehouseFactoryReturnMaterialReportData"
       ],
-      "field_gaps": [
-        "FactoryReturnMaterialReport: 加工厂应退料报表读模型缺失，不写 stock-ledger apiPath，避免误绑"
-      ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 72,
@@ -815,16 +984,52 @@
       "page_route": "/materialStock/report/materialStock",
       "template": "report_table",
       "data_kind": "stockLedger",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
+      "api_path": "/api/warehouse/material-retention-report",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
       "contract_schemas": [
-        "WarehouseStockLedgerItem"
+        "WarehouseMaterialRetentionReportData"
+      ],
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
+    },
+    {
+      "index": 46,
+      "module": "设计打样",
+      "page": "样板单",
+      "page_route": "/sample/sampleListV2",
+      "template": "flow_diagram",
+      "data_kind": "sample",
+      "api_path": "/api/sample/orders",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "SampleOrderItem",
+        "SampleOrderCreateRequest"
       ],
       "field_gaps": [
-        "MaterialRetentionReport: 库存物料滞留报表读模型缺失，不写 stock-ledger apiPath，避免误绑"
+        "SampleOrder: SampleOrder FastAPI 已接入 /api/sample/orders；mock 模式保留旧占位，API 模式转大货会生成 A4 销售订单草稿。"
       ],
-      "priority": "P3_needs_product_contract"
+      "priority": "P1_existing_page_real_backend_partial"
+    },
+    {
+      "index": 47,
+      "module": "设计打样",
+      "page": "跟进模板",
+      "page_route": "/sample/trackingTemplate",
+      "template": "config_list",
+      "data_kind": "sample",
+      "api_path": "/api/sample/tracking-templates",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "SampleTrackingTemplateItem",
+        "SampleTrackingNodeItem"
+      ],
+      "field_gaps": [
+        "SampleTrackingTemplate: SampleTrackingTemplate schema 已由 FastAPI /api/sample/tracking-templates 承接；mock 模式保留 owner gap 占位。"
+      ],
+      "priority": "P1_existing_page_real_backend_partial"
     }
   ]
 }

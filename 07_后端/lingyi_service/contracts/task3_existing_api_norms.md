@@ -1,6 +1,6 @@
 # 任务3 既有后端接口规范
 
-范围：本文件只固化当前真实 FastAPI 后端已经采用的接口口径。任务3不创建新规范、不迁移错误码、不改变生产权限源、不实现库存/财务写闭环。
+范围：本文件只固化当前真实 FastAPI 后端已经采用的接口口径。任务3不创建新规范、不迁移错误码；生产权限源、库存与财务边界均以 FastAPI 自建为准，不连接 ERPNext 9081。
 
 ## 响应信封
 
@@ -13,7 +13,7 @@
 - 沿用 `app/core/error_codes.py` 与 `app/core/permissions.py` 的既有错误码。
 - 未登录：`AUTH_UNAUTHORIZED` 或既有兼容的 `AUTH_UNAUTHENTICATED`，HTTP 401。
 - 无权限：`AUTH_FORBIDDEN`，HTTP 403。
-- 生产权限源不可用等场景沿用既有 `PERMISSION_SOURCE_UNAVAILABLE`、`ERPNEXT_*`、模块级错误码。
+- FastAPI 权限源不可用等场景沿用既有 `PERMISSION_SOURCE_UNAVAILABLE` 与模块级错误码；`ERPNEXT_*` 仅保留给存量外部同步/适配失败，不再作为生产权限源错误。
 - 任务3不引入任何新命名错误码。
 
 ## 鉴权
@@ -21,7 +21,7 @@
 - dev/test/local 联调用既有头：`X-LY-Dev-User` 与 `X-LY-Dev-Roles`。
 - 全权限联调角色使用 `X-LY-Dev-Roles: System Manager`。
 - dev header 只在 development/test/local 且显式允许时生效；生产不得依赖 dev header。
-- 生产权限源是否脱 ERPNext：PARKED。当前 `app/main.py` 要求 `APP_ENV=production` 时 `LINGYI_PERMISSION_SOURCE=erpnext`，任务2/3不修改。
+- 生产权限源已定为 FastAPI 原生：`app/main.py` 要求 `APP_ENV=production` 时 `LINGYI_PERMISSION_SOURCE=fastapi`，不得回退 ERPNext 权限源。
 
 ## 查询参数
 
@@ -45,7 +45,8 @@
 - C 类：readiness flow 回执桩；不能作为真实写接口。
 - D 类：内部、诊断、worker 接口；不允许页面直连。
 
-## 暂停项
+## 架构口径
 
-- ERPNext 权限源 PARKED：任务2/3只记录现状，不实现脱 ERPNext。
-- 库存/财务内核 PARKED：任务2/3只做页面只读接入对表，不自建库存台账、应收应付或总账写闭环。
+- 权限源：FastAPI 原生，生产 fail-closed；dev header 只用于 development/test/local。
+- 库存内核：FastAPI 原生库存流水、草稿、盘点、应退料与滞留报表；余额与报表不得依赖 ERPNext 9081。
+- 财务边界：A 期按现有页面覆盖采购发票/付款、发货开票/回款、加工厂对账付款；缺页环节留 B 期，不用 readiness/stub 冒充正式写接口。

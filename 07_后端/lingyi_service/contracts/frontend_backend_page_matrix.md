@@ -1,59 +1,69 @@
 # 前端页面到后端接口接入矩阵
 
-来源：只读解析 `/Users/hh/Desktop/lingyi-frontend-1to1/src/page-registry.ts`；不修改前端文件。
+来源：同步自 /Users/hh/Desktop/lingyi-frontend-1to1/src/page-registry.ts；后端路由用 FastAPI app route table 校验；同步日期 2026-06-17。
 
-- 真实后端可接：15
-- dev readiness only：0
+- 页面总数：57
+- 真实后端可接：48
 - apiPath 未命中后端：0
-- 未声明 apiPath：33
+- 未声明 apiPath / 待 B 期或产品契约：9
+- 已接但仍有部分字段口径缺口：21
 
 | 优先级 | 模块 | 页面 | 前端路由 | apiPath | 后端状态 | 契约/缺口 |
 | --- | --- | --- | --- | --- | --- | --- |
-| P1_first_readonly_connect | 首页 | 首页 | `/dashboard/workplace` | `/api/dashboard/overview?company=<company>` | real_backend_route | DashboardOverviewData |
-| P1_first_readonly_connect | 基础资料 | 客户 | `/foundation/customer` | `/api/sales-inventory/customers` | real_backend_route | CustomerItem, PageData |
-| P3_needs_product_contract | 基础资料 | 加工厂 | `/foundation/factory` | `` | missing_api_path | Factory: contract 缺少 Factory schema |
-| P3_needs_product_contract | 基础资料 | 供应商 | `/foundation/supplier` | `` | missing_api_path | SupplierEndpoint: SupplierItem 仅确认 name/supplier_name/disabled；list_local_suppliers / reference-drafts/suppliers 路径连接阶段确认，暂不写 apiPath |
-| P3_needs_product_contract | 基础资料 | 送货地址 | `/foundation/commonAddress` | `` | missing_api_path | CommonAddress: contract 缺少 CommonAddress schema |
-| P3_needs_product_contract | 基础资料 | 结算方式 | `/foundation/tradeTerm` | `` | missing_api_path | TradeTerm: contract 缺少 TradeTerm schema |
-| P3_needs_product_contract | 基础资料 | 发票类型 | `/foundation/invoiceType` | `` | missing_api_path | InvoiceType: contract 缺少 InvoiceType schema |
-| P3_needs_product_contract | 基础资料 | 样板类型 | `/foundation/sampleType` | `` | missing_api_path | SampleType: contract 缺少 SampleType schema |
-| P3_needs_product_contract | 基础资料 | 费用类型 | `/foundation/costType` | `` | missing_api_path | CostType: contract 缺少 CostType schema |
-| P3_needs_product_contract | 基础资料 | 尺码排序 | `/foundation/sizeSort` | `` | missing_api_path | SizeSort: contract 缺少 SizeSort schema |
-| P1_first_readonly_connect | 基础资料 | 仓库管理 | `/foundation/warehouse` | `/api/sales-inventory/warehouses` | real_backend_route | WarehouseLocation: WarehouseItem 仅含 name/company/warehouse_name/disabled，库位字段缺口回报 owner |
-| P3_needs_product_contract | 基础资料 | 销售渠道 | `/foundation/distributionChannel` | `` | missing_api_path | DistributionChannel: contract 缺少 DistributionChannel schema |
-| P3_needs_product_contract | 基础资料 | 出纳账户 | `/foundation/bankAccount` | `` | missing_api_path | BankAccount: contract 缺少 BankAccount schema |
-| P3_needs_product_contract | 基础资料 | 工艺要求模板 | `/foundation/workmanshipTemplate` | `` | missing_api_path | WorkmanshipTemplate: contract 缺少 WorkmanshipTemplate schema |
-| P3_needs_product_contract | 基础资料 | 尺寸表模板 | `/foundation/sizeSpecTemplate` | `` | missing_api_path | SizeSpecTemplate: contract 缺少 SizeSpecTemplate schema |
-| P1_first_readonly_connect | 物料开发 | 面料 | `/material/materialFabric` | `/api/bom/fabrics` | real_backend_route | MaterialFabricVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 — |
-| P1_first_readonly_connect | 物料开发 | 辅料/包材 | `/material/materialAccessory` | `/api/bom/accessories-packaging` | real_backend_route | MaterialAccessoryVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 — |
-| P1_first_readonly_connect | 物料开发 | 物料图库 | `/material/materialGalleryList` | `/api/bom/material-gallery` | real_backend_route | MaterialGalleryVisualOnly: 部位/幅宽/克重后端无字段，列位保留并显示 —；图片绑定 thumbnail_url |
-| P1_first_readonly_connect | 物料开发 | 物料加工类型 | `/material/materialProcessType` | `/api/bom/processing-types` | real_backend_route | BomProcessingTypeItem |
-| P1_first_readonly_connect | 物料开发 | 物料类型 | `/material/materialCategory` | `/api/bom/material-types` | real_backend_route | MaterialTypeTree: 树形层级为前端派生，后端无 children/level/order 字段 |
-| P1_first_readonly_connect | 物料开发 | 物料单位 | `/material/materialUnit` | `/api/bom/material-units` | real_backend_route | BomMaterialUnitItem |
-| P1_first_readonly_connect | 设计打样 | 样板单 | `/sample/sampleListV2` | `/api/sample/orders` | real_backend_route | SampleOrderItem, SampleOrderCreateRequest；转大货生成 A4 销售订单草稿，样衣成本归集待 B 期 |
-| P1_first_readonly_connect | 设计打样 | 跟进模板 | `/sample/trackingTemplate` | `/api/sample/tracking-templates` | real_backend_route | SampleTrackingTemplateItem, SampleTrackingNodeItem |
-| P4_hold | 大货管理 | 大货看板 | `/production/home` | `/api/dashboard/overview?company=<company>` | real_backend_route | ProductionDashboard: contract 缺少 ProductionDashboard schema |
-| P3_needs_product_contract | 大货管理 | 报价单 | `/production/productQuote` | `` | missing_api_path | ProductQuote: 契约无 ProductQuote schema，不伪装为 sales-orders |
-| P1_first_readonly_connect | 大货管理 | 订单 | `/production/productOrder` | `/api/sales-inventory/sales-orders` | real_backend_route | SalesOrderListItem, SalesOrderDraftCreateRequest |
-| P1_first_readonly_connect | 大货管理 | 大货跟进 | `/production/orderTrackingV2` | `/api/production/plans` | real_backend_route | ProductionTracking: 跟进节点/异常/进度字段缺口；列表降级绑定 ProductionPlanListItem |
-| P3_needs_product_contract | 大货管理 | 跟进模板 | `/production/factoryPacking/pending` | `` | missing_api_path | ProductionTrackingTemplate: contract 缺少 ProductionTrackingTemplate schema |
-| P3_needs_product_contract | 大货管理 | 下单进出数量明细表 | `/production/factoryPacking/list` | `` | missing_api_path | FactoryPacking: contract 缺少 FactoryPacking schema |
-| P3_needs_product_contract | 大货管理 | 款式打板下单对账表 | `/production/productionTrackingTemplate` | `` | missing_api_path | ProductionTrackingReconcile: contract 缺少 ProductionTrackingReconcile schema |
-| P3_needs_product_contract | 大货管理 | 订单生产加工数量对照表 | `/production/report/orderQuantityReport` | `` | missing_api_path | OrderQuantityReport: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 — |
-| P3_needs_product_contract | 大货管理 | 订单款式利润预测明细表 | `/production/report/productOrderSampleCompare` | `` | missing_api_path | ProductOrderSampleCompare: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 — |
-| P3_needs_product_contract | 大货管理 | 大货成本物料明细表 | `/production/report/orderTrackingReport` | `` | missing_api_path | ProductionCostMaterialDetail: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 — |
-| P3_needs_product_contract | 大货管理 | 大货销售预测明细表 | `/production/report/productOrderProfitReport` | `` | missing_api_path | ProductOrderProfitReport: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 — |
-| P3_needs_product_contract | 大货管理 | 业务员业绩分析报表 | `/production/report/productionCostMaterialDetailReport` | `` | missing_api_path | SalespersonPerformanceReport: 报表读模型缺失，仅 sales_order/customer/status 可视为 SalesOrderListItem 派生，其余显示 — |
-| P3_needs_product_contract | 物料采购 | 物料采购单 | `/materialPurchase/materialPurchaseProcess` | `` | missing_api_path | MaterialPurchaseOrder: contract 缺少采购单列表 schema，不绑定 /api/subcontract/，采购单字段回报 owner |
-| P1_first_readonly_connect | 物料采购 | 物料加工 | `/materialPurchase/materialProcess` | `/api/subcontract/` | real_backend_route | MaterialProcessOrder: contract 缺少 MaterialProcessOrder schema |
-| P4_hold | 物料进销存 | 物料库存 | `/materialStock/materialTypeStock` | `/api/warehouse/stock-ledger` | real_backend_route | WarehouseStockLedgerItem |
-| P3_needs_product_contract | 物料进销存 | 物料加工入仓 | `/materialStock/materialProcessInWarehouse` | `` | missing_api_path | StockEntryDraftList: 草稿仅有 /api/warehouse/stock-entry-drafts/{id} 单条详情读端点；列表展示用内置 mock，不写列表 apiPath |
-| P3_needs_product_contract | 物料进销存 | 其他入仓 | `/materialStock/materialOtherInWarehouse` | `` | missing_api_path | StockEntryDraftList: 草稿仅有 /api/warehouse/stock-entry-drafts/{id} 单条详情读端点；列表展示用内置 mock，不写列表 apiPath |
-| P3_needs_product_contract | 物料进销存 | 物料扣仓 | `/materialStock/materialHoldWarehouse` | `` | missing_api_path | StockEntryDraftList: 草稿仅有 /api/warehouse/stock-entry-drafts/{id} 单条详情读端点；列表展示用内置 mock，不写列表 apiPath |
-| P3_needs_product_contract | 物料进销存 | 采购退料出仓 | `/materialStock/materialPurchaseReturn` | `` | missing_api_path | PurchaseReturnStockOut: 未提供采购退料出仓列表读模型；草稿仅有单条详情读端点，不写列表 apiPath |
-| P3_needs_product_contract | 物料进销存 | 物料销售出仓 | `/materialStock/materialSaleOutWarehouse` | `` | missing_api_path | MaterialSaleOutWarehouse: 未提供物料销售出仓列表读模型；草稿仅有单条详情读端点，不写列表 apiPath |
-| P3_needs_product_contract | 物料进销存 | 物料调仓 | `/materialStock/materialTransform/pending` | `` | missing_api_path | StockEntryDraftList: 草稿仅有 /api/warehouse/stock-entry-drafts/{id} 单条详情读端点；列表展示用内置 mock，不写列表 apiPath |
-| P3_needs_product_contract | 物料进销存 | 物料盘点 | `/materialStock/materialTransform/list` | `` | missing_api_path | MaterialInventoryCount: 未提供物料盘点列表读模型；草稿仅有单条详情读端点，不写列表 apiPath |
-| P1_first_readonly_connect | 物料进销存 | 物料进销存报表 | `/materialStock/materialTransfer` | `/api/warehouse/stock-ledger` | real_backend_route | WarehouseStockLedgerItem |
-| P3_needs_product_contract | 物料进销存 | 加工厂应退料报表 | `/materialStock/materialCheck` | `` | missing_api_path | FactoryReturnMaterialReport: 加工厂应退料报表读模型缺失，不写 stock-ledger apiPath，避免误绑 |
-| P3_needs_product_contract | 物料进销存 | 库存物料滞留报表 | `/materialStock/report/materialStock` | `` | missing_api_path | MaterialRetentionReport: 库存物料滞留报表读模型缺失，不写 stock-ledger apiPath，避免误绑 |
+| P1_existing_page_real_backend | 首页 | 首页 | `/dashboard/workplace` | `/api/dashboard/overview?company=<company>` | real_backend_route | DashboardOverviewData |
+| P1_existing_page_real_backend | 基础资料 | 客户 | `/foundation/customer` | `/api/sales-inventory/customers` | real_backend_route | CustomerItem, PageData |
+| P1_existing_page_real_backend | 基础资料 | 加工厂 | `/foundation/factory` | `/api/master-data/factories` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest |
+| P1_existing_page_real_backend | 基础资料 | 供应商 | `/foundation/supplier` | `/api/master-data/suppliers` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 送货地址 | `/foundation/commonAddress` | `` | missing_api_path | -；CommonAddress: 候选 /api/sales-inventory/delivery-addresses 为 temporary_dev_only；A期不接桩，待B期补 CommonAddress 真实表与接口 |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 结算方式 | `/foundation/tradeTerm` | `` | missing_api_path | -；TradeTerm: 候选 settlement-methods 为 temporary_dev_only；A期不接桩，待B期补 TradeTerm 真实字典表与接口 |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 发票类型 | `/foundation/invoiceType` | `` | missing_api_path | -；InvoiceType: 候选 /api/factory-statements/invoice-types 为 temporary_dev_only；A期不接桩，待B期补 InvoiceType 真实字典表与接口 |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 样板类型 | `/foundation/sampleType` | `` | missing_api_path | -；SampleType: 候选 /api/bom/sample-types 为 temporary_dev_only；A期不接桩，待B期补 SampleType 真实字典表与接口 |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 费用类型 | `/foundation/costType` | `` | missing_api_path | -；CostType: 费用类型暂无生产可用真实接口；A期保留缺口，待B期补 CostType 真实字典表与接口 |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 尺码排序 | `/foundation/sizeSort` | `` | missing_api_path | -；SizeSort: 候选 /api/bom/size-sortings 为 temporary_dev_only；A期不接桩，待B期补 SizeSort 真实字典表与接口 |
+| P1_existing_page_real_backend_partial | 基础资料 | 仓库管理 | `/foundation/warehouse` | `/api/master-data/warehouses` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, WarehouseItem；WarehouseLocation: 仓库主数据增改停走 FastAPI MasterDataItem；仓库树子级/库位字段仍为 owner gap |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 销售渠道 | `/foundation/distributionChannel` | `` | missing_api_path | -；DistributionChannel: 候选 /api/sales-inventory/sales-channels 为 temporary_dev_only；A期不接桩，待B期补 DistributionChannel 真实字典表与接口 |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 出纳账户 | `/foundation/bankAccount` | `` | missing_api_path | -；BankAccount: 候选 /api/factory-statements/cashier-accounts 为 temporary_dev_only；A期不接桩，待B期补 BankAccount 真实财务账户表与接口 |
+| P1_existing_page_real_backend_partial | 基础资料 | 工艺要求模板 | `/foundation/workmanshipTemplate` | `/api/bom/process-requirement-templates` | real_backend_route | BomProcessingTypeItem；WorkmanshipTemplate: 契约无 WorkmanshipTemplate schema；api模式只读绑定 /api/bom/process-requirement-templates，模板增改停待B期 |
+| P3_needs_product_contract_or_B_phase | 基础资料 | 尺寸表模板 | `/foundation/sizeSpecTemplate` | `` | missing_api_path | -；SizeSpecTemplate: 候选 /api/bom/size-chart-templates 为 temporary_dev_only；A期不接桩，待B期补 SizeSpecTemplate 真实模板表与接口 |
+| P1_existing_page_real_backend_partial | 物料开发 | 面料 | `/material/materialFabric` | `/api/master-data/materials` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomFabricItem；MaterialFabricVisualOnly: 物料主数据增改停走 FastAPI MasterDataItem payload；部位/幅宽/克重后端无字段，列位保留并显示 — |
+| P1_existing_page_real_backend_partial | 物料开发 | 辅料/包材 | `/material/materialAccessory` | `/api/master-data/materials` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomAccessoriesPackagingItem；MaterialAccessoryVisualOnly: 物料主数据增改停走 FastAPI MasterDataItem payload；部位/幅宽/克重后端无字段，列位保留并显示 — |
+| P1_existing_page_real_backend_partial | 物料开发 | 物料图库 | `/material/materialGalleryList` | `/api/master-data/materials` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomMaterialGalleryItem；MaterialGalleryVisualOnly: 物料图库增改停走 FastAPI MasterDataItem payload；无真实图像文件时只展示 thumbnail_url 字段和静态缩略图入口 |
+| P1_existing_page_real_backend | 物料开发 | 物料加工类型 | `/material/materialProcessType` | `/api/master-data/materials` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomProcessingTypeItem |
+| P1_existing_page_real_backend_partial | 物料开发 | 物料类型 | `/material/materialCategory` | `/api/master-data/materials` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomMaterialTypeItem；MaterialTypeTree: 物料类型增改停走 FastAPI MasterDataItem payload；树形层级为前端按 material_group 派生，后端无 children/level/order 字段 |
+| P1_existing_page_real_backend | 物料开发 | 物料单位 | `/material/materialUnit` | `/api/master-data/materials` | real_backend_route | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomMaterialUnitItem |
+| P1_existing_page_real_backend_partial | 大货管理 | 大货看板 | `/production/home` | `/api/dashboard/overview?company=<company>` | real_backend_route | DashboardOverviewData, SalesOrderListItem；ProductionDashboard: A期已用 DashboardOverviewData 接入 /api/dashboard/overview；专属 ProductionDashboard schema 与节点级业务钻取待B期补齐。 |
+| P1_existing_page_real_backend_partial | 大货管理 | 报价单 | `/production/productQuote` | `/api/production/quotes` | real_backend_route | -；ProductQuote: 契约无 ProductQuote schema；api模式只读绑定 ProductionQuoteListData，写操作待B期 |
+| P1_existing_page_real_backend | 大货管理 | 订单 | `/production/productOrder` | `/api/sales-inventory/sales-orders` | real_backend_route | SalesOrderListItem, SalesOrderDraftCreateRequest |
+| P1_existing_page_real_backend_partial | 大货管理 | 大货跟进 | `/production/orderTrackingV2` | `/api/production/plans` | real_backend_route | ProductionPlanListItem；ProductionTracking: 跟进节点/异常/进度字段缺口；列表降级绑定 ProductionPlanListItem |
+| P1_existing_page_real_backend_partial | 大货管理 | 跟进模板 | `/production/factoryPacking/pending` | `/api/production/followup-templates` | real_backend_route | -；ProductionTrackingTemplate: 契约无 ProductionTrackingTemplate schema；api模式只读绑定 ProductionFollowupTemplateListData，写操作待B期 |
+| P1_existing_page_real_backend_partial | 大货管理 | 下单进出数量明细表 | `/production/factoryPacking/list` | `/api/production/order-io-quantities` | real_backend_route | -；FactoryPacking: 契约无 FactoryPacking schema；api模式只读绑定 ProductionOrderIOQuantityListData，箱数/装箱流水待B期 |
+| P1_existing_page_real_backend | 大货管理 | 款式打板下单对账表 | `/production/productionTrackingTemplate` | `/api/production/tracking-reconciliations` | real_backend_route | ProductionTrackingReconcileData, ProductionTrackingReconcileGenerateRequest |
+| P1_existing_page_real_backend_partial | 大货管理 | 订单生产加工数量对照表 | `/production/report/orderQuantityReport` | `/api/production/report-suite` | real_backend_route | ProductionReportSuiteData；OrderQuantityReportMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽 |
+| P1_existing_page_real_backend_partial | 大货管理 | 订单款式利润预测明细表 | `/production/report/productOrderSampleCompare` | `/api/production/report-suite` | real_backend_route | ProductionReportSuiteData；ProductOrderSampleCompareMockOnly: api模式已接 /api/production/report-suite；样衣成本差异待B期成本口径合并 |
+| P1_existing_page_real_backend_partial | 大货管理 | 大货成本物料明细表 | `/production/report/orderTrackingReport` | `/api/production/report-suite` | real_backend_route | ProductionReportSuiteData；ProductionCostMaterialDetailMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽 |
+| P1_existing_page_real_backend_partial | 大货管理 | 大货销售预测明细表 | `/production/report/productOrderProfitReport` | `/api/production/report-suite` | real_backend_route | ProductionReportSuiteData；ProductOrderProfitReportMockOnly: api模式已接 /api/production/report-suite；利润优先取 style-profit 快照，缺快照按BOM预测 |
+| P1_existing_page_real_backend_partial | 大货管理 | 业务员业绩分析报表 | `/production/report/productionCostMaterialDetailReport` | `/api/production/report-suite` | real_backend_route | ProductionReportSuiteData；SalespersonPerformanceReportMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽 |
+| P1_existing_page_real_backend | 大货管理 | 成品入库 | `/production/finishedGoodsInbound` | `/api/warehouse/stock-entry-drafts` | real_backend_route | WarehouseStockEntryDraftData, WarehouseStockEntryDraftCreateRequest, WarehouseStockEntryDraftCancelRequest |
+| P1_existing_page_real_backend | 大货管理 | 发货开票 | `/production/deliveryInvoice` | `/api/sales-inventory/delivery-invoices` | real_backend_route | DeliveryInvoiceData, DeliveryInvoiceCreateRequest, DeliveryNoteItem, SalesInvoiceItem |
+| P1_existing_page_real_backend | 大货管理 | 应收回款 | `/production/receivablePayment` | `/api/sales-inventory/payment-entries` | real_backend_route | SalesInvoiceItem, SalesPaymentEntryData, SalesPaymentEntryCreateRequest |
+| P1_existing_page_real_backend | 车间管理 | 工票登记 | `/workshop/tickets` | `/api/workshop/tickets` | real_backend_route | WorkshopTicketRow, WorkshopTicketRegisterRequest |
+| P1_existing_page_real_backend | 车间管理 | 工序工价 | `/workshop/wageRates` | `/api/workshop/wage-rates` | real_backend_route | OperationWageRateRow, OperationWageRateCreateRequest |
+| P1_existing_page_real_backend | 车间管理 | 计件工资 | `/workshop/dailyWages` | `/api/workshop/daily-wages` | real_backend_route | WorkshopDailyWageRow |
+| P1_existing_page_real_backend | 质量管理 | 质检登记 | `/quality/inspections` | `/api/quality/inspections` | real_backend_route | QualityInspectionListItem, QualityInspectionCreateRequest, QualityInspectionConfirmRequest |
+| P1_existing_page_real_backend | 物料采购 | 物料采购单 | `/materialPurchase/materialPurchaseProcess` | `/api/material-purchase/orders` | real_backend_route | MaterialPurchaseOrderListItem, MaterialPurchaseOrderCreateRequest, MaterialPurchaseOrderCreateData |
+| P1_existing_page_real_backend | 物料采购 | 物料加工 | `/materialPurchase/materialProcess` | `/api/subcontract/` | real_backend_route | SubcontractListItem, SubcontractCreateRequest |
+| P1_existing_page_real_backend | 物料采购 | 加工厂对账应付 | `/materialPurchase/factoryStatementPayment` | `/api/factory-statements/payments` | real_backend_route | FactoryStatementListItem, FactoryStatementPaymentData, FactoryStatementPaymentCreateRequest |
+| P1_existing_page_real_backend | 物料采购 | 采购发票应付 | `/materialPurchase/purchaseInvoicePayable` | `/api/material-purchase/purchase-invoices` | real_backend_route | MaterialPurchaseInvoiceData, MaterialPurchaseInvoiceCreateRequest, MaterialPurchasePaymentData, MaterialPurchasePaymentCreateRequest |
+| P1_existing_page_real_backend | 物料进销存 | 物料库存 | `/materialStock/materialTypeStock` | `/api/warehouse/stock-ledger` | real_backend_route | WarehouseStockLedgerItem |
+| P1_existing_page_real_backend | 物料进销存 | 物料加工入仓 | `/materialStock/materialProcessInWarehouse` | `/api/warehouse/stock-entry-drafts` | real_backend_route | WarehouseStockEntryDraftData, WarehouseStockEntryDraftCreateRequest |
+| P1_existing_page_real_backend | 物料进销存 | 其他入仓 | `/materialStock/materialOtherInWarehouse` | `/api/warehouse/stock-entry-drafts` | real_backend_route | WarehouseStockEntryDraftData, WarehouseStockEntryDraftCreateRequest |
+| P1_existing_page_real_backend_partial | 物料进销存 | 物料扣仓 | `/materialStock/materialHoldWarehouse` | `/api/warehouse/stock-entry-drafts` | real_backend_route | WarehouseStockEntryDraftData；MaterialHoldWarehouseRelease: A期列表已接 WarehouseStockEntryDraftData；释放扣仓写接口待 B 期补齐，当前不做假写入 |
+| P1_existing_page_real_backend_partial | 物料进销存 | 采购退料出仓 | `/materialStock/materialPurchaseReturn` | `/api/warehouse/stock-entry-drafts` | real_backend_route | WarehouseStockEntryDraftData, WarehouseStockEntryDraftCreateRequest；PurchaseReturnStockOut: 未提供采购退料出仓专属列表读模型；暂复用 WarehouseStockEntryDraftData 的 Material Issue 草稿列表 |
+| P1_existing_page_real_backend_partial | 物料进销存 | 物料销售出仓 | `/materialStock/materialSaleOutWarehouse` | `/api/warehouse/stock-entry-drafts` | real_backend_route | WarehouseStockEntryDraftData, WarehouseStockEntryDraftCreateRequest；MaterialSaleOutWarehouse: 未提供物料销售出仓专属列表读模型；暂复用 WarehouseStockEntryDraftData 的 Material Issue 草稿列表 |
+| P1_existing_page_real_backend | 物料进销存 | 物料调仓 | `/materialStock/materialTransform/pending` | `/api/warehouse/stock-entry-drafts` | real_backend_route | WarehouseStockEntryDraftData, WarehouseStockEntryDraftCreateRequest |
+| P1_existing_page_real_backend | 物料进销存 | 物料盘点 | `/materialStock/materialTransform/list` | `/api/warehouse/inventory-counts` | real_backend_route | WarehouseInventoryCountData, WarehouseInventoryCountCreateRequest |
+| P1_existing_page_real_backend | 物料进销存 | 物料进销存报表 | `/materialStock/materialTransfer` | `/api/warehouse/stock-ledger` | real_backend_route | WarehouseStockLedgerItem |
+| P1_existing_page_real_backend | 物料进销存 | 加工厂应退料报表 | `/materialStock/materialCheck` | `/api/warehouse/factory-return-material-report` | real_backend_route | WarehouseFactoryReturnMaterialReportData |
+| P1_existing_page_real_backend | 物料进销存 | 库存物料滞留报表 | `/materialStock/report/materialStock` | `/api/warehouse/material-retention-report` | real_backend_route | WarehouseMaterialRetentionReportData |
+| P1_existing_page_real_backend_partial | 设计打样 | 样板单 | `/sample/sampleListV2` | `/api/sample/orders` | real_backend_route | SampleOrderItem, SampleOrderCreateRequest；SampleOrder: SampleOrder FastAPI 已接入 /api/sample/orders；mock 模式保留旧占位，API 模式转大货会生成 A4 销售订单草稿。 |
+| P1_existing_page_real_backend_partial | 设计打样 | 跟进模板 | `/sample/trackingTemplate` | `/api/sample/tracking-templates` | real_backend_route | SampleTrackingTemplateItem, SampleTrackingNodeItem；SampleTrackingTemplate: SampleTrackingTemplate schema 已由 FastAPI /api/sample/tracking-templates 承接；mock 模式保留 owner gap 占位。 |

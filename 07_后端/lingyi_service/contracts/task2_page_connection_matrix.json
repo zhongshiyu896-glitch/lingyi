@@ -1,11 +1,10 @@
 {
   "task": "task2_page_connection_matrix",
-  "scope": "backend_contract_only_no_frontend_read",
+  "scope": "synced_from_frontend_page_registry_and_fastapi_routes",
+  "synced_on": "2026-06-17",
   "sources": [
-    "contracts/frontend_backend_page_matrix.json",
-    "contracts/frontend_backend_page_matrix.md",
-    "contracts/frontend_readiness_page_handoff.md",
-    "contracts/frontend_readiness_field_contract.json",
+    "/Users/hh/Desktop/lingyi-frontend-1to1/src/page-registry.ts",
+    "app.main FastAPI route table",
     "contracts/backend_interface_asset_catalog.json"
   ],
   "backend_catalog_counts": {
@@ -15,36 +14,658 @@
     "D": 11
   },
   "page_matrix_counts": {
-    "total_pages": 48,
-    "real_backend_route": 15,
+    "total_pages": 57,
+    "real_backend_route": 48,
     "dev_readiness_only": 0,
     "api_path_miss": 0,
-    "missing_api_path": 33,
-    "p1_first_readonly_connect": 13,
-    "p4_hold": 2,
-    "p3_needs_product_contract": 33
+    "missing_api_path": 9,
+    "p1_existing_page_real_backend": 27,
+    "p1_existing_page_real_backend_partial": 21,
+    "p3_needs_product_contract_or_b_phase": 9
   },
   "direct_connect_pages": [
-    {"module": "首页", "page": "首页", "route": "/dashboard/workplace", "api": "/api/dashboard/overview?company=<company>"},
-    {"module": "基础资料", "page": "客户", "route": "/foundation/customer", "api": "/api/sales-inventory/customers"},
-    {"module": "基础资料", "page": "仓库管理", "route": "/foundation/warehouse", "api": "/api/sales-inventory/warehouses"},
-    {"module": "物料开发", "page": "面料", "route": "/material/materialFabric", "api": "/api/bom/fabrics"},
-    {"module": "物料开发", "page": "辅料/包材", "route": "/material/materialAccessory", "api": "/api/bom/accessories-packaging"},
-    {"module": "物料开发", "page": "物料图库", "route": "/material/materialGalleryList", "api": "/api/bom/material-gallery"},
-    {"module": "物料开发", "page": "物料加工类型", "route": "/material/materialProcessType", "api": "/api/bom/processing-types"},
-    {"module": "物料开发", "page": "物料类型", "route": "/material/materialCategory", "api": "/api/bom/material-types"},
-    {"module": "物料开发", "page": "物料单位", "route": "/material/materialUnit", "api": "/api/bom/material-units"},
-    {"module": "大货管理", "page": "订单", "route": "/production/productOrder", "api": "/api/sales-inventory/sales-orders"},
-    {"module": "大货管理", "page": "大货跟进", "route": "/production/orderTrackingV2", "api": "/api/production/plans"},
-    {"module": "物料采购", "page": "物料加工", "route": "/materialPurchase/materialProcess", "api": "/api/subcontract/"},
-    {"module": "物料进销存", "page": "物料进销存报表", "route": "/materialStock/materialTransfer", "api": "/api/warehouse/stock-ledger"}
+    {
+      "module": "首页",
+      "page": "首页",
+      "route": "/dashboard/workplace",
+      "api": "/api/dashboard/overview?company=<company>",
+      "schemas": [
+        "DashboardOverviewData"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "基础资料",
+      "page": "客户",
+      "route": "/foundation/customer",
+      "api": "/api/sales-inventory/customers",
+      "schemas": [
+        "CustomerItem",
+        "PageData"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "基础资料",
+      "page": "加工厂",
+      "route": "/foundation/factory",
+      "api": "/api/master-data/factories",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "基础资料",
+      "page": "供应商",
+      "route": "/foundation/supplier",
+      "api": "/api/master-data/suppliers",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "基础资料",
+      "page": "仓库管理",
+      "route": "/foundation/warehouse",
+      "api": "/api/master-data/warehouses",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
+        "WarehouseItem"
+      ],
+      "partial_gap": [
+        "WarehouseLocation: 仓库主数据增改停走 FastAPI MasterDataItem；仓库树子级/库位字段仍为 owner gap"
+      ]
+    },
+    {
+      "module": "基础资料",
+      "page": "工艺要求模板",
+      "route": "/foundation/workmanshipTemplate",
+      "api": "/api/bom/process-requirement-templates",
+      "schemas": [
+        "BomProcessingTypeItem"
+      ],
+      "partial_gap": [
+        "WorkmanshipTemplate: 契约无 WorkmanshipTemplate schema；api模式只读绑定 /api/bom/process-requirement-templates，模板增改停待B期"
+      ]
+    },
+    {
+      "module": "物料开发",
+      "page": "面料",
+      "route": "/material/materialFabric",
+      "api": "/api/master-data/materials",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
+        "BomFabricItem"
+      ],
+      "partial_gap": [
+        "MaterialFabricVisualOnly: 物料主数据增改停走 FastAPI MasterDataItem payload；部位/幅宽/克重后端无字段，列位保留并显示 —"
+      ]
+    },
+    {
+      "module": "物料开发",
+      "page": "辅料/包材",
+      "route": "/material/materialAccessory",
+      "api": "/api/master-data/materials",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
+        "BomAccessoriesPackagingItem"
+      ],
+      "partial_gap": [
+        "MaterialAccessoryVisualOnly: 物料主数据增改停走 FastAPI MasterDataItem payload；部位/幅宽/克重后端无字段，列位保留并显示 —"
+      ]
+    },
+    {
+      "module": "物料开发",
+      "page": "物料图库",
+      "route": "/material/materialGalleryList",
+      "api": "/api/master-data/materials",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
+        "BomMaterialGalleryItem"
+      ],
+      "partial_gap": [
+        "MaterialGalleryVisualOnly: 物料图库增改停走 FastAPI MasterDataItem payload；无真实图像文件时只展示 thumbnail_url 字段和静态缩略图入口"
+      ]
+    },
+    {
+      "module": "物料开发",
+      "page": "物料加工类型",
+      "route": "/material/materialProcessType",
+      "api": "/api/master-data/materials",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
+        "BomProcessingTypeItem"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料开发",
+      "page": "物料类型",
+      "route": "/material/materialCategory",
+      "api": "/api/master-data/materials",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
+        "BomMaterialTypeItem"
+      ],
+      "partial_gap": [
+        "MaterialTypeTree: 物料类型增改停走 FastAPI MasterDataItem payload；树形层级为前端按 material_group 派生，后端无 children/level/order 字段"
+      ]
+    },
+    {
+      "module": "物料开发",
+      "page": "物料单位",
+      "route": "/material/materialUnit",
+      "api": "/api/master-data/materials",
+      "schemas": [
+        "MasterDataItem",
+        "MasterDataCreateRequest",
+        "MasterDataUpdateRequest",
+        "MasterDataDeactivateRequest",
+        "BomMaterialUnitItem"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "大货管理",
+      "page": "大货看板",
+      "route": "/production/home",
+      "api": "/api/dashboard/overview?company=<company>",
+      "schemas": [
+        "DashboardOverviewData",
+        "SalesOrderListItem"
+      ],
+      "partial_gap": [
+        "ProductionDashboard: A期已用 DashboardOverviewData 接入 /api/dashboard/overview；专属 ProductionDashboard schema 与节点级业务钻取待B期补齐。"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "报价单",
+      "route": "/production/productQuote",
+      "api": "/api/production/quotes",
+      "schemas": [],
+      "partial_gap": [
+        "ProductQuote: 契约无 ProductQuote schema；api模式只读绑定 ProductionQuoteListData，写操作待B期"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "订单",
+      "route": "/production/productOrder",
+      "api": "/api/sales-inventory/sales-orders",
+      "schemas": [
+        "SalesOrderListItem",
+        "SalesOrderDraftCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "大货管理",
+      "page": "大货跟进",
+      "route": "/production/orderTrackingV2",
+      "api": "/api/production/plans",
+      "schemas": [
+        "ProductionPlanListItem"
+      ],
+      "partial_gap": [
+        "ProductionTracking: 跟进节点/异常/进度字段缺口；列表降级绑定 ProductionPlanListItem"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "跟进模板",
+      "route": "/production/factoryPacking/pending",
+      "api": "/api/production/followup-templates",
+      "schemas": [],
+      "partial_gap": [
+        "ProductionTrackingTemplate: 契约无 ProductionTrackingTemplate schema；api模式只读绑定 ProductionFollowupTemplateListData，写操作待B期"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "下单进出数量明细表",
+      "route": "/production/factoryPacking/list",
+      "api": "/api/production/order-io-quantities",
+      "schemas": [],
+      "partial_gap": [
+        "FactoryPacking: 契约无 FactoryPacking schema；api模式只读绑定 ProductionOrderIOQuantityListData，箱数/装箱流水待B期"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "款式打板下单对账表",
+      "route": "/production/productionTrackingTemplate",
+      "api": "/api/production/tracking-reconciliations",
+      "schemas": [
+        "ProductionTrackingReconcileData",
+        "ProductionTrackingReconcileGenerateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "大货管理",
+      "page": "订单生产加工数量对照表",
+      "route": "/production/report/orderQuantityReport",
+      "api": "/api/production/report-suite",
+      "schemas": [
+        "ProductionReportSuiteData"
+      ],
+      "partial_gap": [
+        "OrderQuantityReportMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "订单款式利润预测明细表",
+      "route": "/production/report/productOrderSampleCompare",
+      "api": "/api/production/report-suite",
+      "schemas": [
+        "ProductionReportSuiteData"
+      ],
+      "partial_gap": [
+        "ProductOrderSampleCompareMockOnly: api模式已接 /api/production/report-suite；样衣成本差异待B期成本口径合并"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "大货成本物料明细表",
+      "route": "/production/report/orderTrackingReport",
+      "api": "/api/production/report-suite",
+      "schemas": [
+        "ProductionReportSuiteData"
+      ],
+      "partial_gap": [
+        "ProductionCostMaterialDetailMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "大货销售预测明细表",
+      "route": "/production/report/productOrderProfitReport",
+      "api": "/api/production/report-suite",
+      "schemas": [
+        "ProductionReportSuiteData"
+      ],
+      "partial_gap": [
+        "ProductOrderProfitReportMockOnly: api模式已接 /api/production/report-suite；利润优先取 style-profit 快照，缺快照按BOM预测"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "业务员业绩分析报表",
+      "route": "/production/report/productionCostMaterialDetailReport",
+      "api": "/api/production/report-suite",
+      "schemas": [
+        "ProductionReportSuiteData"
+      ],
+      "partial_gap": [
+        "SalespersonPerformanceReportMockOnly: api模式已接 /api/production/report-suite；mock模式保留静态 owner gap 遮蔽"
+      ]
+    },
+    {
+      "module": "大货管理",
+      "page": "成品入库",
+      "route": "/production/finishedGoodsInbound",
+      "api": "/api/warehouse/stock-entry-drafts",
+      "schemas": [
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest",
+        "WarehouseStockEntryDraftCancelRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "大货管理",
+      "page": "发货开票",
+      "route": "/production/deliveryInvoice",
+      "api": "/api/sales-inventory/delivery-invoices",
+      "schemas": [
+        "DeliveryInvoiceData",
+        "DeliveryInvoiceCreateRequest",
+        "DeliveryNoteItem",
+        "SalesInvoiceItem"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "大货管理",
+      "page": "应收回款",
+      "route": "/production/receivablePayment",
+      "api": "/api/sales-inventory/payment-entries",
+      "schemas": [
+        "SalesInvoiceItem",
+        "SalesPaymentEntryData",
+        "SalesPaymentEntryCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "车间管理",
+      "page": "工票登记",
+      "route": "/workshop/tickets",
+      "api": "/api/workshop/tickets",
+      "schemas": [
+        "WorkshopTicketRow",
+        "WorkshopTicketRegisterRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "车间管理",
+      "page": "工序工价",
+      "route": "/workshop/wageRates",
+      "api": "/api/workshop/wage-rates",
+      "schemas": [
+        "OperationWageRateRow",
+        "OperationWageRateCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "车间管理",
+      "page": "计件工资",
+      "route": "/workshop/dailyWages",
+      "api": "/api/workshop/daily-wages",
+      "schemas": [
+        "WorkshopDailyWageRow"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "质量管理",
+      "page": "质检登记",
+      "route": "/quality/inspections",
+      "api": "/api/quality/inspections",
+      "schemas": [
+        "QualityInspectionListItem",
+        "QualityInspectionCreateRequest",
+        "QualityInspectionConfirmRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料采购",
+      "page": "物料采购单",
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "api": "/api/material-purchase/orders",
+      "schemas": [
+        "MaterialPurchaseOrderListItem",
+        "MaterialPurchaseOrderCreateRequest",
+        "MaterialPurchaseOrderCreateData"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料采购",
+      "page": "物料加工",
+      "route": "/materialPurchase/materialProcess",
+      "api": "/api/subcontract/",
+      "schemas": [
+        "SubcontractListItem",
+        "SubcontractCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料采购",
+      "page": "加工厂对账应付",
+      "route": "/materialPurchase/factoryStatementPayment",
+      "api": "/api/factory-statements/payments",
+      "schemas": [
+        "FactoryStatementListItem",
+        "FactoryStatementPaymentData",
+        "FactoryStatementPaymentCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料采购",
+      "page": "采购发票应付",
+      "route": "/materialPurchase/purchaseInvoicePayable",
+      "api": "/api/material-purchase/purchase-invoices",
+      "schemas": [
+        "MaterialPurchaseInvoiceData",
+        "MaterialPurchaseInvoiceCreateRequest",
+        "MaterialPurchasePaymentData",
+        "MaterialPurchasePaymentCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料进销存",
+      "page": "物料库存",
+      "route": "/materialStock/materialTypeStock",
+      "api": "/api/warehouse/stock-ledger",
+      "schemas": [
+        "WarehouseStockLedgerItem"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料进销存",
+      "page": "物料加工入仓",
+      "route": "/materialStock/materialProcessInWarehouse",
+      "api": "/api/warehouse/stock-entry-drafts",
+      "schemas": [
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料进销存",
+      "page": "其他入仓",
+      "route": "/materialStock/materialOtherInWarehouse",
+      "api": "/api/warehouse/stock-entry-drafts",
+      "schemas": [
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料进销存",
+      "page": "物料扣仓",
+      "route": "/materialStock/materialHoldWarehouse",
+      "api": "/api/warehouse/stock-entry-drafts",
+      "schemas": [
+        "WarehouseStockEntryDraftData"
+      ],
+      "partial_gap": [
+        "MaterialHoldWarehouseRelease: A期列表已接 WarehouseStockEntryDraftData；释放扣仓写接口待 B 期补齐，当前不做假写入"
+      ]
+    },
+    {
+      "module": "物料进销存",
+      "page": "采购退料出仓",
+      "route": "/materialStock/materialPurchaseReturn",
+      "api": "/api/warehouse/stock-entry-drafts",
+      "schemas": [
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
+      ],
+      "partial_gap": [
+        "PurchaseReturnStockOut: 未提供采购退料出仓专属列表读模型；暂复用 WarehouseStockEntryDraftData 的 Material Issue 草稿列表"
+      ]
+    },
+    {
+      "module": "物料进销存",
+      "page": "物料销售出仓",
+      "route": "/materialStock/materialSaleOutWarehouse",
+      "api": "/api/warehouse/stock-entry-drafts",
+      "schemas": [
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
+      ],
+      "partial_gap": [
+        "MaterialSaleOutWarehouse: 未提供物料销售出仓专属列表读模型；暂复用 WarehouseStockEntryDraftData 的 Material Issue 草稿列表"
+      ]
+    },
+    {
+      "module": "物料进销存",
+      "page": "物料调仓",
+      "route": "/materialStock/materialTransform/pending",
+      "api": "/api/warehouse/stock-entry-drafts",
+      "schemas": [
+        "WarehouseStockEntryDraftData",
+        "WarehouseStockEntryDraftCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料进销存",
+      "page": "物料盘点",
+      "route": "/materialStock/materialTransform/list",
+      "api": "/api/warehouse/inventory-counts",
+      "schemas": [
+        "WarehouseInventoryCountData",
+        "WarehouseInventoryCountCreateRequest"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料进销存",
+      "page": "物料进销存报表",
+      "route": "/materialStock/materialTransfer",
+      "api": "/api/warehouse/stock-ledger",
+      "schemas": [
+        "WarehouseStockLedgerItem"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料进销存",
+      "page": "加工厂应退料报表",
+      "route": "/materialStock/materialCheck",
+      "api": "/api/warehouse/factory-return-material-report",
+      "schemas": [
+        "WarehouseFactoryReturnMaterialReportData"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "物料进销存",
+      "page": "库存物料滞留报表",
+      "route": "/materialStock/report/materialStock",
+      "api": "/api/warehouse/material-retention-report",
+      "schemas": [
+        "WarehouseMaterialRetentionReportData"
+      ],
+      "partial_gap": []
+    },
+    {
+      "module": "设计打样",
+      "page": "样板单",
+      "route": "/sample/sampleListV2",
+      "api": "/api/sample/orders",
+      "schemas": [
+        "SampleOrderItem",
+        "SampleOrderCreateRequest"
+      ],
+      "partial_gap": [
+        "SampleOrder: SampleOrder FastAPI 已接入 /api/sample/orders；mock 模式保留旧占位，API 模式转大货会生成 A4 销售订单草稿。"
+      ]
+    },
+    {
+      "module": "设计打样",
+      "page": "跟进模板",
+      "route": "/sample/trackingTemplate",
+      "api": "/api/sample/tracking-templates",
+      "schemas": [
+        "SampleTrackingTemplateItem",
+        "SampleTrackingNodeItem"
+      ],
+      "partial_gap": [
+        "SampleTrackingTemplate: SampleTrackingTemplate schema 已由 FastAPI /api/sample/tracking-templates 承接；mock 模式保留 owner gap 占位。"
+      ]
+    }
   ],
-  "hold_pages": [
-    {"module": "大货管理", "page": "大货看板", "route": "/production/home", "api": "/api/dashboard/overview?company=<company>", "reason": "ProductionDashboard contract not finalized"},
-    {"module": "物料进销存", "page": "物料库存", "route": "/materialStock/materialTypeStock", "api": "/api/warehouse/stock-ledger", "reason": "stock_finance_core_decision_parked"}
+  "gap_or_b_phase_pages": [
+    {
+      "module": "基础资料",
+      "page": "送货地址",
+      "route": "/foundation/commonAddress",
+      "gap": "CommonAddress: 候选 /api/sales-inventory/delivery-addresses 为 temporary_dev_only；A期不接桩，待B期补 CommonAddress 真实表与接口"
+    },
+    {
+      "module": "基础资料",
+      "page": "结算方式",
+      "route": "/foundation/tradeTerm",
+      "gap": "TradeTerm: 候选 settlement-methods 为 temporary_dev_only；A期不接桩，待B期补 TradeTerm 真实字典表与接口"
+    },
+    {
+      "module": "基础资料",
+      "page": "发票类型",
+      "route": "/foundation/invoiceType",
+      "gap": "InvoiceType: 候选 /api/factory-statements/invoice-types 为 temporary_dev_only；A期不接桩，待B期补 InvoiceType 真实字典表与接口"
+    },
+    {
+      "module": "基础资料",
+      "page": "样板类型",
+      "route": "/foundation/sampleType",
+      "gap": "SampleType: 候选 /api/bom/sample-types 为 temporary_dev_only；A期不接桩，待B期补 SampleType 真实字典表与接口"
+    },
+    {
+      "module": "基础资料",
+      "page": "费用类型",
+      "route": "/foundation/costType",
+      "gap": "CostType: 费用类型暂无生产可用真实接口；A期保留缺口，待B期补 CostType 真实字典表与接口"
+    },
+    {
+      "module": "基础资料",
+      "page": "尺码排序",
+      "route": "/foundation/sizeSort",
+      "gap": "SizeSort: 候选 /api/bom/size-sortings 为 temporary_dev_only；A期不接桩，待B期补 SizeSort 真实字典表与接口"
+    },
+    {
+      "module": "基础资料",
+      "page": "销售渠道",
+      "route": "/foundation/distributionChannel",
+      "gap": "DistributionChannel: 候选 /api/sales-inventory/sales-channels 为 temporary_dev_only；A期不接桩，待B期补 DistributionChannel 真实字典表与接口"
+    },
+    {
+      "module": "基础资料",
+      "page": "出纳账户",
+      "route": "/foundation/bankAccount",
+      "gap": "BankAccount: 候选 /api/factory-statements/cashier-accounts 为 temporary_dev_only；A期不接桩，待B期补 BankAccount 真实财务账户表与接口"
+    },
+    {
+      "module": "基础资料",
+      "page": "尺寸表模板",
+      "route": "/foundation/sizeSpecTemplate",
+      "gap": "SizeSpecTemplate: 候选 /api/bom/size-chart-templates 为 temporary_dev_only；A期不接桩，待B期补 SizeSpecTemplate 真实模板表与接口"
+    }
   ],
-  "parked_architecture_decisions": [
-    "production_permission_source_detach_from_erpnext",
-    "self_built_stock_finance_core"
+  "architecture_decisions": [
+    "permission_source_fastapi_native",
+    "stock_finance_core_fastapi_native",
+    "do_not_connect_erpnext_9081",
+    "readiness_stub_dev_only_not_formal_page_api"
   ]
 }
