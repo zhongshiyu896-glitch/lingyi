@@ -248,6 +248,10 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             "/api/warehouse/factory-return-material-report?item_code=FAB-A",
             headers=self._headers(),
         )
+        purchase_receipts = self.client.get(
+            "/api/warehouse/purchase-receipts?company=COMP-A&material_item_code=FAB-A",
+            headers=self._headers(),
+        )
 
         self.assertEqual(receipt.status_code, 201, receipt.text)
         self.assertEqual(receipt.json()["data"]["status"], "pending_outbox")
@@ -271,6 +275,16 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(report_items[0]["material_code"], self.ITEM_CODE)
         self.assertEqual(report_items[0]["warehouse"], self.WAREHOUSE)
         self.assertGreater(Decimal(str(report_items[0]["pending_qty"])), Decimal("0"))
+        self.assertEqual(purchase_receipts.status_code, 200, purchase_receipts.text)
+        receipt_rows = purchase_receipts.json()["data"]["items"]
+        self.assertEqual(purchase_receipts.json()["data"]["total"], 1)
+        self.assertEqual(receipt_rows[0]["receipt_no"], "LY-WH-PR-1")
+        self.assertNotEqual(receipt_rows[0]["receipt_no"], "PR-FR-001")
+        self.assertEqual(receipt_rows[0]["purchase_no"], "PO-A5-001")
+        self.assertEqual(receipt_rows[0]["supplier_name"], "SUP-A")
+        self.assertEqual(receipt_rows[0]["material_item_code"], self.ITEM_CODE)
+        self.assertEqual(receipt_rows[0]["status"], "outbox_pending")
+        self.assertEqual(Decimal(str(receipt_rows[0]["received_qty"])), Decimal("20.000000"))
 
         with self.SessionLocal() as session:
             order = session.query(LyMaterialPurchaseOrder).one()

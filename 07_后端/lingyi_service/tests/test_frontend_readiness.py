@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from datetime import date
+from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
 import os
 from types import SimpleNamespace
@@ -34,11 +36,19 @@ from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E
 from app.models.factory_statement import LyFactoryStatement  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayment  # noqa: E402
+from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
+from app.models.material_purchase import LyMaterialPurchaseOrder  # noqa: E402
+from app.models.material_purchase import LyMaterialPurchaseOrderItem  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 from app.models.quality import LyQualityInspection  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.style_profit import LyStyleProfitSnapshot  # noqa: E402
+from app.models.warehouse import LyWarehouseInventoryCount  # noqa: E402
+from app.models.warehouse import LyWarehouseInventoryCountItem  # noqa: E402
+from app.models.warehouse import LyWarehouseStockEntryDraft  # noqa: E402
+from app.models.warehouse import LyWarehouseStockEntryDraftItem  # noqa: E402
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent  # noqa: E402
 from app.routers.auth import get_db_session as auth_db_dep  # noqa: E402
 from app.routers.bom import get_db_session as bom_db_dep  # noqa: E402
 from app.routers.cross_module_view import get_db_session as cross_module_db_dep  # noqa: E402
@@ -234,6 +244,7 @@ class FrontendReadinessTest(unittest.TestCase):
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
         FactoryStatementBase.metadata.create_all(bind=cls.engine)
+        MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         StyleProfitBase.metadata.create_all(bind=cls.engine)
@@ -288,9 +299,16 @@ class FrontendReadinessTest(unittest.TestCase):
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
+            session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LyWarehouseInventoryCountItem).delete()
+            session.query(LyWarehouseInventoryCount).delete()
             session.query(LyFactoryStatementPayment).delete()
             session.query(LyFactoryStatementPayableOutbox).delete()
             session.query(LyFactoryStatement).delete()
+            session.query(LyMaterialPurchaseOrderItem).delete()
+            session.query(LyMaterialPurchaseOrder).delete()
             session.query(LyStyleProfitSnapshot).delete()
             session.query(LyQualityInspection).delete()
             session.query(LyOperationAuditLog).delete()
@@ -316,6 +334,144 @@ class FrontendReadinessTest(unittest.TestCase):
                     idempotency_key="FR-FACTORY-STMT-001",
                     request_hash="fr-factory-stmt-hash",
                     created_by="frontend.readiness",
+                )
+            )
+            session.add(
+                LyMaterialPurchaseOrder(
+                    id=1,
+                    company=DEFAULT_COMPANY,
+                    purchase_no="PO-FR-001",
+                    supplier_name="Frontend Readiness Supplier",
+                    transaction_date=date(2026, 6, 16),
+                    expected_delivery_date=date(2026, 6, 24),
+                    status="partially_received",
+                    total_qty=Decimal("180"),
+                    received_qty=Decimal("180"),
+                    total_amount=Decimal("1530.00"),
+                    currency="CNY",
+                    created_by="frontend.readiness",
+                )
+            )
+            session.add(
+                LyMaterialPurchaseOrderItem(
+                    id=1,
+                    order_id=1,
+                    company=DEFAULT_COMPANY,
+                    item_code="MAT-FR-FABRIC-001",
+                    material_item_code="MAT-FR-FABRIC-001",
+                    material_name="Frontend Readiness Fabric",
+                    qty=Decimal("180"),
+                    received_qty=Decimal("180"),
+                    uom="Pcs",
+                    unit_price=Decimal("8.5"),
+                    amount=Decimal("1530.00"),
+                    warehouse="WH-FR-001",
+                )
+            )
+            warehouse_created_at = datetime.combine(date(2026, 6, 18), datetime.min.time(), timezone.utc)
+            session.add(
+                LyWarehouseStockEntryDraft(
+                    id=1,
+                    company=DEFAULT_COMPANY,
+                    purpose="Material Receipt",
+                    source_type="material_purchase_order",
+                    source_id="PO-FR-001",
+                    source_warehouse=None,
+                    target_warehouse="WH-FR-001",
+                    status="pending_outbox",
+                    created_by="frontend.readiness",
+                    created_at=warehouse_created_at,
+                    idempotency_key="FR-WH-PR-IDEM-001",
+                    event_key="FR-WH-PR-EVENT-001",
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    id=1,
+                    draft_id=1,
+                    company=DEFAULT_COMPANY,
+                    item_code="MAT-FR-FABRIC-001",
+                    qty=Decimal("180"),
+                    uom="Pcs",
+                    source_warehouse=None,
+                    target_warehouse="WH-FR-001",
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryOutboxEvent(
+                    id=1,
+                    draft_id=1,
+                    event_type="warehouse_stock_entry_sync",
+                    event_key="FR-WH-PR-EVENT-001",
+                    payload={"business_date": "2026-06-18"},
+                    status="in_pending",
+                    retry_count=0,
+                    created_at=warehouse_created_at,
+                )
+            )
+            fg_created_at = datetime.combine(date(2026, 6, 20), datetime.min.time(), timezone.utc)
+            session.add(
+                LyWarehouseStockEntryDraft(
+                    id=2,
+                    company=DEFAULT_COMPANY,
+                    purpose="Material Receipt",
+                    source_type="finished_goods_inbound",
+                    source_id="FGIN-FR-001",
+                    source_warehouse=None,
+                    target_warehouse="WH-FR-001",
+                    status="pending_outbox",
+                    created_by="frontend.readiness",
+                    created_at=fg_created_at,
+                    idempotency_key="FR-WH-FG-IDEM-001",
+                    event_key="FR-WH-FG-EVENT-001",
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    id=2,
+                    draft_id=2,
+                    company=DEFAULT_COMPANY,
+                    item_code="ITEM-FR-001",
+                    qty=Decimal("20"),
+                    uom="Pcs",
+                    source_warehouse=None,
+                    target_warehouse="WH-FR-001",
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryOutboxEvent(
+                    id=2,
+                    draft_id=2,
+                    event_type="warehouse_stock_entry_sync",
+                    event_key="FR-WH-FG-EVENT-001",
+                    payload={"business_date": "2026-06-20"},
+                    status="in_pending",
+                    retry_count=0,
+                    created_at=fg_created_at,
+                )
+            )
+            session.add(
+                LyWarehouseInventoryCount(
+                    id=1,
+                    company=DEFAULT_COMPANY,
+                    warehouse="WH-FR-001",
+                    status="counted",
+                    count_no="INV-BAL-FR-LOCAL-001",
+                    count_date=date(2026, 6, 22),
+                    created_by="frontend.readiness",
+                )
+            )
+            session.add(
+                LyWarehouseInventoryCountItem(
+                    id=1,
+                    count_id=1,
+                    company=DEFAULT_COMPANY,
+                    warehouse="WH-FR-001",
+                    item_code="ITEM-FR-001",
+                    system_qty=Decimal("20"),
+                    counted_qty=Decimal("20"),
+                    variance_qty=Decimal("0"),
+                    review_status="accepted",
                 )
             )
             session.add(

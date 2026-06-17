@@ -67,7 +67,6 @@ from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.erpnext_warehouse_adapter import ERPNextWarehouseAdapter
-from app.services.frontend_readiness_seed_reader import dev_seed_page_for_user
 from app.services.permission_service import PermissionService
 from app.services.warehouse_export_service import SUPPORTED_DATASETS
 from app.services.warehouse_export_service import WarehouseExportService
@@ -1435,8 +1434,8 @@ def list_purchase_receipts(
     material_item_code: str | None = Query(default=None),
     supplier_name: str | None = Query(default=None),
     status: str | None = Query(default=None),
-    page: Any = Query(default=1),
-    page_size: Any = Query(default=20),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -1469,22 +1468,25 @@ def list_purchase_receipts(
         )
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
-    data = WarehousePurchaseReceiptListData(
-        **dev_seed_page_for_user(
-            seed_key="purchase_receipts",
-            current_user=current_user,
+    try:
+        data = _write_service(session).list_local_purchase_receipts(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            material_item_code=material_item_code,
+            supplier_name=supplier_name,
+            status=status,
             page=page,
             page_size=page_size,
-            filters={
-                "company": company,
-                "warehouse": warehouse,
-                "item_code": item_code,
-                "material_item_code": material_item_code,
-                "supplier_name": supplier_name,
-                "status": status,
-            },
         )
-    )
+    except WarehouseServiceError as exc:
+        _raise_service_error(exc)
+    data.items = [
+        row
+        for row in data.items
+        if _scope_allowed(company=row.company, warehouse=row.warehouse, item_code=row.item_code, permissions=permissions)
+    ]
+    data.total = len(data.items)
     return _ok(data)
 
 
@@ -1496,8 +1498,8 @@ def list_finished_goods_inbound(
     item_code: str | None = Query(default=None),
     reserve_status: str | None = Query(default=None),
     inbound_status: str | None = Query(default=None),
-    page: Any = Query(default=1),
-    page_size: Any = Query(default=20),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -1530,21 +1532,24 @@ def list_finished_goods_inbound(
         )
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
-    data = WarehouseFinishedGoodsInboundListData(
-        **dev_seed_page_for_user(
-            seed_key="finished_goods_inbound",
-            current_user=current_user,
+    try:
+        data = _write_service(session).list_local_finished_goods_inbound(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            reserve_status=reserve_status,
+            inbound_status=inbound_status,
             page=page,
             page_size=page_size,
-            filters={
-                "company": company,
-                "warehouse": warehouse,
-                "item_code": item_code,
-                "reserve_status": reserve_status,
-                "inbound_status": inbound_status,
-            },
         )
-    )
+    except WarehouseServiceError as exc:
+        _raise_service_error(exc)
+    data.items = [
+        row
+        for row in data.items
+        if _scope_allowed(company=row.company, warehouse=row.warehouse, item_code=row.item_code, permissions=permissions)
+    ]
+    data.total = len(data.items)
     return _ok(data)
 
 
@@ -1555,8 +1560,8 @@ def list_inventory_balance_reconciliation(
     warehouse: str | None = Query(default=None),
     item_code: str | None = Query(default=None),
     status: str | None = Query(default=None),
-    page: Any = Query(default=1),
-    page_size: Any = Query(default=20),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -1589,20 +1594,23 @@ def list_inventory_balance_reconciliation(
         )
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
-    data = WarehouseInventoryBalanceReconciliationListData(
-        **dev_seed_page_for_user(
-            seed_key="inventory_balance_reconciliation",
-            current_user=current_user,
+    try:
+        data = _write_service(session).list_local_inventory_balance_reconciliation(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status,
             page=page,
             page_size=page_size,
-            filters={
-                "company": company,
-                "warehouse": warehouse,
-                "item_code": item_code,
-                "status": status,
-            },
         )
-    )
+    except WarehouseServiceError as exc:
+        _raise_service_error(exc)
+    data.items = [
+        row
+        for row in data.items
+        if _scope_allowed(company=row.company, warehouse=row.warehouse, item_code=row.item_code, permissions=permissions)
+    ]
+    data.total = len(data.items)
     return _ok(data)
 
 

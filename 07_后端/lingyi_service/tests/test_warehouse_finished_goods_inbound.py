@@ -271,6 +271,17 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
         self.assertEqual(body["source_id"], payload["finished_goods_source_id"])
         self.assertEqual(body["allocation_mode"], "zero_placeholder_fallback")
         self.assertEqual(body["strict_failure_reason"], "FastAPI local finished goods inbound source")
+        readback = self.client.get(
+            "/api/warehouse/finished-goods-inbound?company=COMP-A&item_code=FG-LOCAL-001",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(readback.status_code, 200, readback.text)
+        rows = readback.json()["data"]["items"]
+        self.assertEqual(readback.json()["data"]["total"], 1)
+        self.assertEqual(rows[0]["reservation_no"], payload["finished_goods_source_id"])
+        self.assertEqual(rows[0]["warehouse"], "FG-WH-001")
+        self.assertEqual(rows[0]["inbound_status"], "outbox_pending")
+        self.assertEqual(Decimal(str(rows[0]["inbound_qty"])), Decimal("3.000000"))
 
     def test_create_finished_goods_draft_candidate_disabled_fail_closed(self) -> None:
         with patch(

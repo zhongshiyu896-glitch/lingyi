@@ -14,11 +14,15 @@ from typing import Literal
 
 from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.error_codes import INTERNAL_ERROR
+from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.exceptions import AppException
 from app.core.exceptions import BusinessException
+from app.models.material_purchase import LyMaterialPurchaseOrder
+from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseInventoryCount
@@ -44,6 +48,8 @@ from app.schemas.warehouse import WarehouseInventoryCountItemData
 from app.schemas.warehouse import WarehouseInventoryCountListData
 from app.schemas.warehouse import WarehouseInventoryCountVarianceReviewRequest
 from app.schemas.warehouse import WarehouseInventoryCountVarianceStatsData
+from app.schemas.warehouse import WarehouseInventoryBalanceReconciliationItem
+from app.schemas.warehouse import WarehouseInventoryBalanceReconciliationListData
 from app.schemas.warehouse import WarehouseMaterialRetentionReportData
 from app.schemas.warehouse import WarehouseMaterialRetentionReportItem
 from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
@@ -53,12 +59,16 @@ from app.schemas.warehouse import WarehouseStockEntryDraftItemData
 from app.schemas.warehouse import WarehouseStockEntryDraftListData
 from app.schemas.warehouse import WarehouseStockEntryOutboxStatusData
 from app.schemas.warehouse import WarehouseStockEntryWorkerRunOnceData
+from app.schemas.warehouse import WarehouseFinishedGoodsInboundItem
+from app.schemas.warehouse import WarehouseFinishedGoodsInboundListData
 from app.schemas.warehouse import WarehouseStockLedgerData
 from app.schemas.warehouse import WarehouseStockLedgerItem
 from app.schemas.warehouse import WarehouseManagementItem
 from app.schemas.warehouse import WarehouseMaterialInventoryItem
 from app.schemas.warehouse import WarehouseOtherInboundData
 from app.schemas.warehouse import WarehouseOtherInboundItem
+from app.schemas.warehouse import WarehousePurchaseReceiptItem
+from app.schemas.warehouse import WarehousePurchaseReceiptListData
 from app.schemas.warehouse import WarehousePurchaseReturnOutboundData
 from app.schemas.warehouse import WarehousePurchaseReturnOutboundItem
 from app.schemas.warehouse import WarehouseSemiFinishedOutboundData
@@ -264,6 +274,374 @@ class WarehouseService:
         item_code: str | None,
     ) -> WarehouseStockSummaryData:
         return self._local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+
+    def list_local_purchase_receipts(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        material_item_code: str | None,
+        supplier_name: str | None,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> WarehousePurchaseReceiptListData:
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_warehouse = self._text(warehouse)
+        normalized_item_code = self._text(item_code)
+        normalized_material_item_code = self._text(material_item_code)
+        normalized_supplier_name = self._text(supplier_name)
+        normalized_status = self._text(status)
+        try:
+            query = (
+                session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+                .join(
+                    LyWarehouseStockEntryDraftItem,
+                    LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+                )
+                .filter(
+                    LyWarehouseStockEntryDraft.status != "cancelled",
+                    LyWarehouseStockEntryDraft.purpose == "Material Receipt",
+                    LyWarehouseStockEntryDraft.source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE,
+                )
+            )
+            if normalized_company:
+                query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+            if normalized_warehouse:
+                query = query.filter(
+                    (LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
+                    | (LyWarehouseStockEntryDraftItem.target_warehouse == normalized_warehouse)
+                )
+            if normalized_item_code:
+                query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
+
+            rows = (
+                query.order_by(
+                    LyWarehouseStockEntryDraft.created_at.desc(),
+                    LyWarehouseStockEntryDraft.id.desc(),
+                    LyWarehouseStockEntryDraftItem.id.asc(),
+                )
+                .all()
+            )
+            purchase_nos = {self._purchase_no_from_source_id(str(draft.source_id)) for draft, _ in rows}
+            purchase_nos.discard(None)
+            orders = self._material_purchase_order_map(company=normalized_company, purchase_nos=purchase_nos)
+            order_lines = self._material_purchase_line_map(company=normalized_company, purchase_nos=purchase_nos)
+        except SQLAlchemyError as exc:
+            raise WarehouseServiceError(500, DATABASE_READ_FAILED, "采购入库读回失败") from exc
+
+        items: list[WarehousePurchaseReceiptItem] = []
+        for draft, line in rows:
+            purchase_no = self._purchase_no_from_source_id(str(draft.source_id)) or str(draft.source_id)
+            order = orders.get((str(draft.company), purchase_no))
+            order_line = order_lines.get((str(draft.company), purchase_no, str(line.item_code)))
+            row_material_item_code = str(order_line.material_item_code) if order_line is not None else str(line.item_code)
+            row_supplier_name = str(order.supplier_name) if order is not None else ""
+            row_status = self._local_stock_entry_readback_status(draft=draft)
+            if normalized_material_item_code and row_material_item_code != normalized_material_item_code:
+                continue
+            if normalized_supplier_name and row_supplier_name != normalized_supplier_name:
+                continue
+            if normalized_status and row_status != normalized_status:
+                continue
+            row_warehouse = self._text(line.target_warehouse) or self._text(draft.target_warehouse) or ""
+            items.append(
+                WarehousePurchaseReceiptItem(
+                    receipt_no=self._local_stock_receipt_no(draft=draft),
+                    purchase_no=purchase_no,
+                    company=str(draft.company),
+                    supplier_name=row_supplier_name,
+                    item_code=str(line.item_code),
+                    material_item_code=row_material_item_code,
+                    warehouse=row_warehouse,
+                    received_qty=Decimal(str(line.qty)),
+                    accepted_qty=Decimal(str(line.qty)),
+                    posting_date=self._local_draft_posting_date(draft=draft),
+                    status=row_status,
+                )
+            )
+
+        return self._paginate_purchase_receipts(items=items, page=page, page_size=page_size)
+
+    def list_local_finished_goods_inbound(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        reserve_status: str | None,
+        inbound_status: str | None,
+        page: int,
+        page_size: int,
+    ) -> WarehouseFinishedGoodsInboundListData:
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_warehouse = self._text(warehouse)
+        normalized_item_code = self._text(item_code)
+        normalized_reserve_status = self._text(reserve_status)
+        normalized_inbound_status = self._text(inbound_status)
+        try:
+            query = (
+                session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+                .join(
+                    LyWarehouseStockEntryDraftItem,
+                    LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+                )
+                .filter(
+                    LyWarehouseStockEntryDraft.status != "cancelled",
+                    LyWarehouseStockEntryDraft.source_type == self._FINISHED_GOODS_SOURCE_TYPE,
+                    LyWarehouseStockEntryDraft.purpose == "Material Receipt",
+                )
+            )
+            if normalized_company:
+                query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+            if normalized_warehouse:
+                query = query.filter(
+                    (LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
+                    | (LyWarehouseStockEntryDraftItem.target_warehouse == normalized_warehouse)
+                )
+            if normalized_item_code:
+                query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
+            rows = (
+                query.order_by(
+                    LyWarehouseStockEntryDraft.created_at.desc(),
+                    LyWarehouseStockEntryDraft.id.desc(),
+                    LyWarehouseStockEntryDraftItem.id.asc(),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise WarehouseServiceError(500, DATABASE_READ_FAILED, "成品入库读回失败") from exc
+
+        items: list[WarehouseFinishedGoodsInboundItem] = []
+        for draft, line in rows:
+            row_reserve_status = "reserved"
+            row_inbound_status = self._local_finished_goods_inbound_status(draft=draft)
+            if normalized_reserve_status and row_reserve_status != normalized_reserve_status:
+                continue
+            if normalized_inbound_status and row_inbound_status != normalized_inbound_status:
+                continue
+            posting_date = self._local_draft_posting_date(draft=draft)
+            qty = Decimal(str(line.qty))
+            items.append(
+                WarehouseFinishedGoodsInboundItem(
+                    reservation_no=str(draft.source_id),
+                    item_code=str(line.item_code),
+                    item_name=str(line.item_code),
+                    warehouse=self._text(line.target_warehouse) or self._text(draft.target_warehouse) or "",
+                    reserve_qty=qty,
+                    inbound_qty=qty,
+                    pending_inbound_qty=Decimal("0"),
+                    reserve_status=row_reserve_status,
+                    inbound_status=row_inbound_status,
+                    reserved_date=posting_date,
+                    expected_inbound_date=posting_date,
+                    owner=str(draft.created_by),
+                    ref_no=str(draft.source_id),
+                    company=str(draft.company),
+                )
+            )
+
+        return self._paginate_finished_goods_inbound(items=items, page=page, page_size=page_size)
+
+    def list_local_inventory_balance_reconciliation(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> WarehouseInventoryBalanceReconciliationListData:
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_warehouse = self._text(warehouse)
+        normalized_item_code = self._text(item_code)
+        normalized_status = self._text(status)
+        try:
+            query = (
+                session.query(LyWarehouseInventoryCount, LyWarehouseInventoryCountItem)
+                .join(
+                    LyWarehouseInventoryCountItem,
+                    LyWarehouseInventoryCountItem.count_id == LyWarehouseInventoryCount.id,
+                )
+                .filter(LyWarehouseInventoryCount.status != "cancelled")
+            )
+            if normalized_company:
+                query = query.filter(LyWarehouseInventoryCount.company == normalized_company)
+            if normalized_warehouse:
+                query = query.filter(LyWarehouseInventoryCount.warehouse == normalized_warehouse)
+            if normalized_item_code:
+                query = query.filter(LyWarehouseInventoryCountItem.item_code == normalized_item_code)
+            rows = (
+                query.order_by(
+                    LyWarehouseInventoryCount.count_date.desc(),
+                    LyWarehouseInventoryCount.id.desc(),
+                    LyWarehouseInventoryCountItem.id.asc(),
+                )
+                .all()
+            )
+            balance_map = self._local_stock_balance_map(company=company, warehouse=warehouse, item_code=item_code)
+        except SQLAlchemyError as exc:
+            raise WarehouseServiceError(500, DATABASE_READ_FAILED, "库存账实差异读回失败") from exc
+
+        items: list[WarehouseInventoryBalanceReconciliationItem] = []
+        for count, line in rows:
+            key = (str(count.company), str(count.warehouse), str(line.item_code))
+            book_qty = balance_map.get(key, Decimal("0"))
+            actual_qty = Decimal(str(line.counted_qty))
+            diff_qty = actual_qty - book_qty
+            row_status = self._inventory_reconciliation_status(count=count, line=line, diff_qty=diff_qty)
+            if normalized_status and row_status != normalized_status:
+                continue
+            items.append(
+                WarehouseInventoryBalanceReconciliationItem(
+                    company=str(count.company),
+                    warehouse=str(count.warehouse),
+                    item_code=str(line.item_code),
+                    book_qty=book_qty,
+                    actual_qty=actual_qty,
+                    diff_qty=diff_qty,
+                    status=row_status,
+                    biz_date=count.count_date,
+                    owner=self._text(count.reviewed_by) or self._text(count.submitted_by) or str(count.created_by),
+                    ref_no=str(count.count_no),
+                )
+            )
+
+        return self._paginate_inventory_reconciliation(items=items, page=page, page_size=page_size)
+
+    def _material_purchase_order_map(
+        self,
+        *,
+        company: str | None,
+        purchase_nos: set[str],
+    ) -> dict[tuple[str, str], LyMaterialPurchaseOrder]:
+        if not purchase_nos:
+            return {}
+        query = self._require_session().query(LyMaterialPurchaseOrder).filter(LyMaterialPurchaseOrder.purchase_no.in_(sorted(purchase_nos)))
+        if company:
+            query = query.filter(LyMaterialPurchaseOrder.company == company)
+        return {(str(row.company), str(row.purchase_no)): row for row in query.all()}
+
+    def _material_purchase_line_map(
+        self,
+        *,
+        company: str | None,
+        purchase_nos: set[str],
+    ) -> dict[tuple[str, str, str], LyMaterialPurchaseOrderItem]:
+        if not purchase_nos:
+            return {}
+        query = (
+            self._require_session()
+            .query(LyMaterialPurchaseOrder, LyMaterialPurchaseOrderItem)
+            .join(LyMaterialPurchaseOrderItem, LyMaterialPurchaseOrderItem.order_id == LyMaterialPurchaseOrder.id)
+            .filter(LyMaterialPurchaseOrder.purchase_no.in_(sorted(purchase_nos)))
+        )
+        if company:
+            query = query.filter(LyMaterialPurchaseOrder.company == company)
+        rows: dict[tuple[str, str, str], LyMaterialPurchaseOrderItem] = {}
+        for order, line in query.all():
+            base_key = (str(order.company), str(order.purchase_no))
+            rows[(*base_key, str(line.material_item_code))] = line
+            rows[(*base_key, str(line.item_code))] = line
+        return rows
+
+    @staticmethod
+    def _purchase_no_from_source_id(source_id: str) -> str | None:
+        normalized = WarehouseService._text(source_id)
+        if normalized is None:
+            return None
+        return normalized.rsplit(":", 1)[-1]
+
+    def _local_stock_entry_readback_status(self, *, draft: LyWarehouseStockEntryDraft) -> str:
+        outbox = self._latest_outbox_for_draft(int(draft.id))
+        if outbox is not None:
+            status = self._text(outbox.status)
+            if status == "succeeded":
+                return "received"
+            if status == "in_pending":
+                return "outbox_pending"
+            if status is not None:
+                return f"outbox_{status}"
+        return str(draft.status)
+
+    def _local_finished_goods_inbound_status(self, *, draft: LyWarehouseStockEntryDraft) -> str:
+        status = self._local_stock_entry_readback_status(draft=draft)
+        if status == "received":
+            return "received"
+        if status == "outbox_pending":
+            return "outbox_pending"
+        return status
+
+    def _local_stock_receipt_no(self, *, draft: LyWarehouseStockEntryDraft) -> str:
+        outbox = self._latest_outbox_for_draft(int(draft.id))
+        if outbox is not None:
+            external_ref = self._text(outbox.external_ref)
+            if external_ref is not None:
+                return external_ref
+        return f"LY-WH-PR-{int(draft.id)}"
+
+    def _local_stock_balance_map(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> dict[tuple[str, str, str], Decimal]:
+        summary = self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        return {(str(row.company), str(row.warehouse), str(row.item_code)): Decimal(str(row.actual_qty)) for row in summary.items}
+
+    @staticmethod
+    def _inventory_reconciliation_status(
+        *,
+        count: LyWarehouseInventoryCount,
+        line: LyWarehouseInventoryCountItem,
+        diff_qty: Decimal,
+    ) -> str:
+        if diff_qty == Decimal("0"):
+            return "balanced"
+        review_status = str(line.review_status)
+        if review_status == "accepted":
+            return "variance_accepted"
+        if review_status == "rejected":
+            return "variance_rejected"
+        if str(count.status) == "confirmed":
+            return "confirmed"
+        return "pending"
+
+    @staticmethod
+    def _paginate_purchase_receipts(
+        *,
+        items: list[WarehousePurchaseReceiptItem],
+        page: int,
+        page_size: int,
+    ) -> WarehousePurchaseReceiptListData:
+        start = max(page - 1, 0) * page_size
+        return WarehousePurchaseReceiptListData(items=items[start : start + page_size], total=len(items), page=page, page_size=page_size)
+
+    @staticmethod
+    def _paginate_finished_goods_inbound(
+        *,
+        items: list[WarehouseFinishedGoodsInboundItem],
+        page: int,
+        page_size: int,
+    ) -> WarehouseFinishedGoodsInboundListData:
+        start = max(page - 1, 0) * page_size
+        return WarehouseFinishedGoodsInboundListData(items=items[start : start + page_size], total=len(items), page=page, page_size=page_size)
+
+    @staticmethod
+    def _paginate_inventory_reconciliation(
+        *,
+        items: list[WarehouseInventoryBalanceReconciliationItem],
+        page: int,
+        page_size: int,
+    ) -> WarehouseInventoryBalanceReconciliationListData:
+        start = max(page - 1, 0) * page_size
+        return WarehouseInventoryBalanceReconciliationListData(items=items[start : start + page_size], total=len(items), page=page, page_size=page_size)
 
     def _local_stock_movements(
         self,

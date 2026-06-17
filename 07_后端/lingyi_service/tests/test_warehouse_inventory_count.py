@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import datetime
+from datetime import timezone
+from decimal import Decimal
 import os
 import unittest
 
@@ -19,6 +22,9 @@ from app.models.audit import LySecurityAuditLog
 from app.models.quality import Base as QualityBase
 from app.models.warehouse import LyWarehouseInventoryCount
 from app.models.warehouse import LyWarehouseInventoryCountItem
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
 
@@ -67,6 +73,9 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
+            session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyWarehouseInventoryCountItem).delete()
             session.query(LyWarehouseInventoryCount).delete()
             session.query(LyOperationAuditLog).delete()
@@ -128,6 +137,48 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
             ],
         }
 
+    def _seed_stock_balance(self, *, item_code: str = "ITEM-A", qty: str = "10") -> None:
+        created_at = datetime.combine(date(2026, 4, 19), datetime.min.time(), timezone.utc)
+        with self.SessionLocal() as session:
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="manual",
+                source_id=f"BAL-{item_code}",
+                source_warehouse=None,
+                target_warehouse="WH-A",
+                status="pending_outbox",
+                created_by="warehouse.counter",
+                created_at=created_at,
+                idempotency_key=f"idem-bal-{item_code}",
+                event_key=f"event-bal-{item_code}",
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=draft.id,
+                    company="COMP-A",
+                    item_code=item_code,
+                    qty=Decimal(qty),
+                    uom="Pcs",
+                    source_warehouse=None,
+                    target_warehouse="WH-A",
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryOutboxEvent(
+                    draft_id=draft.id,
+                    event_type="warehouse_stock_entry_sync",
+                    event_key=f"event-bal-{item_code}",
+                    payload={"business_date": "2026-04-19"},
+                    status="in_pending",
+                    retry_count=0,
+                    created_at=created_at,
+                )
+            )
+            session.commit()
+
 
 class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
     """Warehouse inventory-count state-machine contract."""
@@ -157,6 +208,30 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
                 .one()
             )
             self.assertEqual(audit.resource_no, data["count_no"])
+
+    def test_inventory_balance_reconciliation_reads_count_against_stock_movements(self) -> None:
+        self._seed_stock_balance(item_code="ITEM-A", qty="10")
+        create_count = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=self._payload(),
+        )
+        self.assertEqual(create_count.status_code, 201, create_count.text)
+
+        readback = self.client.get(
+            "/api/warehouse/inventory-balance-reconciliation?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(readback.status_code, 200, readback.text)
+        rows = readback.json()["data"]["items"]
+        self.assertEqual(readback.json()["data"]["total"], 1)
+        self.assertNotEqual(rows[0]["ref_no"], "INV-BAL-FR-001")
+        self.assertEqual(rows[0]["warehouse"], "WH-A")
+        self.assertEqual(rows[0]["item_code"], "ITEM-A")
+        self.assertEqual(Decimal(str(rows[0]["book_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(rows[0]["actual_qty"])), Decimal("8.000000"))
+        self.assertEqual(Decimal(str(rows[0]["diff_qty"])), Decimal("-2.000000"))
+        self.assertEqual(rows[0]["status"], "pending")
 
     def test_inventory_write_only_cannot_create_inventory_count(self) -> None:
         response = self.client.post(
