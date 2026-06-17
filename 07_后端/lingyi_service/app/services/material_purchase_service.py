@@ -275,6 +275,7 @@ class MaterialPurchaseService:
                     | (func.lower(LyMaterialPurchaseRequirement.material_item_code).like(like_value))
                     | (func.lower(LyMaterialPurchaseRequirement.material_name).like(like_value))
                     | (func.lower(LyMaterialPurchaseRequirement.supplier_name).like(like_value))
+                    | (func.lower(LyMaterialPurchaseRequirement.purchase_no).like(like_value))
                 )
             total = int(query.count())
             rows = (

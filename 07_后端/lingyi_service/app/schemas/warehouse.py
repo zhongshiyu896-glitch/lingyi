@@ -567,6 +567,7 @@ class WarehouseStockEntryDraftData(BaseModel):
     purpose: str
     source_type: str
     source_id: str
+    source_ref: str
     source_warehouse: str | None = None
     target_warehouse: str | None = None
     status: Literal["draft", "pending_outbox", "cancelled"]

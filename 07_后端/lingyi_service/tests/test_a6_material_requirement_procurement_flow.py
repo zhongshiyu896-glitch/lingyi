@@ -443,10 +443,17 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed",
             headers=self._headers(),
         )
+        list_after_receipt_by_purchase_no = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed&keyword={purchase_no}",
+            headers=self._headers(),
+        )
         self.assertEqual(list_after_receipt.status_code, 200, list_after_receipt.text)
         completed = list_after_receipt.json()["data"]["items"][0]
         self.assertTrue(completed["has_completed"])
         self.assertEqual(Decimal(str(completed["received_qty"])), Decimal("54.000000"))
+        self.assertEqual(list_after_receipt_by_purchase_no.status_code, 200, list_after_receipt_by_purchase_no.text)
+        self.assertEqual(list_after_receipt_by_purchase_no.json()["data"]["total"], 1)
+        self.assertEqual(list_after_receipt_by_purchase_no.json()["data"]["items"][0]["purchase_no"], purchase_no)
 
         with self.SessionLocal() as session:
             requirement_row = session.query(LyMaterialPurchaseRequirement).one()

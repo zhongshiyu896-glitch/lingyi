@@ -2481,6 +2481,7 @@ class WarehouseService:
             purpose=str(draft.purpose),
             source_type=str(draft.source_type),
             source_id=str(draft.source_id),
+            source_ref=str(draft.source_id),
             source_warehouse=self._text(draft.source_warehouse),
             target_warehouse=self._text(draft.target_warehouse),
             status=str(draft.status),

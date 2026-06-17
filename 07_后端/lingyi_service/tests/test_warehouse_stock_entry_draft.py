@@ -211,6 +211,7 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         body = response.json()["data"]
         self.assertEqual(body["status"], "pending_outbox")
         self.assertEqual(body["company"], "COMP-A")
+        self.assertEqual(body["source_ref"], self.SOURCE_REF)
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["outbox"]["status"], "in_pending")
 
