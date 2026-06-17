@@ -35,6 +35,8 @@ from app.data.frontend_readiness_seed import QUALITY_STATISTICS_SEED  # noqa: E4
 from app.data.frontend_readiness_seed import QUALITY_TREND_SEED  # noqa: E402
 from app.data.frontend_readiness_seed import WORK_ORDER_TRAIL_SEED  # noqa: E402
 from app.models.audit import Base as AuditBase  # noqa: E402
+from app.models.bom import Base as BomBase  # noqa: E402
+from app.models.bom import LyApparelBom  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.factory_statement import LyFactoryStatement  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
@@ -50,6 +52,9 @@ from app.models.sales_order import LySalesOrder  # noqa: E402
 from app.models.sales_order import LySalesOrderItem  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.style_profit import LyStyleProfitSnapshot  # noqa: E402
+from app.models.subcontract import Base as SubcontractBase  # noqa: E402
+from app.models.subcontract import LySubcontractInspection  # noqa: E402
+from app.models.subcontract import LySubcontractOrder  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCount  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCountItem  # noqa: E402
@@ -1047,6 +1052,142 @@ def _exercise_sales_delivery_payment_smoke(client: TestClient, session_local) ->
     _assert(Decimal(str(invoice_row["outstanding_amount"])) == Decimal("80.000000"), "sales invoice outstanding mismatch")
 
 
+def _exercise_factory_statement_payment_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
+    scenario = "Z003-FACTORY-STMT-20260617-601"
+    company = "COMP-FS-SMOKE"
+    supplier = "SUP-FS-SMOKE"
+    item_code = "ITEM-FS-SMOKE"
+    statement_headers = _headers(request_id=scenario)
+    statement_env = {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}
+
+    with session_local() as session:
+        session.add(
+            LyApparelBom(
+                id=601,
+                bom_no="BOM-FS-SMOKE-001",
+                item_code=item_code,
+                version_no="v1",
+                is_default=True,
+                status="active",
+                created_by="frontend.readiness.smoke",
+                updated_by="frontend.readiness.smoke",
+            )
+        )
+        subcontract = LySubcontractOrder(
+            id=601,
+            subcontract_no="SC-FS-SMOKE-001",
+            supplier=supplier,
+            item_code=item_code,
+            company=company,
+            bom_id=601,
+            process_name="外发车缝",
+            planned_qty=Decimal("80"),
+            status="processing",
+        )
+        session.add(subcontract)
+        session.flush()
+        session.add(
+            LySubcontractInspection(
+                id=601,
+                subcontract_id=int(subcontract.id),
+                company=company,
+                inspection_no="SIN-FS-SMOKE-001",
+                item_code=item_code,
+                inspected_qty=Decimal("80"),
+                rejected_qty=Decimal("4"),
+                accepted_qty=Decimal("76"),
+                rejected_rate=Decimal("0.05"),
+                subcontract_rate=Decimal("18"),
+                gross_amount=Decimal("1440"),
+                deduction_amount=Decimal("72"),
+                net_amount=Decimal("1368"),
+                settlement_status="unsettled",
+                status="inspected",
+                inspected_by="frontend.readiness.smoke",
+                inspected_at=datetime(2026, 6, 17, 9, 0, 0),
+                settlement_line_key="subcontract_inspection:fs-smoke-601",
+            )
+        )
+        session.commit()
+
+    create_payload = {
+        "company": company,
+        "supplier": supplier,
+        "from_date": "2026-06-17",
+        "to_date": "2026-06-17",
+        "idempotency_key": f"{scenario}-IDEMP-CREATE",
+        "scenario_tag": scenario,
+    }
+    with patch.dict("os.environ", statement_env):
+        created = client.post("/api/factory-statements/", headers=statement_headers, json=create_payload)
+    _assert(created.status_code == 200, created.text)
+    created_data = created.json()["data"]
+    statement_id = int(created_data["statement_id"])
+    statement_no = str(created_data["statement_no"])
+    _assert(created_data["source_count"] == 1, "factory statement source_count mismatch")
+    _assert(Decimal(str(created_data["net_amount"])) == Decimal("1368.000000"), "factory statement net_amount mismatch")
+
+    confirm_payload = {
+        "scenario_tag": scenario,
+        "company": company,
+        "supplier": supplier,
+        "statement_no": statement_no,
+        "idempotency_key": f"{scenario}-IDEMP-CONFIRM",
+        "remark": "acceptance-smoke confirm",
+    }
+    with patch.dict("os.environ", statement_env):
+        confirmed = client.post(
+            f"/api/factory-statements/{statement_id}/confirm",
+            headers=statement_headers,
+            json=confirm_payload,
+        )
+    _assert(confirmed.status_code == 200, confirmed.text)
+    _assert(confirmed.json()["data"]["status"] == "confirmed", "factory statement confirm status mismatch")
+
+    payment_payload = {
+        "scenario_tag": scenario,
+        "company": company,
+        "supplier": supplier,
+        "statement_no": statement_no,
+        "posting_date": "2026-06-17",
+        "paid_amount": "500",
+        "mode_of_payment": "Bank Transfer",
+        "reference_no": f"{scenario}-BANK-001",
+        "reference_date": "2026-06-17",
+        "payment_entry": "FSP-SMOKE-001",
+        "source_ref": f"{scenario}-SRC-PAYMENT-001",
+        "idempotency_key": f"{scenario}-IDEMP-PAYMENT-001",
+        "operation": "create_payment_entry",
+    }
+    with patch.dict("os.environ", statement_env):
+        paid = client.post(
+            f"/api/factory-statements/{statement_id}/payments",
+            headers=statement_headers,
+            json=payment_payload,
+        )
+    _assert(paid.status_code == 201, paid.text)
+    paid_data = paid.json()["data"]
+    _assert(Decimal(str(paid_data["outstanding_before"])) == Decimal("1368.000000"), "factory payment outstanding_before mismatch")
+    _assert(Decimal(str(paid_data["outstanding_after"])) == Decimal("868.000000"), "factory payment outstanding_after mismatch")
+
+    payments = client.get(
+        f"/api/factory-statements/payments?statement_no={statement_no}&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(payments.status_code == 200, payments.text)
+    _assert(payments.json()["data"]["items"][0]["payment_entry"] == "FSP-SMOKE-001", "factory payment readback missing")
+
+    statements = client.get(
+        f"/api/factory-statements/?company={company}&supplier={supplier}&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(statements.status_code == 200, statements.text)
+    statement_row = statements.json()["data"]["items"][0]
+    _assert(statement_row["payment_status"] == "partly_paid", "factory statement payment status mismatch")
+    _assert(Decimal(str(statement_row["paid_amount"])) == Decimal("500.000000"), "factory statement paid amount mismatch")
+    _assert(Decimal(str(statement_row["outstanding_amount"])) == Decimal("868.000000"), "factory statement outstanding mismatch")
+
+
 def main() -> int:
     engine = create_engine(
         "sqlite+pysqlite://",
@@ -1057,6 +1198,8 @@ def main() -> int:
     )
     session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     AuditBase.metadata.create_all(bind=engine)
+    BomBase.metadata.create_all(bind=engine)
+    SubcontractBase.metadata.create_all(bind=engine)
     ProductionBase.metadata.create_all(bind=engine)
     QualityBase.metadata.create_all(bind=engine)
     StyleProfitBase.metadata.create_all(bind=engine)
@@ -1414,6 +1557,7 @@ def main() -> int:
         _exercise_quality_smoke(client)
         _exercise_workshop_smoke(client)
         _exercise_sales_delivery_payment_smoke(client, session_local)
+        _exercise_factory_statement_payment_smoke(client, session_local)
 
         order_rows = [
             {
