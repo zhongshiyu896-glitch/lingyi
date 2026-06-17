@@ -20,11 +20,14 @@ from app.core.error_codes import MATERIAL_PURCHASE_CONFLICT
 from app.core.error_codes import MATERIAL_PURCHASE_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import MATERIAL_PURCHASE_NOT_FOUND
 from app.core.exceptions import BusinessException
+from app.models.bom import LyApparelBomItem
 from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchasePayment
+from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.production import LyProductionPlanMaterial
 from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseInvoiceData
 from app.schemas.material_purchase import MaterialPurchaseInvoiceListData
@@ -35,6 +38,10 @@ from app.schemas.material_purchase import MaterialPurchaseOrderListItem
 from app.schemas.material_purchase import MaterialPurchasePaymentCreateRequest
 from app.schemas.material_purchase import MaterialPurchasePaymentData
 from app.schemas.material_purchase import MaterialPurchasePaymentListData
+from app.schemas.material_purchase import MaterialPurchaseRequirementListData
+from app.schemas.material_purchase import MaterialPurchaseRequirementListItem
+from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderData
+from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderRequest
 
 
 @dataclass(frozen=True)
@@ -66,6 +73,18 @@ class PurchasePaymentMutationResult:
     """Purchase payment mutation result with audit snapshots."""
 
     item: MaterialPurchasePaymentData
+    before: dict[str, Any] | None
+    after: dict[str, Any]
+    resource_id: int
+    resource_no: str
+    idempotent: bool = False
+
+
+@dataclass(frozen=True)
+class PurchaseRequirementOrderMutationResult:
+    """Purchase order created from material requirement pool rows."""
+
+    item: MaterialPurchaseRequirementToOrderData
     before: dict[str, Any] | None
     after: dict[str, Any]
     resource_id: int
@@ -225,6 +244,286 @@ class MaterialPurchaseService:
             resource_no=str(row.purchase_no),
         )
 
+    def list_requirements(
+        self,
+        *,
+        company: str | None,
+        keyword: str | None,
+        material_item_code: str | None,
+        status: str | None,
+        page: int,
+        page_size: int,
+    ) -> MaterialPurchaseRequirementListData:
+        try:
+            query = self.session.query(LyMaterialPurchaseRequirement)
+            normalized_company = self._optional_text(company)
+            if normalized_company:
+                query = query.filter(LyMaterialPurchaseRequirement.company == normalized_company)
+            normalized_material = self._optional_text(material_item_code)
+            if normalized_material:
+                query = query.filter(LyMaterialPurchaseRequirement.material_item_code == normalized_material)
+            normalized_status = self._optional_text(status)
+            if normalized_status and normalized_status != "all":
+                query = query.filter(LyMaterialPurchaseRequirement.status == normalized_status)
+            normalized_keyword = self._optional_text(keyword)
+            if normalized_keyword:
+                like_value = f"%{normalized_keyword.lower()}%"
+                query = query.filter(
+                    (func.lower(LyMaterialPurchaseRequirement.requirement_no).like(like_value))
+                    | (func.lower(LyMaterialPurchaseRequirement.source_no).like(like_value))
+                    | (func.lower(LyMaterialPurchaseRequirement.sales_order).like(like_value))
+                    | (func.lower(LyMaterialPurchaseRequirement.material_item_code).like(like_value))
+                    | (func.lower(LyMaterialPurchaseRequirement.material_name).like(like_value))
+                    | (func.lower(LyMaterialPurchaseRequirement.supplier_name).like(like_value))
+                )
+            total = int(query.count())
+            rows = (
+                query.order_by(
+                    LyMaterialPurchaseRequirement.status.asc(),
+                    LyMaterialPurchaseRequirement.created_at.desc(),
+                    LyMaterialPurchaseRequirement.id.desc(),
+                )
+                .offset(max(page - 1, 0) * page_size)
+                .limit(page_size)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return MaterialPurchaseRequirementListData(
+            items=[self._requirement_item(row) for row in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def sync_requirements_from_production_plan(self, *, plan: Any, actor: str) -> list[MaterialPurchaseRequirementListItem]:
+        """Upsert material requirement pool rows from a production material check."""
+        try:
+            snapshots = (
+                self.session.query(LyProductionPlanMaterial)
+                .filter(LyProductionPlanMaterial.plan_id == int(plan.id))
+                .order_by(LyProductionPlanMaterial.id.asc())
+                .all()
+            )
+            bom_item_ids = [int(row.bom_item_id) for row in snapshots if row.bom_item_id is not None]
+            bom_items = {}
+            if bom_item_ids:
+                bom_items = {
+                    int(row.id): row
+                    for row in self.session.query(LyApparelBomItem)
+                    .filter(LyApparelBomItem.id.in_(bom_item_ids))
+                    .all()
+                }
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+
+        synced: list[LyMaterialPurchaseRequirement] = []
+        now = datetime.now(UTC)
+        try:
+            for snapshot in snapshots:
+                material_code = self._require_text(snapshot.material_item_code, "material_item_code")
+                warehouse = self._require_text(snapshot.warehouse, "warehouse")
+                required_qty = Decimal(str(snapshot.required_qty or 0))
+                available_qty = Decimal(str(snapshot.available_qty or 0))
+                net_required_qty = max(Decimal("0"), required_qty - available_qty)
+                bom_item = bom_items.get(int(snapshot.bom_item_id)) if snapshot.bom_item_id is not None else None
+                existing = self._get_requirement_by_source(
+                    company=str(plan.company),
+                    source_type="production_plan",
+                    source_id=str(plan.id),
+                    bom_item_id=(int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None),
+                    material_item_code=material_code,
+                    warehouse=warehouse,
+                )
+                row = existing
+                if row is None:
+                    row = LyMaterialPurchaseRequirement(
+                        company=str(plan.company),
+                        requirement_no=self._next_requirement_no(plan_id=int(plan.id), material_item_code=material_code),
+                        source_type="production_plan",
+                        source_id=str(plan.id),
+                        source_no=str(plan.plan_no),
+                        plan_id=int(plan.id),
+                        bom_item_id=(int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None),
+                        material_item_code=material_code,
+                        warehouse=warehouse,
+                        created_by=actor,
+                    )
+                    self.session.add(row)
+                row.source_no = str(plan.plan_no)
+                row.sales_order = self._optional_text(plan.sales_order)
+                row.sales_order_item = self._optional_text(plan.sales_order_item)
+                row.item_code = self._optional_text(plan.item_code)
+                row.material_name = material_code
+                row.supplier_name = self._extract_supplier_from_remark(bom_item.remark if bom_item is not None else None)
+                row.required_qty = required_qty
+                row.available_qty = available_qty
+                row.net_required_qty = net_required_qty
+                row.uom = str(getattr(bom_item, "uom", None) or "米")
+                row.unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+                row.payload = {
+                    "qty_per_piece": str(snapshot.qty_per_piece or 0),
+                    "loss_rate": str(snapshot.loss_rate or 0),
+                    "checked_at": snapshot.checked_at.isoformat() if snapshot.checked_at else None,
+                }
+                row.updated_by = actor
+                row.updated_at = now
+                if str(row.status) in {"pending", "completed"}:
+                    row.purchased_qty = Decimal("0")
+                    row.received_qty = Decimal("0")
+                    row.purchase_order_id = None
+                    row.purchase_order_item_id = None
+                    row.purchase_no = None
+                    row.status = "completed" if net_required_qty == Decimal("0") else "pending"
+                elif str(row.status) == "purchased":
+                    purchased_qty = Decimal(str(row.purchased_qty or 0))
+                    received_qty = Decimal(str(row.received_qty or 0))
+                    row.status = "completed" if purchased_qty > Decimal("0") and received_qty >= purchased_qty else "purchased"
+                synced.append(row)
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        return [self._requirement_item(row) for row in synced]
+
+    def create_order_from_requirements(
+        self,
+        *,
+        payload: MaterialPurchaseRequirementToOrderRequest,
+        actor: str,
+    ) -> PurchaseRequirementOrderMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        requirement_ids = sorted({int(row_id) for row_id in payload.requirement_ids})
+        if not requirement_ids:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="requirement_ids 不能为空")
+        requested_purchase_no = self._optional_text(payload.purchase_no)
+        requested_supplier = self._optional_text(payload.supplier_name)
+        request_hash = self._mutation_hash(
+            {
+                "operation": "create_order_from_requirements",
+                "company": company,
+                "requirement_ids": requirement_ids,
+                "supplier_name": requested_supplier,
+                "purchase_no": requested_purchase_no,
+                "transaction_date": payload.transaction_date.isoformat() if payload.transaction_date else None,
+                "expected_delivery_date": payload.expected_delivery_date.isoformat() if payload.expected_delivery_date else None,
+                "currency": self._optional_text(payload.currency) or "CNY",
+                "group_by_material": bool(payload.group_by_material),
+            }
+        )
+
+        existing_idem = self._get_idempotency(company=company, idempotency_key=idempotency_key)
+        if existing_idem is not None:
+            if str(existing_idem.operation) != "create_from_requirements" or str(existing_idem.request_hash) != request_hash:
+                raise BusinessException(code=MATERIAL_PURCHASE_IDEMPOTENCY_CONFLICT, message="采购需求生成采购单幂等键重复但载荷不一致")
+            order = self._get_order_by_id(int(existing_idem.record_id))
+            data = self._requirement_order_data(order=order, requirements=self._requirements_by_ids(company=company, requirement_ids=requirement_ids))
+            snapshot = data.model_dump(mode="json")
+            return PurchaseRequirementOrderMutationResult(
+                item=data,
+                before=snapshot,
+                after=snapshot,
+                resource_id=int(order.id),
+                resource_no=str(order.purchase_no),
+                idempotent=True,
+            )
+
+        requirements = self._requirements_by_ids(company=company, requirement_ids=requirement_ids, for_update=True)
+        if len(requirements) != len(requirement_ids):
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="待采购需求不存在")
+        for row in requirements:
+            if str(row.status) != "pending":
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"需求 {row.requirement_no} 不是待采购状态")
+            if Decimal(str(row.net_required_qty or 0)) <= Decimal("0"):
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"需求 {row.requirement_no} 无净需求")
+
+        purchase_no = requested_purchase_no or self._next_purchase_no()
+        if self._get_order_by_no(company=company, purchase_no=purchase_no) is not None:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"{purchase_no} 已存在")
+
+        supplier_name = requested_supplier or self._optional_text(requirements[0].supplier_name) or "未指定供应商"
+        grouped = self._group_requirements_for_order(requirements=requirements, group_by_material=payload.group_by_material)
+        total_qty = Decimal("0")
+        total_amount = Decimal("0")
+        try:
+            order = LyMaterialPurchaseOrder(
+                company=company,
+                purchase_no=purchase_no,
+                supplier_name=supplier_name,
+                transaction_date=payload.transaction_date,
+                expected_delivery_date=payload.expected_delivery_date,
+                status="draft",
+                total_qty=Decimal("0"),
+                received_qty=Decimal("0"),
+                total_amount=Decimal("0"),
+                currency=self._optional_text(payload.currency) or "CNY",
+                created_by=actor,
+                updated_by=actor,
+            )
+            self.session.add(order)
+            self.session.flush()
+
+            line_requirements: list[tuple[LyMaterialPurchaseOrderItem, list[LyMaterialPurchaseRequirement]]] = []
+            for bucket in grouped:
+                qty = Decimal(str(bucket["qty"]))
+                unit_price = Decimal(str(bucket["unit_price"]))
+                amount = qty * unit_price
+                total_qty += qty
+                total_amount += amount
+                line = LyMaterialPurchaseOrderItem(
+                    order_id=int(order.id),
+                    company=company,
+                    item_code=str(bucket["material_item_code"]),
+                    material_item_code=str(bucket["material_item_code"]),
+                    material_name=str(bucket["material_name"]),
+                    qty=qty,
+                    received_qty=Decimal("0"),
+                    uom=str(bucket["uom"]),
+                    unit_price=unit_price,
+                    amount=amount,
+                    warehouse=self._optional_text(bucket["warehouse"]),
+                )
+                self.session.add(line)
+                self.session.flush()
+                line_requirements.append((line, bucket["requirements"]))
+
+            order.total_qty = total_qty
+            order.total_amount = total_amount
+            for line, bucket_requirements in line_requirements:
+                for requirement in bucket_requirements:
+                    requirement.status = "purchased"
+                    requirement.purchased_qty = Decimal(str(requirement.net_required_qty or 0))
+                    requirement.received_qty = Decimal("0")
+                    requirement.purchase_order_id = int(order.id)
+                    requirement.purchase_order_item_id = int(line.id)
+                    requirement.purchase_no = purchase_no
+                    requirement.updated_by = actor
+                    requirement.updated_at = datetime.now(UTC)
+
+            data = self._requirement_order_data(order=order, requirements=requirements)
+            self.session.add(
+                LyMaterialPurchaseIdempotency(
+                    company=company,
+                    idempotency_key=idempotency_key,
+                    operation="create_from_requirements",
+                    request_hash=request_hash,
+                    record_id=int(order.id),
+                    response_data=data.model_dump(mode="json"),
+                    created_by=actor,
+                )
+            )
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+
+        return PurchaseRequirementOrderMutationResult(
+            item=data,
+            before=None,
+            after=data.model_dump(mode="json"),
+            resource_id=int(order.id),
+            resource_no=str(order.purchase_no),
+        )
+
     def apply_receipt(
         self,
         *,
@@ -251,6 +550,7 @@ class MaterialPurchaseService:
         total_received = sum(Decimal(str(line.received_qty or 0)) for line in lines)
         order.received_qty = total_received
         order.status = "received" if total_received >= Decimal(str(order.total_qty or 0)) else "partially_received"
+        self._apply_requirement_receipts(order=order, lines=lines)
         self.session.flush()
 
     def list_purchase_invoices(
@@ -647,6 +947,17 @@ class MaterialPurchaseService:
             items=[self._list_item(row, line) for line in lines],
         )
 
+    def _requirement_order_data(
+        self,
+        *,
+        order: LyMaterialPurchaseOrder,
+        requirements: list[LyMaterialPurchaseRequirement],
+    ) -> MaterialPurchaseRequirementToOrderData:
+        return MaterialPurchaseRequirementToOrderData(
+            purchase_order=self._create_data(row=order, idempotency_key=""),
+            requirements=[self._requirement_item(row) for row in requirements],
+        )
+
     def _list_item(self, order: LyMaterialPurchaseOrder, line: LyMaterialPurchaseOrderItem) -> MaterialPurchaseOrderListItem:
         return MaterialPurchaseOrderListItem(
             id=int(line.id),
@@ -725,6 +1036,40 @@ class MaterialPurchaseService:
             created_at=row.created_at,
         )
 
+    def _requirement_item(self, row: LyMaterialPurchaseRequirement) -> MaterialPurchaseRequirementListItem:
+        net_required = Decimal(str(row.net_required_qty or 0))
+        received_qty = Decimal(str(row.received_qty or 0))
+        has_completed = net_required == Decimal("0") or received_qty >= net_required or str(row.status) == "completed"
+        return MaterialPurchaseRequirementListItem(
+            id=int(row.id),
+            company=str(row.company),
+            requirement_no=str(row.requirement_no),
+            source_type=str(row.source_type),
+            source_id=str(row.source_id),
+            source_no=self._optional_text(row.source_no),
+            plan_id=(int(row.plan_id) if row.plan_id is not None else None),
+            bom_item_id=(int(row.bom_item_id) if row.bom_item_id is not None else None),
+            sales_order=self._optional_text(row.sales_order),
+            sales_order_item=self._optional_text(row.sales_order_item),
+            item_code=self._optional_text(row.item_code),
+            material_item_code=str(row.material_item_code),
+            material_name=str(row.material_name or row.material_item_code),
+            supplier_name=self._optional_text(row.supplier_name),
+            warehouse=str(row.warehouse),
+            required_qty=Decimal(str(row.required_qty or 0)),
+            available_qty=Decimal(str(row.available_qty or 0)),
+            net_required_qty=net_required,
+            purchased_qty=Decimal(str(row.purchased_qty or 0)),
+            received_qty=received_qty,
+            uom=str(row.uom or "米"),
+            unit_price=Decimal(str(row.unit_price or 0)),
+            status=str(row.status),  # type: ignore[arg-type]
+            has_completed=has_completed,
+            purchase_no=self._optional_text(row.purchase_no),
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
     def _get_order_by_no(self, *, company: str, purchase_no: str) -> LyMaterialPurchaseOrder | None:
         return (
             self.session.query(LyMaterialPurchaseOrder)
@@ -745,6 +1090,134 @@ class MaterialPurchaseService:
             .order_by(LyMaterialPurchaseOrderItem.id.asc())
             .all()
         )
+
+    def _requirements_by_ids(
+        self,
+        *,
+        company: str,
+        requirement_ids: list[int],
+        for_update: bool = False,
+    ) -> list[LyMaterialPurchaseRequirement]:
+        query = (
+            self.session.query(LyMaterialPurchaseRequirement)
+            .filter(
+                LyMaterialPurchaseRequirement.company == company,
+                LyMaterialPurchaseRequirement.id.in_(requirement_ids),
+            )
+            .order_by(LyMaterialPurchaseRequirement.id.asc())
+        )
+        if for_update:
+            query = query.with_for_update()
+        return query.all()
+
+    def _get_requirement_by_source(
+        self,
+        *,
+        company: str,
+        source_type: str,
+        source_id: str,
+        bom_item_id: int | None,
+        material_item_code: str,
+        warehouse: str,
+    ) -> LyMaterialPurchaseRequirement | None:
+        query = self.session.query(LyMaterialPurchaseRequirement).filter(
+            LyMaterialPurchaseRequirement.company == company,
+            LyMaterialPurchaseRequirement.source_type == source_type,
+            LyMaterialPurchaseRequirement.source_id == source_id,
+            LyMaterialPurchaseRequirement.material_item_code == material_item_code,
+            LyMaterialPurchaseRequirement.warehouse == warehouse,
+        )
+        if bom_item_id is None:
+            query = query.filter(LyMaterialPurchaseRequirement.bom_item_id.is_(None))
+        else:
+            query = query.filter(LyMaterialPurchaseRequirement.bom_item_id == bom_item_id)
+        return query.first()
+
+    def _group_requirements_for_order(
+        self,
+        *,
+        requirements: list[LyMaterialPurchaseRequirement],
+        group_by_material: bool,
+    ) -> list[dict[str, Any]]:
+        grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
+        for requirement in requirements:
+            if group_by_material:
+                key = (
+                    str(requirement.material_item_code),
+                    str(requirement.uom or "米"),
+                    str(requirement.warehouse),
+                )
+            else:
+                key = (int(requirement.id),)
+            bucket = grouped.setdefault(
+                key,
+                {
+                    "material_item_code": str(requirement.material_item_code),
+                    "material_name": str(requirement.material_name or requirement.material_item_code),
+                    "uom": str(requirement.uom or "米"),
+                    "warehouse": str(requirement.warehouse),
+                    "unit_price": Decimal(str(requirement.unit_price or 0)),
+                    "qty": Decimal("0"),
+                    "requirements": [],
+                },
+            )
+            if Decimal(str(bucket["unit_price"])) == Decimal("0") and Decimal(str(requirement.unit_price or 0)) > Decimal("0"):
+                bucket["unit_price"] = Decimal(str(requirement.unit_price or 0))
+            bucket["qty"] = Decimal(str(bucket["qty"])) + Decimal(str(requirement.net_required_qty or 0))
+            bucket["requirements"].append(requirement)
+        return list(grouped.values())
+
+    def _apply_requirement_receipts(
+        self,
+        *,
+        order: LyMaterialPurchaseOrder,
+        lines: list[LyMaterialPurchaseOrderItem],
+    ) -> None:
+        for line in lines:
+            requirements = (
+                self.session.query(LyMaterialPurchaseRequirement)
+                .filter(
+                    LyMaterialPurchaseRequirement.company == str(order.company),
+                    LyMaterialPurchaseRequirement.purchase_order_item_id == int(line.id),
+                )
+                .order_by(LyMaterialPurchaseRequirement.id.asc())
+                .all()
+            )
+            if not requirements:
+                continue
+            remaining_received = Decimal(str(line.received_qty or 0))
+            for requirement in requirements:
+                purchased_qty = Decimal(str(requirement.purchased_qty or requirement.net_required_qty or 0))
+                allocated = min(purchased_qty, max(remaining_received, Decimal("0")))
+                requirement.received_qty = allocated
+                requirement.status = "completed" if allocated >= purchased_qty else "purchased"
+                requirement.updated_by = str(order.updated_by or order.created_by)
+                requirement.updated_at = datetime.now(UTC)
+                self._update_production_material_from_requirement(requirement=requirement)
+                remaining_received -= allocated
+
+    def _update_production_material_from_requirement(self, *, requirement: LyMaterialPurchaseRequirement) -> None:
+        if requirement.plan_id is None:
+            return
+        query = self.session.query(LyProductionPlanMaterial).filter(
+            LyProductionPlanMaterial.plan_id == int(requirement.plan_id),
+            LyProductionPlanMaterial.material_item_code == str(requirement.material_item_code),
+            LyProductionPlanMaterial.warehouse == str(requirement.warehouse),
+        )
+        if requirement.bom_item_id is None:
+            query = query.filter(LyProductionPlanMaterial.bom_item_id.is_(None))
+        else:
+            query = query.filter(LyProductionPlanMaterial.bom_item_id == int(requirement.bom_item_id))
+        snapshot = query.first()
+        if snapshot is None:
+            return
+        required_qty = Decimal(str(snapshot.required_qty or requirement.required_qty or 0))
+        effective_available = min(
+            required_qty,
+            Decimal(str(requirement.available_qty or 0)) + Decimal(str(requirement.received_qty or 0)),
+        )
+        snapshot.available_qty = effective_available
+        snapshot.shortage_qty = max(Decimal("0"), required_qty - effective_available)
 
     def _select_invoice_line(
         self,
@@ -871,6 +1344,11 @@ class MaterialPurchaseService:
         return f"PO-{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')}"
 
     @staticmethod
+    def _next_requirement_no(*, plan_id: int, material_item_code: str) -> str:
+        digest = hashlib.sha1(f"{plan_id}:{material_item_code}:{datetime.now(UTC).isoformat()}".encode("utf-8")).hexdigest()[:8]
+        return f"MR-{plan_id}-{digest}".upper()
+
+    @staticmethod
     def _next_purchase_invoice() -> str:
         return f"PI-{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')}"
 
@@ -902,3 +1380,28 @@ class MaterialPurchaseService:
         if text is None:
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"{field_name} 不能为空")
         return text
+
+    @staticmethod
+    def _extract_supplier_from_remark(remark: str | None) -> str | None:
+        text = (remark or "").strip()
+        if not text:
+            return None
+        import re
+
+        matcher = re.search(r"(?:供应商|supplier)\s*[:：=]\s*([^\s,;，；]+)", text, re.IGNORECASE)
+        if matcher is None:
+            return None
+        value = matcher.group(1).strip()
+        return value or None
+
+    @staticmethod
+    def _extract_unit_price_from_remark(remark: str | None) -> Decimal:
+        text = (remark or "").strip()
+        if not text:
+            return Decimal("0")
+        import re
+
+        matcher = re.search(r"(?:单价|unit_price)\s*[:：=]\s*([0-9]+(?:\.[0-9]+)?)", text, re.IGNORECASE)
+        if matcher is None:
+            return Decimal("0")
+        return Decimal(matcher.group(1))

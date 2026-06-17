@@ -22,8 +22,10 @@ from app.core.permissions import MATERIAL_PURCHASE_WRITE
 from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseOrderCreateRequest
 from app.schemas.material_purchase import MaterialPurchasePaymentCreateRequest
+from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderRequest
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
+from app.services.material_purchase_service import PurchaseRequirementOrderMutationResult
 from app.services.material_purchase_service import MaterialPurchaseService
 from app.services.permission_service import PermissionService
 
@@ -100,6 +102,39 @@ def list_material_purchase_orders(
     return _ok(data)
 
 
+@router.get("/requirements")
+def list_material_purchase_requirements(
+    request: Request,
+    company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    material_item_code: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_REQUIREMENT",
+    )
+    try:
+        data = MaterialPurchaseService(session).list_requirements(
+            company=company,
+            keyword=keyword,
+            material_item_code=material_item_code,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(data)
+
+
 @router.post("/orders")
 def create_material_purchase_order(
     payload: MaterialPurchaseOrderCreateRequest,
@@ -141,6 +176,62 @@ def create_material_purchase_order(
             operator=current_user.username,
             operator_roles=current_user.roles,
             resource_type="MATERIAL_PURCHASE_ORDER",
+            resource_id=None,
+            resource_no=payload.purchase_no,
+            before_data=None,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        return _err(exc)
+    return _created(result.item)
+
+
+@router.post("/orders/from-requirements")
+def create_material_purchase_order_from_requirements(
+    payload: MaterialPurchaseRequirementToOrderRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MATERIAL_PURCHASE_WRITE,
+        resource_type="MATERIAL_PURCHASE_REQUIREMENT",
+    )
+    audit = AuditService(session)
+    try:
+        result: PurchaseRequirementOrderMutationResult = MaterialPurchaseService(session).create_order_from_requirements(
+            payload=payload,
+            actor=current_user.username,
+        )
+        audit.record_success(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_REQUIREMENT",
+            resource_id=result.resource_id,
+            resource_no=result.resource_no,
+            before_data=result.before,
+            after_data=result.after,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except AuditWriteFailed as exc:
+        session.rollback()
+        return _err(exc)
+    except AppException as exc:
+        session.rollback()
+        audit.record_failure(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_REQUIREMENT",
             resource_id=None,
             resource_no=payload.purchase_no,
             before_data=None,

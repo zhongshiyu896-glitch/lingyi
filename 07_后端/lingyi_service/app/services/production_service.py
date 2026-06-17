@@ -54,6 +54,8 @@ from app.models.sample import LySampleOrder
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.style_profit import LyStyleProfitSnapshot
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionFollowupTemplateListData
@@ -88,6 +90,7 @@ from app.schemas.production import ProductionSalesForecastQuery
 from app.schemas.production import ProductionSalespersonPerformanceListData
 from app.schemas.production import ProductionSalespersonPerformanceListItem
 from app.schemas.production import ProductionSalespersonPerformanceQuery
+from app.services.material_purchase_service import MaterialPurchaseService
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionSyncJobCardsRequest
 from app.schemas.production import ProductionTrackingReconcileGenerateData
@@ -2171,18 +2174,28 @@ class ProductionService:
         snapshot_items: list[ProductionPlanMaterialSnapshotItem] = []
         checked_at = datetime.utcnow()
         planned_qty = Decimal(str(plan.planned_qty))
+        available_budget: dict[tuple[str, str, str], Decimal] = {}
         for row in bom_rows:
             qty_per_piece = Decimal(str(row.qty_per_piece))
             loss_rate = Decimal(str(row.loss_rate or 0))
             required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
-            available_qty = Decimal("0")
+            material_item_code = str(row.material_item_code)
+            availability_key = (str(plan.company), warehouse, material_item_code)
+            if availability_key not in available_budget:
+                available_budget[availability_key] = self._local_material_stock_balance(
+                    company=str(plan.company),
+                    item_code=material_item_code,
+                    warehouse=warehouse,
+                )
+            available_qty = min(required_qty, max(available_budget[availability_key], Decimal("0")))
+            available_budget[availability_key] -= available_qty
             shortage_qty = max(Decimal("0"), required_qty - available_qty)
 
             self.session.add(
                 LyProductionPlanMaterial(
                     plan_id=int(plan.id),
                     bom_item_id=int(row.id),
-                    material_item_code=str(row.material_item_code),
+                    material_item_code=material_item_code,
                     warehouse=warehouse,
                     qty_per_piece=qty_per_piece,
                     loss_rate=loss_rate,
@@ -2195,7 +2208,7 @@ class ProductionService:
             snapshot_items.append(
                 ProductionPlanMaterialSnapshotItem(
                     bom_item_id=int(row.id),
-                    material_item_code=str(row.material_item_code),
+                    material_item_code=material_item_code,
                     warehouse=warehouse,
                     qty_per_piece=qty_per_piece,
                     loss_rate=loss_rate,
@@ -2209,6 +2222,8 @@ class ProductionService:
         previous = str(plan.status)
         plan.status = "material_checked"
         self._mark_native_sales_order_item_material_checked(plan=plan, operator=operator)
+        self.session.flush()
+        MaterialPurchaseService(self.session).sync_requirements_from_production_plan(plan=plan, actor=operator)
         self._log_status(
             plan_id=int(plan.id),
             from_status=previous,
@@ -2574,6 +2589,43 @@ class ProductionService:
             return
         line.ys_material_calc_state = "已算料"
         order.updated_by = operator
+
+    def _local_material_stock_balance(self, *, company: str, item_code: str, warehouse: str) -> Decimal:
+        if not self._has_sqlite_tables({LyWarehouseStockEntryDraft.__tablename__, LyWarehouseStockEntryDraftItem.__tablename__}):
+            return Decimal("0")
+        try:
+            rows = (
+                self.session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+                .join(
+                    LyWarehouseStockEntryDraftItem,
+                    LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+                )
+                .filter(
+                    LyWarehouseStockEntryDraft.company == company,
+                    LyWarehouseStockEntryDraft.status != "cancelled",
+                    LyWarehouseStockEntryDraftItem.item_code == item_code,
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        balance = Decimal("0")
+        for draft, item in rows:
+            qty = Decimal(str(item.qty or 0))
+            purpose = str(draft.purpose)
+            source_warehouse = str(item.source_warehouse or draft.source_warehouse or "").strip()
+            target_warehouse = str(item.target_warehouse or draft.target_warehouse or "").strip()
+            if purpose == "Material Issue":
+                if source_warehouse == warehouse:
+                    balance -= qty
+            elif purpose == "Material Transfer":
+                if source_warehouse == warehouse:
+                    balance -= qty
+                if target_warehouse == warehouse:
+                    balance += qty
+            elif target_warehouse == warehouse:
+                balance += qty
+        return balance
 
     @staticmethod
     def _ensure_material_check_status_allowed(*, plan: LyProductionPlan) -> str:

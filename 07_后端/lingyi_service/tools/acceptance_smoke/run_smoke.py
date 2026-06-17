@@ -867,6 +867,60 @@ def _exercise_sales_order_to_material_issue_smoke(client: TestClient, session_lo
         "sales order material calc state not updated",
     )
 
+    requirements_response = client.get(
+        f"/api/material-purchase/requirements?company={company}&status=pending&material_item_code={material_code}&page=1&page_size=10",
+        headers=_headers(),
+    )
+    _assert(requirements_response.status_code == 200, requirements_response.text)
+    requirement_rows = requirements_response.json()["data"]["items"]
+    _assert(requirement_rows, "material purchase requirement readback missing")
+    requirement_row = requirement_rows[0]
+    _assert(requirement_row["sales_order"] == sales_order_no, "material purchase requirement sales order mismatch")
+    _assert(requirement_row["material_item_code"] == material_code, "material purchase requirement material mismatch")
+    _assert(
+        Decimal(str(requirement_row["net_required_qty"])) == Decimal("84.000000"),
+        "material purchase requirement net qty mismatch",
+    )
+
+    requirement_order_payload = {
+        "operation": "create_order_from_requirements",
+        "company": company,
+        "requirement_ids": [int(requirement_row["id"])],
+        "supplier_name": requirement_row["supplier_name"] or "SUP-A4-SMOKE",
+        "transaction_date": "2026-06-18",
+        "expected_delivery_date": "2026-06-25",
+        "currency": "CNY",
+        "idempotency_key": "material-purchase:smoke:requirements:a4:001",
+        "group_by_material": True,
+    }
+    requirement_order = client.post(
+        "/api/material-purchase/orders/from-requirements",
+        headers=_headers(),
+        json=requirement_order_payload,
+    )
+    _assert(requirement_order.status_code == 201, requirement_order.text)
+    requirement_order_replay = client.post(
+        "/api/material-purchase/orders/from-requirements",
+        headers=_headers(),
+        json=requirement_order_payload,
+    )
+    _assert(requirement_order_replay.status_code == 201, requirement_order_replay.text)
+    requirement_order_data = requirement_order.json()["data"]
+    replay_order_data = requirement_order_replay.json()["data"]
+    purchase_from_requirement = requirement_order_data["purchase_order"]
+    _assert(
+        int(purchase_from_requirement["id"]) == int(replay_order_data["purchase_order"]["id"]),
+        "material requirement purchase order idempotent replay mismatch",
+    )
+    _assert(
+        Decimal(str(purchase_from_requirement["total_qty"])) == Decimal("84.000000"),
+        "material requirement purchase order total qty mismatch",
+    )
+    _assert(
+        requirement_order_data["requirements"][0]["status"] == "purchased",
+        "material requirement status should be purchased after order creation",
+    )
+
     issue_idempotency = f"{warehouse_scenario}:stock:material-issue:001"
     issue_source_ref = f"{warehouse_scenario}:production-plan:{plan_id}:material-issue"
     issue_request_id = _warehouse_request_id(

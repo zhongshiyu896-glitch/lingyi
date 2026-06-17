@@ -21,6 +21,8 @@ from app.models.audit import Base as AuditBase
 from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
+from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -52,6 +54,7 @@ class ProductionPlanTest(unittest.TestCase):
 
         BomBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
+        MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         with cls.SessionLocal() as session:
@@ -107,6 +110,7 @@ class ProductionPlanTest(unittest.TestCase):
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
 
         with self.SessionLocal() as session:
+            session.query(LyMaterialPurchaseRequirement).delete()
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionWorkOrderOutbox).delete()
             session.query(LyProductionWorkOrderLink).delete()
