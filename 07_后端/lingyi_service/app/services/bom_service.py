@@ -30,6 +30,7 @@ from app.core.error_codes import BOM_NOT_FOUND
 from app.core.error_codes import BOM_OPERATION_RATE_REQUIRED
 from app.core.error_codes import BOM_PUBLISHED_LOCKED
 from app.core.error_codes import BOM_STATUS_INVALID
+from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
 from app.core.exceptions import BusinessException
 from app.core.exceptions import DatabaseReadFailed
 from app.core.exceptions import DatabaseWriteFailed
@@ -37,6 +38,7 @@ from app.core.exceptions import is_default_bom_unique_conflict
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
+from app.models.style_master import LyStyleMaster
 from app.schemas.bom import BomActivateData
 from app.schemas.bom import BomAccessoriesPackagingData
 from app.schemas.bom import BomAccessoriesPackagingItem
@@ -125,7 +127,7 @@ class BomService:
             # sqlite 本地测试库需要保持与 PostgreSQL 局部唯一索引语义一致：
             # 同 item_code 仅限制「active + is_default=true」唯一，不应限制全部 item_code 唯一。
             self._ensure_local_sqlite_partial_default_index()
-        self._validate_item_exists(item_code=payload.item_code, code=BOM_ITEM_NOT_FOUND)
+        self._validate_style_master_reference(item_code=payload.item_code)
         self._validate_items(payload.bom_items)
         self._validate_operations(payload.operations)
 
@@ -1650,7 +1652,10 @@ class BomService:
         bom = self._must_get_bom(bom_id=bom_id)
         if bom.status == self.ACTIVE_STATUS:
             raise BomBusinessError(code=BOM_PUBLISHED_LOCKED, message="已发布 BOM 不允许直接修改")
+        if str(payload.item_code) != str(bom.item_code):
+            raise BomBusinessError(code=STYLE_MASTER_INVALID_REFERENCE, message="BOM 款号与业务载体不一致")
 
+        self._validate_style_master_reference(item_code=payload.item_code)
         self._validate_items(payload.bom_items)
         self._validate_operations(payload.operations)
 
@@ -1941,6 +1946,18 @@ class BomService:
                 return
             raise DatabaseReadFailed() from None
         raise BomBusinessError(code=code, message="物料不存在")
+
+    def _validate_style_master_reference(self, item_code: str) -> None:
+        try:
+            row = (
+                self.session.query(LyStyleMaster.id)
+                .filter(LyStyleMaster.ys_style_no == item_code, LyStyleMaster.ys_style_status == "enabled")
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BomBusinessError(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{item_code} 款式不存在或未启用")
 
     def _validate_items(self, items: Iterable[BomItemPayload]) -> None:
         for item in items:
