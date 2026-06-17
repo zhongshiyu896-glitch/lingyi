@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 StyleStatus = Literal["draft", "enabled", "disabled"]
-StyleDictionaryType = Literal["season", "year", "brand"]
+StyleDictionaryType = Literal["season", "year", "brand", "color", "size"]
 StyleDictionaryStatus = Literal["active", "inactive"]
 
 
@@ -115,7 +115,7 @@ class StyleMasterListData(BaseModel):
 
 
 class StyleDictionaryCreateRequest(BaseModel):
-    """Create season/year/brand dictionary entry."""
+    """Create one minimal style dictionary entry."""
 
     operation: Literal["create"] = "create"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
@@ -127,7 +127,7 @@ class StyleDictionaryCreateRequest(BaseModel):
 
 
 class StyleDictionaryUpdateRequest(BaseModel):
-    """Update season/year/brand dictionary entry."""
+    """Update one minimal style dictionary entry."""
 
     operation: Literal["update"] = "update"
     company: str = Field(default="默认公司", min_length=1, max_length=140)

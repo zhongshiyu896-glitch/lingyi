@@ -44,6 +44,7 @@ import app.models.quality_outbox  # noqa: E402,F401
 from app.models.sample import Base as SampleBase  # noqa: E402
 from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
 from app.models.style_master import Base as StyleMasterBase  # noqa: E402
+from app.models.style_master import LyStyleDictionary  # noqa: E402
 from app.models.style_master import LyStyleMaster  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.subcontract import Base as SubcontractBase  # noqa: E402
@@ -90,6 +91,7 @@ def _create_local_tables() -> None:
     _ensure_local_sample_idempotency_supports_seal()
     _ensure_local_sales_order_item_calc_columns()
     _ensure_local_sales_order_idempotency_supports_update()
+    _ensure_local_style_dictionary_color_size_types()
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
     _ensure_local_bom_company_style_columns()
@@ -211,6 +213,61 @@ def _ensure_local_sales_order_idempotency_supports_update() -> None:
                 ON ly_sales_order_idempotency (company, operation, idempotency_key);
             CREATE INDEX IF NOT EXISTS idx_ly_sales_order_idem_order
                 ON ly_sales_order_idempotency (sales_order_id);
+            PRAGMA foreign_keys=on;
+            """
+        )
+
+
+def _ensure_local_style_dictionary_color_size_types() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_style_dictionary'"
+        ).fetchone()
+        existing_sql = str(row[0]) if row else ""
+        if not row or all(fragment in existing_sql for fragment in ["'color'", "'size'"]):
+            return
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            DROP INDEX IF EXISTS uk_ly_style_dictionary_company_code;
+            DROP INDEX IF EXISTS idx_ly_style_dictionary_company_type_status;
+            CREATE TABLE ly_style_dictionary_new (
+                id INTEGER NOT NULL,
+                company VARCHAR(140) NOT NULL,
+                dict_type VARCHAR(32) NOT NULL,
+                code VARCHAR(140) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                status VARCHAR(16) DEFAULT 'active' NOT NULL,
+                sort_no INTEGER DEFAULT '10' NOT NULL,
+                version INTEGER DEFAULT '1' NOT NULL,
+                created_by VARCHAR(140) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                updated_by VARCHAR(140),
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                deactivated_by VARCHAR(140),
+                deactivated_at DATETIME,
+                deactivate_reason TEXT,
+                PRIMARY KEY (id),
+                CONSTRAINT ck_ly_style_dictionary_type CHECK (dict_type IN ('season','year','brand','color','size')),
+                CONSTRAINT ck_ly_style_dictionary_status CHECK (status IN ('active','inactive'))
+            );
+            INSERT INTO ly_style_dictionary_new (
+                id, company, dict_type, code, name, status, sort_no, version, created_by, created_at,
+                updated_by, updated_at, deactivated_by, deactivated_at, deactivate_reason
+            )
+            SELECT
+                id, company, dict_type, code, name, status, sort_no, version, created_by, created_at,
+                updated_by, updated_at, deactivated_by, deactivated_at, deactivate_reason
+            FROM ly_style_dictionary;
+            DROP TABLE ly_style_dictionary;
+            ALTER TABLE ly_style_dictionary_new RENAME TO ly_style_dictionary;
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_style_dictionary_company_code
+                ON ly_style_dictionary (dict_type, company, code);
+            CREATE INDEX IF NOT EXISTS idx_ly_style_dictionary_company_type_status
+                ON ly_style_dictionary (company, dict_type, status);
             PRAGMA foreign_keys=on;
             """
         )
@@ -345,6 +402,51 @@ def _ensure_local_bom_company_style_columns() -> None:
 
 def _seed_local_bom() -> None:
     with main_module.SessionLocal() as session:
+        for index, (dict_type, code, name) in enumerate(
+            [
+                ("season", "SS", "春夏"),
+                ("year", "2026", "2026"),
+                ("brand", "LY", "领意"),
+                ("color", "WHT", "白"),
+                ("color", "BLK", "黑"),
+                ("color", "NAVY", "藏青"),
+                ("color", "WHITE", "白色"),
+                ("color", "BLACK", "黑色"),
+                ("size", "S", "S"),
+                ("size", "M", "M"),
+                ("size", "L", "L"),
+                ("size", "XL", "XL"),
+            ],
+            start=1,
+        ):
+            dictionary = (
+                session.query(LyStyleDictionary)
+                .filter(
+                    LyStyleDictionary.company == "默认公司",
+                    LyStyleDictionary.dict_type == dict_type,
+                    LyStyleDictionary.code == code,
+                )
+                .first()
+            )
+            if dictionary is None:
+                session.add(
+                    LyStyleDictionary(
+                        company="默认公司",
+                        dict_type=dict_type,
+                        code=code,
+                        name=name,
+                        status="active",
+                        sort_no=index * 10,
+                        version=1,
+                        created_by="local.dev",
+                        updated_by="local.dev",
+                    )
+                )
+            else:
+                dictionary.name = dictionary.name or name
+                dictionary.status = "active"
+                dictionary.updated_by = "local.dev"
+
         style = (
             session.query(LyStyleMaster)
             .filter(

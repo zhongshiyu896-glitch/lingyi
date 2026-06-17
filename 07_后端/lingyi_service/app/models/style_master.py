@@ -53,15 +53,15 @@ class LyStyleMaster(Base):
 
 
 class LyStyleDictionary(Base):
-    """Season/year/brand dictionary used by the minimal style master."""
+    """Minimal dictionaries used by the style master."""
 
     __tablename__ = "ly_style_dictionary"
     __table_args__ = (
         Index("uk_ly_style_dictionary_company_code", "dict_type", "company", "code", unique=True),
         Index("idx_ly_style_dictionary_company_type_status", "company", "dict_type", "status"),
-        CheckConstraint("dict_type IN ('season','year','brand')", name="ck_ly_style_dictionary_type"),
+        CheckConstraint("dict_type IN ('season','year','brand','color','size')", name="ck_ly_style_dictionary_type"),
         CheckConstraint("status IN ('active','inactive')", name="ck_ly_style_dictionary_status"),
-        {"schema": "ly_schema", "comment": "FastAPI 原生款式季节/年份/品牌字典"},
+        {"schema": "ly_schema", "comment": "FastAPI 原生款式季节/年份/品牌/颜色/尺码字典"},
     )
 
     id = Column(IDType, primary_key=True, autoincrement=True)

@@ -120,6 +120,10 @@ class StyleMasterApiTest(unittest.TestCase):
                 ("season", "SPRING", "春季"),
                 ("year", "2026", "2026"),
                 ("brand", "LY", "领意"),
+                ("color", "BLK", "黑色"),
+                ("color", "WHT", "白色"),
+                ("size", "S", "S"),
+                ("size", "M", "M"),
             ],
             start=1,
         ):
@@ -152,6 +156,7 @@ class StyleMasterApiTest(unittest.TestCase):
         self.assertEqual(body["data"]["ys_style_no"], "ST-A3-001")
         self.assertEqual(body["data"]["ys_brand"], "LY")
         self.assertEqual(body["data"]["colors"][0]["ys_color_code"], "BLK")
+        self.assertEqual(body["data"]["colors"][0]["ys_color_name"], "黑色")
         style_id = int(body["data"]["id"])
 
         listed = self.client.get(
@@ -193,8 +198,8 @@ class StyleMasterApiTest(unittest.TestCase):
             row = session.query(LyStyleMaster).one()
             self.assertEqual(row.ys_style_status, "disabled")
             self.assertEqual(row.ys_brand, "LY")
-            self.assertEqual(session.query(LyStyleDictionary).count(), 3)
-            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "style_master").count(), 6)
+            self.assertEqual(session.query(LyStyleDictionary).count(), 7)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "style_master").count(), 10)
 
     def test_style_idempotency_conflict_and_invalid_reference(self) -> None:
         self._seed_style_dictionaries()
@@ -232,6 +237,26 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         self.assertEqual(invalid_ref.status_code, 409)
         self.assertEqual(invalid_ref.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
+        invalid_color = self._style_payload(style_no="ST-A3-NO-COLOR", idempotency_key="IDEMP-ST-A3-NO-COLOR")
+        invalid_color["colors"] = [{"ys_color_code": "NAVY", "ys_color_name": "藏青"}]
+        invalid_color_ref = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-REF-002"),
+            json=invalid_color,
+        )
+        self.assertEqual(invalid_color_ref.status_code, 409)
+        self.assertEqual(invalid_color_ref.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
+        invalid_size = self._style_payload(style_no="ST-A3-NO-SIZE", idempotency_key="IDEMP-ST-A3-NO-SIZE")
+        invalid_size["sizes"] = [{"ys_size_code": "XL", "ys_size_name": "XL"}]
+        invalid_size_ref = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-REF-003"),
+            json=invalid_size,
+        )
+        self.assertEqual(invalid_size_ref.status_code, 409)
+        self.assertEqual(invalid_size_ref.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
 
     def test_style_manage_permission_fail_closed(self) -> None:
         denied = self.client.post(

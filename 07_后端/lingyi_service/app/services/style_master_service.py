@@ -37,7 +37,7 @@ from app.schemas.style_master import StyleMasterListData
 from app.schemas.style_master import StyleMasterUpdateRequest
 
 STYLE_STATUSES = {"draft", "enabled", "disabled"}
-DICTIONARY_TYPES = {"season", "year", "brand"}
+DICTIONARY_TYPES = {"season", "year", "brand", "color", "size"}
 DICTIONARY_STATUSES = {"active", "inactive"}
 
 
@@ -109,6 +109,8 @@ class StyleMasterService:
         style_no = self._require_text(payload.ys_style_no, "ys_style_no")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         style_values = self._style_values_from_create(payload)
+        self._ensure_dictionary_refs(company=company, ys_season=payload.ys_season, ys_year=payload.ys_year, ys_brand=payload.ys_brand)
+        self._normalize_style_pair_refs(company=company, values=style_values)
         request_hash = self._request_hash(operation="create", entity_type="style", company=company, values=style_values)
         idem = self._get_idempotency(entity_type="style", company=company, idempotency_key=idempotency_key)
         if idem:
@@ -119,7 +121,6 @@ class StyleMasterService:
 
         if self._get_style_by_no(company=company, style_no=style_no):
             raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"{style_no} 已存在")
-        self._ensure_dictionary_refs(company=company, ys_season=payload.ys_season, ys_year=payload.ys_year, ys_brand=payload.ys_brand)
 
         try:
             row = LyStyleMaster(
@@ -158,6 +159,8 @@ class StyleMasterService:
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         row = self._get_style_for_mutation(style_id=style_id, company=company)
         values = self._style_values_from_update(row=row, payload=payload)
+        self._ensure_dictionary_refs(company=company, ys_season=values["ys_season"], ys_year=values["ys_year"], ys_brand=values["ys_brand"])
+        self._normalize_style_pair_refs(company=company, values=values)
         request_hash = self._request_hash(operation="update", entity_type="style", company=company, style_id=style_id, values=values)
         idem = self._get_idempotency(entity_type="style", company=company, idempotency_key=idempotency_key)
         if idem:
@@ -170,7 +173,6 @@ class StyleMasterService:
             conflict = self._get_style_by_no(company=company, style_no=values["ys_style_no"])
             if conflict and int(conflict.id) != int(row.id):
                 raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"{values['ys_style_no']} 已存在")
-        self._ensure_dictionary_refs(company=company, ys_season=values["ys_season"], ys_year=values["ys_year"], ys_brand=values["ys_brand"])
 
         before = self._snapshot_style(row)
         try:
@@ -430,6 +432,46 @@ class StyleMasterService:
             row = self._get_dictionary_by_code(company=company, dict_type=dict_type, code=code)
             if row is None or row.status != "active":
                 raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{dict_type}:{code} 字典不存在或已停用")
+
+    def _normalize_style_pair_refs(self, *, company: str, values: dict[str, Any]) -> None:
+        values["colors"] = self._normalize_pair_dictionary_refs(
+            company=company,
+            dict_type="color",
+            items=values["colors"],
+            code_key="ys_color_code",
+            name_key="ys_color_name",
+        )
+        values["sizes"] = self._normalize_pair_dictionary_refs(
+            company=company,
+            dict_type="size",
+            items=values["sizes"],
+            code_key="ys_size_code",
+            name_key="ys_size_name",
+        )
+
+    def _normalize_pair_dictionary_refs(
+        self,
+        *,
+        company: str,
+        dict_type: str,
+        items: list[dict[str, Any]],
+        code_key: str,
+        name_key: str,
+    ) -> list[dict[str, str]]:
+        if not items:
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{dict_type} 字典引用不能为空")
+        normalized_items: list[dict[str, str]] = []
+        seen_codes: set[str] = set()
+        for item in items:
+            code = self._require_text(item.get(code_key), code_key)
+            if code in seen_codes:
+                raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"{dict_type}:{code} 重复")
+            row = self._get_dictionary_by_code(company=company, dict_type=dict_type, code=code)
+            if row is None or row.status != "active":
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{dict_type}:{code} 字典不存在或已停用")
+            normalized_items.append({code_key: code, name_key: self._require_text(row.name, "name")})
+            seen_codes.add(code)
+        return normalized_items
 
     def _style_values_from_create(self, payload: StyleMasterCreateRequest) -> dict[str, Any]:
         return {
