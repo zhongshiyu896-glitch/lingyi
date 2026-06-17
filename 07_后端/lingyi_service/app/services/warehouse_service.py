@@ -2256,6 +2256,11 @@ class WarehouseService:
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         source_ref = self._require_text(payload.source_ref, "source_ref")
         item_rows = self._normalize_inventory_count_items(items=payload.items)
+        item_rows = self._apply_inventory_count_book_balances(
+            company=company,
+            warehouse=warehouse,
+            item_rows=item_rows,
+        )
         remark = self._text(payload.remark)
         request_hash = self._inventory_count_request_hash(
             company=company,
@@ -2329,6 +2334,11 @@ class WarehouseService:
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         source_ref = self._require_text(payload.source_ref, "source_ref")
         item_rows = self._normalize_inventory_count_items(items=payload.items)
+        item_rows = self._apply_inventory_count_book_balances(
+            company=company,
+            warehouse=warehouse,
+            item_rows=item_rows,
+        )
         remark = self._text(payload.remark)
         request_hash = self._inventory_count_request_hash(
             company=company,
@@ -2423,13 +2433,22 @@ class WarehouseService:
         inventory_count = self._find_inventory_count(count_id=count_id)
         if inventory_count is None:
             raise WarehouseServiceError(404, "WAREHOUSE_INVENTORY_COUNT_NOT_FOUND", "盘点单不存在")
-        if str(inventory_count.status) != "variance_review":
+        status = str(inventory_count.status)
+        if status == "confirmed":
+            return self._build_inventory_count_data(inventory_count=inventory_count)
+        if status not in {"counted", "variance_review"}:
             raise WarehouseServiceError(409, "WAREHOUSE_INVENTORY_COUNT_INVALID_STATUS", "当前状态不允许确认")
 
         variance_items = self._variance_items_for_count(count_id=count_id)
         unresolved = [item for item in variance_items if str(item.review_status) == "pending"]
         if unresolved:
             raise WarehouseServiceError(409, "WAREHOUSE_VARIANCE_REVIEW_PENDING", "存在未复核差异行，无法确认")
+
+        self._create_inventory_count_adjustments(
+            inventory_count=inventory_count,
+            variance_items=variance_items,
+            confirmed_by=confirmed_by,
+        )
 
         now = datetime.now(timezone.utc)
         inventory_count.status = "confirmed"
@@ -2813,12 +2832,6 @@ class WarehouseService:
                 raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", f"items[{idx}].counted_qty 不得小于 0")
             variance_qty = counted_qty - system_qty
             variance_reason = self._text(item.variance_reason)
-            if variance_qty != Decimal("0") and variance_reason is None:
-                raise WarehouseServiceError(
-                    400,
-                    "WAREHOUSE_VARIANCE_REASON_REQUIRED",
-                    f"items[{idx}] 存在差异时 variance_reason 必填",
-                )
 
             normalized_rows.append(
                 {
@@ -2833,6 +2846,180 @@ class WarehouseService:
                 }
             )
         return normalized_rows
+
+    def _apply_inventory_count_book_balances(
+        self,
+        *,
+        company: str,
+        warehouse: str,
+        item_rows: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        item_codes = {str(row["item_code"]) for row in item_rows}
+        book_balances: dict[str, Decimal] = {}
+        for item_code in item_codes:
+            balance_map = self._local_stock_balance_map(company=company, warehouse=warehouse, item_code=item_code)
+            book_qty = balance_map.get((company, warehouse, item_code), Decimal("0"))
+            if book_qty < 0:
+                raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", f"{item_code} 账面库存不得小于 0")
+            book_balances[item_code] = book_qty
+
+        normalized_rows: list[dict[str, Any]] = []
+        for idx, row in enumerate(item_rows, start=1):
+            adjusted = dict(row)
+            item_code = str(adjusted["item_code"])
+            system_qty = book_balances.get(item_code, Decimal("0"))
+            counted_qty = Decimal(str(adjusted["counted_qty"]))
+            variance_qty = counted_qty - system_qty
+            variance_reason = self._text(adjusted.get("variance_reason"))
+            if variance_qty != Decimal("0") and variance_reason is None:
+                raise WarehouseServiceError(
+                    400,
+                    "WAREHOUSE_VARIANCE_REASON_REQUIRED",
+                    f"items[{idx}] 存在差异时 variance_reason 必填",
+                )
+            adjusted["system_qty"] = system_qty
+            adjusted["variance_qty"] = variance_qty
+            adjusted["variance_reason"] = variance_reason
+            adjusted["review_status"] = "pending" if variance_qty != Decimal("0") else "accepted"
+            normalized_rows.append(adjusted)
+        return normalized_rows
+
+    def _create_inventory_count_adjustments(
+        self,
+        *,
+        inventory_count: LyWarehouseInventoryCount,
+        variance_items: list[LyWarehouseInventoryCountItem],
+        confirmed_by: str,
+    ) -> None:
+        session = self._require_session()
+        company = str(inventory_count.company)
+        warehouse = str(inventory_count.warehouse)
+        posting_at = datetime.combine(inventory_count.count_date, datetime.min.time(), timezone.utc)
+
+        for line in variance_items:
+            if str(line.review_status) != "accepted":
+                continue
+            item_code = str(line.item_code)
+            balance_map = self._local_stock_balance_map(company=company, warehouse=warehouse, item_code=item_code)
+            book_qty = balance_map.get((company, warehouse, item_code), Decimal("0"))
+            diff_qty = Decimal(str(line.counted_qty)) - book_qty
+            if diff_qty == Decimal("0"):
+                continue
+
+            source_id = f"inventory_count:{inventory_count.id}:item:{line.id}"
+            existing = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(
+                    LyWarehouseStockEntryDraft.company == company,
+                    LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment",
+                    LyWarehouseStockEntryDraft.source_id == source_id,
+                    LyWarehouseStockEntryDraft.status != "cancelled",
+                )
+                .first()
+            )
+            if existing is not None:
+                continue
+
+            purpose = "Material Receipt" if diff_qty > 0 else "Material Issue"
+            qty = abs(diff_qty)
+            source_warehouse = warehouse if diff_qty < 0 else None
+            target_warehouse = warehouse if diff_qty > 0 else None
+            uom = self._inventory_count_adjustment_uom(company=company, warehouse=warehouse, item_code=item_code)
+            idempotency_key = f"inv-count-adj-{inventory_count.id}-{line.id}"
+            event_key = self._build_event_key(
+                company=company,
+                source_type="inventory_count_adjustment",
+                source_id=source_id,
+                idempotency_key=idempotency_key,
+            )
+            draft = LyWarehouseStockEntryDraft(
+                company=company,
+                purpose=purpose,
+                source_type="inventory_count_adjustment",
+                source_id=source_id,
+                source_warehouse=source_warehouse,
+                target_warehouse=target_warehouse,
+                status="pending_outbox",
+                created_by=confirmed_by,
+                created_at=posting_at,
+                idempotency_key=idempotency_key,
+                event_key=event_key,
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=draft.id,
+                    company=company,
+                    item_code=item_code,
+                    qty=qty,
+                    uom=uom,
+                    batch_no=self._text(line.batch_no),
+                    serial_no=self._text(line.serial_no),
+                    source_warehouse=source_warehouse,
+                    target_warehouse=target_warehouse,
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryOutboxEvent(
+                    draft_id=draft.id,
+                    event_type="warehouse_stock_entry_sync",
+                    event_key=event_key,
+                    payload={
+                        "draft_id": int(draft.id),
+                        "company": company,
+                        "purpose": purpose,
+                        "source_type": "inventory_count_adjustment",
+                        "source_id": source_id,
+                        "business_date": inventory_count.count_date.isoformat(),
+                        "source_warehouse": source_warehouse,
+                        "target_warehouse": target_warehouse,
+                        "items": [
+                            {
+                                "item_code": item_code,
+                                "qty": str(qty),
+                                "uom": uom,
+                                "batch_no": self._text(line.batch_no),
+                                "serial_no": self._text(line.serial_no),
+                                "source_warehouse": source_warehouse,
+                                "target_warehouse": target_warehouse,
+                            }
+                        ],
+                    },
+                    status="in_pending",
+                    retry_count=0,
+                    created_at=posting_at,
+                )
+            )
+
+    def _inventory_count_adjustment_uom(self, *, company: str, warehouse: str, item_code: str) -> str:
+        session = self._require_session()
+        row = (
+            session.query(LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraft,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.status != "cancelled",
+                LyWarehouseStockEntryDraftItem.item_code == item_code,
+                (
+                    (LyWarehouseStockEntryDraftItem.source_warehouse == warehouse)
+                    | (LyWarehouseStockEntryDraftItem.target_warehouse == warehouse)
+                    | (LyWarehouseStockEntryDraft.source_warehouse == warehouse)
+                    | (LyWarehouseStockEntryDraft.target_warehouse == warehouse)
+                ),
+            )
+            .order_by(LyWarehouseStockEntryDraft.created_at.desc(), LyWarehouseStockEntryDraftItem.id.desc())
+            .first()
+        )
+        if row is None:
+            raise WarehouseServiceError(400, "WAREHOUSE_UOM_NOT_FOUND", f"{item_code} 缺少本地库存单位，无法生成盘点调整")
+        uom = self._text(row.uom)
+        if uom is None:
+            raise WarehouseServiceError(400, "WAREHOUSE_UOM_NOT_FOUND", f"{item_code} 缺少本地库存单位，无法生成盘点调整")
+        return uom
 
     @staticmethod
     def _ensure_inventory_count_replay_matches(

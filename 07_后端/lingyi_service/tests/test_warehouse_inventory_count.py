@@ -83,6 +83,8 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.commit()
+        self._seed_stock_balance(item_code="ITEM-A", qty="10")
+        self._seed_stock_balance(item_code="ITEM-B", qty="5")
 
     @classmethod
     def _warehouse_code(cls, value: str) -> str:
@@ -139,40 +141,48 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
             ],
         }
 
-    def _seed_stock_balance(self, *, item_code: str = "ITEM-A", qty: str = "10") -> None:
+    def _seed_stock_balance(
+        self,
+        *,
+        company: str = "COMP-A",
+        warehouse: str = "WH-A",
+        item_code: str = "ITEM-A",
+        qty: str = "10",
+    ) -> None:
         created_at = datetime.combine(date(2026, 4, 19), datetime.min.time(), timezone.utc)
+        stable_key = f"{company}-{warehouse}-{item_code}"
         with self.SessionLocal() as session:
             draft = LyWarehouseStockEntryDraft(
-                company="COMP-A",
+                company=company,
                 purpose="Material Receipt",
                 source_type="manual",
-                source_id=f"BAL-{item_code}",
+                source_id=f"BAL-{stable_key}",
                 source_warehouse=None,
-                target_warehouse="WH-A",
+                target_warehouse=warehouse,
                 status="pending_outbox",
                 created_by="warehouse.counter",
                 created_at=created_at,
-                idempotency_key=f"idem-bal-{item_code}",
-                event_key=f"event-bal-{item_code}",
+                idempotency_key=f"idem-bal-{stable_key}",
+                event_key=f"event-bal-{stable_key}",
             )
             session.add(draft)
             session.flush()
             session.add(
                 LyWarehouseStockEntryDraftItem(
                     draft_id=draft.id,
-                    company="COMP-A",
+                    company=company,
                     item_code=item_code,
                     qty=Decimal(qty),
                     uom="Pcs",
                     source_warehouse=None,
-                    target_warehouse="WH-A",
+                    target_warehouse=warehouse,
                 )
             )
             session.add(
                 LyWarehouseStockEntryOutboxEvent(
                     draft_id=draft.id,
                     event_type="warehouse_stock_entry_sync",
-                    event_key=f"event-bal-{item_code}",
+                    event_key=f"event-bal-{stable_key}",
                     payload={"business_date": "2026-04-19"},
                     status="in_pending",
                     retry_count=0,
@@ -186,17 +196,23 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
     """Warehouse inventory-count state-machine contract."""
 
     def test_create_inventory_count_draft_with_permission(self) -> None:
+        payload = self._payload()
+        payload["items"][0]["system_qty"] = "999"
+        payload["items"][1]["system_qty"] = "999"
         response = self.client.post(
             "/api/warehouse/inventory-counts",
             headers=self._headers("warehouse:inventory_count,warehouse:read"),
-            json=self._payload(),
+            json=payload,
         )
         self.assertEqual(response.status_code, 201, response.text)
         data = response.json()["data"]
         self.assertEqual(data["status"], "draft")
         self.assertEqual(data["warehouse"], "WH-A")
         self.assertEqual(data["variance_stats"]["variance_items"], 1)
+        self.assertEqual(data["items"][0]["system_qty"], "10.000000")
         self.assertEqual(data["items"][0]["variance_qty"], "-2.000000")
+        self.assertEqual(data["items"][1]["system_qty"], "5.000000")
+        self.assertEqual(data["items"][1]["variance_qty"], "0.000000")
         with self.SessionLocal() as session:
             audit = (
                 session.query(LyOperationAuditLog)
@@ -325,7 +341,6 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
             )
 
     def test_inventory_balance_reconciliation_reads_count_against_stock_movements(self) -> None:
-        self._seed_stock_balance(item_code="ITEM-A", qty="10")
         create_count = self.client.post(
             "/api/warehouse/inventory-counts",
             headers=self._headers("warehouse:inventory_count,warehouse:read"),
@@ -449,6 +464,21 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
         self.assertEqual(confirm_ok.status_code, 200, confirm_ok.text)
         self.assertEqual(confirm_ok.json()["data"]["status"], "confirmed")
 
+        summary_after_confirm = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(summary_after_confirm.status_code, 200, summary_after_confirm.text)
+        summary_rows = summary_after_confirm.json()["data"]["items"]
+        self.assertEqual(Decimal(str(summary_rows[0]["actual_qty"])), Decimal("8.000000"))
+
+        repeat_confirm = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/confirm",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(repeat_confirm.status_code, 200, repeat_confirm.text)
+        self.assertEqual(repeat_confirm.json()["data"]["status"], "confirmed")
+
         with self.SessionLocal() as session:
             item = (
                 session.query(LyWarehouseInventoryCountItem)
@@ -456,6 +486,61 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
                 .one()
             )
             self.assertEqual(str(item.counted_qty), "8.000000")
+            adjustment_drafts = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment")
+                .all()
+            )
+            self.assertEqual(len(adjustment_drafts), 1)
+            self.assertEqual(adjustment_drafts[0].purpose, "Material Issue")
+            self.assertEqual(adjustment_drafts[0].source_warehouse, "WH-A")
+            self.assertIsNone(adjustment_drafts[0].target_warehouse)
+            adjustment_item = (
+                session.query(LyWarehouseStockEntryDraftItem)
+                .filter(LyWarehouseStockEntryDraftItem.draft_id == adjustment_drafts[0].id)
+                .one()
+            )
+            self.assertEqual(adjustment_item.item_code, "ITEM-A")
+            self.assertEqual(str(adjustment_item.qty), "2.000000")
+            self.assertEqual(adjustment_item.uom, "Pcs")
+            self.assertEqual(
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == adjustment_drafts[0].id)
+                .count(),
+                1,
+            )
+
+    def test_zero_variance_inventory_count_confirms_without_adjustment(self) -> None:
+        payload = self._payload()
+        payload["items"][0]["counted_qty"] = "10"
+        payload["items"][0]["variance_reason"] = None
+        create_resp = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=payload,
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        count_id = int(create_resp.json()["data"]["id"])
+
+        submit_resp = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/submit",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(submit_resp.status_code, 200, submit_resp.text)
+
+        confirm_ok = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/confirm",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(confirm_ok.status_code, 200, confirm_ok.text)
+        self.assertEqual(confirm_ok.json()["data"]["status"], "confirmed")
+        with self.SessionLocal() as session:
+            self.assertEqual(
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment")
+                .count(),
+                0,
+            )
 
     def test_cancel_and_repeat_cancel(self) -> None:
         create_resp = self.client.post(
@@ -487,6 +572,8 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
             headers=self._headers("warehouse:inventory_count"),
             json=self._payload(company="COMP-A", warehouse="WH-A"),
         )
+        self._seed_stock_balance(company="COMP-B", warehouse="WH-B", item_code="ITEM-A", qty="10")
+        self._seed_stock_balance(company="COMP-B", warehouse="WH-B", item_code="ITEM-B", qty="5")
         self.client.post(
             "/api/warehouse/inventory-counts",
             headers=self._headers("warehouse:inventory_count", warehouse="WH-B", count_date="2026-04-21"),

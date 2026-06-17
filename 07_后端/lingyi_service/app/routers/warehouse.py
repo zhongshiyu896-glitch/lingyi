@@ -1281,49 +1281,16 @@ def list_stock_ledger(
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
 
-    if _is_local_warehouse_read_enabled():
-        data = _build_local_stock_ledger_fallback(
-            session=session,
-            company=company,
-            warehouse=warehouse,
-            item_code=item_code,
-            from_date=parsed_from_date,
-            to_date=parsed_to_date,
-            page=page,
-            page_size=page_size,
-        )
-    else:
-        try:
-            data = _read_service(request).list_stock_ledger(
-                company=_scope_text(company),
-                warehouse=_scope_text(warehouse),
-                item_code=_scope_text(item_code),
-                from_date=parsed_from_date,
-                to_date=parsed_to_date,
-                page=page,
-                page_size=page_size,
-            )
-        except ERPNextAdapterException as exc:
-            if _local_warehouse_read_fallback_enabled(exc):
-                data = _build_local_stock_ledger_fallback(
-                    session=session,
-                    company=company,
-                    warehouse=warehouse,
-                    item_code=item_code,
-                    from_date=parsed_from_date,
-                    to_date=parsed_to_date,
-                    page=page,
-                    page_size=page_size,
-                )
-            else:
-                _handle_erpnext_error(
-                    exc=exc,
-                    permission_service=permission_service,
-                    request=request,
-                    current_user=current_user,
-                    action=action,
-                    resource_type="StockLedgerEntry",
-                )
+    data = _build_local_stock_ledger_fallback(
+        session=session,
+        company=company,
+        warehouse=warehouse,
+        item_code=item_code,
+        from_date=parsed_from_date,
+        to_date=parsed_to_date,
+        page=page,
+        page_size=page_size,
+    )
 
     filtered = [
         row
@@ -1380,37 +1347,12 @@ def get_stock_summary(
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
 
-    if _is_local_warehouse_read_enabled():
-        data = _build_local_stock_summary_fallback(
-            session=session,
-            company=company,
-            warehouse=warehouse,
-            item_code=item_code,
-        )
-    else:
-        try:
-            data = _read_service(request).get_stock_summary(
-                company=_scope_text(company),
-                warehouse=_scope_text(warehouse),
-                item_code=_scope_text(item_code),
-            )
-        except ERPNextAdapterException as exc:
-            if _local_warehouse_read_fallback_enabled(exc):
-                data = _build_local_stock_summary_fallback(
-                    session=session,
-                    company=company,
-                    warehouse=warehouse,
-                    item_code=item_code,
-                )
-            else:
-                _handle_erpnext_error(
-                    exc=exc,
-                    permission_service=permission_service,
-                    request=request,
-                    current_user=current_user,
-                    action=action,
-                    resource_type="Bin",
-                )
+    data = _build_local_stock_summary_fallback(
+        session=session,
+        company=company,
+        warehouse=warehouse,
+        item_code=item_code,
+    )
 
     filtered = [
         row

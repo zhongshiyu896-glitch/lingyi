@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import datetime
+from datetime import timezone
+from decimal import Decimal
 import os
 import unittest
 from unittest.mock import patch
@@ -22,10 +25,13 @@ from app.core.permissions import WAREHOUSE_READ
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.quality import Base as QualityBase
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
 from app.schemas.warehouse import WarehouseStockSummaryData
-from app.schemas.warehouse import WarehouseStockSummaryItem
 from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.warehouse_service import WarehouseService
@@ -45,6 +51,7 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        QualityBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -72,6 +79,9 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
+            session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.commit()
@@ -91,60 +101,74 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
             "X-LY-Dev-Roles": roles,
         }
 
+    def _seed_stock_entry(
+        self,
+        *,
+        company: str = "COMP-A",
+        warehouse: str = "WH-A",
+        item_code: str = "ITEM-A",
+        qty: str = "2",
+        purpose: str = "Material Receipt",
+        status: str = "pending_outbox",
+        event_key: str = "EVT-WH-READ-001",
+        created_at: datetime | None = None,
+    ) -> None:
+        created = created_at or datetime(2026, 4, 20, tzinfo=timezone.utc)
+        with self.SessionLocal() as session:
+            draft = LyWarehouseStockEntryDraft(
+                company=company,
+                purpose=purpose,
+                source_type="test",
+                source_id=event_key,
+                source_warehouse=warehouse if purpose in {"Material Issue", "Material Transfer"} else None,
+                target_warehouse=warehouse,
+                status=status,
+                created_by="seed",
+                created_at=created,
+                idempotency_key=f"{event_key}:idem",
+                event_key=event_key,
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company=company,
+                    item_code=item_code,
+                    qty=Decimal(qty),
+                    uom="PCS",
+                    source_warehouse=warehouse if purpose in {"Material Issue", "Material Transfer"} else None,
+                    target_warehouse=warehouse,
+                )
+            )
+            session.commit()
+
 
 class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
     """Read-only API behavior and boundaries."""
 
     def test_stock_ledger_returns_rows(self) -> None:
-        with patch(
-            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.list_stock_ledger",
-            return_value=(
-                [
-                    {
-                        "company": "COMP-A",
-                        "warehouse": "WH-A",
-                        "item_code": "ITEM-A",
-                        "posting_date": date(2026, 4, 20),
-                        "voucher_type": "Stock Entry",
-                        "voucher_no": "STE-001",
-                        "actual_qty": "2",
-                        "qty_after_transaction": "10",
-                        "valuation_rate": "8.5",
-                    }
-                ],
-                1,
-            ),
-        ):
-            response = self.client.get("/api/warehouse/stock-ledger?company=COMP-A", headers=self._headers())
+        self._seed_stock_entry()
+        response = self.client.get("/api/warehouse/stock-ledger?company=COMP-A", headers=self._headers())
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()["data"]
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["items"][0]["warehouse"], "WH-A")
+        self.assertEqual(payload["items"][0]["voucher_type"], "Stock Entry Draft/Material Receipt")
+        self.assertEqual(Decimal(str(payload["items"][0]["qty_after_transaction"])), Decimal("2.000000"))
 
     def test_stock_summary_returns_aggregation(self) -> None:
-        with patch(
-            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.list_stock_summary",
-            return_value=[
-                {
-                    "company": "COMP-A",
-                    "warehouse": "WH-A",
-                    "item_code": "ITEM-A",
-                    "actual_qty": "2",
-                    "projected_qty": "3",
-                    "reserved_qty": "1",
-                    "ordered_qty": "5",
-                    "reorder_level": "6",
-                    "safety_stock": "4",
-                }
-            ],
-        ):
-            response = self.client.get("/api/warehouse/stock-summary?company=COMP-A", headers=self._headers())
+        self._seed_stock_entry(qty="2", event_key="EVT-WH-READ-SUMMARY-001")
+        self._seed_stock_entry(qty="5", event_key="EVT-WH-READ-SUMMARY-002")
+        response = self.client.get("/api/warehouse/stock-summary?company=COMP-A", headers=self._headers())
 
         self.assertEqual(response.status_code, 200)
         row = response.json()["data"]["items"][0]
-        self.assertTrue(row["is_below_reorder"])
-        self.assertTrue(row["is_below_safety"])
+        self.assertEqual(Decimal(str(row["actual_qty"])), Decimal("7.000000"))
+        self.assertEqual(Decimal(str(row["projected_qty"])), Decimal("7.000000"))
+        self.assertFalse(row["is_below_reorder"])
+        self.assertFalse(row["is_below_safety"])
         self.assertFalse(row["threshold_missing"])
 
     def test_alerts_returns_low_stock(self) -> None:
@@ -175,7 +199,7 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         self.assertEqual(items[0]["alert_type"], "low_stock")
 
     def test_company_filter_passed_to_service(self) -> None:
-        with patch.object(WarehouseService, "get_stock_summary") as mocked_summary:
+        with patch.object(WarehouseService, "get_local_stock_summary") as mocked_summary:
             mocked_summary.return_value = WarehouseStockSummaryData(company="COMP-A", warehouse=None, item_code=None, items=[])
             response = self.client.get("/api/warehouse/stock-summary?company=COMP-A", headers=self._headers())
 
@@ -185,6 +209,8 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
 
     def test_warehouse_permission_filter_effective(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        self._seed_stock_entry(warehouse="WH-A", qty="2", event_key="EVT-WH-SCOPE-A")
+        self._seed_stock_entry(warehouse="WH-B", qty="2", event_key="EVT-WH-SCOPE-B")
         with patch(
             "app.services.permission_service.PermissionService.require_action",
             return_value=None,
@@ -197,32 +223,6 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
                 allowed_warehouses={"WH-A"},
                 allowed_items={"ITEM-A"},
             ),
-        ), patch(
-            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.list_stock_summary",
-            return_value=[
-                {
-                    "company": "COMP-A",
-                    "warehouse": "WH-A",
-                    "item_code": "ITEM-A",
-                    "actual_qty": "2",
-                    "projected_qty": "3",
-                    "reserved_qty": "1",
-                    "ordered_qty": "5",
-                    "reorder_level": "6",
-                    "safety_stock": "4",
-                },
-                {
-                    "company": "COMP-A",
-                    "warehouse": "WH-B",
-                    "item_code": "ITEM-A",
-                    "actual_qty": "2",
-                    "projected_qty": "3",
-                    "reserved_qty": "1",
-                    "ordered_qty": "5",
-                    "reorder_level": "6",
-                    "safety_stock": "4",
-                },
-            ],
         ):
             response = self.client.get("/api/warehouse/stock-summary?company=COMP-A", headers=self._headers())
 
@@ -260,15 +260,18 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_erpnext_malformed_data_fail_closed(self) -> None:
+    def test_stock_ledger_uses_fastapi_local_rows_even_when_erpnext_fails(self) -> None:
+        self._seed_stock_entry(event_key="EVT-WH-READ-NO-ERP-001")
         with patch(
             "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.list_stock_ledger",
             side_effect=ERPNextAdapterException(error_code="ERPNEXT_RESPONSE_INVALID", safe_message="invalid"),
         ):
             response = self.client.get("/api/warehouse/stock-ledger", headers=self._headers())
 
-        self.assertEqual(response.status_code, 502)
-        self.assertEqual(response.json()["code"], "ERPNEXT_RESPONSE_INVALID")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["items"][0]["warehouse"], "WH-A")
 
     def test_no_write_route_registered(self) -> None:
         warehouse_routes = [route for route in app.routes if str(getattr(route, "path", "")).startswith("/api/warehouse")]
