@@ -40,9 +40,12 @@ from app.schemas.sample import SampleOrderStatusRequest
 from app.schemas.sample import SampleOrderUpdateRequest
 from app.schemas.sample import SampleTrackingNodeCreateRequest
 from app.schemas.sample import SampleTrackingNodeItem
+from app.schemas.sample import SampleTrackingNodeUpdateRequest
+from app.schemas.sample import SampleTrackingActionRequest
 from app.schemas.sample import SampleTrackingTemplateCreateRequest
 from app.schemas.sample import SampleTrackingTemplateItem
 from app.schemas.sample import SampleTrackingTemplateListData
+from app.schemas.sample import SampleTrackingTemplateUpdateRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
 from app.schemas.sales_inventory import SalesOrderDraftLineItemCreateRequest
 from app.services.sales_inventory_service import SalesInventoryService
@@ -391,6 +394,72 @@ class SampleService:
         after = self._snapshot_template(row)
         return self._template_result(row=row, before=None, after=after)
 
+    def update_template(self, *, template_id: int, payload: SampleTrackingTemplateUpdateRequest, actor: str) -> SampleMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        row = self._get_template_for_mutation(template_id=template_id, company=company)
+        next_values = self._template_next_values(payload=payload)
+        request_hash = self._request_hash(operation="update", entity_type="template", company=company, template_id=template_id, payload=next_values)
+        idem = self._get_idempotency(entity_type="template", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="update", request_hash=request_hash)
+            idem_row = self._get_template_by_id(idem.record_id)
+            after = self._snapshot_template(idem_row)
+            return self._template_result(row=idem_row, before=after, after=after, idempotent=True)
+
+        before = self._snapshot_template(row)
+        try:
+            for key, value in next_values.items():
+                setattr(row, key, value)
+            row.updated_by = actor
+            row.version = int(row.version or 0) + 1
+            self._insert_idempotency(
+                entity_type="template",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="update",
+                request_hash=request_hash,
+                record_id=int(row.id),
+                actor=actor,
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._snapshot_template(row)
+        return self._template_result(row=row, before=before, after=after)
+
+    def deactivate_template(self, *, template_id: int, payload: SampleTrackingActionRequest, actor: str) -> SampleMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        row = self._get_template_for_mutation(template_id=template_id, company=company)
+        request_hash = self._request_hash(operation="deactivate", entity_type="template", company=company, template_id=template_id, reason=payload.reason)
+        idem = self._get_idempotency(entity_type="template", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="deactivate", request_hash=request_hash)
+            idem_row = self._get_template_by_id(idem.record_id)
+            after = self._snapshot_template(idem_row)
+            return self._template_result(row=idem_row, before=after, after=after, idempotent=True)
+
+        before = self._snapshot_template(row)
+        try:
+            row.status = "disabled"
+            row.updated_by = actor
+            row.version = int(row.version or 0) + 1
+            self._insert_idempotency(
+                entity_type="template",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="deactivate",
+                request_hash=request_hash,
+                record_id=int(row.id),
+                actor=actor,
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._snapshot_template(row)
+        return self._template_result(row=row, before=before, after=after)
+
     def create_node(self, *, template_id: int, payload: SampleTrackingNodeCreateRequest, actor: str) -> SampleMutationResult:
         company = self._require_text(payload.company, "company")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
@@ -435,6 +504,88 @@ class SampleService:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
         after = self._snapshot_node(row)
         return self._node_result(row=row, before=None, after=after)
+
+    def update_node(self, *, template_id: int, node_id: int, payload: SampleTrackingNodeUpdateRequest, actor: str) -> SampleMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        template = self._get_template_for_mutation(template_id=template_id, company=company)
+        row = self._get_node_for_mutation(template_id=template_id, node_id=node_id)
+        next_values = self._node_next_values(payload=payload)
+        request_hash = self._request_hash(operation="update", entity_type="node", company=company, template_id=template_id, node_id=node_id, payload=next_values)
+        idem = self._get_idempotency(entity_type="node", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="update", request_hash=request_hash)
+            idem_row = self._get_node_by_id(idem.record_id)
+            after = self._snapshot_node(idem_row)
+            return self._node_result(row=idem_row, before=after, after=after, idempotent=True)
+
+        before = self._snapshot_node(row)
+        try:
+            for key, value in next_values.items():
+                setattr(row, key, value)
+            row.updated_by = actor
+            template.updated_by = actor
+            template.version = int(template.version or 0) + 1
+            self._insert_idempotency(
+                entity_type="node",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="update",
+                request_hash=request_hash,
+                record_id=int(row.id),
+                actor=actor,
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._snapshot_node(row)
+        return self._node_result(row=row, before=before, after=after)
+
+    def delete_node(self, *, template_id: int, node_id: int, payload: SampleTrackingActionRequest, actor: str) -> SampleMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        template = self._get_template_for_mutation(template_id=template_id, company=company)
+        request_hash = self._request_hash(operation="delete_node", entity_type="node", company=company, template_id=template_id, node_id=node_id, reason=payload.reason)
+        idem = self._get_idempotency(entity_type="node", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="delete_node", request_hash=request_hash)
+            deleted = {"id": int(idem.record_id), "deleted": True}
+            return SampleMutationResult(
+                item=deleted,
+                before=None,
+                after=deleted,
+                resource_type="SAMPLE_TRACKING_NODE",
+                resource_id=int(idem.record_id),
+                resource_no=str(idem.record_id),
+                idempotent=True,
+            )
+        row = self._get_node_for_mutation(template_id=template_id, node_id=node_id)
+        before = self._snapshot_node(row)
+        deleted = {"id": int(row.id), "template_id": int(template.id), "deleted": True}
+        try:
+            self._insert_idempotency(
+                entity_type="node",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="delete_node",
+                request_hash=request_hash,
+                record_id=int(row.id),
+                actor=actor,
+            )
+            template.updated_by = actor
+            template.version = int(template.version or 0) + 1
+            self.session.delete(row)
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        return SampleMutationResult(
+            item=deleted,
+            before=before,
+            after=deleted,
+            resource_type="SAMPLE_TRACKING_NODE",
+            resource_id=int(node_id),
+            resource_no=str(node_id),
+        )
 
     def _transition_order(
         self,
@@ -638,6 +789,16 @@ class SampleService:
             raise BusinessException(code=SAMPLE_NOT_FOUND, message="样衣跟进节点不存在")
         return row
 
+    def _get_node_for_mutation(self, *, template_id: int, node_id: int) -> LySampleTrackingNode:
+        row = (
+            self.session.query(LySampleTrackingNode)
+            .filter(LySampleTrackingNode.id == node_id, LySampleTrackingNode.template_id == template_id)
+            .first()
+        )
+        if row is None:
+            raise BusinessException(code=SAMPLE_NOT_FOUND, message="样衣跟进节点不存在或模板不匹配")
+        return row
+
     def _order_next_values(self, *, row: LySampleOrder, payload: SampleOrderUpdateRequest) -> dict[str, Any]:
         values: dict[str, Any] = {}
         for key in [
@@ -661,6 +822,47 @@ class SampleService:
             values[key] = self._normalize_writable_order_status(str(value)) if key == "status" else value
         if not values:
             return {}
+        return values
+
+    def _template_next_values(self, *, payload: SampleTrackingTemplateUpdateRequest) -> dict[str, Any]:
+        mapping = {
+            "name": "name",
+            "category": "category",
+            "group": "group_name",
+            "status": "status",
+            "owner": "owner",
+            "version": "version_no",
+            "summary": "summary",
+        }
+        values: dict[str, Any] = {}
+        for source_key, target_key in mapping.items():
+            value = getattr(payload, source_key)
+            if value is None:
+                continue
+            if isinstance(value, str):
+                value = value.strip()
+            values[target_key] = value
+        return values
+
+    def _node_next_values(self, *, payload: SampleTrackingNodeUpdateRequest) -> dict[str, Any]:
+        mapping = {
+            "name": "name",
+            "role": "role",
+            "lead_time": "lead_time",
+            "status": "status",
+            "gate": "gate",
+            "output": "output",
+            "reminder": "reminder",
+            "sequence_no": "sequence_no",
+        }
+        values: dict[str, Any] = {}
+        for source_key, target_key in mapping.items():
+            value = getattr(payload, source_key)
+            if value is None:
+                continue
+            if isinstance(value, str):
+                value = value.strip()
+            values[target_key] = value
         return values
 
     @classmethod

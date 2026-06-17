@@ -434,6 +434,7 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(created.status_code, 201)
         template_id = int(created.json()["data"]["id"])
+        self.assertEqual(created.json()["data"]["status"], "enabled")
 
         node = self.client.post(
             f"/api/sample/tracking-templates/{template_id}/nodes",
@@ -453,14 +454,85 @@ class SampleApiTest(unittest.TestCase):
             },
         )
         self.assertEqual(node.status_code, 201)
+        node_id = int(node.json()["data"]["id"])
+
+        updated_template = self.client.patch(
+            f"/api/sample/tracking-templates/{template_id}",
+            headers=self._headers(request_id="SAMPLE-TPL-004"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "name": "A3 样衣跟进模板改",
+                "summary": "A3 模板改",
+                "idempotency_key": "IDEMP-STPL-A3-001-U",
+            },
+        )
+        self.assertEqual(updated_template.status_code, 200)
+        self.assertEqual(updated_template.json()["data"]["name"], "A3 样衣跟进模板改")
+
+        updated_node = self.client.patch(
+            f"/api/sample/tracking-templates/{template_id}/nodes/{node_id}",
+            headers=self._headers(request_id="SAMPLE-TPL-005"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "name": "纸样确认改",
+                "sequence_no": 30,
+                "idempotency_key": "IDEMP-STPL-A3-001-NU",
+            },
+        )
+        self.assertEqual(updated_node.status_code, 200)
+        self.assertEqual(updated_node.json()["data"]["name"], "纸样确认改")
+        self.assertEqual(updated_node.json()["data"]["sequence_no"], 30)
+
+        deactivated = self.client.post(
+            f"/api/sample/tracking-templates/{template_id}/deactivate",
+            headers=self._headers(request_id="SAMPLE-TPL-006"),
+            json={
+                "company": "COMP-A",
+                "reason": "停用旧版",
+                "idempotency_key": "IDEMP-STPL-A3-001-D",
+            },
+        )
+        self.assertEqual(deactivated.status_code, 200)
+        self.assertEqual(deactivated.json()["data"]["status"], "disabled")
 
         listed = self.client.get(
             "/api/sample/tracking-templates?company=COMP-A&keyword=A3&page=1&page_size=10",
-            headers=self._headers(request_id="SAMPLE-TPL-003"),
+            headers=self._headers(request_id="SAMPLE-TPL-007"),
         )
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json()["data"]["total"], 1)
-        self.assertEqual(listed.json()["data"]["items"][0]["nodes"][0]["name"], "纸样确认")
+        self.assertEqual(listed.json()["data"]["items"][0]["nodes"][0]["name"], "纸样确认改")
+        self.assertEqual(listed.json()["data"]["items"][0]["nodes"][0]["sequence_no"], 30)
+
+        deleted = self.client.post(
+            f"/api/sample/tracking-templates/{template_id}/nodes/{node_id}/delete",
+            headers=self._headers(request_id="SAMPLE-TPL-008"),
+            json={
+                "company": "COMP-A",
+                "reason": "节点废弃",
+                "idempotency_key": "IDEMP-STPL-A3-001-ND",
+            },
+        )
+        self.assertEqual(deleted.status_code, 200)
+        self.assertEqual(deleted.json()["data"]["deleted"], True)
+
+        deleted_retry = self.client.post(
+            f"/api/sample/tracking-templates/{template_id}/nodes/{node_id}/delete",
+            headers=self._headers(request_id="SAMPLE-TPL-009"),
+            json={
+                "company": "COMP-A",
+                "reason": "节点废弃",
+                "idempotency_key": "IDEMP-STPL-A3-001-ND",
+            },
+        )
+        self.assertEqual(deleted_retry.status_code, 200)
+        self.assertEqual(deleted_retry.json()["data"]["deleted"], True)
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleTrackingNode).count(), 0)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 7)
 
 
 if __name__ == "__main__":

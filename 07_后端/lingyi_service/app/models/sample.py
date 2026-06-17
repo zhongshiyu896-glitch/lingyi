@@ -142,7 +142,7 @@ class LySampleIdempotency(Base):
             name="ck_ly_sample_idem_entity",
         ),
         CheckConstraint(
-            "operation IN ('create','update','submit','seal','reverse','convert','create_node')",
+            "operation IN ('create','update','submit','seal','reverse','convert','deactivate','create_node','delete_node')",
             name="ck_ly_sample_idem_operation",
         ),
         {"schema": "ly_schema", "comment": "FastAPI 原生样衣流程幂等记录"},

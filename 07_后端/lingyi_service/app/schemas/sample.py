@@ -178,6 +178,29 @@ class SampleTrackingTemplateCreateRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=140)
 
 
+class SampleTrackingTemplateUpdateRequest(BaseModel):
+    """Update tracking template."""
+
+    operation: Literal["update"] = "update"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    category: str | None = Field(default=None, max_length=140)
+    group: str | None = Field(default=None, max_length=140)
+    status: TrackingTemplateStatus | None = None
+    owner: str | None = Field(default=None, max_length=140)
+    version: str | None = Field(default=None, max_length=64)
+    summary: str | None = Field(default=None, max_length=1000)
+
+
+class SampleTrackingActionRequest(BaseModel):
+    """Tracking template or node action request."""
+
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    reason: str | None = Field(default=None, max_length=255)
+
+
 class SampleTrackingNodeCreateRequest(BaseModel):
     """Create one tracking node."""
 
@@ -192,3 +215,19 @@ class SampleTrackingNodeCreateRequest(BaseModel):
     output: str = Field(default="", max_length=1000)
     reminder: str = Field(default="", max_length=1000)
     sequence_no: int = Field(default=10, ge=0)
+
+
+class SampleTrackingNodeUpdateRequest(BaseModel):
+    """Update one tracking node."""
+
+    operation: Literal["update"] = "update"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    role: str | None = Field(default=None, max_length=140)
+    lead_time: str | None = Field(default=None, max_length=64)
+    status: TrackingNodeStatus | None = None
+    gate: str | None = Field(default=None, max_length=1000)
+    output: str | None = Field(default=None, max_length=1000)
+    reminder: str | None = Field(default=None, max_length=1000)
+    sequence_no: int | None = Field(default=None, ge=0)

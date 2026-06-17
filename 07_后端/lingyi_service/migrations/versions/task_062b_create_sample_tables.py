@@ -167,7 +167,7 @@ def _create_idempotency_table(bind, schema: str | None) -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.CheckConstraint("entity_type IN ('order','template','node')", name="ck_ly_sample_idem_entity"),
         sa.CheckConstraint(
-            "operation IN ('create','update','submit','seal','reverse','convert','create_node')",
+            "operation IN ('create','update','submit','seal','reverse','convert','deactivate','create_node','delete_node')",
             name="ck_ly_sample_idem_operation",
         ),
         schema=schema,

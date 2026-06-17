@@ -28,8 +28,11 @@ from app.schemas.sample import SampleOrderConvertRequest
 from app.schemas.sample import SampleOrderCreateRequest
 from app.schemas.sample import SampleOrderStatusRequest
 from app.schemas.sample import SampleOrderUpdateRequest
+from app.schemas.sample import SampleTrackingActionRequest
 from app.schemas.sample import SampleTrackingNodeCreateRequest
+from app.schemas.sample import SampleTrackingNodeUpdateRequest
 from app.schemas.sample import SampleTrackingTemplateCreateRequest
+from app.schemas.sample import SampleTrackingTemplateUpdateRequest
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
 from app.services.permission_service import PermissionService
@@ -462,6 +465,95 @@ def create_tracking_template(
     return _created(result.item)
 
 
+@router.patch("/tracking-templates/{template_id}")
+def update_tracking_template(
+    template_id: int,
+    payload: SampleTrackingTemplateUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    result = _mutate_template(
+        template_id=template_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        action="update",
+        mutate=lambda service: service.update_template(template_id=template_id, payload=payload, actor=current_user.username),
+    )
+    return _ok(result.item)
+
+
+@router.post("/tracking-templates/{template_id}/deactivate")
+def deactivate_tracking_template(
+    template_id: int,
+    payload: SampleTrackingActionRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    result = _mutate_template(
+        template_id=template_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        action="deactivate",
+        mutate=lambda service: service.deactivate_template(template_id=template_id, payload=payload, actor=current_user.username),
+    )
+    return _ok(result.item)
+
+
+def _mutate_template(
+    *,
+    template_id: int,
+    payload: Any,
+    request: Request,
+    current_user: CurrentUser,
+    session: Session,
+    action: str,
+    mutate: Any,
+) -> SampleMutationResult:
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=SAMPLE_MANAGE,
+        resource_type="SAMPLE_TRACKING_TEMPLATE",
+        resource_id=template_id,
+    )
+    try:
+        result = mutate(SampleService(session))
+        _commit_success(session=session, request=request, current_user=current_user, action=action, result=result)
+    except AuditWriteFailed as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
+    except AppException as exc:
+        _record_failure_and_commit(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="SAMPLE_TRACKING_TEMPLATE",
+            resource_id=template_id,
+            resource_no=None,
+            error_code=exc.code,
+        )
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
+    except Exception as exc:
+        _handle_internal_error(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="SAMPLE_TRACKING_TEMPLATE",
+            resource_id=template_id,
+            resource_no=None,
+            exc=exc,
+        )
+    return result
+
+
 @router.post("/tracking-templates/{template_id}/nodes")
 def create_tracking_node(
     template_id: int,
@@ -508,3 +600,97 @@ def create_tracking_node(
             exc=exc,
         )
     return _created(result.item)
+
+
+@router.patch("/tracking-templates/{template_id}/nodes/{node_id}")
+def update_tracking_node(
+    template_id: int,
+    node_id: int,
+    payload: SampleTrackingNodeUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    result = _mutate_node(
+        template_id=template_id,
+        node_id=node_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        action="update_node",
+        mutate=lambda service: service.update_node(template_id=template_id, node_id=node_id, payload=payload, actor=current_user.username),
+    )
+    return _ok(result.item)
+
+
+@router.post("/tracking-templates/{template_id}/nodes/{node_id}/delete")
+def delete_tracking_node(
+    template_id: int,
+    node_id: int,
+    payload: SampleTrackingActionRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    result = _mutate_node(
+        template_id=template_id,
+        node_id=node_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        action="delete_node",
+        mutate=lambda service: service.delete_node(template_id=template_id, node_id=node_id, payload=payload, actor=current_user.username),
+    )
+    return _ok(result.item)
+
+
+def _mutate_node(
+    *,
+    template_id: int,
+    node_id: int,
+    payload: Any,
+    request: Request,
+    current_user: CurrentUser,
+    session: Session,
+    action: str,
+    mutate: Any,
+) -> SampleMutationResult:
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=SAMPLE_MANAGE,
+        resource_type="SAMPLE_TRACKING_NODE",
+        resource_id=node_id,
+    )
+    try:
+        result = mutate(SampleService(session))
+        _commit_success(session=session, request=request, current_user=current_user, action=action, result=result)
+    except AuditWriteFailed as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
+    except AppException as exc:
+        _record_failure_and_commit(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="SAMPLE_TRACKING_NODE",
+            resource_id=node_id,
+            resource_no=str(template_id),
+            error_code=exc.code,
+        )
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
+    except Exception as exc:
+        _handle_internal_error(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="SAMPLE_TRACKING_NODE",
+            resource_id=node_id,
+            resource_no=str(template_id),
+            exc=exc,
+        )
+    return result
