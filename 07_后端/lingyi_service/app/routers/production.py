@@ -67,6 +67,10 @@ from app.schemas.production import ProductionSalespersonPerformanceListData
 from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionSyncJobCardsRequest
+from app.schemas.production import ProductionTrackingReconcileGenerateData
+from app.schemas.production import ProductionTrackingReconcileGenerateRequest
+from app.schemas.production import ProductionTrackingReconcileListData
+from app.schemas.production import ProductionTrackingReconcileQuery
 from app.schemas.production import ProductionWorkOrderListData
 from app.schemas.production import ProductionWorkOrderQuery
 from app.schemas.production import ProductionWorkerRunOnceData
@@ -478,6 +482,141 @@ def list_production_plans(
         return _app_err(exc)
     except Exception as exc:
         return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/tracking-reconciliations", response_model=ApiResponse[ProductionTrackingReconcileListData])
+def list_tracking_reconciliations(
+    request: Request,
+    company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    diff_status: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_tracking_reconcile",
+            resource_id=None,
+        )
+        readable_companies, _readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionTrackingReconcileQuery(
+            company=company,
+            keyword=keyword,
+            customer=customer,
+            diff_status=diff_status,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_tracking_reconciliations(
+            query=query,
+            readable_companies=readable_companies,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.post("/tracking-reconciliations/generate", response_model=ApiResponse[ProductionTrackingReconcileGenerateData])
+def generate_tracking_reconciliations(
+    payload: ProductionTrackingReconcileGenerateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_PLAN_CREATE
+    resource_type = "production_tracking_reconcile"
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type=resource_type,
+            resource_id=None,
+        )
+        data = _service(session=session, request=request).generate_tracking_reconciliations(
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type=resource_type,
+            resource_id=None,
+            resource_no=data.batch_no,
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type=resource_type,
+            resource_id=None,
+            resource_no=payload.idempotency_key,
+            before_data=None,
+            after_data={"company": payload.company, "keyword": payload.keyword},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type=resource_type,
+            resource_id=None,
+            resource_no=payload.idempotency_key,
+            before_data=None,
+            after_data={"company": payload.company, "keyword": payload.keyword},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
 
 
 @router.get("/work-orders", response_model=ApiResponse[ProductionWorkOrderListData])

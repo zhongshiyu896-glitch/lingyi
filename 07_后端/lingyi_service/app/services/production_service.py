@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from datetime import datetime
 from decimal import Decimal
 import hashlib
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.error_codes import PRODUCTION_BOM_ITEM_MISMATCH
 from app.core.error_codes import PRODUCTION_BOM_NOT_ACTIVE
 from app.core.error_codes import PRODUCTION_BOM_NOT_FOUND
+from app.core.error_codes import PRODUCTION_COMPANY_REQUIRED
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_KEY_REQUIRED
 from app.core.error_codes import PRODUCTION_MATERIAL_CHECK_STATUS_INVALID
@@ -45,7 +47,10 @@ from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionStatusLog
+from app.models.production import LyProductionTrackingReconcile
+from app.models.production import LyProductionTrackingReconcileBatch
 from app.models.production import LyProductionWorkOrderLink
+from app.models.sample import LySampleOrder
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.style_profit import LyStyleProfitSnapshot
@@ -85,6 +90,11 @@ from app.schemas.production import ProductionSalespersonPerformanceListItem
 from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionSyncJobCardsRequest
+from app.schemas.production import ProductionTrackingReconcileGenerateData
+from app.schemas.production import ProductionTrackingReconcileGenerateRequest
+from app.schemas.production import ProductionTrackingReconcileListData
+from app.schemas.production import ProductionTrackingReconcileListItem
+from app.schemas.production import ProductionTrackingReconcileQuery
 from app.schemas.production import ProductionWorkOrderListData
 from app.schemas.production import ProductionWorkOrderListItem
 from app.schemas.production import ProductionWorkOrderQuery
@@ -313,6 +323,170 @@ class ProductionService:
             )
 
         return ProductionPlanListData(items=items, total=int(total), page=query.page, page_size=query.page_size)
+
+    def list_tracking_reconciliations(
+        self,
+        *,
+        query: ProductionTrackingReconcileQuery,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionTrackingReconcileListData:
+        try:
+            sql = self.session.query(LyProductionTrackingReconcile)
+            if query.company:
+                sql = sql.filter(LyProductionTrackingReconcile.company == query.company.strip())
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                sql = sql.filter(
+                    or_(
+                        LyProductionTrackingReconcile.reconcile_no.like(keyword),
+                        LyProductionTrackingReconcile.sample_no.like(keyword),
+                        LyProductionTrackingReconcile.style_no.like(keyword),
+                        LyProductionTrackingReconcile.style_name.like(keyword),
+                        LyProductionTrackingReconcile.customer.like(keyword),
+                        LyProductionTrackingReconcile.sales_order.like(keyword),
+                    )
+                )
+            if query.customer:
+                sql = sql.filter(LyProductionTrackingReconcile.customer.like(f"%{query.customer.strip()}%"))
+            if query.diff_status and query.diff_status != "all":
+                sql = sql.filter(LyProductionTrackingReconcile.diff_status == query.diff_status.strip())
+            if query.from_date:
+                sql = sql.filter(LyProductionTrackingReconcile.sealed_date >= query.from_date)
+            if query.to_date:
+                sql = sql.filter(LyProductionTrackingReconcile.sealed_date <= query.to_date)
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionTrackingReconcileListData(
+                        items=[],
+                        total=0,
+                        page=query.page,
+                        page_size=query.page_size,
+                    )
+                sql = sql.filter(LyProductionTrackingReconcile.company.in_(sorted(readable_companies)))
+
+            total = sql.with_entities(func.count(LyProductionTrackingReconcile.id)).scalar() or 0
+            rows = (
+                sql.order_by(LyProductionTrackingReconcile.updated_at.desc(), LyProductionTrackingReconcile.id.desc())
+                .offset((query.page - 1) * query.page_size)
+                .limit(query.page_size)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        return ProductionTrackingReconcileListData(
+            items=[self._tracking_reconcile_item(row) for row in rows],
+            total=int(total),
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def generate_tracking_reconciliations(
+        self,
+        *,
+        payload: ProductionTrackingReconcileGenerateRequest,
+        operator: str,
+    ) -> ProductionTrackingReconcileGenerateData:
+        company = self._require_non_blank(
+            payload.company,
+            code=PRODUCTION_COMPANY_REQUIRED,
+            message="company 不能为空",
+        )
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        request_hash = self._build_request_hash(
+            {
+                "company": company,
+                "keyword": self._text(payload.keyword),
+                "customer": self._text(payload.customer),
+                "diff_status": self._text(payload.diff_status),
+                "from_date": payload.from_date.isoformat() if payload.from_date else None,
+                "to_date": payload.to_date.isoformat() if payload.to_date else None,
+                "operation": self._text(payload.operation) or "generate",
+            }
+        )
+
+        existing_batch = (
+            self.session.query(LyProductionTrackingReconcileBatch)
+            .filter(
+                LyProductionTrackingReconcileBatch.company == company,
+                LyProductionTrackingReconcileBatch.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing_batch is not None:
+            if str(existing_batch.request_hash) != request_hash:
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+            return ProductionTrackingReconcileGenerateData.model_validate(existing_batch.response_json)
+
+        batch_no = self._next_tracking_batch_no()
+        candidates = self._load_tracking_reconcile_candidates(payload=payload, company=company)
+        created_count = 0
+        updated_count = 0
+        items: list[ProductionTrackingReconcileListItem] = []
+
+        for sample in candidates:
+            draft = self._build_tracking_reconcile_draft(sample=sample, batch_no=batch_no, operator=operator)
+            if payload.diff_status and payload.diff_status != "all" and draft["diff_status"] != payload.diff_status:
+                continue
+
+            row = (
+                self.session.query(LyProductionTrackingReconcile)
+                .filter(
+                    LyProductionTrackingReconcile.company == company,
+                    LyProductionTrackingReconcile.sample_no == draft["sample_no"],
+                )
+                .first()
+            )
+            if row is None:
+                row = LyProductionTrackingReconcile(
+                    reconcile_no=self._next_tracking_reconcile_no(),
+                    company=company,
+                    sample_order_id=int(sample.id),
+                    sample_no=draft["sample_no"],
+                    created_by=operator,
+                )
+                self.session.add(row)
+                created_count += 1
+            else:
+                updated_count += 1
+
+            self._apply_tracking_reconcile_draft(row=row, draft=draft, operator=operator)
+            try:
+                self.session.flush()
+            except SQLAlchemyError as exc:
+                raise DatabaseWriteFailed() from exc
+            items.append(self._tracking_reconcile_item(row))
+
+        matched_count = sum(1 for item in items if item.diff_status != "unmatched")
+        unmatched_count = sum(1 for item in items if item.diff_status == "unmatched")
+        data = ProductionTrackingReconcileGenerateData(
+            batch_no=batch_no,
+            company=company,
+            created_count=created_count,
+            updated_count=updated_count,
+            matched_count=matched_count,
+            unmatched_count=unmatched_count,
+            items=items,
+        )
+        self.session.add(
+            LyProductionTrackingReconcileBatch(
+                batch_no=batch_no,
+                company=company,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                created_count=created_count,
+                updated_count=updated_count,
+                matched_count=matched_count,
+                unmatched_count=unmatched_count,
+                response_json=data.model_dump(mode="json"),
+                created_by=operator,
+            )
+        )
+        return data
 
     def list_work_orders(
         self,
@@ -2939,6 +3113,270 @@ class ProductionService:
                 request_id=request_id,
             )
         )
+
+    def _load_tracking_reconcile_candidates(
+        self,
+        *,
+        payload: ProductionTrackingReconcileGenerateRequest,
+        company: str,
+    ) -> list[LySampleOrder]:
+        try:
+            sql = self.session.query(LySampleOrder).filter(
+                LySampleOrder.company == company,
+                LySampleOrder.status.in_(["sealed", "converted"]),
+            )
+            if payload.keyword:
+                keyword = f"%{payload.keyword.strip().lower()}%"
+                sql = sql.filter(
+                    or_(
+                        func.lower(LySampleOrder.sample_no).like(keyword),
+                        func.lower(LySampleOrder.style_no).like(keyword),
+                        func.lower(LySampleOrder.style_name).like(keyword),
+                        func.lower(LySampleOrder.customer).like(keyword),
+                        func.lower(LySampleOrder.bulk_handoff_no).like(keyword),
+                    )
+                )
+            if payload.customer:
+                sql = sql.filter(LySampleOrder.customer.like(f"%{payload.customer.strip()}%"))
+            rows = sql.order_by(LySampleOrder.updated_at.desc(), LySampleOrder.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        candidates: list[LySampleOrder] = []
+        for row in rows:
+            sealed_date = self._sample_sealed_date(row)
+            if payload.from_date and (sealed_date is None or sealed_date < payload.from_date):
+                continue
+            if payload.to_date and (sealed_date is None or sealed_date > payload.to_date):
+                continue
+            candidates.append(row)
+        return candidates
+
+    def _build_tracking_reconcile_draft(
+        self,
+        *,
+        sample: LySampleOrder,
+        batch_no: str,
+        operator: str,
+    ) -> dict[str, Any]:
+        order, order_item = self._resolve_tracking_sales_order(sample=sample)
+        sealed_date = self._sample_sealed_date(sample)
+        sales_order = str(order.sales_order_no) if order is not None else ""
+        order_qty = self._dec(getattr(order_item, "qty", None))
+        unit_price = self._dec(getattr(order_item, "rate", None))
+        sample_qty = Decimal("1")
+        sample_price = Decimal("0")
+        diff_status = self._tracking_diff_status(sample=sample, order=order)
+        remark = self._tracking_reconcile_remark(sample=sample, order=order)
+        owner = (
+            self._text(getattr(sample, "pattern_maker", None))
+            or self._text(getattr(sample, "sample_maker", None))
+            or self._text(getattr(sample, "created_by", None))
+            or operator
+        )
+        source_hash = self._build_request_hash(
+            {
+                "sample_id": int(sample.id),
+                "sample_no": str(sample.sample_no),
+                "sample_version": int(getattr(sample, "version", 0) or 0),
+                "sample_status": str(sample.status),
+                "bulk_handoff_no": self._text(getattr(sample, "bulk_handoff_no", None)),
+                "sales_order_id": int(order.id) if order is not None else None,
+                "sales_order": sales_order,
+                "sales_order_item_id": int(order_item.id) if order_item is not None else None,
+                "order_qty": order_qty,
+                "unit_price": unit_price,
+                "diff_status": diff_status,
+            }
+        )
+        return {
+            "batch_no": batch_no,
+            "sample_order_id": int(sample.id),
+            "sample_no": str(sample.sample_no),
+            "style_no": str(sample.style_no),
+            "style_name": str(sample.style_name),
+            "image_tone": self._text(sample.image_tone) or "gray",
+            "customer": str(sample.customer),
+            "sample_type": str(sample.sample_type),
+            "sealed_date": sealed_date,
+            "sales_order": sales_order,
+            "sales_order_id": int(order.id) if order is not None else None,
+            "sales_order_item_id": int(order_item.id) if order_item is not None else None,
+            "sample_qty": sample_qty,
+            "order_qty": order_qty,
+            "sample_price": sample_price,
+            "unit_price": unit_price,
+            "diff_status": diff_status,
+            "remark": remark,
+            "owner": owner,
+            "source_hash": source_hash,
+        }
+
+    def _resolve_tracking_sales_order(self, *, sample: LySampleOrder) -> tuple[LySalesOrder | None, LySalesOrderItem | None]:
+        try:
+            order = self._find_tracking_sales_order(sample=sample)
+            if order is None:
+                return None, None
+            item = (
+                self.session.query(LySalesOrderItem)
+                .filter(
+                    LySalesOrderItem.sales_order_id == int(order.id),
+                    LySalesOrderItem.item_code == str(sample.style_no),
+                )
+                .order_by(LySalesOrderItem.id.asc())
+                .first()
+            )
+            if item is None:
+                item = (
+                    self.session.query(LySalesOrderItem)
+                    .filter(LySalesOrderItem.sales_order_id == int(order.id))
+                    .order_by(LySalesOrderItem.id.asc())
+                    .first()
+                )
+            return order, item
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    def _find_tracking_sales_order(self, *, sample: LySampleOrder) -> LySalesOrder | None:
+        company = str(sample.company)
+        bulk_handoff_no = self._text(sample.bulk_handoff_no)
+        source_ref = f"SAMPLE-{sample.sample_no}"
+        direct_filters = [LySalesOrder.source_order_ref == source_ref]
+        if bulk_handoff_no:
+            direct_filters.extend(
+                [
+                    LySalesOrder.sales_order_no == bulk_handoff_no,
+                    LySalesOrder.source_order_ref == bulk_handoff_no,
+                ]
+            )
+        order = (
+            self.session.query(LySalesOrder)
+            .filter(LySalesOrder.company == company)
+            .filter(or_(*direct_filters))
+            .order_by(LySalesOrder.id.desc())
+            .first()
+        )
+        if order is not None:
+            return order
+
+        return (
+            self.session.query(LySalesOrder)
+            .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+            .filter(
+                LySalesOrder.company == company,
+                LySalesOrder.customer == str(sample.customer),
+                LySalesOrder.status != "cancelled",
+                LySalesOrderItem.item_code == str(sample.style_no),
+            )
+            .order_by(LySalesOrder.id.desc())
+            .first()
+        )
+
+    @staticmethod
+    def _sample_sealed_date(sample: LySampleOrder) -> date | None:
+        for value in (sample.converted_at, sample.updated_at, sample.due_date, sample.created_at):
+            if value is None:
+                continue
+            if hasattr(value, "date"):
+                return value.date()
+            if isinstance(value, date):
+                return value
+        return None
+
+    @staticmethod
+    def _tracking_diff_status(*, sample: LySampleOrder, order: LySalesOrder | None) -> str:
+        if order is None:
+            return "unmatched"
+        order_date = getattr(order, "transaction_date", None)
+        due_date = getattr(sample, "due_date", None)
+        if order_date is not None and due_date is not None and order_date > due_date:
+            return "late_order"
+        return "matched"
+
+    @staticmethod
+    def _tracking_reconcile_remark(*, sample: LySampleOrder, order: LySalesOrder | None) -> str:
+        limitation = "样板单暂无订货数量/样价字段，数量与价格仅展示真实订单值，不作为差异判断。"
+        if order is None:
+            return f"封样后未找到本地大货销售订单；{limitation}"
+        handoff = str(sample.bulk_handoff_no or "").strip()
+        if handoff:
+            return f"已按样板转大货单号 {handoff} 匹配本地销售订单；{limitation}"
+        return f"已按客户+款号匹配本地销售订单 {order.sales_order_no}；{limitation}"
+
+    def _apply_tracking_reconcile_draft(
+        self,
+        *,
+        row: LyProductionTrackingReconcile,
+        draft: dict[str, Any],
+        operator: str,
+    ) -> None:
+        row.batch_no = draft["batch_no"]
+        row.sample_order_id = draft["sample_order_id"]
+        row.sample_no = draft["sample_no"]
+        row.style_no = draft["style_no"]
+        row.style_name = draft["style_name"]
+        row.image_tone = draft["image_tone"]
+        row.customer = draft["customer"]
+        row.sample_type = draft["sample_type"]
+        row.sealed_date = draft["sealed_date"]
+        row.sales_order = draft["sales_order"]
+        row.sales_order_id = draft["sales_order_id"]
+        row.sales_order_item_id = draft["sales_order_item_id"]
+        row.sample_qty = draft["sample_qty"]
+        row.order_qty = draft["order_qty"]
+        row.sample_price = draft["sample_price"]
+        row.unit_price = draft["unit_price"]
+        row.diff_status = draft["diff_status"]
+        row.remark = draft["remark"]
+        row.owner = draft["owner"]
+        row.source_hash = draft["source_hash"]
+        row.updated_by = operator
+
+    @staticmethod
+    def _tracking_reconcile_item(row: LyProductionTrackingReconcile) -> ProductionTrackingReconcileListItem:
+        return ProductionTrackingReconcileListItem(
+            id=int(row.id),
+            reconcile_no=str(row.reconcile_no),
+            batch_no=str(row.batch_no),
+            company=str(row.company),
+            sample_order_id=int(row.sample_order_id),
+            sample_no=str(row.sample_no),
+            style_no=str(row.style_no),
+            style_name=str(row.style_name),
+            image_tone=str(row.image_tone or "gray"),
+            customer=str(row.customer),
+            sample_type=str(row.sample_type),
+            sealed_date=row.sealed_date,
+            sales_order=(str(row.sales_order) if row.sales_order else None),
+            sales_order_id=(int(row.sales_order_id) if row.sales_order_id is not None else None),
+            sales_order_item_id=(int(row.sales_order_item_id) if row.sales_order_item_id is not None else None),
+            sample_qty=Decimal(str(row.sample_qty or 0)),
+            order_qty=Decimal(str(row.order_qty or 0)),
+            sample_price=Decimal(str(row.sample_price or 0)),
+            unit_price=Decimal(str(row.unit_price or 0)),
+            diff_status=str(row.diff_status),
+            remark=str(row.remark or ""),
+            owner=str(row.owner or ""),
+            created_by=str(row.created_by),
+            created_at=row.created_at,
+            updated_by=(str(row.updated_by) if row.updated_by else None),
+            updated_at=row.updated_at,
+        )
+
+    @staticmethod
+    def _text(value: Any) -> str | None:
+        text = str(value).strip() if value is not None else ""
+        return text or None
+
+    @staticmethod
+    def _next_tracking_batch_no() -> str:
+        ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+        return f"PTRB-{ts}"
+
+    @staticmethod
+    def _next_tracking_reconcile_no() -> str:
+        ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+        return f"PTR-{ts}"
 
     def _build_request_hash(self, payload: dict[str, Any]) -> str:
         canonical = self._canonicalize(payload)

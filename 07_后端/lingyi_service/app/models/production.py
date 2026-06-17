@@ -196,3 +196,81 @@ class LyProductionStatusLog(Base):
     operator = Column(String(140), nullable=False)
     operated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     request_id = Column(String(64), nullable=True)
+
+
+class LyProductionTrackingReconcileBatch(Base):
+    """样板单到大货订单对账生成批次。"""
+
+    __tablename__ = "ly_production_tracking_reconcile_batch"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_tracking_reconcile_batch"),
+        Index("uk_ly_production_tracking_reconcile_batch_no", "batch_no", unique=True),
+        Index("uk_ly_production_tracking_reconcile_batch_idem", "company", "idempotency_key", unique=True),
+        Index("idx_ly_production_tracking_reconcile_batch_company_time", "company", "created_at"),
+        {"schema": "ly_schema", "comment": "样板单到大货订单对账生成批次"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    batch_no = Column(String(64), nullable=False)
+    company = Column(String(140), nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    created_count = Column(Integer, nullable=False, server_default="0")
+    updated_count = Column(Integer, nullable=False, server_default="0")
+    matched_count = Column(Integer, nullable=False, server_default="0")
+    unmatched_count = Column(Integer, nullable=False, server_default="0")
+    response_json = Column(JSONType, nullable=False)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class LyProductionTrackingReconcile(Base):
+    """样板单到大货订单对账快照。"""
+
+    __tablename__ = "ly_production_tracking_reconcile"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_tracking_reconcile"),
+        Index("uk_ly_production_tracking_reconcile_no", "reconcile_no", unique=True),
+        Index("uk_ly_production_tracking_reconcile_sample", "company", "sample_no", unique=True),
+        Index("idx_ly_production_tracking_reconcile_company_status", "company", "diff_status"),
+        Index("idx_ly_production_tracking_reconcile_customer", "company", "customer"),
+        Index("idx_ly_production_tracking_reconcile_sales_order", "company", "sales_order"),
+        Index("idx_ly_production_tracking_reconcile_batch", "batch_no"),
+        CheckConstraint(
+            "diff_status IN ('matched','unmatched','quantity_diff','price_diff','late_order')",
+            name="ck_ly_production_tracking_reconcile_diff_status",
+        ),
+        CheckConstraint("sample_qty >= 0", name="ck_ly_production_tracking_reconcile_sample_qty_nonnegative"),
+        CheckConstraint("order_qty >= 0", name="ck_ly_production_tracking_reconcile_order_qty_nonnegative"),
+        CheckConstraint("sample_price >= 0", name="ck_ly_production_tracking_reconcile_sample_price_nonnegative"),
+        CheckConstraint("unit_price >= 0", name="ck_ly_production_tracking_reconcile_unit_price_nonnegative"),
+        {"schema": "ly_schema", "comment": "样板单到大货订单对账快照"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    reconcile_no = Column(String(64), nullable=False)
+    batch_no = Column(String(64), nullable=False)
+    company = Column(String(140), nullable=False)
+    sample_order_id = Column(BigInteger, nullable=False)
+    sample_no = Column(String(140), nullable=False)
+    style_no = Column(String(140), nullable=False)
+    style_name = Column(String(255), nullable=False)
+    image_tone = Column(String(32), nullable=False, server_default="gray")
+    customer = Column(String(255), nullable=False)
+    sample_type = Column(String(32), nullable=False)
+    sealed_date = Column(Date, nullable=True)
+    sales_order = Column(String(140), nullable=False, server_default="")
+    sales_order_id = Column(BigInteger, nullable=True)
+    sales_order_item_id = Column(BigInteger, nullable=True)
+    sample_qty = Column(Numeric(18, 6), nullable=False, server_default="1")
+    order_qty = Column(Numeric(18, 6), nullable=False, server_default="0")
+    sample_price = Column(Numeric(18, 6), nullable=False, server_default="0")
+    unit_price = Column(Numeric(18, 6), nullable=False, server_default="0")
+    diff_status = Column(String(32), nullable=False)
+    remark = Column(String(500), nullable=False, server_default="")
+    owner = Column(String(140), nullable=False, server_default="")
+    source_hash = Column(String(64), nullable=False)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

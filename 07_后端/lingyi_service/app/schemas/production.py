@@ -101,6 +101,85 @@ class ProductionPlanListData(BaseModel):
     page_size: int
 
 
+class ProductionTrackingReconcileQuery(BaseModel):
+    """样板单到大货订单对账列表查询。"""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    customer: Optional[str] = Field(default=None, max_length=140)
+    diff_status: Optional[str] = Field(default=None, max_length=32)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class ProductionTrackingReconcileListItem(BaseModel):
+    """样板单到大货订单对账列表行。"""
+
+    id: int
+    reconcile_no: str
+    batch_no: str
+    company: str
+    sample_order_id: int
+    sample_no: str
+    style_no: str
+    style_name: str
+    image_tone: str
+    customer: str
+    sample_type: str
+    sealed_date: Optional[date] = None
+    sales_order: Optional[str] = None
+    sales_order_id: Optional[int] = None
+    sales_order_item_id: Optional[int] = None
+    sample_qty: Decimal
+    order_qty: Decimal
+    sample_price: Decimal
+    unit_price: Decimal
+    diff_status: str
+    remark: str
+    owner: str
+    created_by: str
+    created_at: datetime
+    updated_by: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+
+class ProductionTrackingReconcileListData(BaseModel):
+    """样板单到大货订单对账分页结果。"""
+
+    items: List[ProductionTrackingReconcileListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class ProductionTrackingReconcileGenerateRequest(BaseModel):
+    """按筛选条件生成样板单到大货订单对账快照。"""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    customer: Optional[str] = Field(default=None, max_length=140)
+    diff_status: Optional[str] = Field(default=None, max_length=32)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    operation: Optional[str] = Field(default=None, max_length=40)
+    scenario_tag: Optional[str] = Field(default=None, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionTrackingReconcileGenerateData(BaseModel):
+    """生成样板单到大货订单对账响应。"""
+
+    batch_no: str
+    company: str
+    created_count: int
+    updated_count: int
+    matched_count: int
+    unmatched_count: int
+    items: List[ProductionTrackingReconcileListItem]
+
+
 class ProductionWorkOrderQuery(BaseModel):
     """Production work-order list query."""
 
