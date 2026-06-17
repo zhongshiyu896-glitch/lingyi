@@ -98,6 +98,9 @@ MASTER_DATA_MANAGE = "master_data:manage"
 SAMPLE_READ = "sample:read"
 SAMPLE_MANAGE = "sample:manage"
 
+STYLE_MASTER_READ = "style_master:read"
+STYLE_MASTER_MANAGE = "style_master:manage"
+
 MATERIAL_PURCHASE_READ = "material_purchase:read"
 MATERIAL_PURCHASE_WRITE = "material_purchase:write"
 
@@ -249,6 +252,11 @@ ALL_SAMPLE_ACTIONS = {
     SAMPLE_MANAGE,
 }
 
+ALL_STYLE_MASTER_ACTIONS = {
+    STYLE_MASTER_READ,
+    STYLE_MASTER_MANAGE,
+}
+
 ALL_MATERIAL_PURCHASE_ACTIONS = {
     MATERIAL_PURCHASE_READ,
     MATERIAL_PURCHASE_WRITE,
@@ -329,6 +337,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_SALES_INVENTORY_ACTIONS
         | ALL_MASTER_DATA_ACTIONS
         | ALL_SAMPLE_ACTIONS
+        | ALL_STYLE_MASTER_ACTIONS
         | ALL_MATERIAL_PURCHASE_ACTIONS
         | ALL_SALES_ACTIONS
         | ALL_INVENTORY_ACTIONS
@@ -375,6 +384,8 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
         STYLE_PROFIT_READ,
+        STYLE_MASTER_READ,
+        STYLE_MASTER_MANAGE,
         SALES_INVENTORY_READ,
         SALES_INVENTORY_WRITE,
     },
@@ -397,9 +408,11 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         SALES_INVENTORY_EXPORT,
         MASTER_DATA_READ,
         SAMPLE_READ,
+        STYLE_MASTER_READ,
     },
     "Master Data Manager": set(ALL_MASTER_DATA_ACTIONS),
-    "Sample Manager": set(ALL_SAMPLE_ACTIONS),
+    "Sample Manager": set(ALL_SAMPLE_ACTIONS | {STYLE_MASTER_READ}),
+    "Style Manager": set(ALL_STYLE_MASTER_ACTIONS),
     "Purchasing Manager": set(ALL_MATERIAL_PURCHASE_ACTIONS | {WAREHOUSE_READ, WAREHOUSE_STOCK_ENTRY_DRAFT}),
     "Warehouse Manager": set(ALL_WAREHOUSE_ACTIONS),
     "Quality Manager": {

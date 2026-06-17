@@ -180,6 +180,11 @@ class PermissionAggregationTest(unittest.TestCase):
                 {"read": True, "manage": True, "create": True, "update": True, "sample_manage": True},
             ),
             (
+                "style_master",
+                "Style Manager",
+                {"read": True, "manage": True, "create": True, "update": True, "deactivate": True, "write": True},
+            ),
+            (
                 "material_purchase",
                 "Purchasing Manager",
                 {"read": True, "write": True, "create": True, "update": True, "material_purchase_write": True},

@@ -82,6 +82,8 @@ from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_EXPORT
 from app.core.permissions import SALES_INVENTORY_READ
 from app.core.permissions import SALES_INVENTORY_WRITE
+from app.core.permissions import STYLE_MASTER_MANAGE
+from app.core.permissions import STYLE_MASTER_READ
 from app.core.permissions import SYSTEM_CONFIG_READ
 from app.core.permissions import SYSTEM_DIAGNOSTIC
 from app.core.permissions import SYSTEM_DICTIONARY_READ
@@ -1903,6 +1905,14 @@ class PermissionService:
             base["update"] = base["manage"]
             base["sample_read"] = base["read"]
             base["sample_manage"] = base["manage"]
+            return base
+        if module == "style_master":
+            base["read"] = STYLE_MASTER_READ in actions
+            base["manage"] = STYLE_MASTER_MANAGE in actions
+            base["create"] = base["manage"]
+            base["update"] = base["manage"]
+            base["deactivate"] = base["manage"]
+            base["write"] = base["manage"]
             return base
         if module == "material_purchase":
             base["read"] = MATERIAL_PURCHASE_READ in actions

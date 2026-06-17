@@ -43,6 +43,7 @@ from app.models.quality import Base as QualityBase  # noqa: E402
 import app.models.quality_outbox  # noqa: E402,F401
 from app.models.sample import Base as SampleBase  # noqa: E402
 from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
+from app.models.style_master import Base as StyleMasterBase  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.subcontract import Base as SubcontractBase  # noqa: E402
 import app.models.warehouse  # noqa: E402,F401
@@ -75,6 +76,7 @@ def _create_local_tables() -> None:
     MaterialPurchaseBase.metadata.create_all(bind=main_module.engine)
     SampleBase.metadata.create_all(bind=main_module.engine)
     SalesOrderBase.metadata.create_all(bind=main_module.engine)
+    StyleMasterBase.metadata.create_all(bind=main_module.engine)
     QualityBase.metadata.create_all(bind=main_module.engine)
     StyleProfitBase.metadata.create_all(bind=main_module.engine)
     WorkshopBase.metadata.create_all(bind=main_module.engine)

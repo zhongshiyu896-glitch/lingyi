@@ -68,6 +68,8 @@ from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
 from app.core.permissions import MATERIAL_PURCHASE_READ
 from app.core.permissions import MATERIAL_PURCHASE_WRITE
+from app.core.permissions import STYLE_MASTER_MANAGE
+from app.core.permissions import STYLE_MASTER_READ
 from app.core.permissions import QUALITY_CANCEL
 from app.core.permissions import QUALITY_CONFIRM
 from app.core.permissions import QUALITY_CREATE
@@ -119,6 +121,8 @@ from app.routers.master_data import get_db_session as master_data_router_session
 from app.routers.master_data import router as master_data_router
 from app.routers.sample import get_db_session as sample_router_session_dep
 from app.routers.sample import router as sample_router
+from app.routers.style_master import get_db_session as style_master_router_session_dep
+from app.routers.style_master import router as style_master_router
 from app.routers.material_purchase import get_db_session as material_purchase_router_session_dep
 from app.routers.material_purchase import router as material_purchase_router
 from app.routers.quality import get_db_session as quality_router_session_dep
@@ -182,6 +186,7 @@ app.dependency_overrides[factory_statement_router_session_dep] = get_db_session
 app.dependency_overrides[sales_inventory_router_session_dep] = get_db_session
 app.dependency_overrides[master_data_router_session_dep] = get_db_session
 app.dependency_overrides[sample_router_session_dep] = get_db_session
+app.dependency_overrides[style_master_router_session_dep] = get_db_session
 app.dependency_overrides[material_purchase_router_session_dep] = get_db_session
 app.dependency_overrides[quality_router_session_dep] = get_db_session
 app.dependency_overrides[cross_module_view_router_session_dep] = get_db_session
@@ -203,6 +208,7 @@ app.include_router(factory_statement_router)
 app.include_router(sales_inventory_router)
 app.include_router(master_data_router)
 app.include_router(sample_router)
+app.include_router(style_master_router)
 app.include_router(material_purchase_router)
 app.include_router(quality_router)
 app.include_router(cross_module_view_router)
@@ -490,6 +496,17 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseOrder", None
         return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseOrder", None
 
+    if path.startswith("/api/style-master"):
+        if method in {"POST", "PATCH"}:
+            if "/styles/" in path:
+                return "style_master", STYLE_MASTER_MANAGE, "StyleMaster", _extract_style_master_id(path)
+            if "/dictionaries/" in path:
+                return "style_master", STYLE_MASTER_MANAGE, "StyleDictionary", _extract_style_dictionary_id(path)
+            return "style_master", STYLE_MASTER_MANAGE, "StyleMaster", None
+        if path.startswith("/api/style-master/dictionaries"):
+            return "style_master", STYLE_MASTER_READ, "StyleDictionary", None
+        return "style_master", STYLE_MASTER_READ, "StyleMaster", None
+
     if path.startswith("/api/quality"):
         if path.endswith("/internal/outbox-sync/run-once"):
             return "quality", QUALITY_WORKER, "QualityOutboxWorker", None
@@ -609,6 +626,20 @@ def _extract_sales_order_name(path: str) -> str | None:
 
 def _extract_sales_inventory_item(path: str) -> str | None:
     match = re.match(r"^/api/sales-inventory/items/([^/]+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_style_master_id(path: str) -> str | None:
+    match = re.match(r"^/api/style-master/styles/(\d+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_style_dictionary_id(path: str) -> str | None:
+    match = re.match(r"^/api/style-master/dictionaries/(\d+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None
