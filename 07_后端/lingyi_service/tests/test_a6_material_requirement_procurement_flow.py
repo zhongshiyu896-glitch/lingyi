@@ -171,6 +171,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         requirement_no: str = "REQ-A6-SEED-001",
         status: str = "pending",
         net_required_qty: str = "10",
+        sales_order: str = "SO-A6-SEED",
+        sales_order_item: str = "SO-A6-SEED-ITEM",
     ) -> int:
         with self.SessionLocal() as session:
             row = LyMaterialPurchaseRequirement(
@@ -178,11 +180,11 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 requirement_no=requirement_no,
                 source_type="production_plan_material",
                 source_id=requirement_no,
-                source_no="SO-A6-SEED",
+                source_no=sales_order,
                 plan_id=1,
                 bom_item_id=6011,
-                sales_order="SO-A6-SEED",
-                sales_order_item="SO-A6-SEED-ITEM",
+                sales_order=sales_order,
+                sales_order_item=sales_order_item,
                 item_code=self.STYLE,
                 material_item_code=self.MATERIAL,
                 material_name="A6 棉布",
@@ -469,6 +471,73 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("material_purchase:write", audit_actions)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
+
+    def test_from_requirements_group_by_material_merges_cross_order_demands_and_receipts(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-GROUP-A",
+            net_required_qty="5",
+            sales_order="SO-A6-GROUP-001",
+            sales_order_item="SO-A6-GROUP-001-ITEM",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-GROUP-B",
+            net_required_qty="10",
+            sales_order="SO-A6-GROUP-002",
+            sales_order_item="SO-A6-GROUP-002-ITEM",
+        )
+
+        payload = self._from_requirements_payload(
+            requirement_ids=[requirement_a, requirement_b],
+            idempotency_key="idem-a6-group-material",
+        )
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-group-material"),
+            json=payload,
+        )
+        replay = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-group-material-replay"),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        self.assertEqual(replay.status_code, 201, replay.text)
+
+        data = response.json()["data"]
+        purchase_order = data["purchase_order"]
+        purchase_no = purchase_order["purchase_no"]
+        self.assertEqual(len(purchase_order["items"]), 1)
+        self.assertEqual(purchase_order["items"][0]["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(purchase_order["items"][0]["qty"])), Decimal("15.000000"))
+        self.assertEqual(Decimal(str(purchase_order["total_qty"])), Decimal("15.000000"))
+        self.assertEqual(Decimal(str(purchase_order["total_amount"])), Decimal("187.500000"))
+        self.assertEqual({row["sales_order"] for row in data["requirements"]}, {"SO-A6-GROUP-001", "SO-A6-GROUP-002"})
+        self.assertTrue(all(row["status"] == "purchased" for row in data["requirements"]))
+        self.assertTrue(all(row["purchase_no"] == purchase_no for row in data["requirements"]))
+        self.assertTrue(all(row["has_completed"] is False for row in data["requirements"]))
+
+        with self.SessionLocal() as session:
+            order_line = session.query(LyMaterialPurchaseOrderItem).one()
+            requirement_rows = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.requirement_no.asc()).all()
+            self.assertEqual(len(requirement_rows), 2)
+            self.assertEqual({int(row.purchase_order_item_id) for row in requirement_rows}, {int(order_line.id)})
+            self.assertEqual({str(row.sales_order) for row in requirement_rows}, {"SO-A6-GROUP-001", "SO-A6-GROUP-002"})
+
+        self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:{purchase_no}:group",
+            qty="15",
+        )
+        completed = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed&keyword={purchase_no}",
+            headers=self._headers("req-a6-group-material-completed"),
+        )
+        self.assertEqual(completed.status_code, 200, completed.text)
+        completed_rows = completed.json()["data"]["items"]
+        self.assertEqual(len(completed_rows), 2)
+        self.assertTrue(all(row["has_completed"] for row in completed_rows))
+        self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
 
     def test_from_requirements_unauthenticated_security_audit_is_write_requirement(self) -> None:
         response = self.client.post(
