@@ -54,7 +54,7 @@ def _set_import_env(app_env: str = "test") -> None:
     os.environ["APP_ENV"] = app_env
     os.environ.setdefault("LINGYI_ALLOW_DEV_AUTH", "true")
     os.environ.setdefault("LINGYI_ERPNEXT_BASE_URL", "")
-    os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext" if app_env == "production" else "static"
+    os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi" if app_env == "production" else "static"
     os.environ.setdefault("LINGYI_DB_URL", "sqlite+pysqlite:///:memory:")
 
 

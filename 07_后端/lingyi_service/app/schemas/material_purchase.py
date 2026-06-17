@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from pydantic import Field
 
 PurchaseOrderStatus = Literal["draft", "partially_received", "received", "cancelled"]
+PurchaseInvoiceStatus = Literal["submitted", "partly_paid", "paid", "cancelled"]
+PurchasePaymentStatus = Literal["submitted", "cancelled"]
 
 
 class MaterialPurchaseOrderLineCreate(BaseModel):
@@ -88,3 +90,113 @@ class MaterialPurchaseOrderCreateData(BaseModel):
     idempotency_key: str
     created_at: datetime | None = None
     items: list[MaterialPurchaseOrderListItem]
+
+
+class MaterialPurchaseInvoiceCreateRequest(BaseModel):
+    """Create purchase invoice and payable request."""
+
+    operation: Literal["create_purchase_invoice"] = "create_purchase_invoice"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    purchase_no: str = Field(..., min_length=1, max_length=140)
+    supplier_name: str | None = Field(default=None, max_length=255)
+    material_item_code: str | None = Field(default=None, max_length=140)
+    qty: Decimal | None = Field(default=None, gt=0)
+    rate: Decimal | None = Field(default=None, ge=0)
+    posting_date: date
+    due_date: date | None = None
+    purchase_invoice: str | None = Field(default=None, max_length=140)
+    source_ref: str | None = Field(default=None, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str | None = Field(default=None, max_length=64)
+
+
+class MaterialPurchaseInvoiceData(BaseModel):
+    """Purchase invoice/payable row."""
+
+    id: int
+    company: str
+    purchase_invoice: str
+    purchase_order_id: int
+    purchase_no: str
+    supplier_name: str
+    material_item_code: str
+    material_name: str
+    warehouse: str | None = None
+    qty: Decimal
+    uom: str
+    rate: Decimal
+    grand_total: Decimal
+    paid_amount: Decimal
+    outstanding_amount: Decimal
+    posting_date: date
+    due_date: date | None = None
+    status: PurchaseInvoiceStatus
+    docstatus: int
+    source_ref: str
+    idempotency_key: str
+    scenario_tag: str | None = None
+    created_by: str
+    created_at: datetime | None = None
+
+
+class MaterialPurchaseInvoiceListData(BaseModel):
+    """Paginated purchase invoice rows."""
+
+    items: list[MaterialPurchaseInvoiceData]
+    total: int
+    page: int
+    page_size: int
+
+
+class MaterialPurchasePaymentCreateRequest(BaseModel):
+    """Create supplier payment entry request."""
+
+    operation: Literal["create_purchase_payment"] = "create_purchase_payment"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    purchase_invoice: str = Field(..., min_length=1, max_length=140)
+    supplier_name: str | None = Field(default=None, max_length=255)
+    posting_date: date
+    paid_amount: Decimal = Field(..., gt=0)
+    mode_of_payment: str = Field(default="Bank Transfer", min_length=1, max_length=140)
+    reference_no: str | None = Field(default=None, max_length=140)
+    reference_date: date | None = None
+    payment_entry: str | None = Field(default=None, max_length=140)
+    source_ref: str | None = Field(default=None, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str | None = Field(default=None, max_length=64)
+
+
+class MaterialPurchasePaymentData(BaseModel):
+    """Supplier payment entry row."""
+
+    id: int
+    company: str
+    payment_entry: str
+    purchase_invoice_id: int
+    purchase_invoice: str
+    purchase_no: str
+    supplier_name: str
+    posting_date: date
+    paid_amount: Decimal
+    allocated_amount: Decimal
+    outstanding_before: Decimal
+    outstanding_after: Decimal
+    mode_of_payment: str
+    reference_no: str | None = None
+    reference_date: date | None = None
+    status: PurchasePaymentStatus
+    docstatus: int
+    source_ref: str
+    idempotency_key: str
+    scenario_tag: str | None = None
+    created_by: str
+    created_at: datetime | None = None
+
+
+class MaterialPurchasePaymentListData(BaseModel):
+    """Paginated supplier payment entries."""
+
+    items: list[MaterialPurchasePaymentData]
+    total: int
+    page: int
+    page_size: int

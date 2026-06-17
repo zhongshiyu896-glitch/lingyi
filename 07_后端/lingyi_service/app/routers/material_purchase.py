@@ -19,7 +19,9 @@ from app.core.exceptions import AppException
 from app.core.exceptions import AuditWriteFailed
 from app.core.permissions import MATERIAL_PURCHASE_READ
 from app.core.permissions import MATERIAL_PURCHASE_WRITE
+from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseOrderCreateRequest
+from app.schemas.material_purchase import MaterialPurchasePaymentCreateRequest
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
 from app.services.material_purchase_service import MaterialPurchaseService
@@ -141,6 +143,178 @@ def create_material_purchase_order(
             resource_type="MATERIAL_PURCHASE_ORDER",
             resource_id=None,
             resource_no=payload.purchase_no,
+            before_data=None,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        return _err(exc)
+    return _created(result.item)
+
+
+@router.get("/purchase-invoices")
+def list_purchase_invoices(
+    request: Request,
+    company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    supplier_name: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_INVOICE",
+    )
+    try:
+        data = MaterialPurchaseService(session).list_purchase_invoices(
+            company=company,
+            keyword=keyword,
+            supplier_name=supplier_name,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(data)
+
+
+@router.post("/purchase-invoices")
+def create_purchase_invoice(
+    payload: MaterialPurchaseInvoiceCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MATERIAL_PURCHASE_WRITE,
+        resource_type="MATERIAL_PURCHASE_INVOICE",
+    )
+    audit = AuditService(session)
+    try:
+        result = MaterialPurchaseService(session).create_purchase_invoice(payload=payload, actor=current_user.username)
+        audit.record_success(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_INVOICE",
+            resource_id=result.resource_id,
+            resource_no=result.resource_no,
+            before_data=result.before,
+            after_data=result.after,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except AuditWriteFailed as exc:
+        session.rollback()
+        return _err(exc)
+    except AppException as exc:
+        session.rollback()
+        audit.record_failure(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_INVOICE",
+            resource_id=None,
+            resource_no=payload.purchase_invoice or payload.purchase_no,
+            before_data=None,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        return _err(exc)
+    return _created(result.item)
+
+
+@router.get("/purchase-payments")
+def list_purchase_payments(
+    request: Request,
+    company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    supplier_name: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_PAYMENT",
+    )
+    try:
+        data = MaterialPurchaseService(session).list_purchase_payments(
+            company=company,
+            keyword=keyword,
+            supplier_name=supplier_name,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(data)
+
+
+@router.post("/purchase-payments")
+def create_purchase_payment(
+    payload: MaterialPurchasePaymentCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MATERIAL_PURCHASE_WRITE,
+        resource_type="MATERIAL_PURCHASE_PAYMENT",
+    )
+    audit = AuditService(session)
+    try:
+        result = MaterialPurchaseService(session).create_purchase_payment(payload=payload, actor=current_user.username)
+        audit.record_success(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_PAYMENT",
+            resource_id=result.resource_id,
+            resource_no=result.resource_no,
+            before_data=result.before,
+            after_data=result.after,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except AuditWriteFailed as exc:
+        session.rollback()
+        return _err(exc)
+    except AppException as exc:
+        session.rollback()
+        audit.record_failure(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_PAYMENT",
+            resource_id=None,
+            resource_no=payload.payment_entry or payload.purchase_invoice,
             before_data=None,
             after_data=None,
             error_code=exc.code,
