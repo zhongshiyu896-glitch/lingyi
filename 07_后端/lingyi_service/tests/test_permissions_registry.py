@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -17,6 +18,7 @@ from app.core.error_codes import RESOURCE_SCOPE_FIELD_UNKNOWN
 from app.core.exceptions import PermissionSourceUnavailable
 from app.core.permissions import BOM_READ
 from app.core.permissions import MODULE_ACTION_REGISTRY
+from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
 from app.core.permissions import PERMISSION_GOVERNANCE_AUDIT_READ
 from app.core.permissions import PERMISSION_GOVERNANCE_DIAGNOSTIC
 from app.core.permissions import PERMISSION_GOVERNANCE_EXPORT
@@ -48,6 +50,7 @@ from app.core.permissions import get_static_actions_for_roles
 from app.models.audit import Base as AuditBase
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
+from app.services.permission_service import FASTAPI_RESOURCE_PERMISSIONS_ENV
 from app.services.permission_service import PermissionService
 
 
@@ -362,6 +365,155 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 503)
         self.assertEqual(ctx.exception.detail.get("code"), "PERMISSION_SOURCE_UNAVAILABLE")
         self.assertIsNone(ctx.exception.detail.get("data"))
+
+    def test_fastapi_scope_allows_configured_role_without_erpnext(self) -> None:
+        payload = {
+            "roles": {
+                "Subcontract Manager": {
+                    "companies": ["COMP-A"],
+                    "items": ["ITEM-A"],
+                    "suppliers": ["SUP-A"],
+                    "warehouses": ["WH-A"],
+                }
+            }
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_RESOURCE_PERMISSIONS_ENV: json.dumps(payload),
+            },
+            clear=False,
+        ), patch.object(ERPNextPermissionAdapter, "get_user_permissions", side_effect=AssertionError("ERPNext must not be used")):
+            self._service().ensure_resource_scope_permission(
+                current_user=CurrentUser(
+                    username="scope.user",
+                    roles=["Subcontract Manager"],
+                    is_service_account=False,
+                    source="dev_header",
+                ),
+                request_obj=_build_request(),
+                module="subcontract",
+                action=SUBCONTRACT_READ,
+                resource_scope={
+                    "company": "COMP-A",
+                    "item_code": "ITEM-A",
+                    "supplier": "SUP-A",
+                    "warehouse": "WH-A",
+                },
+                required_fields=("company", "item_code"),
+                enforce_action=False,
+            )
+
+    def test_fastapi_scope_missing_config_fails_closed(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"LINGYI_PERMISSION_SOURCE": "fastapi", FASTAPI_RESOURCE_PERMISSIONS_ENV: "{}"},
+            clear=False,
+        ), patch.object(ERPNextPermissionAdapter, "get_user_permissions", side_effect=AssertionError("ERPNext must not be used")):
+            with self.assertRaises(HTTPException) as ctx:
+                self._service().ensure_resource_scope_permission(
+                    current_user=CurrentUser(
+                        username="scope.user",
+                        roles=["Subcontract Manager"],
+                        is_service_account=False,
+                        source="dev_header",
+                    ),
+                    request_obj=_build_request(),
+                    module="subcontract",
+                    action=SUBCONTRACT_READ,
+                    resource_scope={"company": "COMP-A", "item_code": "ITEM-A"},
+                    required_fields=("company", "item_code"),
+                    enforce_action=False,
+                )
+        self.assertEqual(ctx.exception.status_code, 403)
+        self.assertEqual(ctx.exception.detail.get("code"), "RESOURCE_ACCESS_DENIED")
+
+    def test_fastapi_system_manager_scope_is_unrestricted(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"LINGYI_PERMISSION_SOURCE": "fastapi", FASTAPI_RESOURCE_PERMISSIONS_ENV: "{}"},
+            clear=False,
+        ), patch.object(ERPNextPermissionAdapter, "get_user_permissions", side_effect=AssertionError("ERPNext must not be used")):
+            self._service().ensure_resource_scope_permission(
+                current_user=CurrentUser(
+                    username="sys.manager",
+                    roles=["System Manager"],
+                    is_service_account=False,
+                    source="dev_header",
+                ),
+                request_obj=_build_request(),
+                module="subcontract",
+                action=SUBCONTRACT_READ,
+                resource_scope={"company": "COMP-X", "item_code": "ITEM-X", "sales_order": "SO-X"},
+                required_fields=("company", "item_code"),
+                enforce_action=False,
+            )
+
+    def test_fastapi_invalid_scope_config_returns_503(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_RESOURCE_PERMISSIONS_ENV: "{",
+            },
+            clear=False,
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                self._service().ensure_resource_scope_permission(
+                    current_user=CurrentUser(
+                        username="scope.user",
+                        roles=["Subcontract Manager"],
+                        is_service_account=False,
+                        source="dev_header",
+                    ),
+                    request_obj=_build_request(),
+                    module="subcontract",
+                    action=SUBCONTRACT_READ,
+                    resource_scope={"company": "COMP-A"},
+                    required_fields=("company",),
+                    enforce_action=False,
+                )
+        self.assertEqual(ctx.exception.status_code, 503)
+        self.assertEqual(ctx.exception.detail.get("code"), PERMISSION_SOURCE_UNAVAILABLE_CODE)
+
+    def test_fastapi_readable_item_codes_empty_config_is_empty_set(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"LINGYI_PERMISSION_SOURCE": "fastapi", FASTAPI_RESOURCE_PERMISSIONS_ENV: "{}"},
+            clear=False,
+        ), patch.object(ERPNextPermissionAdapter, "get_user_permissions", side_effect=AssertionError("ERPNext must not be used")):
+            readable = self._service().get_readable_item_codes(
+                current_user=CurrentUser(
+                    username="scope.user",
+                    roles=["BOM Editor"],
+                    is_service_account=False,
+                    source="dev_header",
+                ),
+                request_obj=_build_request(),
+            )
+        self.assertEqual(readable, set())
+
+    def test_fastapi_readable_item_codes_uses_role_scope(self) -> None:
+        payload = {"roles": {"BOM Editor": {"items": ["ITEM-A", "ITEM-B"]}}}
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_RESOURCE_PERMISSIONS_ENV: json.dumps(payload),
+            },
+            clear=False,
+        ), patch.object(ERPNextPermissionAdapter, "get_user_permissions", side_effect=AssertionError("ERPNext must not be used")):
+            readable = self._service().get_readable_item_codes(
+                current_user=CurrentUser(
+                    username="scope.user",
+                    roles=["BOM Editor"],
+                    is_service_account=False,
+                    source="dev_header",
+                ),
+                request_obj=_build_request(),
+            )
+        self.assertEqual(readable, {"ITEM-A", "ITEM-B"})
 
     def test_get_readable_item_codes_company_only_returns_empty_set(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"

@@ -6,7 +6,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import logging
+import os
 from typing import Any
 
 from fastapi import HTTPException
@@ -144,6 +146,23 @@ RESOURCE_SCOPE_FIELD_NAMES = (
     "source_type",
     "source_id",
 )
+
+FASTAPI_RESOURCE_PERMISSIONS_ENV = "LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"
+FASTAPI_SCOPE_FIELD_TO_ALLOWED_ATTR = {
+    "company": "allowed_companies",
+    "item_code": "allowed_items",
+    "supplier": "allowed_suppliers",
+    "warehouse": "allowed_warehouses",
+    "customer": "allowed_customers",
+}
+FASTAPI_SCOPE_FIELD_CONFIG_KEYS = {
+    "company": ("companies", "company", "allowed_companies"),
+    "item_code": ("items", "item_codes", "item_code", "allowed_items"),
+    "supplier": ("suppliers", "supplier", "allowed_suppliers"),
+    "warehouse": ("warehouses", "warehouse", "allowed_warehouses"),
+    "customer": ("customers", "customer", "allowed_customers"),
+}
+FASTAPI_UNSUPPORTED_SCOPE_FIELDS = ("work_order", "sales_order", "bom_id")
 
 
 ERP_ROLE_ACTIONS: dict[str, set[str]] = {
@@ -514,7 +533,30 @@ class PermissionService:
         resource_no: str | None = None,
     ) -> None:
         """Require item-level access under ERPNext User Permission constraints."""
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            permissions = self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module=module,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no or item_code,
+            )
+            self._ensure_fastapi_resource_scope_allowed(
+                permissions=permissions,
+                normalized_scope={"item_code": self._normalize_scope_value(item_code)},
+                module=module,
+                action=action,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no or item_code,
+            )
+            return
+        if source != "erpnext":
             return
 
         adapter = ERPNextPermissionAdapter(request_obj=request_obj)
@@ -556,6 +598,203 @@ class PermissionService:
             return None
         text = str(value).strip()
         return text or None
+
+    @staticmethod
+    def _raise_fastapi_permission_config_unavailable(detail: str) -> None:
+        raise PermissionSourceUnavailable(
+            message="FastAPI 权限配置不可用",
+            exception_type="PermissionSourceUnavailable",
+            exception_message=detail,
+        )
+
+    def _load_fastapi_resource_permission_config(self) -> dict[str, Any]:
+        raw = os.getenv(FASTAPI_RESOURCE_PERMISSIONS_ENV, "").strip()
+        if not raw:
+            return {}
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            self._raise_fastapi_permission_config_unavailable(
+                f"{FASTAPI_RESOURCE_PERMISSIONS_ENV} json decode failed: {exc.msg}"
+            )
+        if not isinstance(payload, dict):
+            self._raise_fastapi_permission_config_unavailable(
+                f"{FASTAPI_RESOURCE_PERMISSIONS_ENV} must be a json object"
+            )
+        return payload
+
+    def _fastapi_scope_entries_for_user(
+        self,
+        *,
+        payload: dict[str, Any],
+        current_user: CurrentUser,
+    ) -> list[dict[str, Any]]:
+        users = payload.get("users", {})
+        roles = payload.get("roles", {})
+        if users is None:
+            users = {}
+        if roles is None:
+            roles = {}
+        if not isinstance(users, dict):
+            self._raise_fastapi_permission_config_unavailable("users must be an object")
+        if not isinstance(roles, dict):
+            self._raise_fastapi_permission_config_unavailable("roles must be an object")
+
+        entries: list[dict[str, Any]] = []
+        user_entry = users.get(current_user.username)
+        if user_entry is not None:
+            if not isinstance(user_entry, dict):
+                self._raise_fastapi_permission_config_unavailable(
+                    f"user scope for {current_user.username} must be an object"
+                )
+            entries.append(user_entry)
+
+        for role in current_user.roles:
+            role_entry = roles.get(role)
+            if role_entry is None:
+                continue
+            if not isinstance(role_entry, dict):
+                self._raise_fastapi_permission_config_unavailable(f"role scope for {role} must be an object")
+            entries.append(role_entry)
+        return entries
+
+    def _parse_fastapi_scope_values(self, value: Any, *, key: str) -> set[str]:
+        if value is None:
+            return set()
+        if isinstance(value, str):
+            normalized = self._normalize_scope_value(value)
+            return {normalized} if normalized else set()
+        if not isinstance(value, list):
+            self._raise_fastapi_permission_config_unavailable(f"{key} must be a string or list")
+
+        values: set[str] = set()
+        for item in value:
+            normalized = self._normalize_scope_value(item)
+            if normalized:
+                values.add(normalized)
+        return values
+
+    def _merge_fastapi_scope_values(self, *, entries: list[dict[str, Any]], field_name: str) -> set[str]:
+        values: set[str] = set()
+        for entry in entries:
+            for key in FASTAPI_SCOPE_FIELD_CONFIG_KEYS[field_name]:
+                if key in entry:
+                    values.update(self._parse_fastapi_scope_values(entry[key], key=key))
+        return values
+
+    def _fastapi_user_permissions(
+        self,
+        *,
+        current_user: CurrentUser,
+        request_obj: Request,
+        module: str,
+        action: str,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        resource_no: str | None = None,
+    ) -> UserPermissionResult:
+        try:
+            if "System Manager" in current_user.roles:
+                return UserPermissionResult(
+                    source_available=True,
+                    unrestricted=True,
+                    allowed_items=set(),
+                    allowed_companies=set(),
+                    allowed_suppliers=set(),
+                    allowed_warehouses=set(),
+                    allowed_customers=set(),
+                )
+
+            payload = self._load_fastapi_resource_permission_config()
+            entries = self._fastapi_scope_entries_for_user(payload=payload, current_user=current_user)
+            if any(bool(entry.get("unrestricted")) for entry in entries):
+                return UserPermissionResult(
+                    source_available=True,
+                    unrestricted=True,
+                    allowed_items=set(),
+                    allowed_companies=set(),
+                    allowed_suppliers=set(),
+                    allowed_warehouses=set(),
+                    allowed_customers=set(),
+                )
+            return UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items=self._merge_fastapi_scope_values(entries=entries, field_name="item_code"),
+                allowed_companies=self._merge_fastapi_scope_values(entries=entries, field_name="company"),
+                allowed_suppliers=self._merge_fastapi_scope_values(entries=entries, field_name="supplier"),
+                allowed_warehouses=self._merge_fastapi_scope_values(entries=entries, field_name="warehouse"),
+                allowed_customers=self._merge_fastapi_scope_values(entries=entries, field_name="customer"),
+            )
+        except PermissionSourceUnavailable as exc:
+            self._raise_permission_source_unavailable(
+                exc=exc,
+                request_obj=request_obj,
+                current_user=current_user,
+                module=module,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+
+    def _ensure_fastapi_resource_scope_allowed(
+        self,
+        *,
+        permissions: UserPermissionResult,
+        normalized_scope: dict[str, str | None],
+        module: str,
+        action: str,
+        current_user: CurrentUser,
+        request_obj: Request,
+        resource_type: str | None,
+        resource_id: int | None,
+        resource_no: str | None,
+    ) -> None:
+        if permissions.unrestricted:
+            return
+
+        for field_name, allowed_attr in FASTAPI_SCOPE_FIELD_TO_ALLOWED_ATTR.items():
+            field_value = normalized_scope.get(field_name)
+            if not field_value:
+                continue
+            allowed_values: set[str] = getattr(permissions, allowed_attr)
+            if field_value in allowed_values:
+                continue
+            deny_reason = (
+                f"FastAPI 权限源未配置 {field_name} 资源范围"
+                if not allowed_values
+                else f"FastAPI 权限源无权访问该 {field_name}"
+            )
+            self._raise_resource_access_denied(
+                module=module,
+                action=action,
+                field_name=field_name,
+                field_value=field_value,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                deny_reason=deny_reason,
+            )
+
+        for unsupported_field in FASTAPI_UNSUPPORTED_SCOPE_FIELDS:
+            field_value = normalized_scope.get(unsupported_field)
+            if not field_value:
+                continue
+            self._raise_resource_access_denied(
+                module=module,
+                action=action,
+                field_name=unsupported_field,
+                field_value=field_value,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                deny_reason=f"FastAPI 权限源无法校验 {unsupported_field} 作用域",
+            )
 
     def _raise_resource_access_denied(
         self,
@@ -665,7 +904,30 @@ class PermissionService:
                     deny_reason=f"缺少关键资源范围字段: {field_name}",
                 )
 
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            permissions = user_permissions or self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module=module,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            self._ensure_fastapi_resource_scope_allowed(
+                permissions=permissions,
+                normalized_scope=normalized_scope,
+                module=module,
+                action=action,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            return
+        if source != "erpnext":
             return
 
         permissions = user_permissions
@@ -817,7 +1079,18 @@ class PermissionService:
         resource_no: str | None = None,
     ) -> UserPermissionResult | None:
         """Prefetch ERPNext user permissions for workshop resource checks."""
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            return self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="workshop",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+        if source != "erpnext":
             return None
 
         adapter = ERPNextPermissionAdapter(request_obj=request_obj)
@@ -861,7 +1134,33 @@ class PermissionService:
                 resource_id=resource_id,
             )
 
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            permissions = user_permissions or self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="workshop",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no or item_code,
+            )
+            self._ensure_fastapi_resource_scope_allowed(
+                permissions=permissions,
+                normalized_scope={
+                    "item_code": self._normalize_scope_value(item_code),
+                    "company": self._normalize_scope_value(company),
+                },
+                module="workshop",
+                action=action,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no or item_code,
+            )
+            return
+        if source != "erpnext":
             return
 
         permissions = user_permissions or self.get_workshop_user_permissions(
@@ -938,7 +1237,30 @@ class PermissionService:
                 resource_id=resource_id,
             )
 
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            permissions = user_permissions or self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="workshop",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no or company,
+            )
+            self._ensure_fastapi_resource_scope_allowed(
+                permissions=permissions,
+                normalized_scope={"company": self._normalize_scope_value(company)},
+                module="workshop",
+                action=action,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no or company,
+            )
+            return
+        if source != "erpnext":
             return
 
         permissions = user_permissions or self.get_workshop_user_permissions(
@@ -982,7 +1304,18 @@ class PermissionService:
         resource_no: str | None = None,
     ) -> UserPermissionResult | None:
         """Prefetch ERPNext user permissions for sales/inventory read filtering."""
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            return self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="sales_inventory",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+        if source != "erpnext":
             return None
 
         adapter = ERPNextPermissionAdapter(request_obj=request_obj)
@@ -1011,7 +1344,18 @@ class PermissionService:
         resource_no: str | None = None,
     ) -> UserPermissionResult | None:
         """Prefetch ERPNext user permissions for subcontract resource checks."""
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            return self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="subcontract",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+        if source != "erpnext":
             return None
 
         adapter = ERPNextPermissionAdapter(request_obj=request_obj)
@@ -1057,7 +1401,35 @@ class PermissionService:
                 resource_item_code=item_code,
             )
 
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            permissions = user_permissions or self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="subcontract",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            self._ensure_fastapi_resource_scope_allowed(
+                permissions=permissions,
+                normalized_scope={
+                    "item_code": self._normalize_scope_value(item_code),
+                    "company": self._normalize_scope_value(company),
+                    "supplier": self._normalize_scope_value(supplier),
+                    "warehouse": self._normalize_scope_value(warehouse),
+                },
+                module="subcontract",
+                action=action,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            return
+        if source != "erpnext":
             return
 
         permissions = user_permissions or self.get_subcontract_user_permissions(
@@ -1151,7 +1523,18 @@ class PermissionService:
         resource_no: str | None = None,
     ) -> UserPermissionResult | None:
         """Prefetch ERPNext user permissions for production resource checks."""
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            return self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="production",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+        if source != "erpnext":
             return None
 
         adapter = ERPNextPermissionAdapter(request_obj=request_obj)
@@ -1195,7 +1578,33 @@ class PermissionService:
                 resource_item_code=item_code,
             )
 
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            permissions = user_permissions or self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="production",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            self._ensure_fastapi_resource_scope_allowed(
+                permissions=permissions,
+                normalized_scope={
+                    "item_code": self._normalize_scope_value(item_code),
+                    "company": self._normalize_scope_value(company),
+                },
+                module="production",
+                action=action,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            return
+        if source != "erpnext":
             return
 
         permissions = user_permissions or self.get_production_user_permissions(
@@ -1255,7 +1664,18 @@ class PermissionService:
         resource_no: str | None = None,
     ) -> UserPermissionResult | None:
         """Prefetch ERPNext user permissions for style-profit resource checks."""
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            return self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="style_profit",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+        if source != "erpnext":
             return None
 
         adapter = ERPNextPermissionAdapter(request_obj=request_obj)
@@ -1299,7 +1719,33 @@ class PermissionService:
                 resource_item_code=item_code,
             )
 
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            permissions = user_permissions or self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="style_profit",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            self._ensure_fastapi_resource_scope_allowed(
+                permissions=permissions,
+                normalized_scope={
+                    "item_code": self._normalize_scope_value(item_code),
+                    "company": self._normalize_scope_value(company),
+                },
+                module="style_profit",
+                action=action,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            return
+        if source != "erpnext":
             return
 
         permissions = user_permissions or self.get_style_profit_user_permissions(
@@ -1359,7 +1805,18 @@ class PermissionService:
         resource_no: str | None = None,
     ) -> UserPermissionResult | None:
         """Prefetch ERPNext user permissions for factory-statement resource checks."""
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            return self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="factory_statement",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+        if source != "erpnext":
             return None
 
         adapter = ERPNextPermissionAdapter(request_obj=request_obj)
@@ -1402,7 +1859,33 @@ class PermissionService:
                 resource_id=resource_id,
             )
 
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            permissions = user_permissions or self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module="factory_statement",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            self._ensure_fastapi_resource_scope_allowed(
+                permissions=permissions,
+                normalized_scope={
+                    "company": self._normalize_scope_value(company),
+                    "supplier": self._normalize_scope_value(supplier),
+                },
+                module="factory_statement",
+                action=action,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+            return
+        if source != "erpnext":
             return
 
         permissions = user_permissions or self.get_factory_statement_user_permissions(
@@ -1493,7 +1976,21 @@ class PermissionService:
             None: no item-level restriction, or static permission source.
             set[str]: restricted readable item_code collection.
         """
-        if get_permission_source() != "erpnext":
+        source = get_permission_source()
+        if source == "fastapi":
+            user_permissions = self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module=module,
+                action=action_context,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=None,
+            )
+            if user_permissions.unrestricted:
+                return None
+            return set(user_permissions.allowed_items)
+        if source != "erpnext":
             return None
 
         adapter = ERPNextPermissionAdapter(request_obj=request_obj)
