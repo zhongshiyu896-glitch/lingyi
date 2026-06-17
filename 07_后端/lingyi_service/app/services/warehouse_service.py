@@ -556,7 +556,10 @@ class WarehouseService:
         normalized = WarehouseService._text(source_id)
         if normalized is None:
             return None
-        return normalized.rsplit(":", 1)[-1]
+        parts = normalized.split(":")
+        if len(parts) >= 2 and parts[-2].startswith("PO-"):
+            return parts[-2]
+        return parts[-1]
 
     def _local_stock_entry_readback_status(self, *, draft: LyWarehouseStockEntryDraft) -> str:
         outbox = self._latest_outbox_for_draft(int(draft.id))
@@ -2591,7 +2594,7 @@ class WarehouseService:
         try:
             MaterialPurchaseService(self.session).apply_receipt(
                 company=company,
-                purchase_no=source_id.rsplit(":", 1)[-1],
+                purchase_no=self._purchase_no_from_source_id(source_id) or source_id,
                 item_quantities=quantities,
             )
         except BusinessException as exc:

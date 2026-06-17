@@ -609,6 +609,42 @@ class ProductionMaterialCheckData(BaseModel):
     items: List[ProductionPlanMaterialSnapshotItem]
 
 
+class ProductionMaterialIssueItem(BaseModel):
+    """Production material issue draft line."""
+
+    material_item_code: str
+    warehouse: str
+    qty: Decimal
+    uom: str
+
+
+class ProductionMaterialIssueData(BaseModel):
+    """Production material issue draft result."""
+
+    plan_id: int
+    draft_id: int
+    source_id: str
+    stock_entry_status: str
+    event_key: str
+    items: List[ProductionMaterialIssueItem]
+
+
+class ProductionMaterialIssueRequest(BaseModel):
+    """Create material issue draft from checked production plan materials."""
+
+    warehouse: Optional[str] = Field(default=None, max_length=140)
+    business_date: date
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+    scenario_tag: Optional[str] = Field(default=None, max_length=40)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    bom_id: Optional[int] = Field(default=None, ge=1)
+    request_id: Optional[str] = Field(default=None, max_length=64)
+
+
 class ProductionMaterialCheckRequest(BaseModel):
     """Material-check request payload."""
 

@@ -51,6 +51,7 @@ from app.core.permissions import SUBCONTRACT_STOCK_SYNC_RETRY
 from app.core.permissions import SUBCONTRACT_STOCK_SYNC_WORKER
 from app.core.permissions import PRODUCTION_JOB_CARD_SYNC
 from app.core.permissions import PRODUCTION_MATERIAL_CHECK
+from app.core.permissions import PRODUCTION_MATERIAL_ISSUE
 from app.core.permissions import PRODUCTION_PLAN_CREATE
 from app.core.permissions import PRODUCTION_READ
 from app.core.permissions import PRODUCTION_WORK_ORDER_CREATE
@@ -392,6 +393,9 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         if path.endswith("/material-check"):
             plan_id = _extract_production_plan_id(path)
             return "production", PRODUCTION_MATERIAL_CHECK, "ProductionPlan", plan_id
+        if path.endswith("/material-issue"):
+            plan_id = _extract_production_plan_id(path)
+            return "production", PRODUCTION_MATERIAL_ISSUE, "ProductionPlan", plan_id
         if path.endswith("/create-work-order"):
             plan_id = _extract_production_plan_id(path)
             return "production", PRODUCTION_WORK_ORDER_CREATE, "ProductionPlan", plan_id

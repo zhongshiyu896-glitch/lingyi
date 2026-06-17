@@ -35,6 +35,7 @@ from app.core.exceptions import ProductionInternalError
 from app.core.logging import log_safe_error
 from app.core.permissions import PRODUCTION_JOB_CARD_SYNC
 from app.core.permissions import PRODUCTION_MATERIAL_CHECK
+from app.core.permissions import PRODUCTION_MATERIAL_ISSUE
 from app.core.permissions import PRODUCTION_PLAN_CREATE
 from app.core.permissions import PRODUCTION_READ
 from app.core.permissions import PRODUCTION_WORK_ORDER_CREATE
@@ -48,6 +49,8 @@ from app.schemas.production import ProductionFollowupTemplateListData
 from app.schemas.production import ProductionFollowupTemplateQuery
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
+from app.schemas.production import ProductionMaterialIssueData
+from app.schemas.production import ProductionMaterialIssueRequest
 from app.schemas.production import ProductionMaterialCostListData
 from app.schemas.production import ProductionMaterialCostQuery
 from app.schemas.production import ProductionOrderIOQuantityListData
@@ -1219,6 +1222,108 @@ def material_check_plan(
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         if _is_local_gate_failure(exc):
             return _app_err(exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type="production_plan",
+            resource_id=plan_id,
+            resource_no=str(plan_id),
+            before_data=before_data,
+            after_data=None,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type="production_plan",
+            resource_id=plan_id,
+            resource_no=str(plan_id),
+            before_data=before_data,
+            after_data=None,
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.post("/plans/{plan_id}/material-issue", response_model=ApiResponse[ProductionMaterialIssueData])
+def create_material_issue_draft(
+    plan_id: int,
+    request: Request,
+    payload: ProductionMaterialIssueRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_MATERIAL_ISSUE
+    raw_request_id = request.headers.get("X-Request-ID")
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+
+    before_data: dict[str, Any] | None = None
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_plan",
+            resource_id=plan_id,
+        )
+        service = _service(session=session, request=request)
+        company, item = service.get_plan_resource(plan_id=plan_id)
+        permission_service.ensure_production_resource_permission(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            item_code=item,
+            company=company,
+            resource_type="production_plan",
+            resource_id=plan_id,
+            resource_no=str(plan_id),
+            enforce_action=False,
+        )
+        before_data = {
+            "plan_id": plan_id,
+            "warehouse": payload.warehouse,
+            "business_date": payload.business_date.isoformat(),
+        }
+        data = service.create_material_issue_draft(
+            plan_id=plan_id,
+            operator=current_user.username,
+            payload=payload,
+            request_id=raw_request_id,
+        )
+        audit.record_success(
+            module="production",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_plan",
+            resource_id=plan_id,
+            resource_no=str(plan_id),
+            before_data=before_data,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
         _record_failure_safely(
             session=session,
             audit=audit,

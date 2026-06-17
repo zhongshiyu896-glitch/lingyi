@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import date
+from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
 import os
 import unittest
@@ -24,11 +27,15 @@ from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
+from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleMaster
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
@@ -53,6 +60,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         BomBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        QualityBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -85,6 +93,9 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyMaterialPurchaseRequirement).delete()
             session.query(LyProductionPlan).delete()
             session.query(LySalesOrderItem).delete()
@@ -139,6 +150,57 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             "X-LY-Dev-Roles": "System Manager",
             "X-Request-ID": "req-a4-flow",
         }
+
+    def _add_stock_entry(
+        self,
+        *,
+        source_id: str,
+        purpose: str,
+        qty: str,
+        business_date: date,
+        source_warehouse: str | None = None,
+        target_warehouse: str | None = None,
+    ) -> None:
+        created_at = datetime.combine(business_date, datetime.min.time(), timezone.utc)
+        with self.SessionLocal() as session:
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose=purpose,
+                source_type="manual",
+                source_id=source_id,
+                source_warehouse=source_warehouse,
+                target_warehouse=target_warehouse,
+                status="pending_outbox",
+                created_by="a4.flow.seed",
+                created_at=created_at,
+                idempotency_key=f"idem-{source_id}",
+                event_key=f"event-{source_id}",
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company="COMP-A",
+                    item_code="FABRIC-DEMO",
+                    qty=Decimal(qty),
+                    uom="米",
+                    source_warehouse=source_warehouse,
+                    target_warehouse=target_warehouse,
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryOutboxEvent(
+                    draft_id=int(draft.id),
+                    event_type="warehouse_stock_entry_sync",
+                    event_key=f"event-{source_id}",
+                    payload={"business_date": business_date.isoformat()},
+                    status="in_pending",
+                    retry_count=0,
+                    created_at=created_at,
+                )
+            )
+            session.commit()
 
     def test_sales_order_draft_can_create_plan_and_blocks_overplanning(self) -> None:
         order_payload = {
@@ -237,6 +299,13 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         plan_id = int(create_plan.json()["data"]["plan_id"])
         material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260617-901"
         material_check_request_id = f"req-{material_check_scenario}"
+        self._add_stock_entry(
+            source_id="A4-OPENING-FABRIC",
+            purpose="Material Receipt",
+            target_warehouse="WH-A",
+            qty="84",
+            business_date=date(2026, 6, 17),
+        )
 
         with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
             material_check = self.client.post(
@@ -257,6 +326,50 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             )
         self.assertEqual(material_check.status_code, 200, material_check.text)
         self.assertEqual(material_check.json()["data"]["snapshot_count"], 1)
+        snapshot = material_check.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(snapshot["required_qty"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(snapshot["available_qty"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(snapshot["shortage_qty"])), Decimal("0.000000"))
+
+        material_issue_scenario = "Z003-PROD-PLAN-DETAIL-20260617-902"
+        material_issue_request_id = f"req-{material_issue_scenario}"
+        material_issue_payload = {
+            "warehouse": "WH-A",
+            "business_date": "2026-06-18",
+            "operation": "material_issue",
+            "idempotency_key": f"{material_issue_scenario}-idem-material-issue-a4-001",
+            "scenario_tag": material_issue_scenario,
+            "plan_id": plan_id,
+            "sales_order": "SO-A4-001",
+            "sales_order_item": sales_order_item,
+            "item_code": "DEMO-TEE",
+            "bom_id": 1,
+            "request_id": material_issue_request_id,
+        }
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            material_issue = self.client.post(
+                f"/api/production/plans/{plan_id}/material-issue",
+                headers={**self._headers(), "X-Request-ID": material_issue_request_id},
+                json=material_issue_payload,
+            )
+            material_issue_replay = self.client.post(
+                f"/api/production/plans/{plan_id}/material-issue",
+                headers={**self._headers(), "X-Request-ID": material_issue_request_id},
+                json=material_issue_payload,
+            )
+            material_issue_conflict = self.client.post(
+                f"/api/production/plans/{plan_id}/material-issue",
+                headers={**self._headers(), "X-Request-ID": material_issue_request_id},
+                json={**material_issue_payload, "business_date": "2026-06-19"},
+            )
+        self.assertEqual(material_issue.status_code, 200, material_issue.text)
+        self.assertEqual(material_issue_replay.status_code, 200, material_issue_replay.text)
+        self.assertEqual(material_issue_conflict.status_code, 409, material_issue_conflict.text)
+        self.assertEqual(material_issue_conflict.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
+        self.assertEqual(material_issue.json()["data"]["draft_id"], material_issue_replay.json()["data"]["draft_id"])
+        self.assertEqual(material_issue.json()["data"]["stock_entry_status"], "pending_outbox")
+        self.assertEqual(material_issue.json()["data"]["items"][0]["material_item_code"], "FABRIC-DEMO")
+        self.assertEqual(Decimal(str(material_issue.json()["data"]["items"][0]["qty"])), Decimal("84.000000"))
 
         list_after_material_check = self.client.get(
             "/api/sales-inventory/sales-orders?keyword=SO-A4-001",
@@ -268,10 +381,25 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             order = session.query(LySalesOrder).one()
             item = session.query(LySalesOrderItem).one()
+            plan = session.query(LyProductionPlan).one()
+            stock_entries = session.query(LyWarehouseStockEntryDraft).order_by(LyWarehouseStockEntryDraft.id.asc()).all()
+            issue_entry = [row for row in stock_entries if row.purpose == "Material Issue"][0]
+            issue_line = (
+                session.query(LyWarehouseStockEntryDraftItem)
+                .filter(LyWarehouseStockEntryDraftItem.draft_id == int(issue_entry.id))
+                .one()
+            )
             self.assertEqual(order.status, "planned")
             self.assertEqual(Decimal(str(item.planned_qty)), Decimal("40.000000"))
             self.assertEqual(item.ys_material_calc_state, "已算料")
+            self.assertEqual(plan.status, "material_issued")
+            self.assertEqual(issue_entry.source_type, "production_plan")
+            self.assertEqual(issue_entry.source_id, f"production_plan:{plan_id}:material_issue")
+            self.assertEqual(issue_entry.source_warehouse, "WH-A")
+            self.assertEqual(issue_line.item_code, "FABRIC-DEMO")
+            self.assertEqual(Decimal(str(issue_line.qty)), Decimal("84.000000"))
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("sales_inventory:write", audit_actions)
             self.assertIn("production:plan_create", audit_actions)
             self.assertIn("production:material_check", audit_actions)
+            self.assertIn("production:material_issue", audit_actions)

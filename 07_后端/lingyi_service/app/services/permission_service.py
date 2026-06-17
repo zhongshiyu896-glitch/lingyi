@@ -57,6 +57,7 @@ from app.core.permissions import SUBCONTRACT_STOCK_SYNC_WORKER
 from app.core.permissions import PRODUCTION_READ
 from app.core.permissions import PRODUCTION_PLAN_CREATE
 from app.core.permissions import PRODUCTION_MATERIAL_CHECK
+from app.core.permissions import PRODUCTION_MATERIAL_ISSUE
 from app.core.permissions import PRODUCTION_WORK_ORDER_CREATE
 from app.core.permissions import PRODUCTION_JOB_CARD_SYNC
 from app.core.permissions import PRODUCTION_WORK_ORDER_WORKER
@@ -180,6 +181,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_READ,
         PRODUCTION_PLAN_CREATE,
         PRODUCTION_MATERIAL_CHECK,
+        PRODUCTION_MATERIAL_ISSUE,
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
         PRODUCTION_WORK_ORDER_WORKER,
@@ -1744,6 +1746,7 @@ class PermissionService:
             "settlement_release": False,
             "plan_create": False,
             "material_check": False,
+            "material_issue": False,
             "work_order_create": False,
             "work_order_worker": False,
             "snapshot_create": False,
@@ -1845,6 +1848,7 @@ class PermissionService:
             base["read"] = PRODUCTION_READ in actions
             base["plan_create"] = PRODUCTION_PLAN_CREATE in actions
             base["material_check"] = PRODUCTION_MATERIAL_CHECK in actions
+            base["material_issue"] = PRODUCTION_MATERIAL_ISSUE in actions
             base["work_order_create"] = PRODUCTION_WORK_ORDER_CREATE in actions
             base["job_card_sync"] = PRODUCTION_JOB_CARD_SYNC in actions
             base["work_order_worker"] = PRODUCTION_WORK_ORDER_WORKER in actions

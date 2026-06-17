@@ -24,6 +24,7 @@ from app.core.error_codes import PRODUCTION_COMPANY_REQUIRED
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_KEY_REQUIRED
 from app.core.error_codes import PRODUCTION_MATERIAL_CHECK_STATUS_INVALID
+from app.core.error_codes import PRODUCTION_MATERIAL_ISSUE_NOT_READY
 from app.core.error_codes import PRODUCTION_PLANNED_QTY_EXCEEDED
 from app.core.error_codes import PRODUCTION_SO_CLOSED_OR_CANCELLED
 from app.core.error_codes import PRODUCTION_SO_ITEM_AMBIGUOUS
@@ -56,6 +57,7 @@ from app.models.sales_order import LySalesOrderItem
 from app.models.style_profit import LyStyleProfitSnapshot
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionFollowupTemplateListData
@@ -64,6 +66,9 @@ from app.schemas.production import ProductionFollowupTemplateQuery
 from app.schemas.production import ProductionJobCardLinkItem
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
+from app.schemas.production import ProductionMaterialIssueData
+from app.schemas.production import ProductionMaterialIssueItem
+from app.schemas.production import ProductionMaterialIssueRequest
 from app.schemas.production import ProductionMaterialCostListData
 from app.schemas.production import ProductionMaterialCostListItem
 from app.schemas.production import ProductionMaterialCostQuery
@@ -2238,6 +2243,186 @@ class ProductionService:
             items=snapshot_items,
         )
 
+    def create_material_issue_draft(
+        self,
+        *,
+        plan_id: int,
+        operator: str,
+        payload: ProductionMaterialIssueRequest,
+        request_id: str | None = None,
+    ) -> ProductionMaterialIssueData:
+        plan = self._must_get_plan(plan_id=plan_id)
+        self._validate_plan_carriers(
+            request_id=request_id,
+            payload_request_id=payload.request_id,
+            scenario_tag=payload.scenario_tag,
+            idempotency_key=payload.idempotency_key,
+            expected_operation="material_issue",
+            payload_operation=payload.operation,
+            plan_id=plan_id,
+            payload_plan_id=payload.plan_id,
+            plan=plan,
+            payload_sales_order=payload.sales_order,
+            payload_sales_order_item=payload.sales_order_item,
+            payload_item_code=payload.item_code,
+            payload_bom_id=payload.bom_id,
+        )
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        warehouse = self._require_non_blank(
+            payload.warehouse,
+            code=PRODUCTION_WAREHOUSE_REQUIRED,
+            message="warehouse 不能为空",
+        )
+        if payload.business_date is None:
+            raise BusinessException(code=PRODUCTION_START_DATE_REQUIRED, message="business_date 不能为空")
+
+        try:
+            snapshots = (
+                self.session.query(LyProductionPlanMaterial)
+                .filter(LyProductionPlanMaterial.plan_id == int(plan.id))
+                .order_by(LyProductionPlanMaterial.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if not snapshots:
+            raise BusinessException(code=PRODUCTION_MATERIAL_ISSUE_NOT_READY, message="请先执行算料")
+
+        issue_rows: list[dict[str, Any]] = []
+        for snapshot in snapshots:
+            required_qty = Decimal(str(snapshot.required_qty or 0)).quantize(Decimal("0.000001"))
+            available_qty = Decimal(str(snapshot.available_qty or 0)).quantize(Decimal("0.000001"))
+            shortage_qty = Decimal(str(snapshot.shortage_qty or 0)).quantize(Decimal("0.000001"))
+            snapshot_warehouse = str(snapshot.warehouse or "").strip()
+            if snapshot_warehouse != warehouse:
+                raise BusinessException(code=PRODUCTION_MATERIAL_ISSUE_NOT_READY, message="领料仓库与算料仓库不一致")
+            if required_qty <= Decimal("0"):
+                continue
+            if shortage_qty > Decimal("0") or available_qty < required_qty:
+                raise BusinessException(code=PRODUCTION_MATERIAL_ISSUE_NOT_READY, message="物料未齐，不能生成生产领料")
+            issue_rows.append(
+                {
+                    "material_item_code": str(snapshot.material_item_code),
+                    "warehouse": snapshot_warehouse,
+                    "qty": required_qty,
+                    "uom": self._bom_uom_for_snapshot(snapshot=snapshot),
+                }
+            )
+        if not issue_rows:
+            raise BusinessException(code=PRODUCTION_MATERIAL_ISSUE_NOT_READY, message="没有可领料物料")
+
+        source_id = f"production_plan:{int(plan.id)}:material_issue"
+        stock_idempotency_key = f"production-material-issue:{idempotency_key}"
+        event_payload = self._build_material_issue_event_payload(
+            plan=plan,
+            source_id=source_id,
+            business_date=payload.business_date,
+            warehouse=warehouse,
+            issue_rows=issue_rows,
+        )
+        existing = (
+            self.session.query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.company == str(plan.company),
+                LyWarehouseStockEntryDraft.idempotency_key == stock_idempotency_key,
+            )
+            .first()
+        )
+        if existing is not None:
+            self._ensure_material_issue_replay_matches(
+                draft=existing,
+                source_id=source_id,
+                warehouse=warehouse,
+                event_payload=event_payload,
+                issue_rows=issue_rows,
+            )
+            return self._build_material_issue_data(plan_id=int(plan.id), draft=existing)
+
+        existing_by_source = (
+            self.session.query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.company == str(plan.company),
+                LyWarehouseStockEntryDraft.source_type == "production_plan",
+                LyWarehouseStockEntryDraft.source_id == source_id,
+                LyWarehouseStockEntryDraft.status != "cancelled",
+            )
+            .first()
+        )
+        if existing_by_source is not None:
+            self._ensure_material_issue_replay_matches(
+                draft=existing_by_source,
+                source_id=source_id,
+                warehouse=warehouse,
+                event_payload=event_payload,
+                issue_rows=issue_rows,
+            )
+            return self._build_material_issue_data(plan_id=int(plan.id), draft=existing_by_source)
+
+        now = datetime.utcnow()
+        event_key = self._build_material_issue_event_key(
+            company=str(plan.company),
+            plan_id=int(plan.id),
+            idempotency_key=stock_idempotency_key,
+        )
+        try:
+            draft = LyWarehouseStockEntryDraft(
+                company=str(plan.company),
+                purpose="Material Issue",
+                source_type="production_plan",
+                source_id=source_id,
+                source_warehouse=warehouse,
+                target_warehouse=None,
+                status="pending_outbox",
+                created_by=operator,
+                created_at=now,
+                idempotency_key=stock_idempotency_key,
+                event_key=event_key,
+            )
+            self.session.add(draft)
+            self.session.flush()
+            for row in issue_rows:
+                self.session.add(
+                    LyWarehouseStockEntryDraftItem(
+                        draft_id=int(draft.id),
+                        company=str(plan.company),
+                        item_code=str(row["material_item_code"]),
+                        qty=Decimal(str(row["qty"])),
+                        uom=str(row["uom"]),
+                        source_warehouse=warehouse,
+                        target_warehouse=None,
+                    )
+                )
+            self.session.add(
+                LyWarehouseStockEntryOutboxEvent(
+                    draft_id=int(draft.id),
+                    event_type="production_material_issue_sync",
+                    event_key=event_key,
+                    payload={"draft_id": int(draft.id), **event_payload},
+                    status="in_pending",
+                    retry_count=0,
+                    created_at=now,
+                )
+            )
+            previous = str(plan.status)
+            if previous != "material_issued":
+                plan.status = "material_issued"
+                self._log_status(
+                    plan_id=int(plan.id),
+                    from_status=previous,
+                    to_status="material_issued",
+                    action="material_issue",
+                    operator=operator,
+                    request_id=request_id,
+                )
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return self._build_material_issue_data(plan_id=int(plan.id), draft=draft)
+
     def ensure_material_check_status_allowed(self, *, plan_id: int) -> str:
         plan = self._must_get_plan(plan_id=plan_id)
         return self._ensure_material_check_status_allowed(plan=plan)
@@ -2626,6 +2811,130 @@ class ProductionService:
             elif target_warehouse == warehouse:
                 balance += qty
         return balance
+
+    def _bom_uom_for_snapshot(self, *, snapshot: LyProductionPlanMaterial) -> str:
+        if snapshot.bom_item_id is None:
+            return "米"
+        try:
+            bom_item = self.session.query(LyApparelBomItem).filter(LyApparelBomItem.id == int(snapshot.bom_item_id)).first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if bom_item is None:
+            return "米"
+        return str(bom_item.uom or "米")
+
+    @staticmethod
+    def _build_material_issue_event_payload(
+        *,
+        plan: LyProductionPlan,
+        source_id: str,
+        business_date: date,
+        warehouse: str,
+        issue_rows: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        return {
+            "company": str(plan.company),
+            "purpose": "Material Issue",
+            "source_type": "production_plan",
+            "source_id": source_id,
+            "business_date": business_date.isoformat(),
+            "sales_order": str(plan.sales_order),
+            "sales_order_item": str(plan.sales_order_item),
+            "item_code": str(plan.item_code),
+            "warehouse": warehouse,
+            "items": [
+                {
+                    "item_code": str(row["material_item_code"]),
+                    "qty": str(row["qty"]),
+                    "uom": str(row["uom"]),
+                    "source_warehouse": warehouse,
+                }
+                for row in issue_rows
+            ],
+        }
+
+    def _ensure_material_issue_replay_matches(
+        self,
+        *,
+        draft: LyWarehouseStockEntryDraft,
+        source_id: str,
+        warehouse: str,
+        event_payload: dict[str, Any],
+        issue_rows: list[dict[str, Any]],
+    ) -> None:
+        if (
+            str(draft.purpose) != "Material Issue"
+            or str(draft.source_type) != "production_plan"
+            or str(draft.source_id) != source_id
+            or str(draft.source_warehouse or "") != warehouse
+        ):
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+        try:
+            lines = (
+                self.session.query(LyWarehouseStockEntryDraftItem)
+                .filter(LyWarehouseStockEntryDraftItem.draft_id == int(draft.id))
+                .order_by(LyWarehouseStockEntryDraftItem.id.asc())
+                .all()
+            )
+            outbox = (
+                self.session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(
+                    LyWarehouseStockEntryOutboxEvent.draft_id == int(draft.id),
+                    LyWarehouseStockEntryOutboxEvent.event_type == "production_material_issue_sync",
+                )
+                .order_by(LyWarehouseStockEntryOutboxEvent.id.desc())
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        if len(lines) != len(issue_rows) or outbox is None:
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+        for line, row in zip(lines, issue_rows, strict=True):
+            if (
+                str(line.item_code) != str(row["material_item_code"])
+                or Decimal(str(line.qty)).quantize(Decimal("0.000001")) != Decimal(str(row["qty"])).quantize(Decimal("0.000001"))
+                or str(line.uom) != str(row["uom"])
+                or str(line.source_warehouse or draft.source_warehouse or "") != warehouse
+            ):
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+
+        actual_payload = dict(outbox.payload or {})
+        actual_payload.pop("draft_id", None)
+        if actual_payload != event_payload:
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+
+    def _build_material_issue_data(self, *, plan_id: int, draft: LyWarehouseStockEntryDraft) -> ProductionMaterialIssueData:
+        try:
+            lines = (
+                self.session.query(LyWarehouseStockEntryDraftItem)
+                .filter(LyWarehouseStockEntryDraftItem.draft_id == int(draft.id))
+                .order_by(LyWarehouseStockEntryDraftItem.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        return ProductionMaterialIssueData(
+            plan_id=plan_id,
+            draft_id=int(draft.id),
+            source_id=str(draft.source_id),
+            stock_entry_status=str(draft.status),
+            event_key=str(draft.event_key),
+            items=[
+                ProductionMaterialIssueItem(
+                    material_item_code=str(line.item_code),
+                    warehouse=str(line.source_warehouse or draft.source_warehouse or ""),
+                    qty=Decimal(str(line.qty)),
+                    uom=str(line.uom),
+                )
+                for line in lines
+            ],
+        )
+
+    @staticmethod
+    def _build_material_issue_event_key(*, company: str, plan_id: int, idempotency_key: str) -> str:
+        raw = "|".join([company, str(plan_id), idempotency_key]).encode("utf-8")
+        return f"pmi:{hashlib.sha256(raw).hexdigest()}"
 
     @staticmethod
     def _ensure_material_check_status_allowed(*, plan: LyProductionPlan) -> str:
