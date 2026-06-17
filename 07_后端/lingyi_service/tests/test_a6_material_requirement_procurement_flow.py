@@ -26,6 +26,7 @@ from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
@@ -39,6 +40,7 @@ from app.routers.material_purchase import get_db_session as material_purchase_db
 from app.routers.production import get_db_session as production_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
+from app.services.material_purchase_service import MaterialPurchaseService
 
 
 class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
@@ -471,6 +473,135 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("material_purchase:write", audit_actions)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
+
+        material_issue_scenario = "Z003-PROD-PLAN-DETAIL-20260617-302"
+        material_issue_request_id = f"req-{material_issue_scenario}"
+        material_issue = self.client.post(
+            f"/api/production/plans/{plan_id}/material-issue",
+            headers={**self._headers(), "X-Request-ID": material_issue_request_id},
+            json={
+                "warehouse": self.WAREHOUSE,
+                "business_date": "2026-06-18",
+                "operation": "material_issue",
+                "idempotency_key": f"{material_issue_scenario}:idem-material-issue",
+                "scenario_tag": material_issue_scenario,
+                "plan_id": plan_id,
+                "sales_order": "SO-A6-001",
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "request_id": material_issue_request_id,
+            },
+        )
+        self.assertEqual(material_issue.status_code, 200, material_issue.text)
+        material_issue_data = material_issue.json()["data"]
+        self.assertEqual(material_issue_data["stock_entry_status"], "pending_outbox")
+        self.assertEqual(material_issue_data["items"][0]["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(material_issue_data["items"][0]["qty"])), Decimal("84.000000"))
+
+    def test_rerun_material_check_preserves_completed_requirement_purchase_fields(self) -> None:
+        with self.SessionLocal() as session:
+            plan = LyProductionPlan(
+                id=9601,
+                plan_no="PP-A6-PRESERVE-001",
+                company=self.COMPANY,
+                sales_order="SO-A6-PRESERVE",
+                sales_order_item="SO-A6-PRESERVE-ITEM",
+                customer="CUST-A6",
+                item_code=self.STYLE,
+                bom_id=601,
+                bom_version="V1",
+                planned_qty=Decimal("40"),
+                status="material_checked",
+                idempotency_key="idem-a6-preserve-plan",
+                request_hash="hash-a6-preserve-plan",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.add(
+                LyProductionPlanMaterial(
+                    plan_id=9601,
+                    bom_item_id=6011,
+                    material_item_code=self.MATERIAL,
+                    warehouse=self.WAREHOUSE,
+                    qty_per_piece=Decimal("2"),
+                    loss_rate=Decimal("0.05"),
+                    required_qty=Decimal("84"),
+                    available_qty=Decimal("84"),
+                    shortage_qty=Decimal("0"),
+                )
+            )
+            order = LyMaterialPurchaseOrder(
+                id=9701,
+                company=self.COMPANY,
+                purchase_no="PO-A6-PRESERVE",
+                supplier_name="SUP-A6",
+                status="received",
+                total_qty=Decimal("54"),
+                received_qty=Decimal("54"),
+                total_amount=Decimal("675"),
+                currency="CNY",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            order_line = LyMaterialPurchaseOrderItem(
+                id=97011,
+                order_id=9701,
+                company=self.COMPANY,
+                item_code=self.STYLE,
+                material_item_code=self.MATERIAL,
+                material_name="A6 棉布",
+                qty=Decimal("54"),
+                received_qty=Decimal("54"),
+                uom="米",
+                unit_price=Decimal("12.5"),
+                amount=Decimal("675"),
+                warehouse=self.WAREHOUSE,
+            )
+            session.add(order_line)
+            requirement = LyMaterialPurchaseRequirement(
+                company=self.COMPANY,
+                requirement_no="REQ-A6-PRESERVE",
+                source_type="production_plan",
+                source_id="9601",
+                source_no="PP-A6-PRESERVE-001",
+                plan_id=9601,
+                bom_item_id=6011,
+                sales_order="SO-A6-PRESERVE",
+                sales_order_item="SO-A6-PRESERVE-ITEM",
+                item_code=self.STYLE,
+                material_item_code=self.MATERIAL,
+                material_name="A6 棉布",
+                supplier_name="SUP-A6",
+                warehouse=self.WAREHOUSE,
+                required_qty=Decimal("84"),
+                available_qty=Decimal("84"),
+                net_required_qty=Decimal("0"),
+                purchased_qty=Decimal("54"),
+                received_qty=Decimal("54"),
+                uom="米",
+                unit_price=Decimal("12.5"),
+                status="completed",
+                purchase_order_id=9701,
+                purchase_order_item_id=97011,
+                purchase_no="PO-A6-PRESERVE",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(requirement)
+            session.commit()
+
+            MaterialPurchaseService(session).sync_requirements_from_production_plan(plan=plan, actor="a6.procurement.user")
+            session.commit()
+
+            preserved = session.query(LyMaterialPurchaseRequirement).filter_by(requirement_no="REQ-A6-PRESERVE").one()
+            self.assertEqual(str(preserved.status), "completed")
+            self.assertEqual(str(preserved.purchase_no), "PO-A6-PRESERVE")
+            self.assertEqual(int(preserved.purchase_order_id), 9701)
+            self.assertEqual(int(preserved.purchase_order_item_id), 97011)
+            self.assertEqual(Decimal(str(preserved.purchased_qty)), Decimal("54.000000"))
+            self.assertEqual(Decimal(str(preserved.received_qty)), Decimal("54.000000"))
 
     def test_from_requirements_group_by_material_merges_cross_order_demands_and_receipts(self) -> None:
         requirement_a = self._seed_requirement(

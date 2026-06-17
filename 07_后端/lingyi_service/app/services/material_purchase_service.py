@@ -369,7 +369,17 @@ class MaterialPurchaseService:
                 }
                 row.updated_by = actor
                 row.updated_at = now
+                has_completed_purchase = (
+                    str(row.status) == "completed"
+                    and row.purchase_no is not None
+                    and Decimal(str(row.purchased_qty or 0)) > Decimal("0")
+                    and Decimal(str(row.received_qty or 0)) >= Decimal(str(row.purchased_qty or 0))
+                )
                 if str(row.status) in {"pending", "completed"}:
+                    if has_completed_purchase and net_required_qty == Decimal("0"):
+                        row.status = "completed"
+                        synced.append(row)
+                        continue
                     row.purchased_qty = Decimal("0")
                     row.received_qty = Decimal("0")
                     row.purchase_order_id = None

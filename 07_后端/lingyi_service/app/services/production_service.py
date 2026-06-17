@@ -2779,38 +2779,19 @@ class ProductionService:
         if not self._has_sqlite_tables({LyWarehouseStockEntryDraft.__tablename__, LyWarehouseStockEntryDraftItem.__tablename__}):
             return Decimal("0")
         try:
-            rows = (
-                self.session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
-                .join(
-                    LyWarehouseStockEntryDraftItem,
-                    LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
-                )
-                .filter(
-                    LyWarehouseStockEntryDraft.company == company,
-                    LyWarehouseStockEntryDraft.status != "cancelled",
-                    LyWarehouseStockEntryDraftItem.item_code == item_code,
-                )
-                .all()
+            from app.services.warehouse_service import WarehouseService
+
+            summary = WarehouseService(session=self.session).get_local_stock_summary(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
             )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
-        balance = Decimal("0")
-        for draft, item in rows:
-            qty = Decimal(str(item.qty or 0))
-            purpose = str(draft.purpose)
-            source_warehouse = str(item.source_warehouse or draft.source_warehouse or "").strip()
-            target_warehouse = str(item.target_warehouse or draft.target_warehouse or "").strip()
-            if purpose == "Material Issue":
-                if source_warehouse == warehouse:
-                    balance -= qty
-            elif purpose == "Material Transfer":
-                if source_warehouse == warehouse:
-                    balance -= qty
-                if target_warehouse == warehouse:
-                    balance += qty
-            elif target_warehouse == warehouse:
-                balance += qty
-        return balance
+        for row in summary.items:
+            if str(row.company) == company and str(row.warehouse) == warehouse and str(row.item_code) == item_code:
+                return Decimal(str(row.actual_qty or 0))
+        return Decimal("0")
 
     def _bom_uom_for_snapshot(self, *, snapshot: LyProductionPlanMaterial) -> str:
         if snapshot.bom_item_id is None:

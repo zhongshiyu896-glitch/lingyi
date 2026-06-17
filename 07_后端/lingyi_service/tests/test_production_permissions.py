@@ -134,6 +134,10 @@ class ProductionPermissionTest(unittest.TestCase):
     def test_detail_forbidden_when_item_not_in_scope(self) -> None:
         with patch.object(
             ERPNextPermissionAdapter,
+            "get_user_roles",
+            return_value=["Production Manager"],
+        ), patch.object(
+            ERPNextPermissionAdapter,
             "get_user_permissions",
             return_value=UserPermissionResult(
                 source_available=True,
@@ -158,6 +162,10 @@ class ProductionPermissionTest(unittest.TestCase):
     def test_detail_forbidden_does_not_read_subtable_details(self) -> None:
         with patch.object(
             ERPNextPermissionAdapter,
+            "get_user_roles",
+            return_value=["Production Manager"],
+        ), patch.object(
+            ERPNextPermissionAdapter,
             "get_user_permissions",
             return_value=UserPermissionResult(
                 source_available=True,
@@ -177,6 +185,39 @@ class ProductionPermissionTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
+
+    def test_detail_forbidden_when_company_not_in_scope(self) -> None:
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_roles",
+            return_value=["Production Manager"],
+        ), patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-A"},
+                allowed_companies={"COMP-B"},
+            ),
+        ), patch.object(
+            ProductionService,
+            "get_plan_detail",
+            side_effect=RuntimeError("should-not-read-detail"),
+        ):
+            response = self.client.get(
+                "/api/production/plans/9001",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(row)
+            self.assertEqual(row.module, "production")
+            self.assertEqual(row.resource_type, "COMPANY")
+            self.assertEqual(row.resource_no, "COMP-A")
 
     def test_create_fails_closed_when_permission_source_unavailable(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()), patch.object(
@@ -211,7 +252,7 @@ class ProductionPermissionTest(unittest.TestCase):
 
     def test_internal_worker_denied_for_non_worker_action_role(self) -> None:
         # Production Manager has no production:work_order_worker action.
-        with patch.object(ERPNextPermissionAdapter, "get_user_permissions", return_value=UserPermissionResult(
+        with patch.object(ERPNextPermissionAdapter, "get_user_roles", return_value=["Production Manager"]), patch.object(ERPNextPermissionAdapter, "get_user_permissions", return_value=UserPermissionResult(
             source_available=True,
             unrestricted=False,
             allowed_items={"ITEM-A"},
@@ -228,6 +269,10 @@ class ProductionPermissionTest(unittest.TestCase):
 
     def test_internal_worker_denied_when_principal_check_fails(self) -> None:
         with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_roles",
+            return_value=["System Manager"],
+        ), patch.object(
             ERPNextPermissionAdapter,
             "get_user_permissions",
             return_value=UserPermissionResult(

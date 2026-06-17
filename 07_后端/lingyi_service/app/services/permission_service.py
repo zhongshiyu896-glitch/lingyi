@@ -1227,6 +1227,23 @@ class PermissionService:
                 detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
+        if company and not adapter.is_company_permitted(company=company, user_permissions=permissions):
+            self._record_security_audit_safe(
+                event_type=AUTH_FORBIDDEN_CODE,
+                module="production",
+                action=action,
+                resource_type="COMPANY",
+                resource_id=resource_id,
+                resource_no=company,
+                user=current_user,
+                deny_reason="资源权限不足：无权访问该 company",
+                request_obj=request_obj,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
+            )
+
     def get_style_profit_user_permissions(
         self,
         *,
