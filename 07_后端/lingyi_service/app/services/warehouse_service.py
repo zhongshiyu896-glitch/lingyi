@@ -764,6 +764,8 @@ class WarehouseService:
             .all()
         )
         for material, order, outbox in issue_rows:
+            if not self._is_succeeded_subcontract_stock_fact(fact_row=material, outbox=outbox):
+                continue
             company_value = (
                 self._text(getattr(material, "company", None))
                 or self._text(getattr(order, "company", None))
@@ -814,6 +816,8 @@ class WarehouseService:
             .all()
         )
         for receipt, order, outbox in receipt_rows:
+            if not self._is_succeeded_subcontract_stock_fact(fact_row=receipt, outbox=outbox):
+                continue
             company_value = (
                 self._text(getattr(receipt, "company", None))
                 or self._text(getattr(order, "company", None))
@@ -876,6 +880,19 @@ class WarehouseService:
             LySubcontractStockOutbox.__tablename__,
         }
         return required_tables.issubset(table_names)
+
+    def _is_succeeded_subcontract_stock_fact(self, *, fact_row: Any, outbox: LySubcontractStockOutbox | None) -> bool:
+        if outbox is None:
+            return False
+        if self._text(getattr(outbox, "status", None)) != "succeeded":
+            return False
+        if self._text(getattr(outbox, "stock_entry_name", None)) is None:
+            return False
+        if self._text(getattr(fact_row, "sync_status", None)) != "succeeded":
+            return False
+        if self._text(getattr(fact_row, "stock_entry_name", None)) is None:
+            return False
+        return True
 
     def _local_draft_posting_date(self, *, draft: LyWarehouseStockEntryDraft) -> date:
         outbox = self._latest_outbox_for_draft(int(draft.id))
@@ -1057,18 +1074,7 @@ class WarehouseService:
         item_code: str | None,
         status: str | None,
     ) -> WarehouseFactoryReturnMaterialReportData:
-        subcontract_report = self._factory_return_material_report_from_subcontract_issues(
-            company=company,
-            warehouse=warehouse,
-            item_code=item_code,
-            status=status,
-        )
-        if subcontract_report is not None:
-            return subcontract_report
-
-        summary = self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
-        return self._factory_return_material_report_from_summary(
-            summary=summary,
+        return self._factory_return_material_report_from_subcontract_issues(
             company=company,
             warehouse=warehouse,
             item_code=item_code,
@@ -1137,12 +1143,21 @@ class WarehouseService:
         warehouse: str | None,
         item_code: str | None,
         status: str | None,
-    ) -> WarehouseFactoryReturnMaterialReportData | None:
+    ) -> WarehouseFactoryReturnMaterialReportData:
         session = self._require_session()
         normalized_company = self._text(company)
         normalized_warehouse = self._text(warehouse)
         normalized_item_code = self._text(item_code)
         status_filter = (status or "").strip().lower() or None
+
+        if not self._has_sqlite_subcontract_stock_tables():
+            return WarehouseFactoryReturnMaterialReportData(
+                company=normalized_company,
+                warehouse=normalized_warehouse,
+                item_code=normalized_item_code,
+                status=status_filter,
+                items=[],
+            )
 
         query = (
             session.query(LySubcontractMaterial, LySubcontractOrder, LySubcontractStockOutbox)
@@ -1157,11 +1172,11 @@ class WarehouseService:
             .order_by(LySubcontractOrder.subcontract_no.asc(), LySubcontractMaterial.material_item_code.asc())
         )
         source_rows = query.all()
-        if not source_rows:
-            return None
 
         grouped: dict[tuple[str, str, int, str], dict[str, Any]] = {}
         for material, order, outbox in source_rows:
+            if not self._is_succeeded_subcontract_stock_fact(fact_row=material, outbox=outbox):
+                continue
             company_value = (
                 self._text(getattr(order, "company", None))
                 or self._text(getattr(material, "company", None))

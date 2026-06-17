@@ -259,6 +259,7 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
                         warehouse="WH-A",
                         action="issue",
                         status="succeeded",
+                        stock_entry_name="LOCAL-ISSUE-BAL-001",
                         request_id="bal-issue-request",
                         created_by="warehouse.test",
                         created_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
@@ -276,6 +277,7 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
                         warehouse="WH-FG",
                         action="receipt",
                         status="succeeded",
+                        stock_entry_name="LOCAL-RECEIPT-BAL-001",
                         request_id="bal-receipt-request",
                         created_by="warehouse.test",
                         created_at=datetime(2026, 6, 3, tzinfo=timezone.utc),
@@ -361,6 +363,88 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         self.assertEqual(Decimal(str(output_ledger.items[0].qty_after_transaction)), Decimal("3.000000"))
         self.assertEqual(Decimal(str(material_summary.items[0].actual_qty)), Decimal("6.000000"))
         self.assertEqual(Decimal(str(output_summary.items[0].actual_qty)), Decimal("3.000000"))
+
+    def test_pending_subcontract_outbox_is_excluded_from_unified_stock_balance(self) -> None:
+        with self.SessionLocal() as session:
+            self._add_draft(
+                session,
+                source_id="RCPT-PENDING-SUB-BASE",
+                purpose="Material Receipt",
+                target_warehouse="WH-A",
+                qty="10",
+                business_date=date(2026, 6, 1),
+            )
+            session.add(
+                LySubcontractOrder(
+                    id=951,
+                    subcontract_no="SC-BAL-PENDING",
+                    supplier="BAL-FAC",
+                    item_code="STYLE-BAL-PENDING",
+                    company="COMP-A",
+                    bom_id=1,
+                    process_name="外发裁剪",
+                    planned_qty=Decimal("5"),
+                    issued_qty=Decimal("4"),
+                    received_qty=Decimal("0"),
+                    inspected_qty=Decimal("0"),
+                    accepted_qty=Decimal("0"),
+                    status="issued",
+                    settlement_status="unsettled",
+                )
+            )
+            session.add(
+                LySubcontractStockOutbox(
+                    id=951,
+                    subcontract_id=951,
+                    event_key="bal-pending-issue-outbox",
+                    stock_action="issue",
+                    idempotency_key="bal-pending-issue-idem",
+                    payload_hash="bal-pending-issue-hash",
+                    company="COMP-A",
+                    supplier="BAL-FAC",
+                    item_code="STYLE-BAL-PENDING",
+                    warehouse="WH-A",
+                    action="issue",
+                    status="pending",
+                    request_id="bal-pending-issue-request",
+                    created_by="warehouse.test",
+                    created_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+                )
+            )
+            session.add(
+                LySubcontractMaterial(
+                    id=951,
+                    subcontract_id=951,
+                    stock_outbox_id=951,
+                    company="COMP-A",
+                    issue_batch_no="SIB-BAL-PENDING",
+                    material_item_code="FAB-A",
+                    required_qty=Decimal("5"),
+                    issued_qty=Decimal("4"),
+                    sync_status="pending",
+                    stock_entry_name=None,
+                    created_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+                )
+            )
+            session.commit()
+
+        with self.SessionLocal() as session:
+            service = WarehouseService(session=session)
+            ledger = service.list_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-A",
+                item_code="FAB-A",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            summary = service.get_stock_summary(company="COMP-A", warehouse="WH-A", item_code="FAB-A")
+
+        self.assertEqual(ledger.total, 1)
+        self.assertEqual(ledger.items[0].voucher_type, "Stock Entry Draft/Material Receipt")
+        self.assertEqual(Decimal(str(ledger.items[0].qty_after_transaction)), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(summary.items[0].actual_qty)), Decimal("10.000000"))
 
 
 if __name__ == "__main__":

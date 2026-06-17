@@ -271,10 +271,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(summary_items[0]["actual_qty"])), Decimal("20.0"))
         self.assertEqual(return_report.status_code, 200, return_report.text)
         report_items = return_report.json()["data"]["items"]
-        self.assertEqual(len(report_items), 1)
-        self.assertEqual(report_items[0]["material_code"], self.ITEM_CODE)
-        self.assertEqual(report_items[0]["warehouse"], self.WAREHOUSE)
-        self.assertGreater(Decimal(str(report_items[0]["pending_qty"])), Decimal("0"))
+        self.assertEqual(report_items, [])
         self.assertEqual(purchase_receipts.status_code, 200, purchase_receipts.text)
         receipt_rows = purchase_receipts.json()["data"]["items"]
         self.assertEqual(purchase_receipts.json()["data"]["total"], 1)
@@ -296,7 +293,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             self.assertIn("material_purchase:write", audit_actions)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
 
-    def test_factory_return_material_report_uses_fastapi_native_stock_summary(self) -> None:
+    def test_factory_return_material_report_does_not_estimate_without_subcontract_issue_fact(self) -> None:
         receipt_idem = f"{self.SCENARIO_TAG}:receipt:FRR-LOCAL-IDEM"
         receipt_source_ref = f"{self.SCENARIO_TAG}:receipt:FRR-LOCAL-SRC"
         receipt = self.client.post(
@@ -344,10 +341,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         payload = response.json()
         self.assertEqual(payload["code"], "0")
-        rows = payload["data"]["items"]
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["material_code"], self.ITEM_CODE)
-        self.assertEqual(rows[0]["warehouse"], self.WAREHOUSE)
+        self.assertEqual(payload["data"]["items"], [])
 
     def test_factory_return_material_report_prefers_subcontract_issue_facts(self) -> None:
         with self.SessionLocal() as session:
@@ -383,7 +377,26 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                     warehouse=self.WAREHOUSE,
                     action="issue",
                     status="succeeded",
+                    stock_entry_name="LOCAL-ISSUE-B5-FRR-001",
                     request_id="req-b5-frr-001",
+                    created_by="seed",
+                )
+            )
+            session.add(
+                LySubcontractStockOutbox(
+                    id=902,
+                    subcontract_id=901,
+                    event_key="b5-frr-outbox-pending",
+                    stock_action="issue",
+                    idempotency_key="b5-frr-issue-pending",
+                    payload_hash="b5-frr-pending-hash",
+                    company="COMP-A",
+                    supplier="B5加工厂",
+                    item_code="STYLE-FRR",
+                    warehouse=self.WAREHOUSE,
+                    action="issue",
+                    status="pending",
+                    request_id="req-b5-frr-pending",
                     created_by="seed",
                 )
             )
@@ -399,6 +412,20 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                     issued_qty=Decimal("100"),
                     sync_status="succeeded",
                     stock_entry_name="LOCAL-ISSUE-B5-FRR-001",
+                )
+            )
+            session.add(
+                LySubcontractMaterial(
+                    id=902,
+                    subcontract_id=901,
+                    stock_outbox_id=902,
+                    company="COMP-A",
+                    issue_batch_no="SIB-B5-FRR-PENDING",
+                    material_item_code="FAB-B5-FRR",
+                    required_qty=Decimal("999"),
+                    issued_qty=Decimal("999"),
+                    sync_status="pending",
+                    stock_entry_name=None,
                 )
             )
             session.commit()
