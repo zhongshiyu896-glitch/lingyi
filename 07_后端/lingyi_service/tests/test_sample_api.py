@@ -18,6 +18,7 @@ from app.models.audit import LySecurityAuditLog
 from app.models.sample import Base as SampleBase
 from app.models.sample import LySampleIdempotency
 from app.models.sample import LySampleOrder
+from app.models.sample import LySampleTrackingEvent
 from app.models.sample import LySampleTrackingNode
 from app.models.sample import LySampleTrackingTemplate
 from app.models.sales_order import Base as SalesOrderBase
@@ -80,6 +81,7 @@ class SampleApiTest(unittest.TestCase):
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
             session.query(LySampleIdempotency).delete()
+            session.query(LySampleTrackingEvent).delete()
             session.query(LySampleTrackingNode).delete()
             session.query(LySampleTrackingTemplate).delete()
             session.query(LySampleOrder).delete()
@@ -378,6 +380,96 @@ class SampleApiTest(unittest.TestCase):
                 .all()
             ]
             self.assertEqual(failed_actions, ["start_fitting"])
+
+    def test_sample_tracking_event_create_list_idempotency_and_permission(self) -> None:
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-EVENT-ORDER"),
+            json=self._order_payload(sample_no="SMP-A3-EVENT", idempotency_key="IDEMP-SMP-A3-EVENT-C"),
+        )
+        self.assertEqual(created.status_code, 201)
+        order_id = int(created.json()["data"]["id"])
+
+        event_payload = {
+            "operation": "create_tracking_event",
+            "company": "COMP-A",
+            "stage": "纸样确认",
+            "progress": 55,
+            "result": "done",
+            "remark": "纸样已确认",
+            "actor": "版师 A",
+            "idempotency_key": "IDEMP-SMP-A3-EVENT-001",
+        }
+        event = self.client.post(
+            f"/api/sample/orders/{order_id}/tracking-events",
+            headers=self._headers(request_id="SAMPLE-EVENT-001"),
+            json=event_payload,
+        )
+        self.assertEqual(event.status_code, 201)
+        event_body = event.json()
+        self.assertEqual(event_body["code"], "0")
+        self.assertEqual(event_body["data"]["sample_order_id"], order_id)
+        self.assertEqual(event_body["data"]["sample_no"], "SMP-A3-EVENT")
+        self.assertEqual(event_body["data"]["stage"], "纸样确认")
+        self.assertEqual(event_body["data"]["progress"], 55)
+        event_id = int(event_body["data"]["id"])
+
+        retry = self.client.post(
+            f"/api/sample/orders/{order_id}/tracking-events",
+            headers=self._headers(request_id="SAMPLE-EVENT-002"),
+            json=event_payload,
+        )
+        self.assertEqual(retry.status_code, 201)
+        self.assertEqual(retry.json()["data"]["id"], event_id)
+
+        changed = dict(event_payload)
+        changed["remark"] = "同幂等键不同内容"
+        conflict = self.client.post(
+            f"/api/sample/orders/{order_id}/tracking-events",
+            headers=self._headers(request_id="SAMPLE-EVENT-003"),
+            json=changed,
+        )
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "SAMPLE_IDEMPOTENCY_CONFLICT")
+
+        denied = self.client.post(
+            f"/api/sample/orders/{order_id}/tracking-events",
+            headers=self._headers(role="Sales Manager", request_id="SAMPLE-EVENT-DENY"),
+            json={**event_payload, "idempotency_key": "IDEMP-SMP-A3-EVENT-DENY"},
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(denied.json()["code"], "AUTH_FORBIDDEN")
+
+        listed = self.client.get(
+            f"/api/sample/orders/{order_id}/tracking-events?company=COMP-A&page=1&page_size=10",
+            headers=self._headers(role="Sales Manager", request_id="SAMPLE-EVENT-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["data"]["total"], 1)
+        self.assertEqual(listed.json()["data"]["items"][0]["id"], event_id)
+        self.assertEqual(listed.json()["data"]["items"][0]["sample_no"], "SMP-A3-EVENT")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleTrackingEvent).count(), 1)
+            order = session.query(LySampleOrder).one()
+            self.assertEqual(order.stage, "纸样确认")
+            self.assertEqual(order.progress, 55)
+            idem = session.query(LySampleIdempotency).filter(LySampleIdempotency.entity_type == "tracking_event").one()
+            self.assertEqual(idem.operation, "create_tracking_event")
+            success_audit = (
+                session.query(LyOperationAuditLog)
+                .filter(LyOperationAuditLog.module == "sample")
+                .filter(LyOperationAuditLog.action == "create_tracking_event")
+                .filter(LyOperationAuditLog.result == "success")
+                .order_by(LyOperationAuditLog.id.asc())
+                .first()
+            )
+            self.assertIsNotNone(success_audit)
+            self.assertEqual(success_audit.resource_type, "SAMPLE_TRACKING_EVENT")
+            security_audit = session.query(LySecurityAuditLog).filter(LySecurityAuditLog.event_type == "AUTH_FORBIDDEN").one()
+            self.assertEqual(security_audit.module, "sample")
+            self.assertEqual(security_audit.action, "sample:manage")
+            self.assertEqual(str(security_audit.resource_id), str(order_id))
 
     def test_sample_order_convert_creates_sales_order_draft(self) -> None:
         created = self.client.post(

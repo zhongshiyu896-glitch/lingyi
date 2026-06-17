@@ -29,6 +29,7 @@ from app.schemas.sample import SampleOrderCreateRequest
 from app.schemas.sample import SampleOrderStatusRequest
 from app.schemas.sample import SampleOrderUpdateRequest
 from app.schemas.sample import SampleTrackingActionRequest
+from app.schemas.sample import SampleTrackingEventCreateRequest
 from app.schemas.sample import SampleTrackingNodeCreateRequest
 from app.schemas.sample import SampleTrackingNodeUpdateRequest
 from app.schemas.sample import SampleTrackingTemplateCreateRequest
@@ -193,6 +194,36 @@ def list_sample_orders(
     return _ok(data)
 
 
+@router.get("/orders/{order_id}/tracking-events")
+def list_sample_order_tracking_events(
+    order_id: int,
+    request: Request,
+    company: str = Query(default="默认公司"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=SAMPLE_READ,
+        resource_type="SAMPLE_ORDER",
+        resource_id=order_id,
+    )
+    try:
+        data = SampleService(session).list_order_tracking_events(
+            order_id=order_id,
+            company=company,
+            page=page,
+            page_size=page_size,
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(data)
+
+
 @router.post("/orders")
 def create_sample_order(
     payload: SampleOrderCreateRequest,
@@ -234,6 +265,58 @@ def create_sample_order(
             resource_type="SAMPLE_ORDER",
             resource_id=None,
             resource_no=payload.sample_no,
+            exc=exc,
+        )
+    return _created(result.item)
+
+
+@router.post("/orders/{order_id}/tracking-events")
+def create_sample_order_tracking_event(
+    order_id: int,
+    payload: SampleTrackingEventCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = "create_tracking_event"
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=SAMPLE_MANAGE,
+        resource_type="SAMPLE_ORDER",
+        resource_id=order_id,
+    )
+    try:
+        result = SampleService(session).create_order_tracking_event(
+            order_id=order_id,
+            payload=payload,
+            actor=current_user.username,
+        )
+        _commit_success(session=session, request=request, current_user=current_user, action=action, result=result)
+    except AuditWriteFailed as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
+    except AppException as exc:
+        _record_failure_and_commit(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="SAMPLE_TRACKING_EVENT",
+            resource_id=order_id,
+            resource_no=None,
+            error_code=exc.code,
+        )
+        return _err(exc)
+    except Exception as exc:
+        _handle_internal_error(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="SAMPLE_TRACKING_EVENT",
+            resource_id=order_id,
+            resource_no=None,
             exc=exc,
         )
     return _created(result.item)

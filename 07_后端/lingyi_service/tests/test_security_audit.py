@@ -265,6 +265,23 @@ class SecurityAuditTest(unittest.TestCase):
         self.assertEqual(resource_type, "SampleTrackingTemplate")
         self.assertIsNone(resource_id)
 
+        event_read_scope = dict(read_request.scope)
+        event_read_scope["path"] = "/api/sample/orders/123/tracking-events"
+        event_read_scope["raw_path"] = b"/api/sample/orders/123/tracking-events"
+        module, action, resource_type, resource_id = main_module._infer_security_target(Request(event_read_scope))
+        self.assertEqual(module, "sample")
+        self.assertEqual(action, SAMPLE_READ)
+        self.assertEqual(resource_type, "SampleOrder")
+        self.assertEqual(resource_id, "123")
+
+        event_write_scope = dict(event_read_scope)
+        event_write_scope["method"] = "POST"
+        module, action, resource_type, resource_id = main_module._infer_security_target(Request(event_write_scope))
+        self.assertEqual(module, "sample")
+        self.assertEqual(action, SAMPLE_MANAGE)
+        self.assertEqual(resource_type, "SampleOrder")
+        self.assertEqual(resource_id, "123")
+
     def test_unauthorized_get_bom_list_writes_security_audit(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         response = self.client.get("/api/bom/")

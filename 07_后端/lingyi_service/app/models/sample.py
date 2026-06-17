@@ -131,6 +131,37 @@ class LySampleTrackingNode(Base):
     template = relationship("LySampleTrackingTemplate", back_populates="nodes")
 
 
+class LySampleTrackingEvent(Base):
+    """Sample-order instance tracking event."""
+
+    __tablename__ = "ly_sample_tracking_event"
+    __table_args__ = (
+        Index("idx_ly_sample_event_order", "company", "sample_order_id", "happened_at"),
+        Index("idx_ly_sample_event_node", "node_id"),
+        CheckConstraint("progress >= 0 AND progress <= 100", name="ck_ly_sample_event_progress"),
+        CheckConstraint(
+            "result IN ('pending','in_progress','done','blocked','rework')",
+            name="ck_ly_sample_event_result",
+        ),
+        {"schema": "ly_schema", "comment": "FastAPI 原生样板单实例跟进事件"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    sample_order_id = Column(IDType, ForeignKey("ly_schema.ly_sample_order.id"), nullable=False)
+    template_id = Column(IDType, ForeignKey("ly_schema.ly_sample_tracking_template.id"), nullable=True)
+    node_id = Column(IDType, ForeignKey("ly_schema.ly_sample_tracking_node.id"), nullable=True)
+    node_name = Column(String(255), nullable=False, default="")
+    stage = Column(String(140), nullable=False)
+    progress = Column(Integer, nullable=False, default=0)
+    result = Column(String(32), nullable=False, default="in_progress")
+    remark = Column(Text, nullable=False, default="")
+    actor = Column(String(140), nullable=False)
+    happened_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LySampleIdempotency(Base):
     """Idempotency ledger for sample workflow writes."""
 
@@ -138,11 +169,11 @@ class LySampleIdempotency(Base):
     __table_args__ = (
         Index("uk_ly_sample_idem_key", "entity_type", "company", "idempotency_key", unique=True),
         CheckConstraint(
-            "entity_type IN ('order','template','node')",
+            "entity_type IN ('order','template','node','tracking_event')",
             name="ck_ly_sample_idem_entity",
         ),
         CheckConstraint(
-            "operation IN ('create','update','submit','start_patterning','start_fitting','seal','reverse','convert','deactivate','create_node','delete_node')",
+            "operation IN ('create','update','submit','start_patterning','start_fitting','seal','reverse','convert','deactivate','create_node','delete_node','create_tracking_event')",
             name="ck_ly_sample_idem_operation",
         ),
         {"schema": "ly_schema", "comment": "FastAPI 原生样衣流程幂等记录"},

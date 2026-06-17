@@ -102,8 +102,16 @@ def _ensure_local_sample_idempotency_supports_seal() -> None:
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_sample_idempotency'"
         ).fetchone()
         existing_sql = str(row[0]) if row else ""
-        required_operations = ["'start_patterning'", "'start_fitting'", "'seal'", "'deactivate'", "'delete_node'"]
-        if not row or all(operation in existing_sql for operation in required_operations):
+        required_fragments = [
+            "'tracking_event'",
+            "'create_tracking_event'",
+            "'start_patterning'",
+            "'start_fitting'",
+            "'seal'",
+            "'deactivate'",
+            "'delete_node'",
+        ]
+        if not row or all(fragment in existing_sql for fragment in required_fragments):
             return
         conn.executescript(
             """
@@ -119,8 +127,8 @@ def _ensure_local_sample_idempotency_supports_seal() -> None:
                 created_by VARCHAR(140) NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 PRIMARY KEY (id),
-                CONSTRAINT ck_ly_sample_idem_entity CHECK (entity_type IN ('order','template','node')),
-                CONSTRAINT ck_ly_sample_idem_operation CHECK (operation IN ('create','update','submit','start_patterning','start_fitting','seal','reverse','convert','deactivate','create_node','delete_node'))
+                CONSTRAINT ck_ly_sample_idem_entity CHECK (entity_type IN ('order','template','node','tracking_event')),
+                CONSTRAINT ck_ly_sample_idem_operation CHECK (operation IN ('create','update','submit','start_patterning','start_fitting','seal','reverse','convert','deactivate','create_node','delete_node','create_tracking_event'))
             );
             INSERT INTO ly_sample_idempotency_new (
                 id, entity_type, company, idempotency_key, operation, request_hash, record_id, created_by, created_at

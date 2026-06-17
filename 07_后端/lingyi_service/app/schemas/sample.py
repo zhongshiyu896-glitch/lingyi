@@ -12,6 +12,7 @@ from pydantic import Field
 SampleStatus = Literal["draft", "pending", "patterning", "fitting", "sealed", "reversed", "converted"]
 SampleType = Literal["初样", "复样", "产前样", "确认样", "封样"]
 SampleImageTone = Literal["blue", "green", "pink", "amber", "gray", "cyan"]
+SampleTrackingResult = Literal["pending", "in_progress", "done", "blocked", "rework"]
 
 
 class SampleOrderWriteBase(BaseModel):
@@ -231,3 +232,46 @@ class SampleTrackingNodeUpdateRequest(BaseModel):
     output: str | None = Field(default=None, max_length=1000)
     reminder: str | None = Field(default=None, max_length=1000)
     sequence_no: int | None = Field(default=None, ge=0)
+
+
+class SampleTrackingEventItem(BaseModel):
+    """Sample-order instance tracking event row."""
+
+    id: int
+    company: str
+    sample_order_id: int
+    sample_no: str
+    template_id: int | None = None
+    node_id: int | None = None
+    node_name: str
+    stage: str
+    progress: int
+    result: SampleTrackingResult
+    remark: str
+    actor: str
+    happened_at: datetime | None
+
+
+class SampleTrackingEventListData(BaseModel):
+    """Paginated sample-order tracking events."""
+
+    items: list[SampleTrackingEventItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class SampleTrackingEventCreateRequest(BaseModel):
+    """Create a sample-order instance tracking event."""
+
+    operation: Literal["create_tracking_event"] = "create_tracking_event"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    template_id: int | None = None
+    node_id: int | None = None
+    node_name: str = Field(default="", max_length=255)
+    stage: str = Field(..., min_length=1, max_length=140)
+    progress: int = Field(default=0, ge=0, le=100)
+    result: SampleTrackingResult = "in_progress"
+    remark: str = Field(default="", max_length=1000)
+    actor: str | None = Field(default=None, max_length=140)

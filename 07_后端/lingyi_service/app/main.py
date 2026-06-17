@@ -496,6 +496,8 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         return "sales_inventory", SALES_INVENTORY_READ, "SalesInventory", None
 
     if path.startswith("/api/sample"):
+        if re.match(r"^/api/sample/orders/\d+/tracking-events/?$", path):
+            return "sample", SAMPLE_READ if method == "GET" else SAMPLE_MANAGE, "SampleOrder", _extract_sample_order_id(path)
         if method in {"POST", "PATCH"}:
             if "/tracking-templates" in path:
                 return "sample", SAMPLE_MANAGE, "SampleTrackingTemplate", None
@@ -670,6 +672,13 @@ def _extract_style_master_id(path: str) -> str | None:
 
 def _extract_style_dictionary_id(path: str) -> str | None:
     match = re.match(r"^/api/style-master/dictionaries/(\d+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_sample_order_id(path: str) -> str | None:
+    match = re.match(r"^/api/sample/orders/(\d+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None

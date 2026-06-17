@@ -29,6 +29,7 @@ from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
 from app.core.exceptions import BusinessException
 from app.models.sample import LySampleIdempotency
 from app.models.sample import LySampleOrder
+from app.models.sample import LySampleTrackingEvent
 from app.models.sample import LySampleTrackingNode
 from app.models.sample import LySampleTrackingTemplate
 from app.models.style_master import LyStyleMaster
@@ -42,6 +43,9 @@ from app.schemas.sample import SampleTrackingNodeCreateRequest
 from app.schemas.sample import SampleTrackingNodeItem
 from app.schemas.sample import SampleTrackingNodeUpdateRequest
 from app.schemas.sample import SampleTrackingActionRequest
+from app.schemas.sample import SampleTrackingEventCreateRequest
+from app.schemas.sample import SampleTrackingEventItem
+from app.schemas.sample import SampleTrackingEventListData
 from app.schemas.sample import SampleTrackingTemplateCreateRequest
 from app.schemas.sample import SampleTrackingTemplateItem
 from app.schemas.sample import SampleTrackingTemplateListData
@@ -121,6 +125,37 @@ class SampleService:
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
         return SampleOrderListData(items=[self._order_item(row) for row in rows], total=total, page=page, page_size=page_size)
+
+    def list_order_tracking_events(
+        self,
+        *,
+        order_id: int,
+        company: str | None,
+        page: int,
+        page_size: int,
+    ) -> SampleTrackingEventListData:
+        normalized_company = self._require_text(company, "company")
+        order = self._get_order_for_read(order_id=order_id, company=normalized_company)
+        try:
+            query = self.session.query(LySampleTrackingEvent).filter(
+                LySampleTrackingEvent.company == normalized_company,
+                LySampleTrackingEvent.sample_order_id == order_id,
+            )
+            total = int(query.count())
+            rows = (
+                query.order_by(LySampleTrackingEvent.happened_at.desc(), LySampleTrackingEvent.id.desc())
+                .offset(max(page - 1, 0) * page_size)
+                .limit(page_size)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return SampleTrackingEventListData(
+            items=[self._event_item(row, order=order) for row in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
 
     def create_order(self, *, payload: SampleOrderCreateRequest, actor: str) -> SampleMutationResult:
         company = self._require_text(payload.company, "company")
@@ -273,6 +308,79 @@ class SampleService:
             next_stage="已反审核",
             next_progress=0,
         )
+
+    def create_order_tracking_event(
+        self,
+        *,
+        order_id: int,
+        payload: SampleTrackingEventCreateRequest,
+        actor: str,
+    ) -> SampleMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        order = self._get_order_for_mutation(order_id=order_id, company=company)
+        node = self._resolve_tracking_node(company=company, template_id=payload.template_id, node_id=payload.node_id)
+        template_id = int(node.template_id) if node else payload.template_id
+        node_name = self._optional_text(payload.node_name) or (node.name if node else payload.stage)
+        event_actor = self._optional_text(payload.actor) or actor
+        request_hash = self._request_hash(
+            operation="create_tracking_event",
+            entity_type="tracking_event",
+            company=company,
+            order_id=order_id,
+            template_id=template_id,
+            node_id=payload.node_id,
+            node_name=node_name,
+            stage=payload.stage,
+            progress=payload.progress,
+            result=payload.result,
+            remark=payload.remark,
+            actor=event_actor,
+        )
+        idem = self._get_idempotency(entity_type="tracking_event", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="create_tracking_event", request_hash=request_hash)
+            row = self._get_event_by_id(idem.record_id)
+            after = self._snapshot_event(row, order=order)
+            return self._event_result(row=row, order=order, before=after, after=after, idempotent=True)
+
+        try:
+            before_order = self._snapshot_order(order)
+            row = LySampleTrackingEvent(
+                company=company,
+                sample_order_id=int(order.id),
+                template_id=template_id,
+                node_id=payload.node_id,
+                node_name=node_name,
+                stage=self._require_text(payload.stage, "stage"),
+                progress=int(payload.progress),
+                result=str(payload.result),
+                remark=self._optional_text(payload.remark) or "",
+                actor=event_actor,
+                created_by=actor,
+            )
+            order.stage = row.stage
+            order.progress = int(row.progress)
+            order.updated_by = actor
+            order.version = int(order.version or 0) + 1
+            self.session.add(row)
+            self.session.flush()
+            self._insert_idempotency(
+                entity_type="tracking_event",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="create_tracking_event",
+                request_hash=request_hash,
+                record_id=int(row.id),
+                actor=actor,
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._snapshot_event(row, order=order)
+        after["order_before"] = before_order
+        after["order_after"] = self._snapshot_order(order)
+        return self._event_result(row=row, order=order, before=None, after=after)
 
     def convert_order(self, *, order_id: int, payload: SampleOrderConvertRequest, actor: str) -> SampleMutationResult:
         company = self._require_text(payload.company, "company")
@@ -766,6 +874,16 @@ class SampleService:
             raise BusinessException(code=SAMPLE_NOT_FOUND, message="样板单不存在或 company 不匹配")
         return row
 
+    def _get_order_for_read(self, *, order_id: int, company: str) -> LySampleOrder:
+        row = (
+            self.session.query(LySampleOrder)
+            .filter(LySampleOrder.id == order_id, LySampleOrder.company == company)
+            .first()
+        )
+        if row is None:
+            raise BusinessException(code=SAMPLE_NOT_FOUND, message="样板单不存在或 company 不匹配")
+        return row
+
     def _get_order_by_no(self, *, company: str, sample_no: str) -> LySampleOrder | None:
         return (
             self.session.query(LySampleOrder)
@@ -821,6 +939,31 @@ class SampleService:
         )
         if row is None:
             raise BusinessException(code=SAMPLE_NOT_FOUND, message="样衣跟进节点不存在或模板不匹配")
+        return row
+
+    def _resolve_tracking_node(
+        self,
+        *,
+        company: str,
+        template_id: int | None,
+        node_id: int | None,
+    ) -> LySampleTrackingNode | None:
+        if node_id is None:
+            if template_id is not None:
+                self._get_template_for_mutation(template_id=template_id, company=company)
+            return None
+        row = self.session.query(LySampleTrackingNode).filter(LySampleTrackingNode.id == node_id).first()
+        if row is None:
+            raise BusinessException(code=SAMPLE_NOT_FOUND, message="样衣跟进节点不存在")
+        template = self._get_template_for_mutation(template_id=int(row.template_id), company=company)
+        if template_id is not None and int(template.id) != int(template_id):
+            raise BusinessException(code=SAMPLE_CONFLICT, message="样衣跟进节点与模板不匹配")
+        return row
+
+    def _get_event_by_id(self, event_id: int) -> LySampleTrackingEvent:
+        row = self.session.query(LySampleTrackingEvent).filter(LySampleTrackingEvent.id == event_id).first()
+        if row is None:
+            raise BusinessException(code=SAMPLE_NOT_FOUND, message="样板单跟进事件不存在")
         return row
 
     def _order_next_values(self, *, row: LySampleOrder, payload: SampleOrderUpdateRequest) -> dict[str, Any]:
@@ -951,6 +1094,26 @@ class SampleService:
             }
         )
 
+    @classmethod
+    def _snapshot_event(cls, row: LySampleTrackingEvent, *, order: LySampleOrder) -> dict[str, Any]:
+        return cls._clean_payload(
+            {
+                "id": int(row.id),
+                "company": row.company,
+                "sample_order_id": int(row.sample_order_id),
+                "sample_no": order.sample_no,
+                "template_id": int(row.template_id) if row.template_id is not None else None,
+                "node_id": int(row.node_id) if row.node_id is not None else None,
+                "node_name": row.node_name,
+                "stage": row.stage,
+                "progress": int(row.progress or 0),
+                "result": row.result,
+                "remark": row.remark,
+                "actor": row.actor,
+                "happened_at": row.happened_at,
+            }
+        )
+
     def _order_item(self, row: LySampleOrder) -> SampleOrderItem:
         return SampleOrderItem(
             id=int(row.id),
@@ -1008,6 +1171,23 @@ class SampleService:
             output=row.output,
             reminder=row.reminder,
             sequence_no=int(row.sequence_no or 0),
+        )
+
+    def _event_item(self, row: LySampleTrackingEvent, *, order: LySampleOrder) -> SampleTrackingEventItem:
+        return SampleTrackingEventItem(
+            id=int(row.id),
+            company=row.company,
+            sample_order_id=int(row.sample_order_id),
+            sample_no=order.sample_no,
+            template_id=int(row.template_id) if row.template_id is not None else None,
+            node_id=int(row.node_id) if row.node_id is not None else None,
+            node_name=row.node_name,
+            stage=row.stage,
+            progress=int(row.progress or 0),
+            result=row.result,
+            remark=row.remark,
+            actor=row.actor,
+            happened_at=row.happened_at,
         )
 
     def _create_sales_order_draft_from_sample(
@@ -1090,5 +1270,24 @@ class SampleService:
             resource_type="SAMPLE_TRACKING_NODE",
             resource_id=int(row.id),
             resource_no=str(row.id),
+            idempotent=idempotent,
+        )
+
+    def _event_result(
+        self,
+        *,
+        row: LySampleTrackingEvent,
+        order: LySampleOrder,
+        before: dict[str, Any] | None,
+        after: dict[str, Any],
+        idempotent: bool = False,
+    ) -> SampleMutationResult:
+        return SampleMutationResult(
+            item=self._event_item(row, order=order),
+            before=before,
+            after=after,
+            resource_type="SAMPLE_TRACKING_EVENT",
+            resource_id=int(row.id),
+            resource_no=f"{order.sample_no}#{int(row.id)}",
             idempotent=idempotent,
         )
