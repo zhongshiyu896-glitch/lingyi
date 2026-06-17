@@ -104,6 +104,7 @@ class BomService:
     ACTIVE_STATUS = "active"
     DRAFT_STATUS = "draft"
     INACTIVE_STATUS = "inactive"
+    DEFAULT_COMPANY = "默认公司"
 
     def __init__(self, session: Session):
         """Initialize with SQLAlchemy session.
@@ -125,9 +126,10 @@ class BomService:
         """
         if self._is_local_sqlite_mode():
             # sqlite 本地测试库需要保持与 PostgreSQL 局部唯一索引语义一致：
-            # 同 item_code 仅限制「active + is_default=true」唯一，不应限制全部 item_code 唯一。
+            # 同 company + item_code 仅限制「active + is_default=true」唯一，不应限制全部 item_code 唯一。
             self._ensure_local_sqlite_partial_default_index()
-        self._validate_style_master_reference(item_code=payload.item_code)
+        company = self._normalize_company(payload.company)
+        style = self._validate_style_master_reference(company=company, item_code=payload.item_code)
         self._validate_items(payload.bom_items)
         self._validate_operations(payload.operations)
 
@@ -144,6 +146,8 @@ class BomService:
             bom = LyApparelBom(
                 id=next_bom_id,
                 bom_no=bom_no,
+                company=company,
+                style_master_id=int(style.id),
                 item_code=payload.item_code,
                 version_no=payload.version_no,
                 is_default=False,
@@ -183,6 +187,8 @@ class BomService:
                 if not allowed_item_codes:
                     return BomListData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+            if query.company:
+                sql = sql.filter(LyApparelBom.company == query.company)
             if query.item_code:
                 sql = sql.filter(LyApparelBom.item_code == query.item_code)
             if query.keyword:
@@ -213,6 +219,8 @@ class BomService:
                 BomListItem(
                     id=int(row.id),
                     bom_no=str(row.bom_no),
+                    company=str(row.company),
+                    style_master_id=int(row.style_master_id) if row.style_master_id is not None else None,
                     item_code=str(row.item_code),
                     version_no=str(row.version_no),
                     is_default=bool(row.is_default),
@@ -1601,6 +1609,8 @@ class BomService:
             bom=BomHeader(
                 id=int(bom.id),
                 bom_no=str(bom.bom_no),
+                company=str(bom.company),
+                style_master_id=int(bom.style_master_id) if bom.style_master_id is not None else None,
                 item_code=str(bom.item_code),
                 version_no=str(bom.version_no),
                 is_default=bool(bom.is_default),
@@ -1654,11 +1664,14 @@ class BomService:
             raise BomBusinessError(code=BOM_PUBLISHED_LOCKED, message="已发布 BOM 不允许直接修改")
         if str(payload.item_code) != str(bom.item_code):
             raise BomBusinessError(code=STYLE_MASTER_INVALID_REFERENCE, message="BOM 款号与业务载体不一致")
+        if payload.company is not None and self._normalize_company(payload.company) != str(bom.company):
+            raise BomBusinessError(code=STYLE_MASTER_INVALID_REFERENCE, message="BOM 公司与业务载体不一致")
 
-        self._validate_style_master_reference(item_code=payload.item_code)
+        style = self._validate_style_master_reference(company=str(bom.company), item_code=payload.item_code)
         self._validate_items(payload.bom_items)
         self._validate_operations(payload.operations)
 
+        bom.style_master_id = int(style.id)
         bom.version_no = payload.version_no
         bom.updated_by = operator
         bom.updated_at = datetime.utcnow()
@@ -1688,11 +1701,11 @@ class BomService:
         if bom.status != self.ACTIVE_STATUS:
             raise BomBusinessError(code=BOM_DEFAULT_REQUIRES_ACTIVE, message="非 active BOM 不能设默认")
 
-        # 锁定同 item_code 的 BOM 集合，避免并发 set-default 导致默认值竞争。
+        # 锁定同 company + item_code 的 BOM 集合，避免并发 set-default 导致默认值竞争。
         try:
             same_item_rows = (
                 self.session.query(LyApparelBom)
-                .filter(LyApparelBom.item_code == bom.item_code)
+                .filter(LyApparelBom.company == bom.company, LyApparelBom.item_code == bom.item_code)
                 .with_for_update()
                 .all()
             )
@@ -1737,6 +1750,7 @@ class BomService:
                     .filter(
                         and_(
                             LyApparelBom.item_code == bom.item_code,
+                            LyApparelBom.company == bom.company,
                             LyApparelBom.id != bom.id,
                             LyApparelBom.status == self.ACTIVE_STATUS,
                         )
@@ -1947,17 +1961,29 @@ class BomService:
             raise DatabaseReadFailed() from None
         raise BomBusinessError(code=code, message="物料不存在")
 
-    def _validate_style_master_reference(self, item_code: str) -> None:
+    def _normalize_company(self, company: str | None) -> str:
+        normalized = str(company or "").strip()
+        return normalized or self.DEFAULT_COMPANY
+
+    def _validate_style_master_reference(self, *, company: str, item_code: str) -> LyStyleMaster:
         try:
             row = (
-                self.session.query(LyStyleMaster.id)
-                .filter(LyStyleMaster.ys_style_no == item_code, LyStyleMaster.ys_style_status == "enabled")
+                self.session.query(LyStyleMaster)
+                .filter(
+                    LyStyleMaster.company == company,
+                    LyStyleMaster.ys_style_no == item_code,
+                    LyStyleMaster.ys_style_status == "enabled",
+                )
                 .first()
             )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
         if row is None:
-            raise BomBusinessError(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{item_code} 款式不存在或未启用")
+            raise BomBusinessError(
+                code=STYLE_MASTER_INVALID_REFERENCE,
+                message=f"{company}/{item_code} 款式不存在或未启用",
+            )
+        return row
 
     def _validate_items(self, items: Iterable[BomItemPayload]) -> None:
         for item in items:
@@ -2035,12 +2061,15 @@ class BomService:
             sql_text = str(row[0] or "") if row else ""
             normalized = sql_text.lower()
             if " where " in normalized and "is_default = 1" in normalized and "status = 'active'" in normalized:
+                if "company" in normalized:
+                    return
+            elif " where " in normalized and "is_default" in normalized and "status" in normalized and "company" in normalized:
                 return
             self.session.execute(text("DROP INDEX IF EXISTS uk_ly_apparel_bom_one_active_default"))
             self.session.execute(
                 text(
                     "CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_apparel_bom_one_active_default "
-                    "ON ly_apparel_bom(item_code) "
+                    "ON ly_apparel_bom(company, item_code) "
                     "WHERE is_default = 1 AND status = 'active'"
                 )
             )

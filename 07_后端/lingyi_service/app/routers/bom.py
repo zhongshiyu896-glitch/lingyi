@@ -548,6 +548,7 @@ def create_bom(
 @router.get("/")
 def list_bom(
     request: Request,
+    company: str | None = None,
     item_code: str | None = None,
     keyword: str | None = Query(default=None, max_length=140),
     status: str | None = None,
@@ -573,7 +574,14 @@ def list_bom(
         resource_type="bom",
     )
     service = BomService(session=session)
-    query = BomListQuery(item_code=item_code, keyword=keyword, status=status, page=page, page_size=page_size)
+    query = BomListQuery(
+        company=company,
+        item_code=item_code,
+        keyword=keyword,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
     try:
         data: BomListData = service.list_bom(query=query, allowed_item_codes=allowed_item_codes)
         return _ok(data.model_dump())

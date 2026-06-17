@@ -28,10 +28,12 @@ class LyApparelBom(Base):
     __table_args__ = (
         PrimaryKeyConstraint("id", name="pk_ly_apparel_bom"),
         Index("uk_ly_apparel_bom_bom_no", "bom_no", unique=True),
-        Index("idx_ly_apparel_bom_item_default", "item_code", "is_default"),
+        Index("idx_ly_apparel_bom_item_default", "company", "item_code", "is_default"),
+        Index("idx_ly_apparel_bom_style_master", "style_master_id"),
         Index("idx_ly_apparel_bom_status", "status"),
         Index(
             "uk_ly_apparel_bom_one_active_default",
+            "company",
             "item_code",
             unique=True,
             postgresql_where=sa_text("is_default = true AND status = 'active'"),
@@ -41,6 +43,8 @@ class LyApparelBom(Base):
 
     id = Column(BigInteger, autoincrement=True)
     bom_no = Column(String(64), nullable=False)
+    company = Column(String(140), nullable=False, default="默认公司", server_default="默认公司")
+    style_master_id = Column(BigInteger, nullable=True)
     item_code = Column(String(140), nullable=False)
     version_no = Column(String(32), nullable=False)
     is_default = Column(Boolean, nullable=False, default=False)

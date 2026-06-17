@@ -140,6 +140,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         bom = LyApparelBom(
             id=1,
             bom_no="BOM-RPT-001",
+            company="COMP-RPT",
             item_code="STYLE-A",
             version_no="V1",
             is_default=True,
@@ -322,6 +323,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
             bom = LyApparelBom(
                 id=2,
                 bom_no="BOM-RPT-PUR",
+                company="COMP-RPT",
                 item_code="STYLE-PUR",
                 version_no="V1",
                 is_default=True,

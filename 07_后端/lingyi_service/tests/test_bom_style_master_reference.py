@@ -52,9 +52,9 @@ class BomStyleMasterReferenceTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _style(style_no: str, *, status: str = "enabled") -> LyStyleMaster:
+    def _style(style_no: str, *, company: str = "COMP-BOM", status: str = "enabled") -> LyStyleMaster:
         return LyStyleMaster(
-            company="COMP-BOM",
+            company=company,
             ys_style_no=style_no,
             ys_style_name_cn=f"{style_no} 款式",
             ys_season="SS",
@@ -69,13 +69,20 @@ class BomStyleMasterReferenceTest(unittest.TestCase):
         )
 
     @staticmethod
-    def _create_payload(*, item_code: str, material_item_code: str = "MAT-FREE-001") -> BomCreateRequest:
+    def _create_payload(
+        *,
+        item_code: str,
+        company: str | None = "COMP-BOM",
+        material_item_code: str = "MAT-FREE-001",
+        version_no: str = "V1",
+    ) -> BomCreateRequest:
         return BomCreateRequest(
             scenario_tag="Z002-BOM-20260618-001",
             idempotency_key=f"IDEMP-{item_code}-CREATE",
             source_ref=f"SRC-{item_code}",
+            company=company,
             item_code=item_code,
-            version_no="V1",
+            version_no=version_no,
             bom_items=[
                 {
                     "material_item_code": material_item_code,
@@ -95,12 +102,13 @@ class BomStyleMasterReferenceTest(unittest.TestCase):
         )
 
     @staticmethod
-    def _update_payload(*, bom_no: str, item_code: str) -> BomUpdateRequest:
+    def _update_payload(*, bom_no: str, item_code: str, company: str | None = "COMP-BOM") -> BomUpdateRequest:
         return BomUpdateRequest(
             scenario_tag="Z002-BOM-20260618-001",
             idempotency_key=f"IDEMP-{item_code}-UPDATE",
             source_ref=bom_no,
             bom_no=bom_no,
+            company=company,
             item_code=item_code,
             version_no="V2",
             bom_items=[
@@ -133,6 +141,9 @@ class BomStyleMasterReferenceTest(unittest.TestCase):
             self.assertTrue(created.name.startswith("BOM-STYLE-BOM-001-V1-"))
             bom = session.query(LyApparelBom).one()
             item = session.query(LyApparelBomItem).one()
+            style = session.query(LyStyleMaster).filter(LyStyleMaster.ys_style_no == "STYLE-BOM-001").one()
+            self.assertEqual(bom.company, "COMP-BOM")
+            self.assertEqual(bom.style_master_id, style.id)
             self.assertEqual(bom.item_code, "STYLE-BOM-001")
             self.assertEqual(item.material_item_code, "MAT-NO-STYLE")
             self.assertIsNone(
@@ -181,6 +192,57 @@ class BomStyleMasterReferenceTest(unittest.TestCase):
                     operator="bom.user",
                 )
             self.assertEqual(disabled_ctx.exception.code, STYLE_MASTER_INVALID_REFERENCE)
+
+    def test_create_bom_uses_company_scoped_style_master(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(self._style("STYLE-BOM-SCOPE", company="COMP-A", status="disabled"))
+            session.add(self._style("STYLE-BOM-SCOPE", company="COMP-B", status="enabled"))
+            session.commit()
+            service = BomService(session)
+
+            with self.assertRaises(BusinessException) as wrong_company_ctx:
+                service.create_bom(
+                    payload=self._create_payload(item_code="STYLE-BOM-SCOPE", company="COMP-A"),
+                    operator="bom.user",
+                )
+            self.assertEqual(wrong_company_ctx.exception.code, STYLE_MASTER_INVALID_REFERENCE)
+
+            created = service.create_bom(
+                payload=self._create_payload(item_code="STYLE-BOM-SCOPE", company="COMP-B"),
+                operator="bom.user",
+            )
+            bom = session.query(LyApparelBom).filter(LyApparelBom.bom_no == created.name).one()
+            style = (
+                session.query(LyStyleMaster)
+                .filter(LyStyleMaster.company == "COMP-B", LyStyleMaster.ys_style_no == "STYLE-BOM-SCOPE")
+                .one()
+            )
+            self.assertEqual(bom.company, "COMP-B")
+            self.assertEqual(bom.style_master_id, style.id)
+
+    def test_update_bom_rejects_company_mismatch(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(self._style("STYLE-BOM-COMPANY", company="COMP-A", status="enabled"))
+            session.add(self._style("STYLE-BOM-COMPANY", company="COMP-B", status="enabled"))
+            session.commit()
+            service = BomService(session)
+            created = service.create_bom(
+                payload=self._create_payload(item_code="STYLE-BOM-COMPANY", company="COMP-A"),
+                operator="bom.user",
+            )
+            bom = session.query(LyApparelBom).filter(LyApparelBom.bom_no == created.name).one()
+
+            with self.assertRaises(BusinessException) as mismatch_ctx:
+                service.update_bom_draft(
+                    bom_id=int(bom.id),
+                    payload=self._update_payload(
+                        bom_no=created.name,
+                        item_code="STYLE-BOM-COMPANY",
+                        company="COMP-B",
+                    ),
+                    operator="bom.user",
+                )
+            self.assertEqual(mismatch_ctx.exception.code, STYLE_MASTER_INVALID_REFERENCE)
 
 
 if __name__ == "__main__":

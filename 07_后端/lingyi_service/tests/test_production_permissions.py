@@ -54,6 +54,7 @@ class ProductionPermissionTest(unittest.TestCase):
                 LyApparelBom(
                     id=201,
                     bom_no="BOM-PROD-PERM-001",
+                    company="COMP-A",
                     item_code="ITEM-A",
                     version_no="v1",
                     is_default=True,

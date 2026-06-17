@@ -62,6 +62,7 @@ class ProductionPlanTest(unittest.TestCase):
                 LyApparelBom(
                     id=101,
                     bom_no="BOM-PROD-001",
+                    company="COMP-A",
                     item_code="ITEM-A",
                     version_no="v1",
                     is_default=True,
@@ -419,6 +420,7 @@ class ProductionPlanTest(unittest.TestCase):
                 LyApparelBom(
                     id=102,
                     bom_no="BOM-PROD-002",
+                    company="COMP-A",
                     item_code="ITEM-B",
                     version_no="v1",
                     is_default=False,

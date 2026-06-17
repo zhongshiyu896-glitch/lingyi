@@ -53,6 +53,7 @@ class BomCreateRequest(BaseModel):
     scenario_tag: str = Field(..., min_length=1, max_length=64)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     source_ref: str = Field(..., min_length=1, max_length=140)
+    company: Optional[str] = Field(default=None, min_length=1, max_length=140)
     item_code: str = Field(..., min_length=1, max_length=140)
     version_no: str = Field(..., min_length=1, max_length=32)
     bom_items: List[BomItemPayload] = Field(..., min_length=1)
@@ -66,6 +67,7 @@ class BomUpdateRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     source_ref: str = Field(..., min_length=1, max_length=140)
     bom_no: str = Field(..., min_length=1, max_length=180)
+    company: Optional[str] = Field(default=None, min_length=1, max_length=140)
     item_code: str = Field(..., min_length=1, max_length=140)
     version_no: str = Field(..., min_length=1, max_length=32)
     bom_items: List[BomItemPayload] = Field(..., min_length=1)
@@ -79,6 +81,7 @@ class BomDeactivateRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     source_ref: str = Field(..., min_length=1, max_length=140)
     bom_no: str = Field(..., min_length=1, max_length=180)
+    company: Optional[str] = Field(default=None, min_length=1, max_length=140)
     item_code: str = Field(..., min_length=1, max_length=140)
     reason: str = Field(..., min_length=1, max_length=300)
 
@@ -90,12 +93,14 @@ class BomCarrierRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     source_ref: str = Field(..., min_length=1, max_length=140)
     bom_no: str = Field(..., min_length=1, max_length=180)
+    company: Optional[str] = Field(default=None, min_length=1, max_length=140)
     item_code: str = Field(..., min_length=1, max_length=140)
 
 
 class BomListQuery(BaseModel):
     """BOM list query params."""
 
+    company: Optional[str] = None
     item_code: Optional[str] = None
     keyword: Optional[str] = Field(default=None, max_length=140)
     status: Optional[str] = None
@@ -267,6 +272,8 @@ class BomHeader(BaseModel):
 
     id: int
     bom_no: str
+    company: str
+    style_master_id: Optional[int] = None
     item_code: str
     version_no: str
     is_default: bool
@@ -304,6 +311,8 @@ class BomListItem(BaseModel):
 
     id: int
     bom_no: str
+    company: str
+    style_master_id: Optional[int] = None
     item_code: str
     version_no: str
     is_default: bool

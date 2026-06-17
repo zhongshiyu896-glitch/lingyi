@@ -148,7 +148,7 @@ class ProductionService:
         self._validate_create_plan_gate(payload=payload, request_id=request_id)
         sales_order, target_item, company = self._load_sales_order_context(payload=payload, request_id=request_id)
 
-        bom = self._resolve_bom(item_code=target_item.item_code, bom_id=payload.bom_id)
+        bom = self._resolve_bom(company=company, item_code=target_item.item_code, bom_id=payload.bom_id)
         if str(bom.item_code).strip() != target_item.item_code:
             raise BusinessException(code=PRODUCTION_BOM_ITEM_MISMATCH, message="BOM 与 Sales Order 行 item 不一致")
 
@@ -2927,7 +2927,7 @@ class ProductionService:
             )
         return status
 
-    def _resolve_bom(self, *, item_code: str, bom_id: int | None) -> LyApparelBom:
+    def _resolve_bom(self, *, company: str, item_code: str, bom_id: int | None) -> LyApparelBom:
         try:
             if bom_id is not None:
                 row = self.session.query(LyApparelBom).filter(LyApparelBom.id == int(bom_id)).first()
@@ -2935,6 +2935,7 @@ class ProductionService:
                 row = (
                     self.session.query(LyApparelBom)
                     .filter(
+                        LyApparelBom.company == company,
                         LyApparelBom.item_code == item_code,
                         LyApparelBom.status == "active",
                         LyApparelBom.is_default.is_(True),
@@ -2949,6 +2950,8 @@ class ProductionService:
             raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="未找到可用 BOM")
         if str(row.status) != "active":
             raise BusinessException(code=PRODUCTION_BOM_NOT_ACTIVE, message="BOM 未生效")
+        if str(row.company or "").strip() != company:
+            raise BusinessException(code=PRODUCTION_BOM_ITEM_MISMATCH, message="BOM 与 Sales Order 公司不一致")
         return row
 
     def _load_sales_order_context(

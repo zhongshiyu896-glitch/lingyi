@@ -53,6 +53,7 @@ class ProductionJobCardSyncTest(unittest.TestCase):
                 LyApparelBom(
                     id=401,
                     bom_no="BOM-PROD-JC-001",
+                    company="COMP-A",
                     item_code="ITEM-A",
                     version_no="v1",
                     is_default=True,

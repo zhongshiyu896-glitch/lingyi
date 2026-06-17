@@ -103,26 +103,28 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             session.query(LyStyleMaster).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
-            session.add(
-                LyStyleMaster(
-                    company="COMP-A",
-                    ys_style_no="DEMO-TEE",
-                    ys_style_name_cn="Demo Tee",
-                    ys_season="SS",
-                    ys_year="2026",
-                    ys_brand="LY",
-                    ys_style_status="enabled",
-                    colors=[{"ys_color_code": "WHITE", "ys_color_name": "白色"}],
-                    sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
-                    version=1,
-                    created_by="seed",
-                    updated_by="seed",
-                )
+            style = LyStyleMaster(
+                company="COMP-A",
+                ys_style_no="DEMO-TEE",
+                ys_style_name_cn="Demo Tee",
+                ys_season="SS",
+                ys_year="2026",
+                ys_brand="LY",
+                ys_style_status="enabled",
+                colors=[{"ys_color_code": "WHITE", "ys_color_name": "白色"}],
+                sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
+                version=1,
+                created_by="seed",
+                updated_by="seed",
             )
+            session.add(style)
+            session.flush()
             session.add(
                 LyApparelBom(
                     id=1,
                     bom_no="BOM-DEMO-TEE-V1",
+                    company="COMP-A",
+                    style_master_id=int(style.id),
                     item_code="DEMO-TEE",
                     version_no="V1",
                     is_default=True,

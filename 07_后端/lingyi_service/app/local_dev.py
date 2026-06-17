@@ -91,6 +91,7 @@ def _create_local_tables() -> None:
     _ensure_local_sales_order_item_calc_columns()
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
+    _ensure_local_bom_company_style_columns()
 
 
 def _ensure_local_sample_idempotency_supports_seal() -> None:
@@ -227,6 +228,77 @@ def _ensure_local_inventory_count_idempotency_columns() -> None:
         )
 
 
+def _ensure_local_bom_company_style_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_apparel_bom'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_apparel_bom)").fetchall()
+        }
+        if "company" not in existing_columns:
+            conn.execute("ALTER TABLE ly_apparel_bom ADD COLUMN company VARCHAR(140) NOT NULL DEFAULT '默认公司'")
+        if "style_master_id" not in existing_columns:
+            conn.execute("ALTER TABLE ly_apparel_bom ADD COLUMN style_master_id INTEGER")
+        style_table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_style_master'"
+        ).fetchone()
+        if style_table_exists:
+            conn.execute(
+                """
+                UPDATE ly_apparel_bom
+                SET company = COALESCE(
+                    NULLIF(company, ''),
+                    (
+                        SELECT sm.company
+                        FROM ly_style_master sm
+                        WHERE sm.ys_style_no = ly_apparel_bom.item_code
+                          AND sm.ys_style_status = 'enabled'
+                        ORDER BY sm.id
+                        LIMIT 1
+                    ),
+                    '默认公司'
+                )
+                """
+            )
+            conn.execute(
+                """
+                UPDATE ly_apparel_bom
+                SET style_master_id = (
+                    SELECT sm.id
+                    FROM ly_style_master sm
+                    WHERE sm.company = ly_apparel_bom.company
+                      AND sm.ys_style_no = ly_apparel_bom.item_code
+                      AND sm.ys_style_status = 'enabled'
+                    ORDER BY sm.id
+                    LIMIT 1
+                )
+                WHERE style_master_id IS NULL
+                """
+            )
+        conn.execute("DROP INDEX IF EXISTS uk_ly_apparel_bom_one_active_default")
+        conn.execute("DROP INDEX IF EXISTS idx_ly_apparel_bom_item_default")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ly_apparel_bom_item_default "
+            "ON ly_apparel_bom(company, item_code, is_default)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ly_apparel_bom_style_master "
+            "ON ly_apparel_bom(style_master_id)"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_apparel_bom_one_active_default "
+            "ON ly_apparel_bom(company, item_code) "
+            "WHERE is_default = 1 AND status = 'active'"
+        )
+
+
 def _seed_local_bom() -> None:
     with main_module.SessionLocal() as session:
         style = (
@@ -238,28 +310,27 @@ def _seed_local_bom() -> None:
             .first()
         )
         if style is None:
-            session.add(
-                LyStyleMaster(
-                    company="默认公司",
-                    ys_style_no="DEMO-TEE",
-                    ys_style_name_cn="本地演示T恤",
-                    ys_season="SS",
-                    ys_year="2026",
-                    ys_brand="LY",
-                    ys_style_status="enabled",
-                    colors=[
-                        {"ys_color_code": "WHITE", "ys_color_name": "白色"},
-                        {"ys_color_code": "BLACK", "ys_color_name": "黑色"},
-                    ],
-                    sizes=[
-                        {"ys_size_code": "M", "ys_size_name": "M"},
-                        {"ys_size_code": "L", "ys_size_name": "L"},
-                    ],
-                    version=1,
-                    created_by="local.dev",
-                    updated_by="local.dev",
-                )
+            style = LyStyleMaster(
+                company="默认公司",
+                ys_style_no="DEMO-TEE",
+                ys_style_name_cn="本地演示T恤",
+                ys_season="SS",
+                ys_year="2026",
+                ys_brand="LY",
+                ys_style_status="enabled",
+                colors=[
+                    {"ys_color_code": "WHITE", "ys_color_name": "白色"},
+                    {"ys_color_code": "BLACK", "ys_color_name": "黑色"},
+                ],
+                sizes=[
+                    {"ys_size_code": "M", "ys_size_name": "M"},
+                    {"ys_size_code": "L", "ys_size_name": "L"},
+                ],
+                version=1,
+                created_by="local.dev",
+                updated_by="local.dev",
             )
+            session.add(style)
         else:
             style.ys_style_name_cn = style.ys_style_name_cn or "本地演示T恤"
             style.ys_style_status = "enabled"
@@ -273,9 +344,14 @@ def _seed_local_bom() -> None:
             ]
             style.updated_by = "local.dev"
 
-        existing = session.query(LyApparelBom.id).first()
+        session.flush()
+        style_id = int(style.id)
+
+        existing = session.query(LyApparelBom).order_by(LyApparelBom.id.asc()).first()
         if existing:
-            bom_id = int(existing[0])
+            bom_id = int(existing.id)
+            existing.company = "默认公司"
+            existing.style_master_id = style_id
             operation = session.query(LyBomOperation).filter(LyBomOperation.bom_id == bom_id, LyBomOperation.process_name == "外发裁剪").first()
             if operation is None:
                 next_operation_id = int(session.query(func.coalesce(func.max(LyBomOperation.id), 0)).scalar() or 0) + 1
@@ -300,6 +376,8 @@ def _seed_local_bom() -> None:
         bom = LyApparelBom(
             id=1,
             bom_no="BOM-DEMO-TEE-V1",
+            company="默认公司",
+            style_master_id=style_id,
             item_code="DEMO-TEE",
             version_no="V1",
             is_default=True,

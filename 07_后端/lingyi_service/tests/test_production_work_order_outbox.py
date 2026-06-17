@@ -55,6 +55,7 @@ class ProductionWorkOrderOutboxTest(unittest.TestCase):
                 LyApparelBom(
                     id=301,
                     bom_no="BOM-PROD-WO-001",
+                    company="COMP-A",
                     item_code="ITEM-A",
                     version_no="v1",
                     is_default=True,

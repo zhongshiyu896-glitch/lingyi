@@ -118,26 +118,28 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             session.query(LyStyleMaster).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
-            session.add(
-                LyStyleMaster(
-                    company=self.COMPANY,
-                    ys_style_no=self.STYLE,
-                    ys_style_name_cn="A6 Tee",
-                    ys_season="SS",
-                    ys_year="2026",
-                    ys_brand="LY",
-                    ys_style_status="enabled",
-                    colors=[{"ys_color_code": "WHT", "ys_color_name": "白"}],
-                    sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
-                    version=1,
-                    created_by="seed",
-                    updated_by="seed",
-                )
+            style = LyStyleMaster(
+                company=self.COMPANY,
+                ys_style_no=self.STYLE,
+                ys_style_name_cn="A6 Tee",
+                ys_season="SS",
+                ys_year="2026",
+                ys_brand="LY",
+                ys_style_status="enabled",
+                colors=[{"ys_color_code": "WHT", "ys_color_name": "白"}],
+                sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
+                version=1,
+                created_by="seed",
+                updated_by="seed",
             )
+            session.add(style)
+            session.flush()
             session.add(
                 LyApparelBom(
                     id=601,
                     bom_no="BOM-A6-TEE-V1",
+                    company=self.COMPANY,
+                    style_master_id=int(style.id),
                     item_code=self.STYLE,
                     version_no="V1",
                     is_default=True,
