@@ -118,6 +118,8 @@ QUALITY_READ = "quality:read"
 QUALITY_CREATE = "quality:create"
 QUALITY_UPDATE = "quality:update"
 QUALITY_CONFIRM = "quality:confirm"
+QUALITY_RELEASE = "quality:release"
+QUALITY_REWORK = "quality:rework"
 QUALITY_CANCEL = "quality:cancel"
 QUALITY_EXPORT = "quality:export"
 QUALITY_DRY_RUN = "quality:dry_run"
@@ -278,6 +280,8 @@ ALL_QUALITY_ACTIONS = {
     QUALITY_CREATE,
     QUALITY_UPDATE,
     QUALITY_CONFIRM,
+    QUALITY_RELEASE,
+    QUALITY_REWORK,
     QUALITY_CANCEL,
     QUALITY_EXPORT,
     QUALITY_DRY_RUN,
@@ -403,6 +407,8 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         QUALITY_CREATE,
         QUALITY_UPDATE,
         QUALITY_CONFIRM,
+        QUALITY_RELEASE,
+        QUALITY_REWORK,
         QUALITY_CANCEL,
         QUALITY_EXPORT,
         QUALITY_DIAGNOSTIC,
@@ -412,6 +418,8 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         QUALITY_CREATE,
         QUALITY_UPDATE,
         QUALITY_CONFIRM,
+        QUALITY_RELEASE,
+        QUALITY_REWORK,
         QUALITY_CANCEL,
         QUALITY_EXPORT,
     },

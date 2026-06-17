@@ -47,6 +47,8 @@ from app.core.permissions import QUALITY_CREATE
 from app.core.permissions import QUALITY_DIAGNOSTIC
 from app.core.permissions import QUALITY_EXPORT
 from app.core.permissions import QUALITY_READ
+from app.core.permissions import QUALITY_RELEASE
+from app.core.permissions import QUALITY_REWORK
 from app.core.permissions import QUALITY_UPDATE
 from app.core.permissions import QUALITY_WORKER
 from app.core.request_id import get_request_id_from_request
@@ -85,6 +87,8 @@ QUALITY_OPERATION_CODE_BY_NAME = {
     "create": "C",
     "update": "U",
     "confirm": "F",
+    "release": "R",
+    "rework": "W",
     "cancel": "X",
     "defects": "D",
 }
@@ -566,7 +570,7 @@ def _validate_quality_existing_gate(
     row_item_code = _scope_text(inspection_row.item_code)
     if row_item_code is not None and normalized_item_code != row_item_code:
         _raise_quality_gate_error("mismatched_item_code")
-    if operation in {"confirm", "cancel", "defects"}:
+    if operation in {"confirm", "release", "rework", "cancel", "defects"}:
         row_result = _scope_text(inspection_row.result)
         if row_result is not None and normalized_result != row_result:
             _raise_quality_gate_error("mismatched_result")
@@ -806,6 +810,44 @@ def confirm_quality_inspection(
     )
 
 
+@router.post("/inspections/{inspection_id}/release")
+def release_quality_inspection(
+    inspection_id: int,
+    request: Request,
+    payload: QualityInspectionConfirmRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _write_existing(
+        inspection_id=inspection_id,
+        request=request,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+        action=QUALITY_RELEASE,
+        operation="release",
+    )
+
+
+@router.post("/inspections/{inspection_id}/rework")
+def rework_quality_inspection(
+    inspection_id: int,
+    request: Request,
+    payload: QualityInspectionConfirmRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _write_existing(
+        inspection_id=inspection_id,
+        request=request,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+        action=QUALITY_REWORK,
+        operation="rework",
+    )
+
+
 @router.post("/inspections/{inspection_id}/cancel")
 def cancel_quality_inspection(
     inspection_id: int,
@@ -948,6 +990,33 @@ def _write_existing(
             )
             data = service.get_detail_data(inspection_id)
             after_data = {"inspection_id": data.id, "inspection_no": data.inspection_no, "status": data.status}
+            _record_success(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=inspection_id,
+                resource_no=resource_no,
+                after_data=after_data,
+            )
+            return _ok(data.model_dump(mode="json"))
+        if operation in {"release", "rework"}:
+            data = service.dispose_inspection(
+                inspection_id=inspection_id,
+                action=operation,
+                operator=current_user.username,
+                request_id=payload.request_id,
+                idempotency_key=payload.idempotency_key,
+                remark=getattr(payload, "remark", None),
+            )
+            after_data = {
+                "inspection_id": data.id,
+                "inspection_no": data.inspection_no,
+                "status": data.status,
+                "disposition": data.action,
+                "qty": str(data.qty),
+            }
             _record_success(
                 session=session,
                 audit=audit,

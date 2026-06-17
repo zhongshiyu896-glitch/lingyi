@@ -20,6 +20,7 @@ from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.quality import Base as QualityBase
 from app.models.quality import LyQualityDefect
+from app.models.quality import LyQualityDisposition
 from app.models.quality import LyQualityInspection
 from app.models.quality import LyQualityInspectionItem
 from app.models.quality import LyQualityOperationLog
@@ -40,6 +41,8 @@ class QualityApiBase(unittest.TestCase):
         "create": "C",
         "update": "U",
         "confirm": "F",
+        "release": "R",
+        "rework": "W",
         "cancel": "X",
         "defects": "D",
     }
@@ -86,6 +89,7 @@ class QualityApiBase(unittest.TestCase):
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.query(LyQualityOutbox).delete()
+            session.query(LyQualityDisposition).delete()
             session.query(LyQualityOperationLog).delete()
             session.query(LyQualityDefect).delete()
             session.query(LyQualityInspectionItem).delete()

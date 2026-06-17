@@ -236,6 +236,14 @@ class QualityInspectionActionData(BaseModel):
     operated_at: datetime
 
 
+class QualityInspectionDispositionData(QualityInspectionActionData):
+    """Quality release/rework disposition response."""
+
+    action: Literal["release", "rework"]
+    qty: Decimal
+    idempotency_key: str
+
+
 class QualityStatisticsData(BaseModel):
     """Quality statistics response payload."""
 

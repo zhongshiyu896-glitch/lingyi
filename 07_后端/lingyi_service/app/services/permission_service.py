@@ -92,6 +92,8 @@ from app.core.permissions import QUALITY_CREATE
 from app.core.permissions import QUALITY_DIAGNOSTIC
 from app.core.permissions import QUALITY_EXPORT
 from app.core.permissions import QUALITY_READ
+from app.core.permissions import QUALITY_RELEASE
+from app.core.permissions import QUALITY_REWORK
 from app.core.permissions import QUALITY_UPDATE
 from app.core.permissions import WAREHOUSE_DIAGNOSTIC
 from app.core.permissions import WAREHOUSE_EXPORT
@@ -1802,6 +1804,8 @@ class PermissionService:
             "quality_create": False,
             "quality_update": False,
             "quality_confirm": False,
+            "quality_release": False,
+            "quality_rework": False,
             "quality_cancel": False,
             "quality_export": False,
             "quality_dry_run": False,
@@ -1977,19 +1981,23 @@ class PermissionService:
             base["inventory_export"] = base["export"]
             return base
         if module == "quality":
-            base["read"] = "quality:read" in actions
-            base["create"] = "quality:create" in actions
-            base["update"] = "quality:update" in actions
-            base["confirm"] = "quality:confirm" in actions
-            base["cancel"] = "quality:cancel" in actions
-            base["export"] = "quality:export" in actions
+            base["read"] = QUALITY_READ in actions
+            base["create"] = QUALITY_CREATE in actions
+            base["update"] = QUALITY_UPDATE in actions
+            base["confirm"] = QUALITY_CONFIRM in actions
+            base["release"] = QUALITY_RELEASE in actions
+            base["rework"] = QUALITY_REWORK in actions
+            base["cancel"] = QUALITY_CANCEL in actions
+            base["export"] = QUALITY_EXPORT in actions
             base["dry_run"] = "quality:dry_run" in actions
-            base["diagnostic"] = "quality:diagnostic" in actions
+            base["diagnostic"] = QUALITY_DIAGNOSTIC in actions
             base["worker"] = "quality:worker" in actions
             base["quality_read"] = base["read"]
             base["quality_create"] = base["create"]
             base["quality_update"] = base["update"]
             base["quality_confirm"] = base["confirm"]
+            base["quality_release"] = base["release"]
+            base["quality_rework"] = base["rework"]
             base["quality_cancel"] = base["cancel"]
             base["quality_export"] = base["export"]
             base["quality_dry_run"] = base["dry_run"]

@@ -154,3 +154,32 @@ class LyQualityOperationLog(Base):
     request_id = Column(String(64), nullable=True)
     remark = Column(String(200), nullable=True)
     operated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class LyQualityDisposition(Base):
+    """质量检验后处置记录：放行或返工。"""
+
+    __tablename__ = "ly_quality_disposition"
+    __table_args__ = (
+        Index("uk_ly_quality_disposition_action", "inspection_id", "action", unique=True),
+        Index("uk_ly_quality_disposition_idempotency", "inspection_id", "idempotency_key", unique=True),
+        Index("idx_ly_quality_disposition_company_time", "company", "operated_at"),
+        CheckConstraint("action IN ('release','rework')", name="ck_ly_quality_disposition_action"),
+        CheckConstraint("qty >= 0", name="ck_ly_quality_disposition_qty_nonnegative"),
+        {"schema": "ly_schema", "comment": "质量检验后处置记录"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    inspection_id = Column(IDType, ForeignKey("ly_schema.ly_quality_inspection.id"), nullable=False)
+    company = Column(String(140), nullable=False)
+    action = Column(String(32), nullable=False)
+    qty = Column(Numeric(18, 6), nullable=False, default=0)
+    reason = Column(String(200), nullable=True)
+    request_id = Column(String(64), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    payload_hash = Column(String(64), nullable=False)
+    result_json = Column(JSON, nullable=False)
+    operator = Column(String(140), nullable=False)
+    operated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

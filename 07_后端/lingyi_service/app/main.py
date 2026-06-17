@@ -74,6 +74,8 @@ from app.core.permissions import QUALITY_CREATE
 from app.core.permissions import QUALITY_DIAGNOSTIC
 from app.core.permissions import QUALITY_EXPORT
 from app.core.permissions import QUALITY_READ
+from app.core.permissions import QUALITY_RELEASE
+from app.core.permissions import QUALITY_REWORK
 from app.core.permissions import QUALITY_UPDATE
 from app.core.permissions import QUALITY_WORKER
 from app.core.permissions import WAREHOUSE_WORKER
@@ -506,6 +508,10 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             return "quality", QUALITY_READ, "QualityInspection", None
         if path.endswith("/confirm"):
             return "quality", QUALITY_CONFIRM, "QualityInspection", inspection_id
+        if path.endswith("/release"):
+            return "quality", QUALITY_RELEASE, "QualityInspection", inspection_id
+        if path.endswith("/rework"):
+            return "quality", QUALITY_REWORK, "QualityInspection", inspection_id
         if path.endswith("/cancel"):
             return "quality", QUALITY_CANCEL, "QualityInspection", inspection_id
         if method == "PATCH":

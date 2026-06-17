@@ -20,11 +20,13 @@ from app.core.error_codes import QUALITY_INVALID_SOURCE
 from app.core.error_codes import QUALITY_INVALID_SOURCE_TYPE
 from app.core.error_codes import QUALITY_INVALID_STATUS
 from app.core.error_codes import QUALITY_INVALID_QTY
+from app.core.error_codes import QUALITY_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import QUALITY_NOT_FOUND
 from app.core.error_codes import QUALITY_QTY_MISMATCH
 from app.core.error_codes import QUALITY_SOURCE_UNAVAILABLE
 from app.core.exceptions import BusinessException
 from app.models.quality import LyQualityDefect
+from app.models.quality import LyQualityDisposition
 from app.models.quality import LyQualityInspection
 from app.models.quality import LyQualityInspectionItem
 from app.models.quality import LyQualityOperationLog
@@ -37,6 +39,7 @@ from app.schemas.quality import QualityDiagnosticData
 from app.schemas.quality import QualityInspectionActionData
 from app.schemas.quality import QualityInspectionCreateRequest
 from app.schemas.quality import QualityInspectionDefectCreateRequest
+from app.schemas.quality import QualityInspectionDispositionData
 from app.schemas.quality import QualityInspectionDetailData
 from app.schemas.quality import QualityInspectionItemData
 from app.schemas.quality import QualityInspectionItemInput
@@ -303,6 +306,96 @@ class QualityService:
             operator=operator,
             operated_at=now,
         )
+
+    def dispose_inspection(
+        self,
+        *,
+        inspection_id: int,
+        action: str,
+        operator: str,
+        request_id: str,
+        idempotency_key: str,
+        remark: str | None = None,
+    ) -> QualityInspectionDispositionData:
+        disposition_action = _clean_required(action, QUALITY_INVALID_SOURCE)
+        if disposition_action not in {"release", "rework"}:
+            raise BusinessException(code=QUALITY_INVALID_SOURCE, message="质检处置动作仅支持 release 或 rework")
+        normalized_idempotency_key = _clean_required(idempotency_key, QUALITY_IDEMPOTENCY_CONFLICT)
+        normalized_request_id = _clean_required(request_id, QUALITY_INVALID_SOURCE)
+
+        inspection = self._get_or_raise(inspection_id)
+        qty = self._disposition_qty(inspection=inspection, action=disposition_action)
+        payload = self._build_disposition_payload(
+            inspection=inspection,
+            action=disposition_action,
+            qty=qty,
+            request_id=normalized_request_id,
+            idempotency_key=normalized_idempotency_key,
+            remark=remark,
+        )
+        payload_hash = self.outbox_service.build_payload_hash(payload)
+
+        existing_by_key = self._find_disposition_by_idempotency(
+            inspection_id=int(inspection.id),
+            idempotency_key=normalized_idempotency_key,
+        )
+        if existing_by_key is not None:
+            if str(existing_by_key.action) != disposition_action or str(existing_by_key.payload_hash) != payload_hash:
+                raise BusinessException(code=QUALITY_IDEMPOTENCY_CONFLICT)
+            return self._disposition_data(existing_by_key, status=str(inspection.status))
+
+        existing_by_action = self._find_disposition_by_action(
+            inspection_id=int(inspection.id),
+            action=disposition_action,
+        )
+        if existing_by_action is not None:
+            raise BusinessException(code=QUALITY_IDEMPOTENCY_CONFLICT, message="该质检单已完成相同处置")
+
+        now = _now()
+        if inspection.status == "draft":
+            self._validate_sources(_payload_from_inspection(inspection, self._item_inputs(inspection), self._defect_inputs(inspection)))
+            inspection.status = "confirmed"
+            inspection.confirmed_by = operator
+            inspection.confirmed_at = now
+            inspection.updated_by = operator
+            self._add_log(
+                inspection=inspection,
+                action="confirm",
+                from_status="draft",
+                to_status="confirmed",
+                operator=operator,
+                request_id=normalized_request_id,
+                remark=f"{disposition_action}:{_text(remark) or ''}".rstrip(":"),
+            )
+        elif inspection.status != "confirmed":
+            raise BusinessException(code=QUALITY_INVALID_STATUS)
+
+        row = LyQualityDisposition(
+            inspection_id=int(inspection.id),
+            company=str(inspection.company),
+            action=disposition_action,
+            qty=qty,
+            reason=_text(remark),
+            request_id=normalized_request_id,
+            idempotency_key=normalized_idempotency_key,
+            payload_hash=payload_hash,
+            result_json=payload,
+            operator=operator,
+            operated_at=now,
+        )
+        self.session.add(row)
+
+        if disposition_action == "release":
+            self.outbox_service.create_outbox(
+                inspection_id=int(inspection.id),
+                company=str(inspection.company),
+                payload_json=self._build_outbox_payload(inspection),
+                created_by=operator,
+                max_attempts=3,
+            )
+
+        self.session.flush()
+        return self._disposition_data(row, status=str(inspection.status))
 
     def get_outbox_status(self, inspection_id: int) -> QualityOutboxStatusData:
         inspection = self._get_or_raise(inspection_id)
@@ -934,6 +1027,76 @@ class QualityService:
                 request_id=request_id,
                 remark=_text(remark),
             )
+        )
+
+    def _find_disposition_by_idempotency(self, *, inspection_id: int, idempotency_key: str) -> LyQualityDisposition | None:
+        return (
+            self.session.query(LyQualityDisposition)
+            .filter(
+                LyQualityDisposition.inspection_id == int(inspection_id),
+                LyQualityDisposition.idempotency_key == str(idempotency_key),
+            )
+            .one_or_none()
+        )
+
+    def _find_disposition_by_action(self, *, inspection_id: int, action: str) -> LyQualityDisposition | None:
+        return (
+            self.session.query(LyQualityDisposition)
+            .filter(
+                LyQualityDisposition.inspection_id == int(inspection_id),
+                LyQualityDisposition.action == str(action),
+            )
+            .one_or_none()
+        )
+
+    @staticmethod
+    def _disposition_qty(*, inspection: LyQualityInspection, action: str) -> Decimal:
+        if action == "release":
+            qty = _decimal(inspection.accepted_qty)
+            if qty <= Decimal("0") or str(inspection.result) not in {"pass", "partial"}:
+                raise BusinessException(code=QUALITY_INVALID_QTY, message="放行必须有可放行合格数量")
+            return qty
+        qty = _decimal(inspection.rejected_qty)
+        if qty <= Decimal("0") or str(inspection.result) not in {"fail", "partial"}:
+            raise BusinessException(code=QUALITY_INVALID_QTY, message="返工必须有可返工不良数量")
+        return qty
+
+    @staticmethod
+    def _build_disposition_payload(
+        *,
+        inspection: LyQualityInspection,
+        action: str,
+        qty: Decimal,
+        request_id: str,
+        idempotency_key: str,
+        remark: str | None,
+    ) -> dict[str, Any]:
+        return {
+            "inspection_id": int(inspection.id),
+            "inspection_no": str(inspection.inspection_no),
+            "company": str(inspection.company),
+            "action": action,
+            "qty": str(qty),
+            "request_id": request_id,
+            "idempotency_key": idempotency_key,
+            "item_code": str(inspection.item_code),
+            "result": str(inspection.result),
+            "accepted_qty": str(_decimal(inspection.accepted_qty)),
+            "rejected_qty": str(_decimal(inspection.rejected_qty)),
+            "remark": _text(remark),
+        }
+
+    @staticmethod
+    def _disposition_data(row: LyQualityDisposition, *, status: str) -> QualityInspectionDispositionData:
+        return QualityInspectionDispositionData(
+            id=int(row.inspection_id),
+            inspection_no=str(row.result_json.get("inspection_no") or ""),
+            status=status,
+            operator=str(row.operator),
+            operated_at=row.operated_at,
+            action=str(row.action),  # type: ignore[arg-type]
+            qty=_decimal(row.qty),
+            idempotency_key=str(row.idempotency_key),
         )
 
     def _next_inspection_no(self) -> str:
