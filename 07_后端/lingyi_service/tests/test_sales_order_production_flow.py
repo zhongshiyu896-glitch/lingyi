@@ -27,6 +27,7 @@ from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
+from app.models.production import LyProductionPlanOperation
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
@@ -98,6 +99,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyMaterialPurchaseRequirement).delete()
+            session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlan).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
@@ -300,6 +302,64 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(list_plans.status_code, 200)
         self.assertEqual(list_plans.json()["data"]["total"], 1)
         plan_id = int(create_plan.json()["data"]["plan_id"])
+        draft_id = int(create_order.json()["data"]["id"])
+        update_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "update_draft",
+            "sales_order_no_or_source_order_ref": "SO-A4-001",
+            "idempotency_key": "idem-so-a4-001-update",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-07-05",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Ignored Name Again",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 120,
+                    "rate": 80,
+                    "uom": "件",
+                }
+            ],
+        }
+        update_order = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json=update_payload,
+        )
+        replay_update = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json=update_payload,
+        )
+        conflict_update = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json={
+                **update_payload,
+                "delivery_date": "2026-07-06",
+            },
+        )
+        over_reduce_update = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json={
+                **update_payload,
+                "idempotency_key": "idem-so-a4-001-update-below-plan",
+                "items": [{**update_payload["items"][0], "qty": 30}],
+            },
+        )
+        self.assertEqual(update_order.status_code, 200, update_order.text)
+        self.assertEqual(replay_update.status_code, 200, replay_update.text)
+        self.assertEqual(conflict_update.status_code, 409, conflict_update.text)
+        self.assertEqual(conflict_update.json()["code"], "SALES_ORDER_IDEMPOTENCY_CONFLICT")
+        self.assertEqual(over_reduce_update.status_code, 409, over_reduce_update.text)
+        self.assertEqual(over_reduce_update.json()["code"], "SALES_ORDER_QTY_BELOW_PLANNED")
+        self.assertEqual(update_order.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
+        self.assertEqual(Decimal(str(update_order.json()["data"]["items"][0]["qty"])), Decimal("120.000000"))
+
         material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260617-901"
         material_check_request_id = f"req-{material_check_scenario}"
         self._add_stock_entry(
@@ -381,63 +441,18 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(list_after_material_check.status_code, 200)
         self.assertEqual(list_after_material_check.json()["data"]["items"][0]["ys_material_calc_state"], "已算料")
 
-        update_payload = {
-            "company": "COMP-A",
-            "customer": "CUST-A",
-            "operation": "update_draft",
-            "sales_order_no_or_source_order_ref": "SO-A4-001",
-            "idempotency_key": "idem-so-a4-001-update",
-            "transaction_date": "2026-06-16",
-            "delivery_date": "2026-07-05",
-            "currency": "CNY",
-            "items": [
-                {
-                    "item_code": "DEMO-TEE",
-                    "item_name": "Ignored Name Again",
-                    "color": "白色",
-                    "size": "M",
-                    "qty": 120,
-                    "rate": 80,
-                    "uom": "件",
-                }
-            ],
-        }
-        draft_id = int(create_order.json()["data"]["id"])
-        update_order = self.client.patch(
-            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
-            headers=self._headers(),
-            json=update_payload,
-        )
-        replay_update = self.client.patch(
-            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
-            headers=self._headers(),
-            json=update_payload,
-        )
-        conflict_update = self.client.patch(
+        locked_update = self.client.patch(
             f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
             headers=self._headers(),
             json={
                 **update_payload,
+                "idempotency_key": "idem-so-a4-001-update-after-issue",
                 "delivery_date": "2026-07-06",
+                "items": [{**update_payload["items"][0], "qty": 130}],
             },
         )
-        over_reduce_update = self.client.patch(
-            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
-            headers=self._headers(),
-            json={
-                **update_payload,
-                "idempotency_key": "idem-so-a4-001-update-below-plan",
-                "items": [{**update_payload["items"][0], "qty": 30}],
-            },
-        )
-        self.assertEqual(update_order.status_code, 200, update_order.text)
-        self.assertEqual(replay_update.status_code, 200, replay_update.text)
-        self.assertEqual(conflict_update.status_code, 409, conflict_update.text)
-        self.assertEqual(conflict_update.json()["code"], "SALES_ORDER_IDEMPOTENCY_CONFLICT")
-        self.assertEqual(over_reduce_update.status_code, 409, over_reduce_update.text)
-        self.assertEqual(over_reduce_update.json()["code"], "SALES_ORDER_QTY_BELOW_PLANNED")
-        self.assertEqual(update_order.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
-        self.assertEqual(Decimal(str(update_order.json()["data"]["items"][0]["qty"])), Decimal("120.000000"))
+        self.assertEqual(locked_update.status_code, 409, locked_update.text)
+        self.assertEqual(locked_update.json()["code"], "SALES_ORDER_MATERIAL_ISSUED_LOCKED")
 
         list_after_update = self.client.get(
             "/api/sales-inventory/sales-orders?keyword=SO-A4-001",
@@ -446,9 +461,9 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         detail_after_update = self.client.get("/api/sales-inventory/sales-orders/SO-A4-001", headers=self._headers())
         self.assertEqual(list_after_update.status_code, 200)
         self.assertEqual(detail_after_update.status_code, 200)
-        self.assertEqual(list_after_update.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
-        self.assertEqual(detail_after_update.json()["data"]["ys_material_calc_state"], "待算料")
-        self.assertEqual(detail_after_update.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
+        self.assertEqual(list_after_update.json()["data"]["items"][0]["ys_material_calc_state"], "已算料")
+        self.assertEqual(detail_after_update.json()["data"]["ys_material_calc_state"], "已算料")
+        self.assertEqual(detail_after_update.json()["data"]["items"][0]["ys_material_calc_state"], "已算料")
 
         with self.SessionLocal() as session:
             order = session.query(LySalesOrder).one()
@@ -466,7 +481,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(order.grand_total)), Decimal("9600.000000"))
             self.assertEqual(Decimal(str(item.qty)), Decimal("120.000000"))
             self.assertEqual(Decimal(str(item.planned_qty)), Decimal("40.000000"))
-            self.assertEqual(item.ys_material_calc_state, "待算料")
+            self.assertEqual(item.ys_material_calc_state, "已算料")
             self.assertEqual(plan.status, "material_issued")
             self.assertEqual(issue_entry.source_type, "production_plan")
             self.assertEqual(issue_entry.source_id, f"production_plan:{plan_id}:material_issue")

@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
+from app.models.production import LyProductionPlan
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.sales_order import LySalesOrder
@@ -446,6 +447,8 @@ class SalesInventoryService:
             if str(existing_idem.request_hash) != request_hash:
                 raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "幂等键冲突且请求内容不一致")
             return self._build_native_sales_order_draft_data(order)
+
+        self._ensure_sales_order_not_material_issued(order=order)
 
         existing_items = {int(item.line_no): item for item in self._native_sales_order_items(order_id=int(order.id))}
         for index, row in enumerate(line_rows, start=1):
@@ -4326,6 +4329,56 @@ class SalesInventoryService:
         if row is None or str(row.ys_style_status) != "enabled":
             raise SalesInventoryServiceError(409, STYLE_MASTER_INVALID_REFERENCE, f"{style_no} 款式不存在或未启用")
         return row
+
+    def _ensure_sales_order_not_material_issued(self, *, order: LySalesOrder) -> None:
+        session = self._require_session()
+        company = str(order.company)
+        sales_order_refs = {
+            ref
+            for ref in (
+                self._text(order.sales_order_no),
+                self._text(order.source_order_ref),
+            )
+            if ref
+        }
+        if not sales_order_refs:
+            return
+        plans = (
+            session.query(LyProductionPlan)
+            .filter(
+                LyProductionPlan.company == company,
+                LyProductionPlan.sales_order.in_(sorted(sales_order_refs)),
+                LyProductionPlan.status != "cancelled",
+            )
+            .all()
+        )
+        if any(str(plan.status or "") == "material_issued" for plan in plans):
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_ORDER_MATERIAL_ISSUED_LOCKED",
+                "已创建生产领料，不允许编辑订单",
+            )
+
+        plan_source_ids = [f"production_plan:{int(plan.id)}:material_issue" for plan in plans]
+        if not plan_source_ids:
+            return
+        issue_draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.purpose == "Material Issue",
+                LyWarehouseStockEntryDraft.source_type == "production_plan",
+                LyWarehouseStockEntryDraft.source_id.in_(plan_source_ids),
+                LyWarehouseStockEntryDraft.status != "cancelled",
+            )
+            .first()
+        )
+        if issue_draft is not None:
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_ORDER_MATERIAL_ISSUED_LOCKED",
+                "已创建生产领料，不允许编辑订单",
+            )
 
     @classmethod
     def _positive_decimal(cls, value: Any, field_name: str) -> Decimal:

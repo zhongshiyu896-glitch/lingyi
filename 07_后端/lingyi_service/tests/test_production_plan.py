@@ -26,6 +26,7 @@ from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
+from app.models.production import LyProductionPlanOperation
 from app.models.production import LyProductionWorkOrderLink
 from app.models.production import LyProductionWorkOrderOutbox
 from app.routers.auth import get_db_session as auth_db_dep
@@ -112,6 +113,7 @@ class ProductionPlanTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             session.query(LyMaterialPurchaseRequirement).delete()
+            session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionWorkOrderOutbox).delete()
             session.query(LyProductionWorkOrderLink).delete()
@@ -579,6 +581,72 @@ class ProductionPlanTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
+
+    def test_material_check_replays_idempotently_without_recomputing(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-material-idem", planned_qty="12"),
+            )
+        self.assertEqual(create_response.status_code, 200)
+        plan_id = int(create_response.json()["data"]["plan_id"])
+        payload = self._material_check_payload(
+            plan_id=plan_id,
+            idempotency_key="idem-material-check-replay",
+        )
+
+        first_response = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=payload,
+        )
+        self.assertEqual(first_response.status_code, 200, first_response.text)
+
+        self._set_plan_status(plan_id=plan_id, status="cancelled")
+        replay_response = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=payload,
+        )
+        self.assertEqual(replay_response.status_code, 200, replay_response.text)
+        self.assertEqual(replay_response.json()["data"], first_response.json()["data"])
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlanOperation).count(), 1)
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 1)
+
+    def test_material_check_same_key_different_warehouse_conflicts(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-material-conflict", planned_qty="12"),
+            )
+        self.assertEqual(create_response.status_code, 200)
+        plan_id = int(create_response.json()["data"]["plan_id"])
+
+        first_response = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._material_check_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-material-check-conflict",
+                warehouse="WH-A",
+            ),
+        )
+        conflict_response = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._material_check_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-material-check-conflict",
+                warehouse="WH-B",
+            ),
+        )
+        self.assertEqual(first_response.status_code, 200, first_response.text)
+        self.assertEqual(conflict_response.status_code, 409, conflict_response.text)
+        self.assertEqual(conflict_response.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
 
     def test_material_check_allows_frozen_status_whitelist(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):

@@ -3,6 +3,7 @@
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
+from app.models.production import LyProductionPlanOperation
 from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionTrackingReconcile
 from app.models.production import LyProductionTrackingReconcileBatch
@@ -25,6 +26,7 @@ from app.models.style_profit import LyStyleProfitSourceMap
 __all__ = [
     "LyProductionPlan",
     "LyProductionPlanMaterial",
+    "LyProductionPlanOperation",
     "LyProductionWorkOrderLink",
     "LyProductionWorkOrderOutbox",
     "LyProductionJobCardLink",

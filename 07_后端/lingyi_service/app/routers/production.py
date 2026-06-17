@@ -1198,8 +1198,7 @@ def material_check_plan(
             resource_no=str(plan_id),
             enforce_action=False,
         )
-        status = service.ensure_material_check_status_allowed(plan_id=plan_id)
-        before_data = {"plan_id": plan_id, "warehouse": payload.warehouse, "status": status}
+        before_data = {"plan_id": plan_id, "warehouse": payload.warehouse}
         data = service.material_check(plan_id=plan_id, operator=current_user.username, payload=payload, request_id=raw_request_id)
         audit.record_success(
             module="production",
@@ -1294,6 +1293,19 @@ def create_material_issue_draft(
             resource_no=str(plan_id),
             enforce_action=False,
         )
+        for scope in service.get_material_issue_resource_scopes(plan_id=plan_id, warehouse=payload.warehouse):
+            permission_service.ensure_resource_scope_permission(
+                current_user=current_user,
+                request_obj=request,
+                module="production",
+                action=action,
+                resource_scope=scope,
+                required_fields=("company", "warehouse", "item_code"),
+                resource_type="production_material_issue",
+                resource_id=plan_id,
+                resource_no=str(plan_id),
+                enforce_action=False,
+            )
         before_data = {
             "plan_id": plan_id,
             "warehouse": payload.warehouse,

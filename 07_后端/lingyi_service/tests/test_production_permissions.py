@@ -21,6 +21,7 @@ from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
+from app.models.production import LyProductionPlanMaterial
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
@@ -93,6 +94,7 @@ class ProductionPermissionTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             session.query(LySecurityAuditLog).delete()
+            session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionPlan).delete()
             session.commit()
             session.add(
@@ -219,6 +221,68 @@ class ProductionPermissionTest(unittest.TestCase):
             self.assertEqual(row.module, "production")
             self.assertEqual(row.resource_type, "COMPANY")
             self.assertEqual(row.resource_no, "COMP-A")
+
+    def test_material_issue_forbidden_when_warehouse_not_in_scope(self) -> None:
+        with self.SessionLocal() as session:
+            session.query(LyProductionPlan).filter(LyProductionPlan.id == 9001).update({"status": "material_checked"})
+            session.add(
+                LyProductionPlanMaterial(
+                    plan_id=9001,
+                    bom_item_id=1,
+                    material_item_code="MAT-A",
+                    warehouse="WH-A",
+                    qty_per_piece=Decimal("1"),
+                    loss_rate=Decimal("0"),
+                    required_qty=Decimal("1"),
+                    available_qty=Decimal("1"),
+                    shortage_qty=Decimal("0"),
+                )
+            )
+            session.commit()
+
+        payload = {
+            "warehouse": "WH-A",
+            "business_date": "2026-06-18",
+            "operation": "material_issue",
+            "idempotency_key": "Z003-PROD-PLAN-DETAIL-20260618-PERM-idem-material-issue",
+            "scenario_tag": "Z003-PROD-PLAN-DETAIL-20260618-PERM",
+            "plan_id": 9001,
+            "sales_order": "SO-PERM-1",
+            "sales_order_item": "SOI-PERM-1",
+            "item_code": "ITEM-A",
+            "bom_id": 201,
+            "request_id": "req-Z003-PROD-PLAN-DETAIL-20260618-PERM",
+        }
+        permissions = UserPermissionResult(
+            source_available=True,
+            unrestricted=False,
+            allowed_items={"ITEM-A", "MAT-A"},
+            allowed_companies={"COMP-A"},
+            allowed_warehouses={"WH-B"},
+        )
+        with patch.object(ERPNextPermissionAdapter, "get_user_roles", return_value=["System Manager"]), patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=permissions,
+        ), patch.object(
+            ProductionService,
+            "create_material_issue_draft",
+            side_effect=RuntimeError("should-not-write-material-issue"),
+        ):
+            response = self.client.post(
+                "/api/production/plans/9001/material-issue",
+                headers={**self._headers(role="System Manager"), "X-Request-ID": "req-Z003-PROD-PLAN-DETAIL-20260618-PERM"},
+                json=payload,
+            )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(row)
+            self.assertEqual(row.event_type, "RESOURCE_ACCESS_DENIED")
+            self.assertEqual(row.resource_type, "PRODUCTION_MATERIAL_ISSUE")
+            self.assertEqual(row.resource_no, "9001")
 
     def test_create_fails_closed_when_permission_source_unavailable(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()), patch.object(

@@ -82,6 +82,28 @@ class LyProductionPlanMaterial(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class LyProductionPlanOperation(Base):
+    """Idempotency ledger for production plan write operations."""
+
+    __tablename__ = "ly_production_plan_operation"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_plan_operation"),
+        Index("uk_ly_production_plan_operation_idem", "company", "operation", "idempotency_key", unique=True),
+        Index("idx_ly_production_plan_operation_plan", "plan_id", "operation"),
+        {"schema": "ly_schema", "comment": "生产计划写操作幂等账本"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    plan_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_plan.id"), nullable=False)
+    company = Column(String(140), nullable=False)
+    operation = Column(String(64), nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    response_json = Column(JSONType, nullable=False, default=dict)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LyProductionWorkOrderLink(Base):
     """生产计划与 ERPNext Work Order 映射。"""
 

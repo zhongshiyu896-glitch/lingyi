@@ -47,6 +47,7 @@ from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
+from app.models.production import LyProductionPlanOperation
 from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionTrackingReconcile
 from app.models.production import LyProductionTrackingReconcileBatch
@@ -2154,12 +2155,40 @@ class ProductionService:
             payload_item_code=payload.item_code,
             payload_bom_id=payload.bom_id,
         )
-        self._ensure_material_check_status_allowed(plan=plan)
         warehouse = self._require_non_blank(
             payload.warehouse,
             code=PRODUCTION_WAREHOUSE_REQUIRED,
             message="warehouse 不能为空",
         )
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        request_hash = self._production_operation_request_hash(
+            {
+                "plan_id": int(plan.id),
+                "company": str(plan.company),
+                "operation": "material_check",
+                "scenario_tag": str(payload.scenario_tag or "").strip(),
+                "warehouse": warehouse,
+                "sales_order": str(plan.sales_order),
+                "sales_order_item": str(plan.sales_order_item),
+                "item_code": str(plan.item_code),
+                "bom_id": int(plan.bom_id),
+            }
+        )
+        existing_operation = self._get_plan_operation(
+            company=str(plan.company),
+            operation="material_check",
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash) != request_hash:
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+            return self._production_material_check_data_from_json(existing_operation.response_json)
+
+        self._ensure_material_check_status_allowed(plan=plan)
 
         try:
             bom_rows = (
@@ -2237,11 +2266,24 @@ class ProductionService:
             operator=operator,
         )
 
-        return ProductionMaterialCheckData(
+        response = ProductionMaterialCheckData(
             plan_id=int(plan.id),
             snapshot_count=len(snapshot_items),
             items=snapshot_items,
         )
+        self.session.add(
+            LyProductionPlanOperation(
+                plan_id=int(plan.id),
+                company=str(plan.company),
+                operation="material_check",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response_json=self._production_model_to_json(response),
+                created_by=operator,
+            )
+        )
+        self.session.flush()
+        return response
 
     def create_material_issue_draft(
         self,
@@ -2426,6 +2468,45 @@ class ProductionService:
     def ensure_material_check_status_allowed(self, *, plan_id: int) -> str:
         plan = self._must_get_plan(plan_id=plan_id)
         return self._ensure_material_check_status_allowed(plan=plan)
+
+    def get_material_issue_resource_scopes(self, *, plan_id: int, warehouse: str | None) -> list[dict[str, str]]:
+        plan = self._must_get_plan(plan_id=plan_id)
+        issue_warehouse = self._require_non_blank(
+            warehouse,
+            code=PRODUCTION_WAREHOUSE_REQUIRED,
+            message="warehouse 不能为空",
+        )
+        try:
+            snapshots = (
+                self.session.query(LyProductionPlanMaterial)
+                .filter(LyProductionPlanMaterial.plan_id == int(plan.id))
+                .order_by(LyProductionPlanMaterial.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if not snapshots:
+            return [
+                {
+                    "company": str(plan.company),
+                    "warehouse": issue_warehouse,
+                    "item_code": str(plan.item_code),
+                }
+            ]
+
+        scopes: list[dict[str, str]] = []
+        seen: set[tuple[str, str, str]] = set()
+        for snapshot in snapshots:
+            material_item_code = str(snapshot.material_item_code or "").strip()
+            snapshot_warehouse = str(snapshot.warehouse or "").strip() or issue_warehouse
+            if not material_item_code:
+                continue
+            key = (str(plan.company), snapshot_warehouse, material_item_code)
+            if key in seen:
+                continue
+            seen.add(key)
+            scopes.append({"company": key[0], "warehouse": key[1], "item_code": key[2]})
+        return scopes or [{"company": str(plan.company), "warehouse": issue_warehouse, "item_code": str(plan.item_code)}]
 
     def create_work_order_outbox(
         self,
@@ -2916,6 +2997,37 @@ class ProductionService:
     def _build_material_issue_event_key(*, company: str, plan_id: int, idempotency_key: str) -> str:
         raw = "|".join([company, str(plan_id), idempotency_key]).encode("utf-8")
         return f"pmi:{hashlib.sha256(raw).hexdigest()}"
+
+    def _get_plan_operation(self, *, company: str, operation: str, idempotency_key: str) -> LyProductionPlanOperation | None:
+        try:
+            return (
+                self.session.query(LyProductionPlanOperation)
+                .filter(
+                    LyProductionPlanOperation.company == company,
+                    LyProductionPlanOperation.operation == operation,
+                    LyProductionPlanOperation.idempotency_key == idempotency_key,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    @staticmethod
+    def _production_operation_request_hash(payload: dict[str, Any]) -> str:
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
+    @staticmethod
+    def _production_model_to_json(model: Any) -> dict[str, Any]:
+        if hasattr(model, "model_dump"):
+            return model.model_dump(mode="json")
+        return json.loads(model.json())
+
+    @classmethod
+    def _production_material_check_data_from_json(cls, payload: dict[str, Any]) -> ProductionMaterialCheckData:
+        if hasattr(ProductionMaterialCheckData, "model_validate"):
+            return ProductionMaterialCheckData.model_validate(payload)
+        return ProductionMaterialCheckData.parse_obj(payload)
 
     @staticmethod
     def _ensure_material_check_status_allowed(*, plan: LyProductionPlan) -> str:
