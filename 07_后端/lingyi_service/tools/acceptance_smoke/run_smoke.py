@@ -506,6 +506,10 @@ def _warehouse_request_id(
     )
 
 
+def _inventory_count_request_id(*, scenario_tag: str, warehouse: str, count_date: str) -> str:
+    return f"{scenario_tag}-REQ-COUNT-W{_carrier_code(warehouse, length=8)}-D{count_date.replace('-', '')}"
+
+
 def _quality_request_id(
     *,
     scenario_tag: str,
@@ -937,6 +941,102 @@ def _exercise_finished_goods_inbound_smoke(client: TestClient) -> None:
     rows = listed.json()["data"]["items"]
     _assert(rows and int(rows[0]["id"]) == draft_id, "finished goods inbound readback missing")
     _assert(rows[0]["source_type"] == "finished_goods_inbound", "finished goods readback source_type mismatch")
+
+
+def _exercise_inventory_count_smoke(client: TestClient) -> None:
+    scenario_tag = "Z002-WAREHOUSE-COUNT-20260617-801"
+    company = "COMP-FG-SMOKE"
+    warehouse = "WH-FG-SMOKE"
+    item_code = "ITEM-FG-SMOKE"
+    count_date = date(2026, 6, 17).isoformat()
+    request_id = _inventory_count_request_id(
+        scenario_tag=scenario_tag,
+        warehouse=warehouse,
+        count_date=count_date,
+    )
+    count_env = {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}
+    with patch.dict("os.environ", count_env):
+        created = client.post(
+            "/api/warehouse/inventory-counts",
+            headers=_headers(request_id=request_id),
+            json={
+                "company": company,
+                "warehouse": warehouse,
+                "count_date": count_date,
+                "idempotency_key": f"{request_id}-IDEM",
+                "source_ref": f"{request_id}-SRC",
+                "remark": "acceptance-smoke inventory count",
+                "items": [
+                    {
+                        "item_code": item_code,
+                        "batch_no": None,
+                        "serial_no": None,
+                        "system_qty": "7",
+                        "counted_qty": "6",
+                        "variance_reason": "acceptance-smoke variance",
+                    }
+                ],
+            },
+        )
+    _assert(created.status_code == 201, created.text)
+    created_data = created.json()["data"]
+    count_id = int(created_data["id"])
+    variance_item_id = int(created_data["items"][0]["id"])
+    _assert(created_data["status"] == "draft", "inventory count create status mismatch")
+    _assert(Decimal(str(created_data["items"][0]["variance_qty"])) == Decimal("-1.000000"), "inventory variance mismatch")
+    _assert(created_data["variance_stats"]["pending_review_items"] == 1, "inventory pending review count mismatch")
+
+    with patch.dict("os.environ", count_env):
+        submitted = client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/submit",
+            headers=_headers(request_id=request_id),
+        )
+    _assert(submitted.status_code == 200, submitted.text)
+    _assert(submitted.json()["data"]["status"] == "counted", "inventory submit status mismatch")
+
+    with patch.dict("os.environ", count_env):
+        reviewed = client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/variance-review",
+            headers=_headers(request_id=request_id),
+            json={
+                "items": [
+                    {
+                        "item_id": variance_item_id,
+                        "review_status": "accepted",
+                        "variance_reason": "acceptance-smoke accepted",
+                    }
+                ]
+            },
+        )
+    _assert(reviewed.status_code == 200, reviewed.text)
+    _assert(reviewed.json()["data"]["variance_stats"]["pending_review_items"] == 0, "inventory review pending mismatch")
+
+    with patch.dict("os.environ", count_env):
+        confirmed = client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/confirm",
+            headers=_headers(request_id=request_id),
+        )
+    _assert(confirmed.status_code == 200, confirmed.text)
+    _assert(confirmed.json()["data"]["status"] == "confirmed", "inventory confirm status mismatch")
+
+    listed = client.get(
+        f"/api/warehouse/inventory-counts?company={company}&warehouse={warehouse}&item_code={item_code}",
+        headers=_headers(),
+    )
+    _assert(listed.status_code == 200, listed.text)
+    _assert(listed.json()["data"]["items"][0]["id"] == count_id, "inventory count readback missing")
+
+    reconciliation = client.get(
+        f"/api/warehouse/inventory-balance-reconciliation?company={company}&warehouse={warehouse}&item_code={item_code}",
+        headers=_headers(),
+    )
+    _assert(reconciliation.status_code == 200, reconciliation.text)
+    reconciliation_rows = reconciliation.json()["data"]["items"]
+    _assert(reconciliation_rows, "inventory reconciliation readback missing")
+    _assert(Decimal(str(reconciliation_rows[0]["book_qty"])) == Decimal("7.000000"), "inventory book_qty mismatch")
+    _assert(Decimal(str(reconciliation_rows[0]["actual_qty"])) == Decimal("6.000000"), "inventory actual_qty mismatch")
+    _assert(Decimal(str(reconciliation_rows[0]["diff_qty"])) == Decimal("-1.000000"), "inventory diff_qty mismatch")
+    _assert(reconciliation_rows[0]["status"] == "variance_accepted", "inventory reconciliation status mismatch")
 
 
 def _exercise_sales_delivery_payment_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
@@ -1627,6 +1727,7 @@ def main() -> int:
         _exercise_quality_smoke(client)
         _exercise_workshop_smoke(client)
         _exercise_finished_goods_inbound_smoke(client)
+        _exercise_inventory_count_smoke(client)
         _exercise_sales_delivery_payment_smoke(client, session_local)
         _exercise_factory_statement_payment_smoke(client, session_local)
 
