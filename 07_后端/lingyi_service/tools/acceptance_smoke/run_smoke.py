@@ -2201,12 +2201,14 @@ def _exercise_profit_report_smoke(client: TestClient, session_local) -> None:  #
     material_report = client.get(
         (
             "/api/production/report-suite?"
-            f"report_key=productionCostMaterialDetailReport&company={company}&keyword={sales_order_no}"
+            f"report_key=orderTrackingReport&company={company}&keyword={sales_order_no}"
         ),
         headers=_headers(request_id="PROFIT-SMOKE-002"),
     )
     _assert(material_report.status_code == 200, material_report.text)
-    material_rows = material_report.json()["data"]["items"]
+    material_data = material_report.json()["data"]
+    _assert(material_data["report_key"] == "orderTrackingReport", "material report key mismatch")
+    material_rows = material_data["items"]
     _assert(material_rows and material_rows[0]["item_code"] == material_code, "material report readback missing")
     material_row = material_rows[0]
     _assert(Decimal(str(material_row["requiredQty"])) == Decimal("176"), "material report required qty mismatch")

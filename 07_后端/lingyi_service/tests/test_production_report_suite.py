@@ -271,17 +271,46 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
 
     def test_material_detail_report_uses_material_check_snapshot(self) -> None:
         response = self.client.get(
-            "/api/production/report-suite?report_key=productionCostMaterialDetailReport&company=COMP-A",
+            "/api/production/report-suite?report_key=orderTrackingReport&company=COMP-A",
             headers=self._headers(),
         )
         self.assertEqual(response.status_code, 200, response.text)
-        row = response.json()["data"]["items"][0]
+        payload = response.json()["data"]
+        self.assertEqual(payload["report_key"], "orderTrackingReport")
+        self.assertEqual(payload["title"], "大货成本物料明细表")
+        self.assertEqual([item["label"] for item in payload["composition"]], ["物料金额", "缺口数量", "可用数量"])
+        row = payload["items"][0]
         self.assertEqual(row["item_code"], "FAB-A")
         self.assertEqual(Decimal(str(row["requiredQty"])), Decimal("176"))
         self.assertEqual(Decimal(str(row["availableQty"])), Decimal("150"))
         self.assertEqual(Decimal(str(row["gapQty"])), Decimal("-26"))
         self.assertEqual(Decimal(str(row["materialCost"])), Decimal("880"))
         self.assertEqual(row["status"], "缺口")
+
+    def test_salesperson_performance_report_uses_salesperson_fields(self) -> None:
+        response = self.client.get(
+            "/api/production/report-suite?report_key=productionCostMaterialDetailReport&company=COMP-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["report_key"], "productionCostMaterialDetailReport")
+        self.assertEqual(payload["title"], "业务员业绩分析报表")
+        self.assertEqual([item["label"] for item in payload["composition"]], ["已结算业绩", "待完成业绩", "订单件数"])
+        row = payload["items"][0]
+        self.assertNotIn("requiredQty", row)
+        self.assertNotIn("availableQty", row)
+        self.assertNotIn("gapQty", row)
+        self.assertNotIn("unitPrice", row)
+        self.assertEqual(row["salesperson"], "merch.user")
+        self.assertEqual(row["planNo"], "PP-RPT-001")
+        self.assertEqual(Decimal(str(row["orderedQty"])), Decimal("80"))
+        self.assertEqual(Decimal(str(row["completedQty"])), Decimal("28.000000"))
+        self.assertEqual(Decimal(str(row["completionRate"])), Decimal("35.00"))
+        self.assertEqual(Decimal(str(row["settledAmount"])), Decimal("2940.000000"))
+        self.assertEqual(Decimal(str(row["pendingAmount"])), Decimal("5460.000000"))
+        self.assertEqual(row["performanceStatus"], "attention")
+        self.assertEqual(row["status"], "关注")
 
     def test_missing_bom_price_uses_latest_purchase_unit_price_for_profit(self) -> None:
         with self.SessionLocal() as session:
@@ -439,7 +468,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(profit_row["profit"])), Decimal("52.500000000000"))
 
         material_response = self.client.get(
-            "/api/production/report-suite?report_key=productionCostMaterialDetailReport&company=COMP-A&keyword=SO-RPT-PUR",
+            "/api/production/report-suite?report_key=orderTrackingReport&company=COMP-A&keyword=SO-RPT-PUR",
             headers=self._headers(),
         )
         self.assertEqual(material_response.status_code, 200, material_response.text)
