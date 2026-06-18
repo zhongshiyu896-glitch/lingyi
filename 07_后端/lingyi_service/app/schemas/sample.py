@@ -22,8 +22,8 @@ class SampleOrderWriteBase(BaseModel):
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     sample_no: str | None = Field(default=None, max_length=140)
     style_master_id: int | None = None
-    style_no: str = Field(..., min_length=1, max_length=140)
-    style_name: str = Field(..., min_length=1, max_length=255)
+    style_no: str | None = Field(default=None, min_length=1, max_length=140)
+    style_name: str | None = Field(default=None, min_length=1, max_length=255)
     customer: str = Field(..., min_length=1, max_length=255)
     factory: str = Field(default="", max_length=255)
     sample_type: SampleType = "初样"

@@ -240,9 +240,12 @@ class SampleService:
             target_style_master_id = next_values.get("style_master_id")
             if "style_master_id" not in next_values and "style_no" not in next_values:
                 target_style_master_id = row.style_master_id
+            requested_style_no = next_values.get("style_no", row.style_no)
+            if "style_master_id" in next_values and "style_no" not in next_values:
+                requested_style_no = None
             style = self._resolve_enabled_style(
                 company=company,
-                style_no=next_values.get("style_no", row.style_no),
+                style_no=requested_style_no,
                 style_master_id=target_style_master_id,
             )
             next_values["style_master_id"] = int(style.id)

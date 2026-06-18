@@ -221,6 +221,76 @@ class SampleApiTest(unittest.TestCase):
             self.assertEqual(row.style_master_id, second_style_id)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 4)
 
+    def test_sample_order_style_master_id_only_create_and_update(self) -> None:
+        with self.SessionLocal() as session:
+            first_style_id = int(
+                session.query(LyStyleMaster.id)
+                .filter(LyStyleMaster.company == "COMP-A", LyStyleMaster.ys_style_no == "ST-A3-001")
+                .scalar()
+            )
+            second_style_id = int(
+                session.query(LyStyleMaster.id)
+                .filter(LyStyleMaster.company == "COMP-A", LyStyleMaster.ys_style_no == "ST-A3-002")
+                .scalar()
+            )
+
+        payload = self._order_payload(sample_no="SMP-A3-ID-ONLY", idempotency_key="IDEMP-SMP-A3-ID-ONLY-C")
+        payload["style_master_id"] = first_style_id
+        del payload["style_no"]
+        del payload["style_name"]
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-ID-ONLY-CREATE"),
+            json=payload,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        self.assertEqual(created.json()["data"]["style_master_id"], first_style_id)
+        self.assertEqual(created.json()["data"]["style_no"], "ST-A3-001")
+        self.assertEqual(created.json()["data"]["style_name"], "A3 样衣款")
+        order_id = int(created.json()["data"]["id"])
+
+        updated = self.client.patch(
+            f"/api/sample/orders/{order_id}",
+            headers=self._headers(request_id="SAMPLE-ID-ONLY-UPDATE"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "style_master_id": second_style_id,
+                "idempotency_key": "IDEMP-SMP-A3-ID-ONLY-U",
+            },
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["data"]["style_master_id"], second_style_id)
+        self.assertEqual(updated.json()["data"]["style_no"], "ST-A3-002")
+        self.assertEqual(updated.json()["data"]["style_name"], "A3 样衣款修改")
+
+        submitted = self.client.post(
+            f"/api/sample/orders/{order_id}/submit",
+            headers=self._headers(request_id="SAMPLE-ID-ONLY-SUBMIT"),
+            json={"company": "COMP-A", "idempotency_key": "IDEMP-SMP-A3-ID-ONLY-S"},
+        )
+        sealed = self.client.post(
+            f"/api/sample/orders/{order_id}/seal",
+            headers=self._headers(request_id="SAMPLE-ID-ONLY-SEAL"),
+            json={"company": "COMP-A", "idempotency_key": "IDEMP-SMP-A3-ID-ONLY-SEAL"},
+        )
+        converted = self.client.post(
+            f"/api/sample/orders/{order_id}/convert-to-bulk",
+            headers=self._headers(request_id="SAMPLE-ID-ONLY-CONVERT"),
+            json={"operation": "convert", "company": "COMP-A", "idempotency_key": "IDEMP-SMP-A3-ID-ONLY-X"},
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        self.assertEqual(sealed.status_code, 200, sealed.text)
+        self.assertEqual(converted.status_code, 200, converted.text)
+
+        with self.SessionLocal() as session:
+            order = session.query(LySampleOrder).one()
+            sales_item = session.query(LySalesOrderItem).one()
+            self.assertEqual(order.style_master_id, second_style_id)
+            self.assertEqual(order.style_no, "ST-A3-002")
+            self.assertEqual(sales_item.style_master_id, second_style_id)
+            self.assertEqual(sales_item.item_code, "ST-A3-002")
+
     def test_sample_order_idempotency_conflict_and_permission(self) -> None:
         first = self.client.post(
             "/api/sample/orders",
