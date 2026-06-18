@@ -13,8 +13,11 @@ import os
 from typing import Any
 from typing import Literal
 
+from sqlalchemy import String as SqlString
+from sqlalchemy import cast
 from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -2420,11 +2423,27 @@ class WarehouseService:
         normalized_keyword = self._text(keyword)
         if normalized_keyword:
             like_value = f"%{normalized_keyword.lower()}%"
+            item_keyword_exists = (
+                session.query(LyWarehouseStockEntryDraftItem.id)
+                .filter(
+                    LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+                    or_(
+                        func.lower(LyWarehouseStockEntryDraftItem.item_code).like(like_value),
+                        func.lower(LyWarehouseStockEntryDraftItem.source_warehouse).like(like_value),
+                        func.lower(LyWarehouseStockEntryDraftItem.target_warehouse).like(like_value),
+                    ),
+                )
+                .exists()
+            )
             query = query.filter(
-                (func.lower(LyWarehouseStockEntryDraft.source_id).like(like_value))
-                | (func.lower(LyWarehouseStockEntryDraft.source_type).like(like_value))
-                | (func.lower(LyWarehouseStockEntryDraft.source_warehouse).like(like_value))
-                | (func.lower(LyWarehouseStockEntryDraft.target_warehouse).like(like_value))
+                or_(
+                    func.lower(cast(LyWarehouseStockEntryDraft.id, SqlString)).like(like_value),
+                    func.lower(LyWarehouseStockEntryDraft.source_id).like(like_value),
+                    func.lower(LyWarehouseStockEntryDraft.source_type).like(like_value),
+                    func.lower(LyWarehouseStockEntryDraft.source_warehouse).like(like_value),
+                    func.lower(LyWarehouseStockEntryDraft.target_warehouse).like(like_value),
+                    item_keyword_exists,
+                )
             )
         total = int(query.count())
         rows = (

@@ -305,6 +305,35 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["outbox"]["status"], "in_pending")
 
+    def test_list_drafts_keyword_matches_item_code(self) -> None:
+        payload = self._sale_outbound_payload(qty="3")
+        create_response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.text)
+        draft_id = int(create_response.json()["data"]["id"])
+
+        response = self.client.get(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:read"),
+            params={
+                "company": "COMP-A",
+                "purpose": "Material Issue",
+                "source_type": "material_sale_outbound",
+                "keyword": self.ITEM_CODE,
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()["data"]
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(int(data["items"][0]["id"]), draft_id)
+        self.assertEqual(data["items"][0]["items"][0]["item_code"], self.ITEM_CODE)
+
     def test_create_transfer_allows_distinct_source_and_target_warehouses(self) -> None:
         payload = self._payload()
         payload["target_warehouse"] = "WH-C"
