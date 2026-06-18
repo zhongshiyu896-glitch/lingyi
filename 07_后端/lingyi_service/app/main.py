@@ -89,6 +89,7 @@ from app.core.permissions import WAREHOUSE_DIAGNOSTIC
 from app.core.permissions import WAREHOUSE_READ
 from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
 from app.core.permissions import WAREHOUSE_STOCK_ENTRY_CANCEL
+from app.core.permissions import WAREHOUSE_STOCK_HOLD_RELEASE
 from app.core.permissions import DASHBOARD_READ
 from app.core.permissions import PERMISSION_GOVERNANCE_AUDIT_READ
 from app.core.permissions import PERMISSION_GOVERNANCE_DIAGNOSTIC
@@ -576,6 +577,8 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
     if path.startswith("/api/warehouse"):
         if path.endswith("/internal/stock-entry-sync/run-once"):
             return "warehouse", WAREHOUSE_WORKER, "WarehouseStockEntryWorker", None
+        if "/stock-entry-drafts/" in path and path.endswith("/release-hold"):
+            return "warehouse", WAREHOUSE_STOCK_HOLD_RELEASE, "WarehouseStockEntryDraft", _extract_warehouse_stock_entry_draft_id(path)
         if "/stock-entry-drafts/" in path and path.endswith("/cancel"):
             return "warehouse", WAREHOUSE_STOCK_ENTRY_CANCEL, "WarehouseStockEntryDraft", _extract_warehouse_stock_entry_draft_id(path)
         if path in {"/api/warehouse/stock-entry-drafts", "/api/warehouse/stock-entry-drafts/"}:
