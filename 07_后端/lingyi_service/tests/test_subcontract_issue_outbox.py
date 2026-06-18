@@ -263,12 +263,12 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
             json=payload,
         )
 
-    def test_issue_material_creates_material_rows_and_pending_outbox(self) -> None:
+    def test_issue_material_creates_material_rows_and_local_dev_outbox(self) -> None:
         response = self._post_issue_material(order_id=1, payload=self._payload(idem="idem-create"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
-        self.assertEqual(response.json()["data"]["sync_status"], "pending")
-        self.assertIsNone(response.json()["data"]["stock_entry_name"])
+        self.assertEqual(response.json()["data"]["sync_status"], "succeeded")
+        self.assertTrue(str(response.json()["data"]["stock_entry_name"]).startswith("LOCAL-ISSUE-"))
 
         with self.SessionLocal() as session:
             materials = (
@@ -288,9 +288,10 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
         self.assertEqual(len(materials), 1)
         self.assertIsNotNone(outbox)
         self.assertEqual(outbox.stock_action, "issue")
-        self.assertEqual(outbox.status, "pending")
-        self.assertEqual(materials[0].sync_status, "pending")
-        self.assertIsNone(materials[0].stock_entry_name)
+        self.assertEqual(outbox.status, "succeeded")
+        self.assertTrue(str(outbox.stock_entry_name).startswith("LOCAL-ISSUE-"))
+        self.assertEqual(materials[0].sync_status, "succeeded")
+        self.assertEqual(materials[0].stock_entry_name, outbox.stock_entry_name)
         self.assertIsNotNone(order)
         self.assertEqual(order.status, "issued")
 
@@ -305,12 +306,12 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
         self.assertEqual(create_mock.call_count, 0)
         self.assertEqual(find_mock.call_count, 0)
 
-    def test_issue_material_returns_outbox_without_fake_stock_entry_name(self) -> None:
+    def test_issue_material_returns_local_dev_stock_entry_name(self) -> None:
         response = self._post_issue_material(order_id=1, payload=self._payload(idem="idem-no-fake"))
         self.assertEqual(response.status_code, 200)
         payload = response.json()["data"]
         self.assertIn("outbox_id", payload)
-        self.assertIsNone(payload["stock_entry_name"])
+        self.assertTrue(str(payload["stock_entry_name"]).startswith("LOCAL-ISSUE-"))
         self.assertNotIn("STE-ISS", str(payload))
 
     def test_issue_material_rejects_material_not_in_bom(self) -> None:

@@ -148,6 +148,9 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         idempotency_key: str,
         source_ref: str,
         quantity: object,
+        warehouse: str | None = None,
+        item_code: str | None = None,
+        business_date: str | None = None,
     ) -> str:
         return "-".join(
             [
@@ -156,10 +159,10 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 "C",
                 cls._carrier_code(idempotency_key),
                 cls._carrier_code(source_ref),
-                cls._carrier_code(cls.WAREHOUSE),
-                cls._carrier_code(cls.ITEM_CODE),
+                cls._carrier_code(warehouse or cls.WAREHOUSE),
+                cls._carrier_code(item_code or cls.ITEM_CODE),
                 cls._carrier_code(cls._decimal_text(quantity)),
-                cls._carrier_code(cls.BUSINESS_DATE),
+                cls._carrier_code(business_date or cls.BUSINESS_DATE),
                 cls._carrier_code("C"),
             ]
         )
@@ -357,6 +360,117 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(payload["data"]["items"], [])
 
     def test_factory_return_material_report_prefers_subcontract_issue_facts(self) -> None:
+        self._seed_factory_return_issue_fact()
+
+        with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("ERPNext adapter must not be used")):
+            response = self.client.get(
+                "/api/warehouse/factory-return-material-report?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        rows = payload["data"]["items"]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["subcontract_no"], "SC-FRR-B5-001")
+        self.assertEqual(row["source_doc_no"], "SC-FRR-B5-001")
+        self.assertEqual(row["factory_name"], "B5加工厂")
+        self.assertEqual(row["material_code"], "FAB-B5-FRR")
+        self.assertEqual(row["warehouse"], self.WAREHOUSE)
+        self.assertEqual(Decimal(str(row["issued_qty"])), Decimal("100.0"))
+        self.assertEqual(Decimal(str(row["theoretical_usage_qty"])), Decimal("60.0"))
+        self.assertEqual(Decimal(str(row["planned_return_qty"])), Decimal("40.0"))
+        self.assertEqual(Decimal(str(row["returned_qty"])), Decimal("0.0"))
+        self.assertEqual(Decimal(str(row["pending_qty"])), Decimal("40.0"))
+        self.assertEqual(row["status"], "pending")
+
+    def test_factory_return_material_draft_closes_report_and_updates_stock_ledger(self) -> None:
+        self._seed_factory_return_issue_fact()
+
+        report = self.client.get(
+            "/api/warehouse/factory-return-material-report?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR",
+            headers=self._headers(),
+        )
+        self.assertEqual(report.status_code, 200, report.text)
+        report_row = report.json()["data"]["items"][0]
+        report_no = report_row["report_no"]
+        idempotency_key = f"{self.SCENARIO_TAG}:factory-return:idem-001"
+        source_ref = f"{self.SCENARIO_TAG}:factory-return:{report_no}:{self._carrier_code(idempotency_key)}"
+        request_id = self._warehouse_request_id(
+            idempotency_key=idempotency_key,
+            source_ref=source_ref,
+            quantity=Decimal(str(report_row["pending_qty"])),
+            warehouse="WH-A",
+            item_code="FAB-B5-FRR",
+            business_date=self.BUSINESS_DATE,
+        )
+
+        payload = {
+            "operation": "create_factory_return_material_draft",
+            "company": "COMP-A",
+            "scenario_tag": self.SCENARIO_TAG,
+            "source_ref": source_ref,
+            "quantity": str(report_row["pending_qty"]),
+            "business_date": self.BUSINESS_DATE,
+            "idempotency_key": idempotency_key,
+        }
+        created = self.client.post(
+            f"/api/warehouse/factory-return-material-report/{report_no}/return-draft",
+            headers=self._headers(request_id=request_id),
+            json=payload,
+        )
+        replay = self.client.post(
+            f"/api/warehouse/factory-return-material-report/{report_no}/return-draft",
+            headers=self._headers(request_id=request_id),
+            json=payload,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        self.assertEqual(replay.status_code, 201, replay.text)
+        data = created.json()["data"]
+        self.assertEqual(data["draft"]["id"], replay.json()["data"]["draft"]["id"])
+        self.assertEqual(data["draft"]["source_type"], "factory_return_material")
+        self.assertEqual(data["draft"]["purpose"], "Material Receipt")
+        self.assertEqual(data["draft"]["target_warehouse"], self.WAREHOUSE)
+        self.assertEqual(data["draft"]["items"][0]["item_code"], "FAB-B5-FRR")
+        self.assertEqual(Decimal(str(data["draft"]["items"][0]["qty"])), Decimal("40.000000"))
+        self.assertEqual(data["report_item"]["status"], "closed")
+        self.assertEqual(Decimal(str(data["report_item"]["returned_qty"])), Decimal("40.0"))
+        self.assertEqual(Decimal(str(data["report_item"]["pending_qty"])), Decimal("0.0"))
+
+        closed_report = self.client.get(
+            "/api/warehouse/factory-return-material-report?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR&status=closed",
+            headers=self._headers(request_id="req-factory-return-draft-closed"),
+        )
+        stock_ledger = self.client.get(
+            "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR",
+            headers=self._headers(request_id="req-factory-return-draft-ledger"),
+        )
+        self.assertEqual(closed_report.status_code, 200, closed_report.text)
+        closed_row = closed_report.json()["data"]["items"][0]
+        self.assertEqual(closed_row["report_no"], report_no)
+        self.assertEqual(Decimal(str(closed_row["returned_qty"])), Decimal("40.0"))
+        self.assertEqual(Decimal(str(closed_row["pending_qty"])), Decimal("0.0"))
+        self.assertEqual(stock_ledger.status_code, 200, stock_ledger.text)
+        ledger_items = stock_ledger.json()["data"]["items"]
+        self.assertTrue(any(Decimal(str(row["actual_qty"])) == Decimal("40.0") for row in ledger_items))
+        self.assertEqual(Decimal(str(ledger_items[-1]["qty_after_transaction"])), Decimal("-60.0"))
+
+        with self.SessionLocal() as session:
+            draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_type="factory_return_material").one()
+            audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
+            self.assertEqual(str(draft.source_id), source_ref)
+            self.assertIn("warehouse:stock_entry_draft", audit_actions)
+
+        worker = self.client.post(
+            "/api/warehouse/internal/stock-entry-sync/run-once?dry_run=true",
+            headers=self._headers(request_id="req-factory-return-draft-worker"),
+        )
+        self.assertEqual(worker.status_code, 200, worker.text)
+        self.assertEqual(worker.json()["data"]["processed_count"], 0)
+
+    def _seed_factory_return_issue_fact(self) -> None:
         with self.SessionLocal() as session:
             session.add(
                 LySubcontractOrder(
@@ -442,30 +556,6 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 )
             )
             session.commit()
-
-        with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("ERPNext adapter must not be used")):
-            response = self.client.get(
-                "/api/warehouse/factory-return-material-report?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR",
-                headers=self._headers(),
-            )
-
-        self.assertEqual(response.status_code, 200, response.text)
-        payload = response.json()
-        self.assertEqual(payload["code"], "0")
-        rows = payload["data"]["items"]
-        self.assertEqual(len(rows), 1)
-        row = rows[0]
-        self.assertEqual(row["subcontract_no"], "SC-FRR-B5-001")
-        self.assertEqual(row["source_doc_no"], "SC-FRR-B5-001")
-        self.assertEqual(row["factory_name"], "B5加工厂")
-        self.assertEqual(row["material_code"], "FAB-B5-FRR")
-        self.assertEqual(row["warehouse"], self.WAREHOUSE)
-        self.assertEqual(Decimal(str(row["issued_qty"])), Decimal("100.0"))
-        self.assertEqual(Decimal(str(row["theoretical_usage_qty"])), Decimal("60.0"))
-        self.assertEqual(Decimal(str(row["planned_return_qty"])), Decimal("40.0"))
-        self.assertEqual(Decimal(str(row["returned_qty"])), Decimal("0.0"))
-        self.assertEqual(Decimal(str(row["pending_qty"])), Decimal("40.0"))
-        self.assertEqual(row["status"], "pending")
 
     def test_material_retention_report_uses_fastapi_native_stock_movements(self) -> None:
         receipt_idem = f"{self.SCENARIO_TAG}:receipt:RETENTION-LOCAL-IDEM"

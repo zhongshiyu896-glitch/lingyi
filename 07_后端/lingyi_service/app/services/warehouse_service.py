@@ -39,6 +39,8 @@ from app.schemas.warehouse import WarehouseBatchDetailData
 from app.schemas.warehouse import WarehouseBatchItem
 from app.schemas.warehouse import WarehouseBatchListData
 from app.schemas.warehouse import WarehouseFactoryReturnMaterialReportData
+from app.schemas.warehouse import WarehouseFactoryReturnMaterialDraftData
+from app.schemas.warehouse import WarehouseFactoryReturnMaterialDraftRequest
 from app.schemas.warehouse import WarehouseFactoryReturnMaterialReportItem
 from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidateItem
 from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidatesData
@@ -127,6 +129,7 @@ class WarehouseService:
     """Warehouse read-only and draft/outbox write service."""
 
     _PURPOSES = {"Material Issue", "Material Receipt", "Material Transfer"}
+    FACTORY_RETURN_MATERIAL_SOURCE_TYPE = "factory_return_material"
     _INVENTORY_ACTIVE_STATUSES = {"draft", "counted", "variance_review"}
     _FINISHED_GOODS_SOURCE_TYPE = "finished_goods_inbound"
     _FINISHED_GOODS_DISABLED_ENTRY_LABEL = "成品预约入仓 -> 创建成品入仓"
@@ -1186,6 +1189,11 @@ class WarehouseService:
             .order_by(LySubcontractOrder.subcontract_no.asc(), LySubcontractMaterial.material_item_code.asc())
         )
         source_rows = query.all()
+        returned_by_report = self._factory_return_material_returned_qty_by_report(
+            company=normalized_company,
+            warehouse=normalized_warehouse,
+            item_code=normalized_item_code,
+        )
 
         grouped: dict[tuple[str, str, int, str], dict[str, Any]] = {}
         for material, order, outbox in source_rows:
@@ -1251,25 +1259,32 @@ class WarehouseService:
                 theoretical_usage_qty = Decimal("0.00")
 
             planned_return_qty = max((issued_qty - theoretical_usage_qty).quantize(Decimal("0.01")), Decimal("0.00"))
-            returned_qty = Decimal("0.00")
+            created_at = bucket.get("latest_created_at")
+            report_date = created_at.date() if created_at is not None else date.today()
+            material_code = str(bucket["material_code"])
+            warehouse_value = str(bucket["warehouse"])
+            subcontract_no = str(getattr(order, "subcontract_no", "") or "")
+            report_no = self._factory_return_material_report_no(
+                subcontract_id=int(order.id),
+                material_code=material_code,
+                warehouse=warehouse_value,
+            )
+            returned_qty = min(
+                Decimal(str(returned_by_report.get(report_no, Decimal("0")))).quantize(Decimal("0.01")),
+                planned_return_qty,
+            )
             pending_qty = max((planned_return_qty - returned_qty).quantize(Decimal("0.01")), Decimal("0.00"))
             if pending_qty == Decimal("0.00"):
-                status_value: Literal["pending", "confirmed", "closed"] = "closed"
+                status_value = "closed"
             elif returned_qty > Decimal("0.00"):
                 status_value = "confirmed"
             else:
                 status_value = "pending"
             if status_filter is not None and status_value != status_filter:
                 continue
-
-            created_at = bucket.get("latest_created_at")
-            report_date = created_at.date() if created_at is not None else date.today()
-            material_code = str(bucket["material_code"])
-            warehouse_value = str(bucket["warehouse"])
-            subcontract_no = str(getattr(order, "subcontract_no", "") or "")
             rows.append(
                 WarehouseFactoryReturnMaterialReportItem(
-                    report_no=f"FRR-{subcontract_no}-{index:03d}",
+                    report_no=report_no,
                     subcontract_no=subcontract_no,
                     factory_name=str(getattr(order, "supplier", "") or "未指定加工厂"),
                     material_code=material_code,
@@ -1296,6 +1311,167 @@ class WarehouseService:
             status=status_filter,
             items=rows,
         )
+
+    def _factory_return_material_returned_qty_by_report(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> dict[str, Decimal]:
+        session = self._require_session()
+        query = (
+            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(
+                LyWarehouseStockEntryDraft.source_type == self.FACTORY_RETURN_MATERIAL_SOURCE_TYPE,
+                LyWarehouseStockEntryDraft.purpose == "Material Receipt",
+                LyWarehouseStockEntryDraft.status != "cancelled",
+            )
+        )
+        if company:
+            query = query.filter(LyWarehouseStockEntryDraft.company == company)
+        if item_code:
+            query = query.filter(LyWarehouseStockEntryDraftItem.item_code == item_code)
+
+        returned_by_report: dict[str, Decimal] = {}
+        for draft, item in query.all():
+            report_no = self._factory_return_material_report_no_from_source(str(draft.source_id))
+            if report_no is None:
+                continue
+            warehouse_value = self._text(item.target_warehouse) or self._text(draft.target_warehouse)
+            if warehouse and warehouse_value != warehouse:
+                continue
+            qty = Decimal(str(item.qty or 0)).quantize(Decimal("0.01"))
+            returned_by_report[report_no] = returned_by_report.get(report_no, Decimal("0.00")) + qty
+        return returned_by_report
+
+    def create_factory_return_material_draft(
+        self,
+        *,
+        report_no: str,
+        payload: WarehouseFactoryReturnMaterialDraftRequest,
+        current_user: str,
+    ) -> WarehouseFactoryReturnMaterialDraftData:
+        normalized_report_no = self._require_text(report_no, "report_no")
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        report = self.list_local_factory_return_material_report(
+            company=company,
+            warehouse=None,
+            item_code=None,
+            status=None,
+        )
+        row = next((item for item in report.items if item.report_no == normalized_report_no), None)
+        if row is None:
+            raise WarehouseServiceError(404, "WAREHOUSE_RETURN_REPORT_NOT_FOUND", "应退料报表记录不存在")
+        session = self._require_session()
+        existing_draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.source_type == self.FACTORY_RETURN_MATERIAL_SOURCE_TYPE,
+                LyWarehouseStockEntryDraft.idempotency_key == idempotency_key,
+                LyWarehouseStockEntryDraft.status != "cancelled",
+            )
+            .first()
+        )
+        if existing_draft is not None:
+            existing_report_no = self._factory_return_material_report_no_from_source(str(existing_draft.source_id))
+            if existing_report_no != normalized_report_no:
+                raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", "幂等键已用于其他应退料记录")
+            return WarehouseFactoryReturnMaterialDraftData(draft=self._build_draft_data(existing_draft), report_item=row)
+        pending_qty = Decimal(str(row.pending_qty)).quantize(Decimal("0.01"))
+        if pending_qty <= Decimal("0.00"):
+            raise WarehouseServiceError(409, "WAREHOUSE_RETURN_REPORT_CLOSED", "当前应退料已关闭，无需生成退料单")
+        return_qty = (
+            Decimal(str(payload.quantity)).quantize(Decimal("0.01"))
+            if payload.quantity is not None
+            else pending_qty
+        )
+        if return_qty <= Decimal("0.00"):
+            raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", "退料数量必须大于 0")
+        if return_qty > pending_qty:
+            raise WarehouseServiceError(409, "WAREHOUSE_RETURN_QTY_EXCEEDS_PENDING", "退料数量不能超过待退数量")
+
+        source_id = self._require_text(payload.source_ref, "source_ref")
+        source_report_no = self._factory_return_material_report_no_from_source(source_id)
+        if source_report_no != normalized_report_no:
+            raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", "source_ref 与应退料记录不一致")
+        draft_payload = WarehouseStockEntryDraftCreateRequest(
+            company=company,
+            purpose="Material Receipt",
+            source_type=self.FACTORY_RETURN_MATERIAL_SOURCE_TYPE,
+            source_id=source_id,
+            source_ref=source_id,
+            warehouse=row.warehouse,
+            item_code=row.material_code,
+            operation="create_stock_entry_draft",
+            quantity=return_qty,
+            business_date=payload.business_date,
+            status_action="create",
+            scenario_tag="factory-return-material",
+            target_warehouse=row.warehouse,
+            items=[
+                WarehouseStockEntryDraftItemCreateRequest(
+                    item_code=row.material_code,
+                    qty=return_qty,
+                    uom="米",
+                    target_warehouse=row.warehouse,
+                )
+            ],
+            idempotency_key=idempotency_key,
+        )
+        draft = self.create_stock_entry_draft(payload=draft_payload, current_user=current_user)
+        updated_returned_qty = min(
+            (Decimal(str(row.returned_qty)) + return_qty).quantize(Decimal("0.01")),
+            Decimal(str(row.planned_return_qty)).quantize(Decimal("0.01")),
+        )
+        updated_pending_qty = max(
+            (Decimal(str(row.planned_return_qty)) - updated_returned_qty).quantize(Decimal("0.01")),
+            Decimal("0.00"),
+        )
+        if updated_pending_qty == Decimal("0.00"):
+            updated_status: Literal["pending", "confirmed", "closed"] = "closed"
+        elif updated_returned_qty > Decimal("0.00"):
+            updated_status = "confirmed"
+        else:
+            updated_status = "pending"
+        updated_row = row.model_copy(
+            update={
+                "returned_qty": updated_returned_qty,
+                "pending_qty": updated_pending_qty,
+                "status": updated_status,
+            }
+        )
+        return WarehouseFactoryReturnMaterialDraftData(draft=draft, report_item=updated_row)
+
+    @classmethod
+    def _factory_return_material_report_no(
+        cls,
+        *,
+        subcontract_id: int,
+        material_code: str,
+        warehouse: str,
+    ) -> str:
+        raw = f"{int(subcontract_id)}|{material_code.strip()}|{warehouse.strip()}".encode("utf-8")
+        digest = hashlib.sha1(raw).hexdigest()[:10].upper()
+        return f"FRR-{int(subcontract_id)}-{digest}"
+
+    @staticmethod
+    def _factory_return_material_report_no_from_source(source_id: str) -> str | None:
+        normalized = WarehouseService._text(source_id)
+        if normalized is None:
+            return None
+        if normalized.startswith("FRR-"):
+            return normalized.split(":", 1)[0]
+        for part in normalized.split(":"):
+            if part.startswith("FRR-"):
+                return part
+        return None
 
     def list_local_material_retention_report(
         self,
@@ -2832,6 +3008,8 @@ class WarehouseService:
         claims: list[WarehouseStockEntryOutboxClaim] = []
         for row in rows:
             payload = row.payload if isinstance(row.payload, dict) else {}
+            if self._text(payload.get("source_type")) == self.FACTORY_RETURN_MATERIAL_SOURCE_TYPE:
+                continue
             claims.append(
                 WarehouseStockEntryOutboxClaim(
                     outbox_id=int(row.id),

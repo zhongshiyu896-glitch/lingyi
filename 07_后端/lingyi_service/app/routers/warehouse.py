@@ -46,6 +46,8 @@ from app.schemas.warehouse import WarehouseBatchDetailData
 from app.schemas.warehouse import WarehouseBatchListData
 from app.schemas.warehouse import WarehouseDiagnosticData
 from app.schemas.warehouse import WarehouseFactoryReturnMaterialReportData
+from app.schemas.warehouse import WarehouseFactoryReturnMaterialDraftData
+from app.schemas.warehouse import WarehouseFactoryReturnMaterialDraftRequest
 from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidatesData
 from app.schemas.warehouse import WarehouseFinishedGoodsInboundListData
 from app.schemas.warehouse import WarehouseInventoryCountCancelRequest
@@ -1789,6 +1791,109 @@ def list_factory_return_material_report(
         )
     ]
     return _ok(data)
+
+
+@router.post("/factory-return-material-report/{report_no}/return-draft")
+def create_factory_return_material_draft(
+    report_no: str,
+    request: Request,
+    payload: WarehouseFactoryReturnMaterialDraftRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_STOCK_ENTRY_DRAFT
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_factory_return_material_report",
+    )
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+
+    service = _write_service(session)
+    try:
+        current_report = service.list_local_factory_return_material_report(
+            company=payload.company,
+            warehouse=None,
+            item_code=None,
+            status=None,
+        )
+        before_item = next((item for item in current_report.items if item.report_no == report_no), None)
+        if before_item is None:
+            raise WarehouseServiceError(404, "WAREHOUSE_RETURN_REPORT_NOT_FOUND", "应退料报表记录不存在")
+        return_qty = payload.quantity if payload.quantity is not None else before_item.pending_qty
+        _validate_local_warehouse_write_gate(
+            request_obj=request,
+            request_id=get_request_id_from_request(request).strip(),
+            scenario_tag=payload.scenario_tag,
+            operation="create_stock_entry_draft",
+            idempotency_key=payload.idempotency_key,
+            source_ref=payload.source_ref,
+            warehouse=before_item.warehouse,
+            item_code=before_item.material_code,
+            quantity=return_qty,
+            business_date=payload.business_date,
+            status_action="create",
+            carriers=[payload.scenario_tag, payload.idempotency_key, payload.source_ref],
+        )
+        _ensure_stock_entry_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            company=payload.company,
+            warehouse=before_item.warehouse,
+            item_code=before_item.material_code,
+            user_permissions=permissions,
+        )
+        data: WarehouseFactoryReturnMaterialDraftData = service.create_factory_return_material_draft(
+            report_no=report_no,
+            payload=payload,
+            current_user=current_user.username,
+        )
+        audit.record_success(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_factory_return_material_report",
+            resource_id=int(data.draft.id),
+            resource_no=report_no,
+            before_data=before_item.model_dump(mode="json"),
+            after_data=data.model_dump(mode="json"),
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except WarehouseServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_factory_return_material_report",
+            resource_id=None,
+            resource_no=report_no,
+            before_data=None,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_service_error(exc)
+    except HTTPException:
+        session.rollback()
+        raise
+    return _created(data)
 
 
 @router.get("/material-retention-report")

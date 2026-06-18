@@ -491,8 +491,8 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
         self.assertNotIn("STE-ISS-", response.text)
-        self.assertIsNone(response.json()["data"]["stock_entry_name"])
-        self.assertEqual(response.json()["data"]["sync_status"], "pending")
+        self.assertTrue(str(response.json()["data"]["stock_entry_name"]).startswith("LOCAL-ISSUE-"))
+        self.assertEqual(response.json()["data"]["sync_status"], "succeeded")
 
         with self.SessionLocal() as session:
             materials = session.query(LySubcontractMaterial).all()
@@ -514,7 +514,8 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertEqual(len(materials), 1)
         self.assertIsNotNone(outbox)
         self.assertEqual(outbox.stock_action, "issue")
-        self.assertEqual(outbox.status, "pending")
+        self.assertEqual(outbox.status, "succeeded")
+        self.assertTrue(str(outbox.stock_entry_name).startswith("LOCAL-ISSUE-"))
         self.assertIsNotNone(row)
         self.assertEqual(row.result, "success")
         self.assertIsNone(row.error_code)

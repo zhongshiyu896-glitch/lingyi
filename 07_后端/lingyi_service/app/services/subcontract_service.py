@@ -659,6 +659,15 @@ class SubcontractService:
         outbox.payload_json = payload_json
         outbox.payload = payload_json
         outbox.action = SubcontractStockOutboxService.STOCK_ACTION_ISSUE
+        issue_sync_status = "pending"
+        issue_stock_entry_name: str | None = None
+        if self._local_dev_sync_substitute_enabled():
+            issue_sync_status = "succeeded"
+            issue_stock_entry_name = f"LOCAL-ISSUE-{issue_batch_no}"
+            outbox.status = "succeeded"
+            outbox.stock_entry_name = issue_stock_entry_name
+            outbox.last_error_code = None
+            outbox.last_error_message = None
 
         next_material_id: int | None = self._next_id(LySubcontractMaterial) if self._is_sqlite else None
 
@@ -671,8 +680,8 @@ class SubcontractService:
                 material_item_code=line["material_item_code"],
                 required_qty=line["required_qty"],
                 issued_qty=line["issued_qty"],
-                sync_status="pending",
-                stock_entry_name=None,
+                sync_status=issue_sync_status,
+                stock_entry_name=issue_stock_entry_name,
             )
             if next_material_id is not None:
                 material_row.id = next_material_id
@@ -700,8 +709,8 @@ class SubcontractService:
         return IssueMaterialData(
             outbox_id=int(outbox.id),
             issue_batch_no=issue_batch_no,
-            sync_status="pending",
-            stock_entry_name=None,
+            sync_status=issue_sync_status,
+            stock_entry_name=issue_stock_entry_name,
         )
 
     def receive(

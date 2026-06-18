@@ -262,6 +262,25 @@ class WarehouseFactoryReturnMaterialReportData(BaseModel):
     items: list[WarehouseFactoryReturnMaterialReportItem]
 
 
+class WarehouseFactoryReturnMaterialDraftRequest(BaseModel):
+    """Create a return-material receipt draft from a factory return report row."""
+
+    operation: Literal["create_factory_return_material_draft"] = "create_factory_return_material_draft"
+    company: str
+    scenario_tag: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    quantity: Decimal | None = Field(default=None, gt=0)
+    business_date: date = Field(default_factory=date.today)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+
+
+class WarehouseFactoryReturnMaterialDraftData(BaseModel):
+    """Return-material draft creation result."""
+
+    draft: WarehouseStockEntryDraftData
+    report_item: WarehouseFactoryReturnMaterialReportItem
+
+
 class WarehouseMaterialRetentionReportItem(BaseModel):
     """Material retention report row derived from stock movements."""
 
