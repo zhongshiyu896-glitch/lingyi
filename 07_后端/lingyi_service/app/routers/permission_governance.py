@@ -365,14 +365,20 @@ def export_permission_operation_audit(
             page=1,
             page_size=limit,
         )
-        artifact = PermissionGovernanceExportService.build_operation_audit_csv(items=data.items)
+        export_items = data.items
+        if _scope_text(action) is None:
+            # Avoid recursive export noise: exporting operation audits writes its own
+            # permission:export audit rows, but those rows should not displace the
+            # business audit rows in a default CSV export.
+            export_items = [item for item in export_items if item.action != PERMISSION_GOVERNANCE_EXPORT]
+        artifact = PermissionGovernanceExportService.build_operation_audit_csv(items=export_items)
         _record_export_audit(
             session=session,
             request=request,
             current_user=current_user,
             resource_type="permission_operation_audit_export",
             limit=limit,
-            row_count=len(data.items),
+            row_count=len(export_items),
             success=True,
             error_code=None,
         )
