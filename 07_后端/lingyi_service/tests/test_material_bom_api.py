@@ -30,6 +30,7 @@ from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
 from app.models.sample import Base as SampleBase
+from app.models.sample import LySampleIdempotency
 from app.models.sample import LySampleMaterialBom
 from app.models.sample import LySampleMaterialBomItem
 from app.models.sample import LySampleMaterialBomOperation
@@ -108,6 +109,7 @@ class MaterialBomApiTest(unittest.TestCase):
             session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionPlan).delete()
+            session.query(LySampleIdempotency).delete()
             session.query(LySampleMaterialBomOperation).delete()
             session.query(LySampleMaterialBomItem).delete()
             session.query(LySampleMaterialBom).delete()
@@ -407,6 +409,157 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LySampleMaterialBom).count(), 1)
             self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
             self.assertEqual(session.query(LyApparelBomItem).one().material_item_code, "FAB-BLK-001")
+
+    def test_sample_material_bom_copy_edit_feeds_converted_bulk_material_check(self) -> None:
+        style_id = self._seed_style()
+        seeded = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-BULK-SEED-STYLE"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-BULK-SEED"),
+        )
+        self.assertEqual(seeded.status_code, 200, seeded.text)
+        style_bom_id = int(seeded.json()["data"]["bom"]["id"])
+
+        with self.SessionLocal() as session:
+            order = LySampleOrder(
+                company="COMP-MB",
+                sample_no="SMP-MB-BULK-001",
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="建档",
+                progress=0,
+                status="draft",
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.commit()
+            order_id = int(order.id)
+
+        copied = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/copy-from-style",
+            headers=self._headers(request_id="SAMPLE-MB-BULK-COPY"),
+            json={
+                "operation": "copy_from_style",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-BULK-COPY",
+            },
+        )
+        self.assertEqual(copied.status_code, 200, copied.text)
+        self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+
+        edited = self.client.put(
+            f"/api/sample/orders/{order_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-BULK-EDIT"),
+            json={
+                "operation": "upsert",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-BULK-EDIT",
+                "version_no": "S2",
+                "items": [
+                    {
+                        "material_item_code": "FAB-ALT-001",
+                        "color": "黑",
+                        "part": "样板改料",
+                        "qty_per_piece": "3",
+                        "loss_rate": "0.10",
+                        "uom": "米",
+                        "is_alternative": True,
+                        "replace_group": "FAB-01",
+                        "remark": "样板替代料",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(edited.status_code, 200, edited.text)
+        self.assertEqual(edited.json()["data"]["items"][0]["material_item_code"], "FAB-ALT-001")
+
+        submitted = self.client.post(
+            f"/api/sample/orders/{order_id}/submit",
+            headers=self._headers(request_id="SAMPLE-MB-BULK-SUBMIT"),
+            json={"company": "COMP-MB", "idempotency_key": "IDEMP-SAMPLE-MB-BULK-SUBMIT"},
+        )
+        sealed = self.client.post(
+            f"/api/sample/orders/{order_id}/seal",
+            headers=self._headers(request_id="SAMPLE-MB-BULK-SEAL"),
+            json={"company": "COMP-MB", "idempotency_key": "IDEMP-SAMPLE-MB-BULK-SEAL"},
+        )
+        converted = self.client.post(
+            f"/api/sample/orders/{order_id}/convert-to-bulk",
+            headers=self._headers(request_id="SAMPLE-MB-BULK-CONVERT"),
+            json={
+                "operation": "convert",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-BULK-CONVERT",
+            },
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        self.assertEqual(sealed.status_code, 200, sealed.text)
+        self.assertEqual(converted.status_code, 200, converted.text)
+        bulk_no = converted.json()["data"]["bulk_handoff_no"]
+
+        detail = self.client.get(
+            f"/api/sales-inventory/sales-orders/{bulk_no}",
+            headers=self._headers(request_id="SAMPLE-MB-BULK-DETAIL"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        sales_order_item = detail.json()["data"]["items"][0]["name"]
+
+        created_plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers(role="Production Manager", request_id="SAMPLE-MB-BULK-PLAN"),
+            json={
+                "sales_order": bulk_no,
+                "sales_order_item": sales_order_item,
+                "item_code": "ST-MB-001",
+                "bom_id": style_bom_id,
+                "planned_qty": "1",
+                "operation": "create_plan",
+                "idempotency_key": "IDEMP-SAMPLE-MB-BULK-PLAN",
+                "company": "COMP-MB",
+            },
+        )
+        self.assertEqual(created_plan.status_code, 200, created_plan.text)
+        plan_id = int(created_plan.json()["data"]["plan_id"])
+
+        material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260618-703"
+        checked = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(role="Production Manager", request_id=f"req-{material_check_scenario}"),
+            json={
+                "operation": "material_check",
+                "idempotency_key": f"{material_check_scenario}-check",
+                "scenario_tag": material_check_scenario,
+                "plan_id": plan_id,
+                "sales_order": bulk_no,
+                "sales_order_item": sales_order_item,
+                "item_code": "ST-MB-001",
+                "bom_id": style_bom_id,
+                "warehouse": "WH-MB",
+                "request_id": f"req-{material_check_scenario}",
+            },
+        )
+        self.assertEqual(checked.status_code, 200, checked.text)
+        material_row = checked.json()["data"]["items"][0]
+        self.assertEqual(material_row["material_item_code"], "FAB-ALT-001")
+        self.assertEqual(material_row["bom_item_id"], None)
+        self.assertEqual(material_row["required_qty"], "3.300000")
+
+        with self.SessionLocal() as session:
+            snapshot = session.query(LyProductionPlanMaterial).one()
+            requirement = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertIsNone(snapshot.bom_item_id)
+            self.assertEqual(snapshot.material_item_code, "FAB-ALT-001")
+            self.assertEqual(str(snapshot.required_qty), "3.300000")
+            self.assertEqual(requirement.sales_order, bulk_no)
+            self.assertEqual(requirement.material_item_code, "FAB-ALT-001")
+            self.assertEqual(str(requirement.net_required_qty), "3.300000")
 
     def test_sample_material_bom_rejects_missing_or_inactive_material(self) -> None:
         style_id = self._seed_style()
