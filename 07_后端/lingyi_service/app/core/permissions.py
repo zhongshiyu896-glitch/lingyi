@@ -115,6 +115,7 @@ WAREHOUSE_EXPORT = "warehouse:export"
 WAREHOUSE_DIAGNOSTIC = "warehouse:diagnostic"
 WAREHOUSE_STOCK_ENTRY_DRAFT = "warehouse:stock_entry_draft"
 WAREHOUSE_STOCK_ENTRY_CANCEL = "warehouse:stock_entry_cancel"
+WAREHOUSE_STOCK_HOLD_RELEASE = "warehouse:stock_hold_release"
 WAREHOUSE_INVENTORY_COUNT = "warehouse:inventory_count"
 WAREHOUSE_WORKER = "warehouse:worker"
 
@@ -281,6 +282,7 @@ ALL_WAREHOUSE_ACTIONS = {
     WAREHOUSE_DIAGNOSTIC,
     WAREHOUSE_STOCK_ENTRY_DRAFT,
     WAREHOUSE_STOCK_ENTRY_CANCEL,
+    WAREHOUSE_STOCK_HOLD_RELEASE,
     WAREHOUSE_INVENTORY_COUNT,
     WAREHOUSE_WORKER,
 }

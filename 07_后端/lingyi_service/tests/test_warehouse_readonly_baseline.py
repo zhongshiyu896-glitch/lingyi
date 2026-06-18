@@ -22,6 +22,7 @@ from app.core.permissions import WAREHOUSE_ALERT_READ
 from app.core.permissions import WAREHOUSE_DIAGNOSTIC
 from app.core.permissions import WAREHOUSE_EXPORT
 from app.core.permissions import WAREHOUSE_READ
+from app.core.permissions import WAREHOUSE_STOCK_HOLD_RELEASE
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
@@ -280,6 +281,7 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         allowed_write_routes = {
             ("POST", "/api/warehouse/stock-entry-drafts"),  # TASK-050B 审计意见书第383份
             ("POST", "/api/warehouse/stock-entry-drafts/{draft_id}/cancel"),  # TASK-050B 审计意见书第383份
+            ("POST", "/api/warehouse/stock-entry-drafts/{draft_id}/release-hold"),  # A期物料扣仓释放
             ("POST", "/api/warehouse/internal/stock-entry-sync/run-once"),  # TASK-050D_FIX1 审计意见书第389份
             ("POST", "/api/warehouse/inventory-counts"),  # TASK-050C 审计意见书第385份
             ("POST", "/api/warehouse/inventory-counts/{count_id}/submit"),  # TASK-050C 审计意见书第385份
@@ -329,7 +331,7 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
     def test_warehouse_actions_registered(self) -> None:
         actions = MODULE_ACTION_REGISTRY.get("warehouse")
         self.assertIsNotNone(actions)
-        expected = {WAREHOUSE_READ, WAREHOUSE_ALERT_READ, WAREHOUSE_EXPORT, WAREHOUSE_DIAGNOSTIC}
+        expected = {WAREHOUSE_READ, WAREHOUSE_ALERT_READ, WAREHOUSE_EXPORT, WAREHOUSE_DIAGNOSTIC, WAREHOUSE_STOCK_HOLD_RELEASE}
         self.assertTrue(expected.issubset(actions or set()))
 
 

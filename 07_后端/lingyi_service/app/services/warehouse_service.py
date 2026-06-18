@@ -2174,6 +2174,51 @@ class WarehouseService:
         session.flush()
         return self._build_draft_data(draft)
 
+    def release_material_hold_draft(
+        self,
+        *,
+        draft_id: int,
+        reason: str,
+        released_by: str,
+    ) -> WarehouseStockEntryDraftData:
+        session = self._require_session()
+        draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(LyWarehouseStockEntryDraft.id == draft_id)
+            .first()
+        )
+        if draft is None:
+            raise WarehouseServiceError(404, "WAREHOUSE_DRAFT_NOT_FOUND", "扣仓草稿不存在")
+
+        if str(draft.source_type) != "material_hold" or str(draft.purpose) != "Material Issue":
+            raise WarehouseServiceError(409, "WAREHOUSE_INVALID_SOURCE_TYPE", "仅 source_type=material_hold 的扣仓草稿允许释放")
+        if str(draft.status) == "cancelled":
+            raise WarehouseServiceError(409, "WAREHOUSE_DRAFT_ALREADY_CANCELLED", "扣仓草稿已释放")
+        if str(draft.status) not in {"draft", "pending_outbox"}:
+            raise WarehouseServiceError(409, "WAREHOUSE_INVALID_STATUS", "当前状态不允许释放扣仓")
+
+        events = (
+            session.query(LyWarehouseStockEntryOutboxEvent)
+            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == draft_id)
+            .all()
+        )
+        if any(str(event.status) == "succeeded" for event in events):
+            raise WarehouseServiceError(409, "WAREHOUSE_INVALID_STATUS", "已同步成功的扣仓草稿不可直接释放")
+
+        now = datetime.now(timezone.utc)
+        draft.status = "cancelled"
+        draft.cancelled_by = released_by
+        draft.cancelled_at = now
+        draft.cancel_reason = self._require_text(reason, "reason")
+
+        for event in events:
+            if str(event.status) in {"in_pending", "processing", "failed"}:
+                event.status = "cancelled"
+                event.processed_at = now
+
+        session.flush()
+        return self._build_draft_data(draft)
+
     def get_stock_entry_draft(self, *, draft_id: int) -> WarehouseStockEntryDraftData:
         draft = self._find_draft(draft_id=draft_id)
         if draft is None:

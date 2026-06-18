@@ -531,6 +531,21 @@ class WarehouseStockEntryDraftCancelRequest(BaseModel):
     scenario_tag: str
 
 
+class WarehouseMaterialHoldReleaseRequest(BaseModel):
+    """Release an existing material-hold stock-entry draft."""
+
+    reason: str
+    idempotency_key: str
+    source_ref: str
+    warehouse: str
+    item_code: str
+    operation: Literal["release_material_hold"]
+    quantity: Decimal
+    business_date: date
+    status_action: Literal["release"]
+    scenario_tag: str
+
+
 class WarehouseStockEntryDraftItemData(BaseModel):
     """Warehouse stock-entry draft line response."""
 

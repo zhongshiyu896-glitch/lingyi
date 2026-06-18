@@ -36,6 +36,7 @@ from app.core.permissions import WAREHOUSE_INVENTORY_COUNT
 from app.core.permissions import WAREHOUSE_READ
 from app.core.permissions import WAREHOUSE_STOCK_ENTRY_CANCEL
 from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
+from app.core.permissions import WAREHOUSE_STOCK_HOLD_RELEASE
 from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import get_permission_source
 from app.schemas.warehouse import ApiResponse
@@ -50,6 +51,7 @@ from app.schemas.warehouse import WarehouseInventoryCountCancelRequest
 from app.schemas.warehouse import WarehouseInventoryCountCreateRequest
 from app.schemas.warehouse import WarehouseInventoryCountVarianceReviewRequest
 from app.schemas.warehouse import WarehouseInventoryBalanceReconciliationListData
+from app.schemas.warehouse import WarehouseMaterialHoldReleaseRequest
 from app.schemas.warehouse import WarehouseMaterialRetentionReportData
 from app.schemas.warehouse import WarehouseOtherInboundData
 from app.schemas.warehouse import WarehousePurchaseReceiptListData
@@ -83,7 +85,7 @@ WAREHOUSE_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 WAREHOUSE_LOCAL_STOCK_SCENARIO_PATTERN = re.compile(r"(Z003-WAREHOUSE-\d{8}-\d{3})")
 WAREHOUSE_LOCAL_COUNT_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})")
 WAREHOUSE_LOCAL_STOCK_REQUEST_PATTERN = re.compile(
-    r"^(Z003-WAREHOUSE-\d{8}-\d{3})-RW-([CX])-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$",
+    r"^(Z003-WAREHOUSE-\d{8}-\d{3})-RW-([CXR])-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$",
 )
 WAREHOUSE_LOCAL_COUNT_REQUEST_PATTERN = re.compile(
     r"^(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})-REQ-COUNT-W([A-F0-9]{8})-D(\d{8})$",
@@ -151,6 +153,8 @@ def _stock_entry_operation_code(value: Any) -> str | None:
         return "C"
     if normalized == "cancel_stock_entry_draft":
         return "X"
+    if normalized == "release_material_hold":
+        return "R"
     return None
 
 
@@ -160,6 +164,8 @@ def _stock_entry_status_action_code(value: Any) -> str | None:
         return "C"
     if normalized == "cancel":
         return "X"
+    if normalized == "release":
+        return "R"
     return None
 
 
@@ -2872,6 +2878,132 @@ def cancel_stock_entry_draft(
             draft_id=draft_id,
             reason=payload.reason,
             cancelled_by=current_user.username,
+        )
+        audit.record_success(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_stock_entry_draft",
+            resource_id=int(data.id),
+            resource_no=str(data.id),
+            before_data=before_data,
+            after_data=data.model_dump(mode="json"),
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except WarehouseServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_stock_entry_draft",
+            resource_id=draft_id,
+            resource_no=str(draft_id),
+            before_data=before_data,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _ok(data)
+
+
+@router.post("/stock-entry-drafts/{draft_id}/release-hold")
+def release_material_hold_draft(
+    draft_id: int,
+    request: Request,
+    payload: WarehouseMaterialHoldReleaseRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_STOCK_HOLD_RELEASE
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_stock_entry_draft",
+    )
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+
+    try:
+        before_data = _write_service(session).get_stock_entry_draft(draft_id=draft_id).model_dump(mode="json")
+    except WarehouseServiceError as exc:
+        _raise_service_error(exc)
+
+    _validate_local_warehouse_write_gate(
+        request_obj=request,
+        request_id=get_request_id_from_request(request).strip(),
+        scenario_tag=payload.scenario_tag,
+        operation=payload.operation,
+        idempotency_key=payload.idempotency_key,
+        source_ref=payload.source_ref,
+        warehouse=payload.warehouse,
+        item_code=payload.item_code,
+        quantity=payload.quantity,
+        business_date=payload.business_date,
+        status_action=payload.status_action,
+        carriers=[payload.scenario_tag, payload.idempotency_key, payload.source_ref],
+    )
+    before_idempotency_key = _scope_text(before_data.get("idempotency_key"))
+    before_source_ref = _scope_text(before_data.get("source_id"))
+    before_source_type = _scope_text(before_data.get("source_type"))
+    before_purpose = _scope_text(before_data.get("purpose"))
+    before_warehouse = _scope_text(before_data.get("source_warehouse")) or _scope_text(before_data.get("target_warehouse"))
+    before_items = before_data.get("items") or []
+    if not isinstance(before_items, list) or len(before_items) == 0:
+        _raise_warehouse_idempotency_conflict("item_code 载体缺失")
+    before_item_code = _scope_text(before_items[0].get("item_code")) if isinstance(before_items[0], dict) else None
+    before_total_qty = sum(Decimal(str(item.get("qty", 0))) for item in before_items if isinstance(item, dict))
+    if before_source_type != "material_hold" or before_purpose != "Material Issue":
+        _raise_warehouse_idempotency_conflict("仅 material_hold 扣仓草稿允许释放")
+    if before_idempotency_key is None or _scope_text(payload.idempotency_key) != before_idempotency_key:
+        _raise_warehouse_idempotency_conflict("idempotency_key 载体与业务载体不一致")
+    if before_source_ref is None or _scope_text(payload.source_ref) != before_source_ref:
+        _raise_warehouse_idempotency_conflict("source_ref 载体与业务载体不一致")
+    if before_warehouse is None or _scope_text(payload.warehouse) != before_warehouse:
+        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+    if before_item_code is None or _scope_text(payload.item_code) != before_item_code:
+        _raise_warehouse_idempotency_conflict("item_code 载体与业务载体不一致")
+    normalized_payload_qty = _normalize_decimal_text(payload.quantity)
+    normalized_before_qty = _normalize_decimal_text(before_total_qty)
+    if normalized_payload_qty is None or normalized_before_qty is None or normalized_payload_qty != normalized_before_qty:
+        _raise_warehouse_idempotency_conflict("quantity 载体与业务载体不一致")
+    if _normalize_iso_date(payload.business_date) is None:
+        _raise_warehouse_idempotency_conflict("business_date 载体缺失或格式非法")
+
+    try:
+        _check_draft_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            draft_data=before_data,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+
+    try:
+        data = _write_service(session).release_material_hold_draft(
+            draft_id=draft_id,
+            reason=payload.reason,
+            released_by=current_user.username,
         )
         audit.record_success(
             module="warehouse",

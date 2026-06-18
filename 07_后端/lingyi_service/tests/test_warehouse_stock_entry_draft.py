@@ -112,8 +112,16 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         business_date: str | None = None,
         status_action: str = "create",
     ) -> str:
-        operation_code = "C" if operation == "create_stock_entry_draft" else "X"
-        status_action_code = "C" if status_action == "create" else "X"
+        operation_code = {
+            "create_stock_entry_draft": "C",
+            "cancel_stock_entry_draft": "X",
+            "release_material_hold": "R",
+        }.get(operation, "X")
+        status_action_code = {
+            "create": "C",
+            "cancel": "X",
+            "release": "R",
+        }.get(status_action, "X")
         return "-".join(
             [
                 cls.SCENARIO_TAG,
@@ -260,6 +268,22 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
             "quantity": payload["quantity"],
             "business_date": str(payload["business_date"]),
             "status_action": "cancel",
+            "scenario_tag": str(payload["scenario_tag"]),
+        }
+
+    @classmethod
+    def _release_hold_payload(cls, *, reason: str, source_payload: dict | None = None) -> dict:
+        payload = source_payload or cls._hold_payload()
+        return {
+            "reason": reason,
+            "idempotency_key": str(payload["idempotency_key"]),
+            "source_ref": str(payload["source_ref"]),
+            "warehouse": str(payload["warehouse"]),
+            "item_code": str(payload["item_code"]),
+            "operation": "release_material_hold",
+            "quantity": payload["quantity"],
+            "business_date": str(payload["business_date"]),
+            "status_action": "release",
             "scenario_tag": str(payload["scenario_tag"]),
         }
 
@@ -840,6 +864,147 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         )
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "WAREHOUSE_DRAFT_ALREADY_CANCELLED")
+
+    def test_release_material_hold_success_and_outbox_cancelled(self) -> None:
+        hold_payload = self._hold_payload(qty="5")
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:stock_hold_release,warehouse:read",
+                request_id=self._request_id_from_payload(hold_payload),
+            ),
+            json=hold_payload,
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        draft_id = int(create_resp.json()["data"]["id"])
+
+        release_payload = self._release_hold_payload(reason="release hold", source_payload=hold_payload)
+        release_resp = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/release-hold",
+            headers=self._headers(
+                "warehouse:stock_hold_release,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    release_payload,
+                    operation="release_material_hold",
+                    status_action="release",
+                ),
+            ),
+            json=release_payload,
+        )
+        self.assertEqual(release_resp.status_code, 200, release_resp.text)
+        self.assertEqual(release_resp.json()["data"]["status"], "cancelled")
+        self.assertEqual(release_resp.json()["data"]["outbox"]["status"], "cancelled")
+        self.assertEqual(release_resp.json()["data"]["cancel_reason"], "release hold")
+
+        with self.SessionLocal() as session:
+            draft = session.query(LyWarehouseStockEntryDraft).filter(LyWarehouseStockEntryDraft.id == draft_id).one()
+            self.assertEqual(str(draft.status), "cancelled")
+            self.assertEqual(str(draft.cancel_reason), "release hold")
+            outbox = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == draft_id)
+                .one()
+            )
+            self.assertEqual(str(outbox.status), "cancelled")
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.action == "warehouse:stock_hold_release",
+                    LyOperationAuditLog.resource_id == draft_id,
+                )
+                .one()
+            )
+            self.assertEqual(audit.after_data["source_type"], "material_hold")
+
+    def test_release_material_hold_rejects_non_hold_source_type(self) -> None:
+        sale_payload = self._sale_outbound_payload(qty="5")
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:stock_hold_release,warehouse:read",
+                request_id=self._request_id_from_payload(sale_payload),
+            ),
+            json=sale_payload,
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        draft_id = int(create_resp.json()["data"]["id"])
+
+        release_payload = self._release_hold_payload(reason="release non hold", source_payload=sale_payload)
+        response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/release-hold",
+            headers=self._headers(
+                "warehouse:stock_hold_release,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    release_payload,
+                    operation="release_material_hold",
+                    status_action="release",
+                ),
+            ),
+            json=release_payload,
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "WAREHOUSE_IDEMPOTENCY_CONFLICT")
+
+    def test_release_material_hold_rejects_succeeded_outbox(self) -> None:
+        hold_payload = self._hold_payload(qty="5")
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:stock_hold_release,warehouse:read",
+                request_id=self._request_id_from_payload(hold_payload),
+            ),
+            json=hold_payload,
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        draft_id = int(create_resp.json()["data"]["id"])
+        with self.SessionLocal() as session:
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).filter_by(draft_id=draft_id).one()
+            outbox.status = "succeeded"
+            session.commit()
+
+        release_payload = self._release_hold_payload(reason="release succeeded", source_payload=hold_payload)
+        response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/release-hold",
+            headers=self._headers(
+                "warehouse:stock_hold_release,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    release_payload,
+                    operation="release_material_hold",
+                    status_action="release",
+                ),
+            ),
+            json=release_payload,
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "WAREHOUSE_INVALID_STATUS")
+
+    def test_release_material_hold_requires_permission(self) -> None:
+        hold_payload = self._hold_payload(qty="5")
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(hold_payload),
+            ),
+            json=hold_payload,
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        draft_id = int(create_resp.json()["data"]["id"])
+
+        release_payload = self._release_hold_payload(reason="no permission", source_payload=hold_payload)
+        response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/release-hold",
+            headers=self._headers(
+                "warehouse:read",
+                request_id=self._request_id_from_payload(
+                    release_payload,
+                    operation="release_material_hold",
+                    status_action="release",
+                ),
+            ),
+            json=release_payload,
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_outbox_status_returns_correct_payload(self) -> None:
         create_resp = self.client.post(
