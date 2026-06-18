@@ -2077,6 +2077,7 @@ class WarehouseService:
         *,
         company: str | None,
         purpose: str | None,
+        source_type: str | None,
         status: str | None,
         keyword: str | None,
         page: int,
@@ -2090,6 +2091,9 @@ class WarehouseService:
         normalized_purpose = self._text(purpose)
         if normalized_purpose:
             query = query.filter(LyWarehouseStockEntryDraft.purpose == normalized_purpose)
+        normalized_source_type = self._text(source_type)
+        if normalized_source_type:
+            query = query.filter(LyWarehouseStockEntryDraft.source_type == normalized_source_type)
         normalized_status = self._text(status)
         if normalized_status:
             query = query.filter(LyWarehouseStockEntryDraft.status == normalized_status)

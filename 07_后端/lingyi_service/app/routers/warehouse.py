@@ -2608,6 +2608,7 @@ def list_stock_entry_drafts(
     request: Request,
     company: str | None = Query(default=None),
     purpose: str | None = Query(default=None),
+    source_type: str | None = Query(default=None),
     status: str | None = Query(default=None),
     keyword: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -2635,6 +2636,7 @@ def list_stock_entry_drafts(
         data = _write_service(session).list_stock_entry_drafts(
             company=company,
             purpose=purpose,
+            source_type=source_type,
             status=status,
             keyword=keyword,
             page=page,
