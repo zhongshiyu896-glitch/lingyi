@@ -177,6 +177,34 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         return payload
 
     @classmethod
+    def _material_receipt_payload(cls, *, qty: str = "5") -> dict:
+        payload = cls._payload(qty=qty)
+        payload["purpose"] = "Material Receipt"
+        payload["source_warehouse"] = None
+        payload["items"][0]["source_warehouse"] = None
+        return payload
+
+    @classmethod
+    def _process_inbound_payload(cls, *, qty: str = "6") -> dict:
+        payload = cls._material_receipt_payload(qty=qty)
+        source_ref = f"{cls.SCENARIO_TAG}-PROC-IN-001"
+        payload["source_type"] = "material_process_inbound"
+        payload["source_id"] = source_ref
+        payload["source_ref"] = source_ref
+        payload["idempotency_key"] = f"{cls.SCENARIO_TAG}-IDEM-PROC-IN-001"
+        return payload
+
+    @classmethod
+    def _other_inbound_payload(cls, *, qty: str = "7") -> dict:
+        payload = cls._material_receipt_payload(qty=qty)
+        source_ref = f"{cls.SCENARIO_TAG}-OTHER-IN-001"
+        payload["source_type"] = "material_other_inbound"
+        payload["source_id"] = source_ref
+        payload["source_ref"] = source_ref
+        payload["idempotency_key"] = f"{cls.SCENARIO_TAG}-IDEM-OTHER-IN-001"
+        return payload
+
+    @classmethod
     def _purchase_return_payload(cls, *, qty: str = "4") -> dict:
         payload = cls._material_issue_payload(qty=qty)
         source_ref = f"{cls.SCENARIO_TAG}-PUR-RET-001"
@@ -334,6 +362,67 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
             self.assertEqual(audit.after_data["purpose"], "Material Issue")
             self.assertEqual(audit.after_data["source_warehouse"], self.WAREHOUSE)
             self.assertIsNone(audit.after_data["target_warehouse"])
+
+    def test_material_receipt_filters_process_and_other_inbound_source_types(self) -> None:
+        process_payload = self._process_inbound_payload(qty="6")
+        process = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(process_payload),
+            ),
+            json=process_payload,
+        )
+        self.assertEqual(process.status_code, 201, process.text)
+        self.assertEqual(process.json()["data"]["source_type"], "material_process_inbound")
+
+        other_payload = self._other_inbound_payload(qty="7")
+        other = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(other_payload),
+            ),
+            json=other_payload,
+        )
+        self.assertEqual(other.status_code, 201, other.text)
+        other_id = int(other.json()["data"]["id"])
+        self.assertEqual(other.json()["data"]["source_type"], "material_other_inbound")
+
+        all_receipts = self.client.get(
+            "/api/warehouse/stock-entry-drafts?purpose=Material%20Receipt",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(all_receipts.status_code, 200, all_receipts.text)
+        self.assertEqual(all_receipts.json()["data"]["total"], 2)
+
+        filtered = self.client.get(
+            "/api/warehouse/stock-entry-drafts?purpose=Material%20Receipt&source_type=material_other_inbound",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(filtered.status_code, 200, filtered.text)
+        data = filtered.json()["data"]
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(int(data["items"][0]["id"]), other_id)
+        self.assertEqual(data["items"][0]["source_type"], "material_other_inbound")
+        self.assertEqual(data["items"][0]["purpose"], "Material Receipt")
+
+        with self.SessionLocal() as session:
+            draft = session.query(LyWarehouseStockEntryDraft).filter(LyWarehouseStockEntryDraft.id == other_id).one()
+            self.assertEqual(str(draft.source_type), "material_other_inbound")
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).filter_by(draft_id=other_id).one()
+            self.assertEqual(outbox.payload["source_type"], "material_other_inbound")
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:stock_entry_draft",
+                    LyOperationAuditLog.result == "success",
+                    LyOperationAuditLog.resource_id == other_id,
+                )
+                .one()
+            )
+            self.assertEqual(audit.after_data["source_type"], "material_other_inbound")
 
     def test_create_material_issue_idempotent_replay_same_payload_no_duplicate_rows(self) -> None:
         payload = self._material_issue_payload()
