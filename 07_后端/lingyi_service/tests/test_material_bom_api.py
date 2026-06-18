@@ -410,6 +410,65 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
             self.assertEqual(session.query(LyApparelBomItem).one().material_item_code, "FAB-BLK-001")
 
+    def test_sample_material_bom_copy_from_style_rechecks_active_material_snapshot(self) -> None:
+        style_id = self._seed_style()
+        seeded = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-COPY-INACTIVE-SEED"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-COPY-INACTIVE-SEED"),
+        )
+        self.assertEqual(seeded.status_code, 200, seeded.text)
+
+        with self.SessionLocal() as session:
+            material = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == "COMP-MB",
+                    LyMasterDataRecord.code == "FAB-BLK-001",
+                )
+                .one()
+            )
+            material.status = "inactive"
+            material.updated_by = "test"
+            order = LySampleOrder(
+                company="COMP-MB",
+                sample_no="SMP-MB-COPY-INACTIVE",
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="建档",
+                progress=0,
+                status="draft",
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.commit()
+            order_id = int(order.id)
+
+        copied = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/copy-from-style",
+            headers=self._headers(request_id="SAMPLE-MB-COPY-INACTIVE"),
+            json={
+                "operation": "copy_from_style",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-COPY-INACTIVE",
+            },
+        )
+        self.assertEqual(copied.status_code, 409, copied.text)
+        self.assertEqual(copied.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+        self.assertIn("FAB-BLK-001", copied.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleMaterialBom).count(), 0)
+            self.assertEqual(session.query(LySampleMaterialBomItem).count(), 0)
+            self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 0)
+
     def test_sample_material_bom_copy_edit_feeds_converted_bulk_material_check(self) -> None:
         style_id = self._seed_style()
         seeded = self.client.put(
