@@ -92,6 +92,7 @@ def _create_local_tables() -> None:
     _ensure_local_sales_order_item_calc_columns()
     _ensure_local_sales_order_idempotency_supports_update()
     _ensure_local_style_dictionary_color_size_types()
+    _ensure_local_style_master_idempotency_supports_gallery()
     _ensure_local_sample_style_master_link()
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
@@ -293,6 +294,52 @@ def _ensure_local_style_dictionary_color_size_types() -> None:
                 ON ly_style_dictionary (dict_type, company, code);
             CREATE INDEX IF NOT EXISTS idx_ly_style_dictionary_company_type_status
                 ON ly_style_dictionary (company, dict_type, status);
+            PRAGMA foreign_keys=on;
+            """
+        )
+
+
+def _ensure_local_style_master_idempotency_supports_gallery() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_style_master_idempotency'"
+        ).fetchone()
+        existing_sql = str(row[0]) if row else ""
+        if not row or "'gallery'" in existing_sql:
+            return
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            DROP INDEX IF EXISTS uk_ly_style_master_idem_key;
+            DROP INDEX IF EXISTS idx_ly_style_master_idem_record;
+            CREATE TABLE ly_style_master_idempotency_new (
+                id INTEGER NOT NULL,
+                entity_type VARCHAR(32) NOT NULL,
+                company VARCHAR(140) NOT NULL,
+                idempotency_key VARCHAR(140) NOT NULL,
+                operation VARCHAR(32) NOT NULL,
+                request_hash VARCHAR(64) NOT NULL,
+                record_id INTEGER NOT NULL,
+                created_by VARCHAR(140) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ck_ly_style_master_idem_entity CHECK (entity_type IN ('style','dictionary','gallery')),
+                CONSTRAINT ck_ly_style_master_idem_operation CHECK (operation IN ('create','update','deactivate'))
+            );
+            INSERT INTO ly_style_master_idempotency_new (
+                id, entity_type, company, idempotency_key, operation, request_hash, record_id, created_by, created_at
+            )
+            SELECT id, entity_type, company, idempotency_key, operation, request_hash, record_id, created_by, created_at
+            FROM ly_style_master_idempotency;
+            DROP TABLE ly_style_master_idempotency;
+            ALTER TABLE ly_style_master_idempotency_new RENAME TO ly_style_master_idempotency;
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_style_master_idem_key
+                ON ly_style_master_idempotency (entity_type, company, idempotency_key);
+            CREATE INDEX IF NOT EXISTS idx_ly_style_master_idem_record
+                ON ly_style_master_idempotency (entity_type, record_id);
             PRAGMA foreign_keys=on;
             """
         )

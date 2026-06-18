@@ -287,6 +287,7 @@ def deactivate_style_gallery(
             mutate=lambda service: service.deactivate_style_gallery(
                 gallery_id=gallery_id,
                 company=payload.company,
+                idempotency_key=payload.idempotency_key,
                 reason=payload.reason,
                 actor=current_user.username,
             ),

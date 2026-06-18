@@ -124,6 +124,7 @@ class StyleGalleryCreateRequest(BaseModel):
 
     operation: Literal["create"] = "create"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
     style_master_id: int = Field(..., gt=0)
     image_url: str = Field(..., min_length=1, max_length=2048)
     thumbnail_url: str | None = Field(default=None, max_length=2048)
@@ -137,6 +138,7 @@ class StyleGalleryUpdateRequest(BaseModel):
 
     operation: Literal["update"] = "update"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
     image_url: str | None = Field(default=None, min_length=1, max_length=2048)
     thumbnail_url: str | None = Field(default=None, max_length=2048)
     image_name: str | None = Field(default=None, max_length=255)
@@ -149,6 +151,7 @@ class StyleGalleryDeactivateRequest(BaseModel):
 
     operation: Literal["deactivate"] = "deactivate"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
     reason: str = Field(default="前端款式图库页停用", min_length=1, max_length=255)
 
 

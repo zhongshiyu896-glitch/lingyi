@@ -188,27 +188,54 @@ class StyleMasterService:
 
     def create_style_gallery(self, *, payload: StyleGalleryCreateRequest, actor: str) -> StyleMasterMutationResult:
         company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         style = self._get_style_for_read(style_id=payload.style_master_id, company=company)
         image_url = self._require_text(payload.image_url, "image_url")
         image_type = self._normalize_gallery_image_type(payload.image_type)
+        values = {
+            "style_master_id": int(style.id),
+            "image_url": image_url,
+            "thumbnail_url": self._optional_text(payload.thumbnail_url) or image_url,
+            "image_name": self._optional_text(payload.image_name),
+            "image_type": image_type,
+            "is_primary": bool(payload.is_primary),
+        }
+        request_hash = self._request_hash(operation="create", entity_type="gallery", company=company, values=values)
+        idem = self._get_idempotency(entity_type="gallery", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="create", request_hash=request_hash)
+            row = self._get_gallery_by_id(idem.record_id)
+            idem_style = self._get_style_for_read(style_id=int(row.style_master_id), company=str(row.company))
+            after = self._snapshot_gallery(row=row, style=idem_style)
+            return self._gallery_result(row=row, style=idem_style, before=after, after=after, idempotent=True)
         now = datetime.now(UTC)
         try:
             if payload.is_primary:
                 self._clear_other_primary_gallery(company=company, style_master_id=int(style.id))
             row = LyStyleGallery(
                 company=company,
-                style_master_id=int(style.id),
-                image_url=image_url,
-                thumbnail_url=self._optional_text(payload.thumbnail_url) or image_url,
-                image_name=self._optional_text(payload.image_name),
-                image_type=image_type,
-                is_primary=bool(payload.is_primary),
+                style_master_id=values["style_master_id"],
+                image_url=values["image_url"],
+                thumbnail_url=values["thumbnail_url"],
+                image_name=values["image_name"],
+                image_type=values["image_type"],
+                is_primary=values["is_primary"],
                 status="active",
                 created_by=actor,
                 updated_by=actor,
                 updated_at=now,
             )
             self.session.add(row)
+            self.session.flush()
+            self._insert_idempotency(
+                entity_type="gallery",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="create",
+                request_hash=request_hash,
+                record_id=int(row.id),
+                actor=actor,
+            )
             self.session.flush()
         except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
@@ -223,24 +250,49 @@ class StyleMasterService:
         actor: str,
     ) -> StyleMasterMutationResult:
         company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         row = self._get_gallery_for_mutation(gallery_id=gallery_id, company=company)
         style = self._get_style_for_read(style_id=int(row.style_master_id), company=company)
+        values = {
+            "image_url": self._require_text(payload.image_url, "image_url") if payload.image_url is not None else str(row.image_url),
+            "thumbnail_url": (
+                self._optional_text(payload.thumbnail_url) or (self._require_text(payload.image_url, "image_url") if payload.image_url is not None else str(row.image_url))
+                if payload.thumbnail_url is not None
+                else (row.thumbnail_url or row.image_url)
+            ),
+            "image_name": self._optional_text(payload.image_name) if payload.image_name is not None else row.image_name,
+            "image_type": self._normalize_gallery_image_type(payload.image_type or str(row.image_type)),
+            "is_primary": bool(payload.is_primary) if payload.is_primary is not None else bool(row.is_primary),
+        }
+        request_hash = self._request_hash(operation="update", entity_type="gallery", company=company, gallery_id=gallery_id, values=values)
+        idem = self._get_idempotency(entity_type="gallery", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="update", request_hash=request_hash)
+            idem_row = self._get_gallery_by_id(idem.record_id)
+            idem_style = self._get_style_for_read(style_id=int(idem_row.style_master_id), company=str(idem_row.company))
+            after = self._snapshot_gallery(row=idem_row, style=idem_style)
+            return self._gallery_result(row=idem_row, style=idem_style, before=after, after=after, idempotent=True)
         before = self._snapshot_gallery(row=row, style=style)
         try:
-            if payload.image_url is not None:
-                row.image_url = self._require_text(payload.image_url, "image_url")
-            if payload.thumbnail_url is not None:
-                row.thumbnail_url = self._optional_text(payload.thumbnail_url) or row.image_url
-            if payload.image_name is not None:
-                row.image_name = self._optional_text(payload.image_name)
-            if payload.image_type is not None:
-                row.image_type = self._normalize_gallery_image_type(payload.image_type)
+            row.image_url = values["image_url"]
+            row.thumbnail_url = values["thumbnail_url"]
+            row.image_name = values["image_name"]
+            row.image_type = values["image_type"]
             if payload.is_primary is not None:
                 if payload.is_primary:
                     self._clear_other_primary_gallery(company=company, style_master_id=int(row.style_master_id), exclude_gallery_id=int(row.id))
-                row.is_primary = bool(payload.is_primary)
+                row.is_primary = values["is_primary"]
             row.updated_by = actor
             row.updated_at = datetime.now(UTC)
+            self._insert_idempotency(
+                entity_type="gallery",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="update",
+                request_hash=request_hash,
+                record_id=int(row.id),
+                actor=actor,
+            )
             self.session.flush()
         except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
@@ -252,11 +304,21 @@ class StyleMasterService:
         *,
         gallery_id: int,
         company: str,
+        idempotency_key: str,
         reason: str,
         actor: str,
     ) -> StyleMasterMutationResult:
         company = self._require_text(company, "company")
+        idempotency_key = self._require_text(idempotency_key, "idempotency_key")
         reason = self._require_text(reason, "reason")
+        request_hash = self._request_hash(operation="deactivate", entity_type="gallery", company=company, gallery_id=gallery_id, reason=reason)
+        idem = self._get_idempotency(entity_type="gallery", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="deactivate", request_hash=request_hash)
+            idem_row = self._get_gallery_by_id(idem.record_id)
+            idem_style = self._get_style_for_read(style_id=int(idem_row.style_master_id), company=str(idem_row.company))
+            after = self._snapshot_gallery(row=idem_row, style=idem_style)
+            return self._gallery_result(row=idem_row, style=idem_style, before=after, after=after, idempotent=True)
         row = self._get_gallery_for_mutation(gallery_id=gallery_id, company=company)
         style = self._get_style_for_read(style_id=int(row.style_master_id), company=company)
         before = self._snapshot_gallery(row=row, style=style)
@@ -268,6 +330,15 @@ class StyleMasterService:
             row.deactivate_reason = reason
             row.updated_by = actor
             row.updated_at = datetime.now(UTC)
+            self._insert_idempotency(
+                entity_type="gallery",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="deactivate",
+                request_hash=request_hash,
+                record_id=int(row.id),
+                actor=actor,
+            )
             self.session.flush()
         except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
@@ -1035,6 +1106,12 @@ class StyleMasterService:
             raise BusinessException(code=STYLE_MASTER_NOT_FOUND)
         return row
 
+    def _get_gallery_by_id(self, gallery_id: int) -> LyStyleGallery:
+        row = self.session.query(LyStyleGallery).filter(LyStyleGallery.id == int(gallery_id)).first()
+        if row is None:
+            raise BusinessException(code=STYLE_MASTER_NOT_FOUND, message="款式图库记录不存在")
+        return row
+
     def _get_style_by_no(self, *, company: str, style_no: str) -> LyStyleMaster | None:
         return self.session.query(LyStyleMaster).filter(LyStyleMaster.company == company, LyStyleMaster.ys_style_no == style_no).first()
 
@@ -1130,6 +1207,7 @@ class StyleMasterService:
         style: LyStyleMaster,
         before: dict[str, Any] | None,
         after: dict[str, Any],
+        idempotent: bool = False,
     ) -> StyleMasterMutationResult:
         return StyleMasterMutationResult(
             item=self._gallery_item(row=row, style=style),
@@ -1138,6 +1216,7 @@ class StyleMasterService:
             resource_type="STYLE_GALLERY",
             resource_id=int(row.id),
             resource_no=str(style.ys_style_no),
+            idempotent=idempotent,
         )
 
     def _style_item(self, row: LyStyleMaster, gallery_summary: dict[str, Any] | None = None) -> StyleMasterItem:

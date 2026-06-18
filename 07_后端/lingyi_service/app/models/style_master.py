@@ -119,7 +119,7 @@ class LyStyleMasterIdempotency(Base):
     __table_args__ = (
         Index("uk_ly_style_master_idem_key", "entity_type", "company", "idempotency_key", unique=True),
         Index("idx_ly_style_master_idem_record", "entity_type", "record_id"),
-        CheckConstraint("entity_type IN ('style','dictionary')", name="ck_ly_style_master_idem_entity"),
+        CheckConstraint("entity_type IN ('style','dictionary','gallery')", name="ck_ly_style_master_idem_entity"),
         CheckConstraint(
             "operation IN ('create','update','deactivate')",
             name="ck_ly_style_master_idem_operation",

@@ -276,6 +276,7 @@ class StyleMasterApiTest(unittest.TestCase):
             json={
                 "operation": "create",
                 "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-001-G-C",
                 "style_master_id": style_id,
                 "image_url": "https://example.test/style-main.jpg",
                 "thumbnail_url": "https://example.test/style-main-thumb.jpg",
@@ -290,6 +291,40 @@ class StyleMasterApiTest(unittest.TestCase):
         self.assertEqual(gallery_body["ys_style_name_cn"], "A3 最小款式")
         self.assertTrue(gallery_body["is_primary"])
         gallery_id = int(gallery_body["id"])
+
+        gallery_retry = self.client.post(
+            "/api/style-master/style-gallery",
+            headers=self._headers(request_id="STYLE-GALLERY-CREATE-001-R"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-001-G-C",
+                "style_master_id": style_id,
+                "image_url": "https://example.test/style-main.jpg",
+                "thumbnail_url": "https://example.test/style-main-thumb.jpg",
+                "image_name": "主图",
+                "image_type": "main",
+                "is_primary": True,
+            },
+        )
+        self.assertEqual(gallery_retry.status_code, 201)
+        self.assertEqual(int(gallery_retry.json()["data"]["id"]), gallery_id)
+
+        gallery_conflict = self.client.post(
+            "/api/style-master/style-gallery",
+            headers=self._headers(request_id="STYLE-GALLERY-CREATE-001-C"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-001-G-C",
+                "style_master_id": style_id,
+                "image_url": "https://example.test/style-other.jpg",
+                "image_type": "main",
+                "is_primary": True,
+            },
+        )
+        self.assertEqual(gallery_conflict.status_code, 409)
+        self.assertEqual(gallery_conflict.json()["code"], "STYLE_MASTER_IDEMPOTENCY_CONFLICT")
 
         listed_gallery = self.client.get(
             f"/api/style-master/style-gallery?company=COMP-A&style_id={style_id}",
@@ -309,12 +344,62 @@ class StyleMasterApiTest(unittest.TestCase):
         self.assertEqual(style_item["primary_image_url"], "https://example.test/style-main.jpg")
         self.assertEqual(style_item["gallery_count"], 1)
 
+        updated_gallery = self.client.patch(
+            f"/api/style-master/style-gallery/{gallery_id}",
+            headers=self._headers(request_id="STYLE-GALLERY-UPDATE-001"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-001-G-U",
+                "image_url": "https://example.test/style-main-updated.jpg",
+                "thumbnail_url": "https://example.test/style-main-updated-thumb.jpg",
+                "image_name": "主图更新",
+                "image_type": "detail",
+                "is_primary": True,
+            },
+        )
+        self.assertEqual(updated_gallery.status_code, 200)
+        self.assertEqual(updated_gallery.json()["data"]["image_url"], "https://example.test/style-main-updated.jpg")
+        update_retry = self.client.patch(
+            f"/api/style-master/style-gallery/{gallery_id}",
+            headers=self._headers(request_id="STYLE-GALLERY-UPDATE-001-R"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-001-G-U",
+                "image_url": "https://example.test/style-main-updated.jpg",
+                "thumbnail_url": "https://example.test/style-main-updated-thumb.jpg",
+                "image_name": "主图更新",
+                "image_type": "detail",
+                "is_primary": True,
+            },
+        )
+        self.assertEqual(update_retry.status_code, 200)
+        self.assertEqual(int(update_retry.json()["data"]["id"]), gallery_id)
+
         deactivated = self.client.post(
             f"/api/style-master/style-gallery/{gallery_id}/deactivate",
             headers=self._headers(request_id="STYLE-GALLERY-DEACTIVATE-001"),
-            json={"operation": "deactivate", "company": "COMP-A", "reason": "测试停用图库"},
+            json={
+                "operation": "deactivate",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-001-G-D",
+                "reason": "测试停用图库",
+            },
         )
         self.assertEqual(deactivated.status_code, 200)
+        deactivate_retry = self.client.post(
+            f"/api/style-master/style-gallery/{gallery_id}/deactivate",
+            headers=self._headers(request_id="STYLE-GALLERY-DEACTIVATE-001-R"),
+            json={
+                "operation": "deactivate",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-001-G-D",
+                "reason": "测试停用图库",
+            },
+        )
+        self.assertEqual(deactivate_retry.status_code, 200)
+        self.assertEqual(int(deactivate_retry.json()["data"]["id"]), gallery_id)
 
         listed_after = self.client.get(
             f"/api/style-master/style-gallery?company=COMP-A&style_id={style_id}",
