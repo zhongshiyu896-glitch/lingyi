@@ -43,6 +43,7 @@ from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E
 from app.models.factory_statement import LyFactoryStatement  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
 from app.models.master_data import Base as MasterDataBase  # noqa: E402
+from app.models.master_data import LyMasterDataRecord  # noqa: E402
 from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrder  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrderItem  # noqa: E402
@@ -1379,21 +1380,83 @@ def _exercise_inventory_count_smoke(client: TestClient) -> None:
 def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
     company = "COMP-SAMPLE-SMOKE"
     sample_no = "SMP-SMOKE-001"
+    style_no = "ST-SAMPLE-SMOKE"
+    material_code = "MAT-SAMPLE-SMOKE"
+    alternative_material_code = "MAT-SAMPLE-ALT-SMOKE"
     with session_local() as session:
         _seed_style_master(
             session,
             company=company,
-            style_no="ST-SAMPLE-SMOKE",
+            style_no=style_no,
             style_name="Smoke 样衣款",
             colors=[{"ys_color_code": "BLUE", "ys_color_name": "蓝色"}],
             sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
+        )
+        session.flush()
+        style = (
+            session.query(LyStyleMaster)
+            .filter(
+                LyStyleMaster.company == company,
+                LyStyleMaster.ys_style_no == style_no,
+            )
+            .one()
+        )
+        for code, name in (
+            (material_code, "Smoke 样衣面料"),
+            (alternative_material_code, "Smoke 样衣替代料"),
+        ):
+            if (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code == code,
+                )
+                .first()
+                is None
+            ):
+                session.add(
+                    LyMasterDataRecord(
+                        entity_type="material",
+                        company=company,
+                        code=code,
+                        name=name,
+                        status="active",
+                        payload={"material_item_code": code, "material_kind": "fabric"},
+                        created_by="frontend.readiness.smoke",
+                        updated_by="frontend.readiness.smoke",
+                    )
+                )
+        session.add(
+            LyApparelBom(
+                id=1201,
+                bom_no="BOM-SAMPLE-SMOKE-001",
+                company=company,
+                style_master_id=int(style.id),
+                item_code=style_no,
+                version_no="v1",
+                is_default=True,
+                status="active",
+                created_by="frontend.readiness.smoke",
+                updated_by="frontend.readiness.smoke",
+            )
+        )
+        session.add(
+            LyApparelBomItem(
+                id=1201,
+                bom_id=1201,
+                material_item_code=material_code,
+                qty_per_piece=Decimal("1.2"),
+                loss_rate=Decimal("0.05"),
+                uom="米",
+            )
         )
         session.commit()
     create_payload = {
         "operation": "create",
         "company": company,
         "sample_no": sample_no,
-        "style_no": "ST-SAMPLE-SMOKE",
+        "style_no": style_no,
         "style_name": "Smoke 样衣款",
         "customer": "CUST-SAMPLE-SMOKE",
         "factory": "FAC-SAMPLE-SMOKE",
@@ -1425,6 +1488,64 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
     )
     _assert(replay.status_code == 201, replay.text)
     _assert(int(replay.json()["data"]["id"]) == order_id, "sample create idempotent replay mismatch")
+
+    copied_bom = client.post(
+        f"/api/sample/orders/{order_id}/material-bom/copy-from-style",
+        headers=_headers(request_id="SAMPLE-SMOKE-BOM-001"),
+        json={
+            "operation": "copy_from_style",
+            "company": company,
+            "idempotency_key": "sample-smoke:bom-copy:001",
+        },
+    )
+    _assert(copied_bom.status_code == 200, copied_bom.text)
+    copied_bom_data = copied_bom.json()["data"]
+    _assert(copied_bom_data["bom"]["source_bom_id"] == 1201, "sample BOM source_bom_id mismatch")
+    _assert(copied_bom_data["items"][0]["material_item_code"] == material_code, "sample copied BOM material mismatch")
+
+    edited_bom = client.put(
+        f"/api/sample/orders/{order_id}/material-bom",
+        headers=_headers(request_id="SAMPLE-SMOKE-BOM-002"),
+        json={
+            "operation": "upsert",
+            "company": company,
+            "idempotency_key": "sample-smoke:bom-upsert:001",
+            "version_no": "S2",
+            "items": [
+                {
+                    "material_item_code": alternative_material_code,
+                    "color": "蓝色",
+                    "part": "袖口",
+                    "qty_per_piece": "1.5",
+                    "loss_rate": "0.10",
+                    "uom": "米",
+                    "is_alternative": True,
+                    "replace_group": "FAB-SAMPLE",
+                    "remark": "acceptance-smoke 替代料",
+                }
+            ],
+        },
+    )
+    _assert(edited_bom.status_code == 200, edited_bom.text)
+    edited_bom_data = edited_bom.json()["data"]
+    _assert(edited_bom_data["bom"]["source_bom_id"] == 1201, "sample edited BOM should keep source_bom_id")
+    _assert(edited_bom_data["items"][0]["is_alternative"], "sample edited BOM alternative flag mismatch")
+
+    exploded_bom = client.post(
+        f"/api/sample/orders/{order_id}/material-bom/explode?company={company}",
+        headers=_headers(request_id="SAMPLE-SMOKE-BOM-003"),
+        json={"order_qty": "20"},
+    )
+    _assert(exploded_bom.status_code == 200, exploded_bom.text)
+    exploded_bom_data = exploded_bom.json()["data"]
+    _assert(
+        exploded_bom_data["items"][0]["material_item_code"] == alternative_material_code,
+        "sample exploded BOM material mismatch",
+    )
+    _assert(
+        Decimal(str(exploded_bom_data["items"][0]["required_qty"])) == Decimal("33.000000"),
+        "sample exploded BOM required qty mismatch",
+    )
 
     updated = client.patch(
         f"/api/sample/orders/{order_id}",
