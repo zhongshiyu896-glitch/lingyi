@@ -225,6 +225,16 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         return payload
 
     @classmethod
+    def _hold_payload(cls, *, qty: str = "5") -> dict:
+        payload = cls._material_issue_payload(qty=qty)
+        source_ref = f"{cls.SCENARIO_TAG}-HOLD-001"
+        payload["source_type"] = "material_hold"
+        payload["source_id"] = source_ref
+        payload["source_ref"] = source_ref
+        payload["idempotency_key"] = f"{cls.SCENARIO_TAG}-IDEM-HOLD-001"
+        return payload
+
+    @classmethod
     def _request_id_from_payload(cls, payload: dict, *, operation: str | None = None, status_action: str | None = None) -> str:
         return cls._request_id(
             operation=operation or str(payload["operation"]),
@@ -600,6 +610,67 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
                 .one()
             )
             self.assertEqual(audit.after_data["source_type"], "material_sale_outbound")
+
+    def test_material_hold_issue_filters_by_source_type(self) -> None:
+        hold_payload = self._hold_payload(qty="5")
+        created = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(hold_payload),
+            ),
+            json=hold_payload,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        hold_id = int(created.json()["data"]["id"])
+        self.assertEqual(created.json()["data"]["source_type"], "material_hold")
+
+        sale_payload = self._sale_outbound_payload(qty="3")
+        sale = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(sale_payload),
+            ),
+            json=sale_payload,
+        )
+        self.assertEqual(sale.status_code, 201, sale.text)
+        self.assertEqual(sale.json()["data"]["source_type"], "material_sale_outbound")
+
+        all_issues = self.client.get(
+            "/api/warehouse/stock-entry-drafts?purpose=Material%20Issue",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(all_issues.status_code, 200, all_issues.text)
+        self.assertEqual(all_issues.json()["data"]["total"], 2)
+
+        filtered = self.client.get(
+            "/api/warehouse/stock-entry-drafts?purpose=Material%20Issue&source_type=material_hold",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(filtered.status_code, 200, filtered.text)
+        data = filtered.json()["data"]
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(int(data["items"][0]["id"]), hold_id)
+        self.assertEqual(data["items"][0]["source_type"], "material_hold")
+        self.assertEqual(data["items"][0]["purpose"], "Material Issue")
+
+        with self.SessionLocal() as session:
+            draft = session.query(LyWarehouseStockEntryDraft).filter(LyWarehouseStockEntryDraft.id == hold_id).one()
+            self.assertEqual(str(draft.source_type), "material_hold")
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).filter_by(draft_id=hold_id).one()
+            self.assertEqual(outbox.payload["source_type"], "material_hold")
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:stock_entry_draft",
+                    LyOperationAuditLog.result == "success",
+                    LyOperationAuditLog.resource_id == hold_id,
+                )
+                .one()
+            )
+            self.assertEqual(audit.after_data["source_type"], "material_hold")
 
     def test_replay_with_different_payload_returns_409(self) -> None:
         first_payload = self._payload(qty="5")
