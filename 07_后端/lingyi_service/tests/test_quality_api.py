@@ -364,7 +364,11 @@ class QualityApiTest(QualityApiBase):
 
         with patch.dict(
             "os.environ",
-            self._local_gate_env(),
+            {
+                **self._local_gate_env(),
+                "QUALITY_ACCEPTED_WAREHOUSE": "WH-QUALITY-OK",
+                "QUALITY_REJECTED_WAREHOUSE": "WH-QUALITY-NG",
+            },
         ), patch(
             "app.services.quality_service.QualitySourceValidator.validate_for_payload",
             return_value=self._source_snapshot(),
@@ -376,6 +380,10 @@ class QualityApiTest(QualityApiBase):
             )
         self.assertEqual(confirm.status_code, 200, confirm.text)
         self.assertEqual(confirm.json()["data"]["status"], "confirmed")
+        with self.SessionLocal() as session:
+            outbox = session.query(LyQualityOutbox).filter(LyQualityOutbox.inspection_id == inspection_id).one()
+            self.assertEqual(outbox.payload_json["accepted_warehouse"], "WH-QUALITY-OK")
+            self.assertEqual(outbox.payload_json["rejected_warehouse"], "WH-QUALITY-NG")
 
         cancel_payload = self._action_payload(
             seeded,

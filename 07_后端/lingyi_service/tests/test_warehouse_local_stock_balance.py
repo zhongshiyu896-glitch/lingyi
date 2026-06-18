@@ -14,6 +14,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models.quality import Base as QualityBase
+from app.models.quality import LyQualityInspection
+from app.models.quality_outbox import LyQualityOutbox
 from app.models.subcontract import Base as SubcontractBase
 from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractOrder
@@ -51,6 +53,8 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
+            session.query(LyQualityOutbox).delete()
+            session.query(LyQualityInspection).delete()
             session.query(LySubcontractReceipt).delete()
             session.query(LySubcontractMaterial).delete()
             session.query(LySubcontractStockOutbox).delete()
@@ -70,6 +74,7 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         business_date: date,
         source_warehouse: str | None = None,
         target_warehouse: str | None = None,
+        item_code: str = "FAB-A",
         status: str = "pending_outbox",
     ) -> None:
         created_at = datetime.combine(business_date, datetime.min.time(), timezone.utc)
@@ -92,7 +97,7 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
             LyWarehouseStockEntryDraftItem(
                 draft_id=draft.id,
                 company="COMP-A",
-                item_code="FAB-A",
+                item_code=item_code,
                 qty=Decimal(qty),
                 uom="米",
                 source_warehouse=source_warehouse,
@@ -445,6 +450,253 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         self.assertEqual(ledger.items[0].voucher_type, "Stock Entry Draft/Material Receipt")
         self.assertEqual(Decimal(str(ledger.items[0].qty_after_transaction)), Decimal("10.000000"))
         self.assertEqual(Decimal(str(summary.items[0].actual_qty)), Decimal("10.000000"))
+
+    def test_quality_succeeded_outbox_enters_unified_stock_balance(self) -> None:
+        with self.SessionLocal() as session:
+            self._add_draft(
+                session,
+                source_id="RCPT-QC-BASE",
+                purpose="Material Receipt",
+                target_warehouse="WH-QC",
+                qty="10",
+                business_date=date(2026, 6, 1),
+                item_code="FAB-QC",
+            )
+            session.add_all(
+                [
+                    LyQualityInspection(
+                        id=701,
+                        inspection_no="QI-BAL-001",
+                        company="COMP-A",
+                        source_type="incoming_material",
+                        source_id="PR-QC-001",
+                        item_code="FAB-QC",
+                        supplier="SUP-QC",
+                        warehouse="WH-QC",
+                        inspection_date=date(2026, 6, 2),
+                        inspected_qty=Decimal("10"),
+                        accepted_qty=Decimal("8"),
+                        rejected_qty=Decimal("2"),
+                        defect_qty=Decimal("2"),
+                        defect_rate=Decimal("0.2"),
+                        rejected_rate=Decimal("0.2"),
+                        result="partial",
+                        status="confirmed",
+                        created_by="quality.test",
+                        updated_by="quality.test",
+                        confirmed_by="quality.test",
+                        confirmed_at=datetime(2026, 6, 2, 9, tzinfo=timezone.utc),
+                    ),
+                    LyQualityInspection(
+                        id=702,
+                        inspection_no="QI-BAL-PENDING",
+                        company="COMP-A",
+                        source_type="incoming_material",
+                        source_id="PR-QC-002",
+                        item_code="FAB-QC",
+                        supplier="SUP-QC",
+                        warehouse="WH-QC",
+                        inspection_date=date(2026, 6, 2),
+                        inspected_qty=Decimal("5"),
+                        accepted_qty=Decimal("5"),
+                        rejected_qty=Decimal("0"),
+                        defect_qty=Decimal("0"),
+                        defect_rate=Decimal("0"),
+                        rejected_rate=Decimal("0"),
+                        result="pass",
+                        status="confirmed",
+                        created_by="quality.test",
+                        updated_by="quality.test",
+                        confirmed_by="quality.test",
+                        confirmed_at=datetime(2026, 6, 2, 10, tzinfo=timezone.utc),
+                    ),
+                    LyQualityInspection(
+                        id=703,
+                        inspection_no="QI-BAL-NO-ENTRY",
+                        company="COMP-A",
+                        source_type="incoming_material",
+                        source_id="PR-QC-003",
+                        item_code="FAB-QC",
+                        supplier="SUP-QC",
+                        warehouse="WH-QC",
+                        inspection_date=date(2026, 6, 2),
+                        inspected_qty=Decimal("3"),
+                        accepted_qty=Decimal("3"),
+                        rejected_qty=Decimal("0"),
+                        defect_qty=Decimal("0"),
+                        defect_rate=Decimal("0"),
+                        rejected_rate=Decimal("0"),
+                        result="pass",
+                        status="confirmed",
+                        created_by="quality.test",
+                        updated_by="quality.test",
+                        confirmed_by="quality.test",
+                        confirmed_at=datetime(2026, 6, 2, 11, tzinfo=timezone.utc),
+                    ),
+                    LyQualityInspection(
+                        id=704,
+                        inspection_no="QI-BAL-OTHER-EVENT",
+                        company="COMP-A",
+                        source_type="incoming_material",
+                        source_id="PR-QC-004",
+                        item_code="FAB-QC",
+                        supplier="SUP-QC",
+                        warehouse="WH-QC",
+                        inspection_date=date(2026, 6, 2),
+                        inspected_qty=Decimal("4"),
+                        accepted_qty=Decimal("4"),
+                        rejected_qty=Decimal("0"),
+                        defect_qty=Decimal("0"),
+                        defect_rate=Decimal("0"),
+                        rejected_rate=Decimal("0"),
+                        result="pass",
+                        status="confirmed",
+                        created_by="quality.test",
+                        updated_by="quality.test",
+                        confirmed_by="quality.test",
+                        confirmed_at=datetime(2026, 6, 2, 12, tzinfo=timezone.utc),
+                    ),
+                ]
+            )
+            session.add_all(
+                [
+                    LyQualityOutbox(
+                        id=701,
+                        inspection_id=701,
+                        company="COMP-A",
+                        event_type="quality_stock_entry_sync",
+                        event_key="quality-balance-succeeded",
+                        payload_json={
+                            "inspection_id": 701,
+                            "inspection_no": "QI-BAL-001",
+                            "company": "COMP-A",
+                            "source_type": "incoming_material",
+                            "source_id": "PR-QC-001",
+                            "item_code": "FAB-QC",
+                            "supplier": "SUP-QC",
+                            "warehouse": "WH-QC",
+                            "accepted_qty": "8",
+                            "rejected_qty": "2",
+                            "accepted_warehouse": "WH-PASS",
+                            "rejected_warehouse": "WH-REJECT",
+                            "confirmed_at": "2026-06-02T09:00:00+00:00",
+                        },
+                        payload_hash="quality-balance-succeeded-hash",
+                        status="succeeded",
+                        stock_entry_name="STE-QUALITY-STOCK-001",
+                        created_by="quality.test",
+                        created_at=datetime(2026, 6, 2, 9, tzinfo=timezone.utc),
+                        succeeded_at=datetime(2026, 6, 2, 9, 1, tzinfo=timezone.utc),
+                    ),
+                    LyQualityOutbox(
+                        id=702,
+                        inspection_id=702,
+                        company="COMP-A",
+                        event_type="quality_stock_entry_sync",
+                        event_key="quality-balance-pending",
+                        payload_json={
+                            "inspection_id": 702,
+                            "inspection_no": "QI-BAL-PENDING",
+                            "company": "COMP-A",
+                            "item_code": "FAB-QC",
+                            "warehouse": "WH-QC",
+                            "accepted_qty": "5",
+                            "rejected_qty": "0",
+                            "accepted_warehouse": "WH-PASS",
+                            "confirmed_at": "2026-06-02T10:00:00+00:00",
+                        },
+                        payload_hash="quality-balance-pending-hash",
+                        status="pending",
+                        stock_entry_name=None,
+                        created_by="quality.test",
+                        created_at=datetime(2026, 6, 2, 10, tzinfo=timezone.utc),
+                    ),
+                    LyQualityOutbox(
+                        id=703,
+                        inspection_id=703,
+                        company="COMP-A",
+                        event_type="quality_stock_entry_sync",
+                        event_key="quality-balance-no-entry",
+                        payload_json={
+                            "inspection_id": 703,
+                            "inspection_no": "QI-BAL-NO-ENTRY",
+                            "company": "COMP-A",
+                            "item_code": "FAB-QC",
+                            "warehouse": "WH-QC",
+                            "accepted_qty": "3",
+                            "rejected_qty": "0",
+                            "accepted_warehouse": "WH-PASS",
+                            "confirmed_at": "2026-06-02T11:00:00+00:00",
+                        },
+                        payload_hash="quality-balance-no-entry-hash",
+                        status="succeeded",
+                        stock_entry_name=None,
+                        created_by="quality.test",
+                        created_at=datetime(2026, 6, 2, 11, tzinfo=timezone.utc),
+                    ),
+                    LyQualityOutbox(
+                        id=704,
+                        inspection_id=704,
+                        company="COMP-A",
+                        event_type="quality_other_event",
+                        event_key="quality-balance-other-event",
+                        payload_json={
+                            "inspection_id": 704,
+                            "inspection_no": "QI-BAL-OTHER-EVENT",
+                            "company": "COMP-A",
+                            "item_code": "FAB-QC",
+                            "warehouse": "WH-QC",
+                            "accepted_qty": "4",
+                            "rejected_qty": "0",
+                            "accepted_warehouse": "WH-PASS",
+                            "confirmed_at": "2026-06-02T12:00:00+00:00",
+                        },
+                        payload_hash="quality-balance-other-event-hash",
+                        status="succeeded",
+                        stock_entry_name="STE-QUALITY-OTHER-001",
+                        created_by="quality.test",
+                        created_at=datetime(2026, 6, 2, 12, tzinfo=timezone.utc),
+                        succeeded_at=datetime(2026, 6, 2, 12, 1, tzinfo=timezone.utc),
+                    ),
+                ]
+            )
+            session.commit()
+
+        with self.SessionLocal() as session:
+            service = WarehouseService(session=session)
+            ledger = service.list_stock_ledger(
+                company="COMP-A",
+                warehouse=None,
+                item_code="FAB-QC",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            summary = service.get_stock_summary(company="COMP-A", warehouse=None, item_code="FAB-QC")
+
+        self.assertEqual(
+            [
+                (row.warehouse, row.voucher_type, row.voucher_no, Decimal(str(row.actual_qty)), Decimal(str(row.qty_after_transaction)))
+                for row in ledger.items
+            ],
+            [
+                ("WH-QC", "Stock Entry Draft/Material Receipt", "DRAFT-1", Decimal("10.000000"), Decimal("10.000000")),
+                ("WH-QC", "Quality/Material Transfer", "STE-QUALITY-STOCK-001", Decimal("-8.000000"), Decimal("2.000000")),
+                ("WH-PASS", "Quality/Material Transfer", "STE-QUALITY-STOCK-001", Decimal("8.000000"), Decimal("8.000000")),
+                ("WH-QC", "Quality/Material Transfer", "STE-QUALITY-STOCK-001", Decimal("-2.000000"), Decimal("0.000000")),
+                ("WH-REJECT", "Quality/Material Transfer", "STE-QUALITY-STOCK-001", Decimal("2.000000"), Decimal("2.000000")),
+            ],
+        )
+        summary_by_warehouse = {row.warehouse: Decimal(str(row.actual_qty)) for row in summary.items}
+        self.assertEqual(
+            summary_by_warehouse,
+            {
+                "WH-PASS": Decimal("8.000000"),
+                "WH-QC": Decimal("0.000000"),
+                "WH-REJECT": Decimal("2.000000"),
+            },
+        )
 
 
 if __name__ == "__main__":

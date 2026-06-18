@@ -1140,7 +1140,7 @@ class QualityService:
 
     @staticmethod
     def _build_outbox_payload(inspection: LyQualityInspection) -> dict[str, Any]:
-        return {
+        payload = {
             "inspection_id": int(inspection.id),
             "inspection_no": str(inspection.inspection_no),
             "company": str(inspection.company),
@@ -1153,6 +1153,13 @@ class QualityService:
             "rejected_qty": str(_decimal(inspection.rejected_qty)),
             "confirmed_at": inspection.confirmed_at.isoformat() if inspection.confirmed_at else None,
         }
+        accepted_warehouse = _text(os.getenv("QUALITY_ACCEPTED_WAREHOUSE"))
+        rejected_warehouse = _text(os.getenv("QUALITY_REJECTED_WAREHOUSE"))
+        if accepted_warehouse:
+            payload["accepted_warehouse"] = accepted_warehouse
+        if rejected_warehouse:
+            payload["rejected_warehouse"] = rejected_warehouse
+        return payload
 
 
 def _normalize_create_payload(payload: QualityInspectionCreateRequest) -> dict[str, Any]:

@@ -24,6 +24,7 @@ from app.core.exceptions import AppException
 from app.core.exceptions import BusinessException
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
+from app.models.quality_outbox import LyQualityOutbox
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseInventoryCount
@@ -758,9 +759,140 @@ class WarehouseService:
             warehouse=normalized_warehouse,
             item_code=normalized_item_code,
         )
+        self._append_quality_stock_movements(
+            movements=movements,
+            company=normalized_company,
+            warehouse=normalized_warehouse,
+            item_code=normalized_item_code,
+        )
 
         movements.sort(key=lambda row: (row.sort_at, row.source_id, row.line_id, row.sequence, row.warehouse))
         return movements
+
+    def _append_quality_stock_movements(
+        self,
+        *,
+        movements: list[WarehouseStockMovement],
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> None:
+        session = self._require_session()
+        if not self._has_sqlite_quality_outbox_table():
+            return
+        rows = (
+            session.query(LyQualityOutbox)
+            .filter(
+                LyQualityOutbox.event_type == "quality_stock_entry_sync",
+                LyQualityOutbox.status == "succeeded",
+            )
+            .all()
+        )
+        for row in rows:
+            stock_entry_name = self._text(getattr(row, "stock_entry_name", None))
+            if stock_entry_name is None:
+                continue
+            payload = getattr(row, "payload_json", None)
+            if not isinstance(payload, dict):
+                continue
+            company_value = self._text(payload.get("company")) or self._text(getattr(row, "company", None)) or ""
+            material_code = self._text(payload.get("item_code"))
+            source_warehouse = self._text(payload.get("warehouse"))
+            if not company_value or not material_code or not source_warehouse:
+                continue
+            if company and company_value != company:
+                continue
+            if item_code and material_code != item_code:
+                continue
+            accepted_qty = self._to_decimal(payload.get("accepted_qty"))
+            rejected_qty = self._to_decimal(payload.get("rejected_qty"))
+            accepted_warehouse = self._text(payload.get("accepted_warehouse")) or self._text(os.getenv("QUALITY_ACCEPTED_WAREHOUSE"))
+            rejected_warehouse = self._text(payload.get("rejected_warehouse")) or self._text(os.getenv("QUALITY_REJECTED_WAREHOUSE"))
+            posting_at = self._quality_outbox_sort_at(row=row, payload=payload)
+            self._append_quality_transfer_movements(
+                movements=movements,
+                company=company_value,
+                source_warehouse=source_warehouse,
+                target_warehouse=accepted_warehouse,
+                item_code=material_code,
+                qty=accepted_qty,
+                row=row,
+                stock_entry_name=stock_entry_name,
+                sort_at=posting_at,
+                sequence=1,
+                warehouse_filter=warehouse,
+            )
+            self._append_quality_transfer_movements(
+                movements=movements,
+                company=company_value,
+                source_warehouse=source_warehouse,
+                target_warehouse=rejected_warehouse,
+                item_code=material_code,
+                qty=rejected_qty,
+                row=row,
+                stock_entry_name=stock_entry_name,
+                sort_at=posting_at,
+                sequence=3,
+                warehouse_filter=warehouse,
+            )
+
+    def _append_quality_transfer_movements(
+        self,
+        *,
+        movements: list[WarehouseStockMovement],
+        company: str,
+        source_warehouse: str,
+        target_warehouse: str | None,
+        item_code: str,
+        qty: Decimal,
+        row: LyQualityOutbox,
+        stock_entry_name: str,
+        sort_at: datetime,
+        sequence: int,
+        warehouse_filter: str | None,
+    ) -> None:
+        if qty <= Decimal("0") or target_warehouse is None:
+            return
+        for warehouse_value, actual_qty, movement_sequence in (
+            (source_warehouse, -qty, sequence),
+            (target_warehouse, qty, sequence + 1),
+        ):
+            if warehouse_filter and warehouse_value != warehouse_filter:
+                continue
+            movements.append(
+                WarehouseStockMovement(
+                    company=company,
+                    warehouse=warehouse_value,
+                    item_code=item_code,
+                    posting_date=sort_at.date(),
+                    sort_at=sort_at,
+                    source_id=int(getattr(row, "id", 0) or 0),
+                    line_id=int(getattr(row, "id", 0) or 0),
+                    sequence=movement_sequence,
+                    voucher_type="Quality/Material Transfer",
+                    voucher_no=stock_entry_name,
+                    actual_qty=actual_qty,
+                    valuation_rate=self._material_unit_price(item_code=item_code),
+                )
+            )
+
+    @staticmethod
+    def _quality_outbox_sort_at(*, row: LyQualityOutbox, payload: dict[str, Any]) -> datetime:
+        raw_confirmed_at = payload.get("confirmed_at")
+        if isinstance(raw_confirmed_at, str) and raw_confirmed_at.strip():
+            try:
+                parsed = datetime.fromisoformat(raw_confirmed_at.strip().replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    return parsed
+                return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+            except ValueError:
+                pass
+        for value in (getattr(row, "succeeded_at", None), getattr(row, "created_at", None)):
+            if isinstance(value, datetime):
+                if value.tzinfo is None:
+                    return value
+                return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return datetime.combine(date.today(), datetime.min.time())
 
     def _append_subcontract_stock_movements(
         self,
@@ -897,6 +1029,14 @@ class WarehouseService:
             LySubcontractStockOutbox.__tablename__,
         }
         return required_tables.issubset(table_names)
+
+    def _has_sqlite_quality_outbox_table(self) -> bool:
+        session = self._require_session()
+        bind = session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        table_names = set(inspect(bind).get_table_names())
+        return LyQualityOutbox.__tablename__ in table_names
 
     def _is_succeeded_subcontract_stock_fact(self, *, fact_row: Any, outbox: LySubcontractStockOutbox | None) -> bool:
         if outbox is None:
