@@ -243,6 +243,16 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         return payload
 
     @classmethod
+    def _retention_disposal_payload(cls, *, qty: str = "8") -> dict:
+        payload = cls._material_issue_payload(qty=qty)
+        source_ref = f"{cls.SCENARIO_TAG}-RET-DISP-001"
+        payload["source_type"] = "material_retention_disposal"
+        payload["source_id"] = source_ref
+        payload["source_ref"] = source_ref
+        payload["idempotency_key"] = f"{cls.SCENARIO_TAG}-IDEM-RET-DISP-001"
+        return payload
+
+    @classmethod
     def _request_id_from_payload(cls, payload: dict, *, operation: str | None = None, status_action: str | None = None) -> str:
         return cls._request_id(
             operation=operation or str(payload["operation"]),
@@ -724,6 +734,62 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
                 .one()
             )
             self.assertEqual(audit.after_data["source_type"], "material_hold")
+
+    def test_material_retention_disposal_issue_filters_and_updates_ledger(self) -> None:
+        payload = self._retention_disposal_payload(qty="8")
+        created = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        draft_id = int(created.json()["data"]["id"])
+        self.assertEqual(created.json()["data"]["source_type"], "material_retention_disposal")
+        self.assertEqual(created.json()["data"]["purpose"], "Material Issue")
+
+        filtered = self.client.get(
+            "/api/warehouse/stock-entry-drafts?purpose=Material%20Issue&source_type=material_retention_disposal",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(filtered.status_code, 200, filtered.text)
+        data = filtered.json()["data"]
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(int(data["items"][0]["id"]), draft_id)
+        self.assertEqual(data["items"][0]["source_type"], "material_retention_disposal")
+
+        ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?item_code={self.ITEM_CODE}&warehouse={self.WAREHOUSE}",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        ledger_rows = [
+            row
+            for row in ledger.json()["data"]["items"]
+            if row["voucher_no"] == f"DRAFT-{draft_id}"
+        ]
+        self.assertEqual(len(ledger_rows), 1)
+        self.assertEqual(ledger_rows[0]["voucher_type"], "Stock Entry Draft/Material Issue")
+        self.assertEqual(Decimal(str(ledger_rows[0]["actual_qty"])), Decimal("-8.000000"))
+
+        with self.SessionLocal() as session:
+            draft = session.query(LyWarehouseStockEntryDraft).filter(LyWarehouseStockEntryDraft.id == draft_id).one()
+            self.assertEqual(str(draft.source_type), "material_retention_disposal")
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).filter_by(draft_id=draft_id).one()
+            self.assertEqual(outbox.payload["source_type"], "material_retention_disposal")
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:stock_entry_draft",
+                    LyOperationAuditLog.result == "success",
+                    LyOperationAuditLog.resource_id == draft_id,
+                )
+                .one()
+            )
+            self.assertEqual(audit.after_data["source_type"], "material_retention_disposal")
 
     def test_replay_with_different_payload_returns_409(self) -> None:
         first_payload = self._payload(qty="5")
