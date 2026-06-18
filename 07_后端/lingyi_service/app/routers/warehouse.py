@@ -40,6 +40,7 @@ from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
 from app.core.permissions import WAREHOUSE_STOCK_HOLD_RELEASE
 from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import get_permission_source
+from app.models.audit import LyOperationAuditLog
 from app.schemas.warehouse import ApiResponse
 from app.schemas.warehouse import WarehouseAlertsData
 from app.schemas.warehouse import WarehouseBatchDetailData
@@ -63,6 +64,7 @@ from app.schemas.warehouse import WarehouseSemiFinishedOutboundData
 from app.schemas.warehouse import WarehouseSerialNumberDetailData
 from app.schemas.warehouse import WarehouseSerialNumberListData
 from app.schemas.warehouse import WarehouseStockEntryDraftCancelRequest
+from app.schemas.warehouse import WarehouseStockEntryDraftAuditRequest
 from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
 from app.schemas.warehouse import WarehouseStockLedgerData
 from app.schemas.warehouse import WarehouseStockSummaryData
@@ -88,7 +90,7 @@ WAREHOUSE_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 WAREHOUSE_LOCAL_STOCK_SCENARIO_PATTERN = re.compile(r"(Z003-WAREHOUSE-\d{8}-\d{3})")
 WAREHOUSE_LOCAL_COUNT_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})")
 WAREHOUSE_LOCAL_STOCK_REQUEST_PATTERN = re.compile(
-    r"^(Z003-WAREHOUSE-\d{8}-\d{3})-RW-([CXR])-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$",
+    r"^(Z003-WAREHOUSE-\d{8}-\d{3})-RW-([ACXR])-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$",
 )
 WAREHOUSE_LOCAL_COUNT_REQUEST_PATTERN = re.compile(
     r"^(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})-REQ-COUNT-W([A-F0-9]{8})-D(\d{8})$",
@@ -154,6 +156,8 @@ def _stock_entry_operation_code(value: Any) -> str | None:
     normalized = _scope_text(value)
     if normalized == "create_stock_entry_draft":
         return "C"
+    if normalized == "audit_stock_entry_draft":
+        return "A"
     if normalized == "cancel_stock_entry_draft":
         return "X"
     if normalized == "release_material_hold":
@@ -165,6 +169,8 @@ def _stock_entry_status_action_code(value: Any) -> str | None:
     normalized = _scope_text(value)
     if normalized == "create":
         return "C"
+    if normalized == "audit":
+        return "A"
     if normalized == "cancel":
         return "X"
     if normalized == "release":
@@ -2897,6 +2903,142 @@ def create_stock_entry_draft(
         session.rollback()
         raise
     return _created(data)
+
+
+@router.post("/stock-entry-drafts/{draft_id}/audit")
+def audit_stock_entry_draft(
+    draft_id: int,
+    request: Request,
+    payload: WarehouseStockEntryDraftAuditRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_STOCK_ENTRY_DRAFT
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_stock_entry_draft",
+    )
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+
+    try:
+        before_data = _write_service(session).get_stock_entry_draft(draft_id=draft_id).model_dump(mode="json")
+    except WarehouseServiceError as exc:
+        _raise_service_error(exc)
+
+    _validate_local_warehouse_write_gate(
+        request_obj=request,
+        request_id=get_request_id_from_request(request).strip(),
+        scenario_tag=payload.scenario_tag,
+        operation=payload.operation,
+        idempotency_key=payload.idempotency_key,
+        source_ref=payload.source_ref,
+        warehouse=payload.warehouse,
+        item_code=payload.item_code,
+        quantity=payload.quantity,
+        business_date=payload.business_date,
+        status_action=payload.status_action,
+        carriers=[payload.scenario_tag, payload.idempotency_key, payload.source_ref],
+    )
+    if _scope_text(payload.operation) != "audit_stock_entry_draft":
+        _raise_warehouse_idempotency_conflict("operation 载体与业务模式不一致")
+    if _scope_text(payload.status_action) != "audit":
+        _raise_warehouse_idempotency_conflict("status_action 载体与业务模式不一致")
+    before_idempotency_key = _scope_text(before_data.get("idempotency_key"))
+    before_source_ref = _scope_text(before_data.get("source_id"))
+    before_warehouse = _scope_text(before_data.get("source_warehouse")) or _scope_text(before_data.get("target_warehouse"))
+    before_items = before_data.get("items") or []
+    if not isinstance(before_items, list) or len(before_items) == 0:
+        _raise_warehouse_idempotency_conflict("item_code 载体缺失")
+    before_item_code = _scope_text(before_items[0].get("item_code")) if isinstance(before_items[0], dict) else None
+    before_total_qty = sum(Decimal(str(item.get("qty", 0))) for item in before_items if isinstance(item, dict))
+    if before_idempotency_key is None or _scope_text(payload.idempotency_key) != before_idempotency_key:
+        _raise_warehouse_idempotency_conflict("idempotency_key 载体与业务载体不一致")
+    if before_source_ref is None or _scope_text(payload.source_ref) != before_source_ref:
+        _raise_warehouse_idempotency_conflict("source_ref 载体与业务载体不一致")
+    if before_warehouse is None or _scope_text(payload.warehouse) != before_warehouse:
+        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+    if before_item_code is None or _scope_text(payload.item_code) != before_item_code:
+        _raise_warehouse_idempotency_conflict("item_code 载体与业务载体不一致")
+    normalized_payload_qty = _normalize_decimal_text(payload.quantity)
+    normalized_before_qty = _normalize_decimal_text(before_total_qty)
+    if normalized_payload_qty is None or normalized_before_qty is None or normalized_payload_qty != normalized_before_qty:
+        _raise_warehouse_idempotency_conflict("quantity 载体与业务载体不一致")
+    if _normalize_iso_date(payload.business_date) is None:
+        _raise_warehouse_idempotency_conflict("business_date 载体缺失或格式非法")
+
+    try:
+        _check_draft_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            draft_data=before_data,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+
+    try:
+        data = _write_service(session).audit_stock_entry_draft(draft_id=draft_id)
+        context = AuditContext.from_request(request)
+        existing_success_audit = (
+            session.query(LyOperationAuditLog.id)
+            .filter(
+                LyOperationAuditLog.module == "warehouse",
+                LyOperationAuditLog.action == action,
+                LyOperationAuditLog.resource_type == "warehouse_stock_entry_draft",
+                LyOperationAuditLog.resource_id == draft_id,
+                LyOperationAuditLog.request_id == context.request_id,
+                LyOperationAuditLog.result == "success",
+            )
+            .first()
+        )
+        if existing_success_audit is None:
+            audit.record_success(
+                module="warehouse",
+                action=action,
+                operator=current_user.username,
+                operator_roles=current_user.roles,
+                resource_type="warehouse_stock_entry_draft",
+                resource_id=int(data.id),
+                resource_no=str(data.id),
+                before_data=before_data,
+                after_data=data.model_dump(mode="json"),
+                context=context,
+            )
+        session.commit()
+    except WarehouseServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="warehouse",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="warehouse_stock_entry_draft",
+            resource_id=draft_id,
+            resource_no=str(draft_id),
+            before_data=before_data,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _ok(data)
 
 
 @router.post("/stock-entry-drafts/{draft_id}/cancel")

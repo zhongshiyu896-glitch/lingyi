@@ -550,6 +550,21 @@ class WarehouseStockEntryDraftCancelRequest(BaseModel):
     scenario_tag: str
 
 
+class WarehouseStockEntryDraftAuditRequest(BaseModel):
+    """Audit/submit an existing warehouse stock-entry draft."""
+
+    reason: str | None = None
+    idempotency_key: str
+    source_ref: str
+    warehouse: str
+    item_code: str
+    operation: Literal["audit_stock_entry_draft"]
+    quantity: Decimal
+    business_date: date
+    status_action: Literal["audit"]
+    scenario_tag: str
+
+
 class WarehouseMaterialHoldReleaseRequest(BaseModel):
     """Release an existing material-hold stock-entry draft."""
 

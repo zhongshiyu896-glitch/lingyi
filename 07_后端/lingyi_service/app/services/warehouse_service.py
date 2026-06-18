@@ -2525,6 +2525,31 @@ class WarehouseService:
         session.flush()
         return self._build_draft_data(draft)
 
+    def audit_stock_entry_draft(
+        self,
+        *,
+        draft_id: int,
+    ) -> WarehouseStockEntryDraftData:
+        session = self._require_session()
+        draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(LyWarehouseStockEntryDraft.id == draft_id)
+            .first()
+        )
+        if draft is None:
+            raise WarehouseServiceError(404, "WAREHOUSE_DRAFT_NOT_FOUND", "草稿不存在")
+
+        if str(draft.status) == "cancelled":
+            raise WarehouseServiceError(409, "WAREHOUSE_DRAFT_ALREADY_CANCELLED", "草稿已取消")
+        if str(draft.status) not in {"draft", "pending_outbox"}:
+            raise WarehouseServiceError(409, "WAREHOUSE_INVALID_STATUS", "当前状态不允许审核")
+
+        if str(draft.status) == "draft":
+            draft.status = "pending_outbox"
+            session.flush()
+
+        return self._build_draft_data(draft)
+
     def release_material_hold_draft(
         self,
         *,

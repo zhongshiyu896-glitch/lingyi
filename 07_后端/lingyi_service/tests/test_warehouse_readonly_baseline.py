@@ -308,6 +308,7 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         readonly_methods = {"GET", "HEAD", "OPTIONS"}
         allowed_write_routes = {
             ("POST", "/api/warehouse/stock-entry-drafts"),  # TASK-050B 审计意见书第383份
+            ("POST", "/api/warehouse/stock-entry-drafts/{draft_id}/audit"),  # A期库存草稿本地审核确认
             ("POST", "/api/warehouse/stock-entry-drafts/{draft_id}/cancel"),  # TASK-050B 审计意见书第383份
             ("POST", "/api/warehouse/stock-entry-drafts/{draft_id}/release-hold"),  # A期物料扣仓释放
             ("POST", "/api/warehouse/internal/stock-entry-sync/run-once"),  # TASK-050D_FIX1 审计意见书第389份

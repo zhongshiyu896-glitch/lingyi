@@ -596,6 +596,8 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             return "warehouse", WAREHOUSE_WORKER, "WarehouseStockEntryWorker", None
         if "/stock-entry-drafts/" in path and path.endswith("/release-hold"):
             return "warehouse", WAREHOUSE_STOCK_HOLD_RELEASE, "WarehouseStockEntryDraft", _extract_warehouse_stock_entry_draft_id(path)
+        if "/stock-entry-drafts/" in path and path.endswith("/audit"):
+            return "warehouse", WAREHOUSE_STOCK_ENTRY_DRAFT, "WarehouseStockEntryDraft", _extract_warehouse_stock_entry_draft_id(path)
         if "/stock-entry-drafts/" in path and path.endswith("/cancel"):
             return "warehouse", WAREHOUSE_STOCK_ENTRY_CANCEL, "WarehouseStockEntryDraft", _extract_warehouse_stock_entry_draft_id(path)
         if path in {"/api/warehouse/stock-entry-drafts", "/api/warehouse/stock-entry-drafts/"}:

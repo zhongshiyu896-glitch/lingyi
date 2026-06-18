@@ -114,11 +114,13 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
     ) -> str:
         operation_code = {
             "create_stock_entry_draft": "C",
+            "audit_stock_entry_draft": "A",
             "cancel_stock_entry_draft": "X",
             "release_material_hold": "R",
         }.get(operation, "X")
         status_action_code = {
             "create": "C",
+            "audit": "A",
             "cancel": "X",
             "release": "R",
         }.get(status_action, "X")
@@ -282,6 +284,24 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         }
 
     @classmethod
+    def _audit_payload(cls, *, reason: str | None = None) -> dict:
+        payload = cls._payload()
+        audit_payload = {
+            "idempotency_key": str(payload["idempotency_key"]),
+            "source_ref": str(payload["source_ref"]),
+            "warehouse": str(payload["warehouse"]),
+            "item_code": str(payload["item_code"]),
+            "operation": "audit_stock_entry_draft",
+            "quantity": payload["quantity"],
+            "business_date": str(payload["business_date"]),
+            "status_action": "audit",
+            "scenario_tag": str(payload["scenario_tag"]),
+        }
+        if reason is not None:
+            audit_payload["reason"] = reason
+        return audit_payload
+
+    @classmethod
     def _release_hold_payload(cls, *, reason: str, source_payload: dict | None = None) -> dict:
         payload = source_payload or cls._hold_payload()
         return {
@@ -314,6 +334,91 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         self.assertEqual(body["source_ref"], self.SOURCE_REF)
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["outbox"]["status"], "in_pending")
+
+    def test_audit_draft_success_is_idempotent_by_request_id(self) -> None:
+        create_response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+            json=self._payload(),
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.text)
+        draft_id = int(create_response.json()["data"]["id"])
+
+        payload = self._audit_payload(reason="confirm local posting")
+        request_id = self._request_id_from_payload(
+            payload,
+            operation="audit_stock_entry_draft",
+            status_action="audit",
+        )
+        first_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:read", request_id=request_id),
+            json=payload,
+        )
+        self.assertEqual(first_response.status_code, 200, first_response.text)
+        self.assertEqual(first_response.json()["data"]["status"], "pending_outbox")
+
+        second_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:read", request_id=request_id),
+            json=payload,
+        )
+        self.assertEqual(second_response.status_code, 200, second_response.text)
+        self.assertEqual(second_response.json()["data"]["id"], draft_id)
+
+        with self.SessionLocal() as session:
+            audit_count = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:stock_entry_draft",
+                    LyOperationAuditLog.resource_id == draft_id,
+                    LyOperationAuditLog.request_id == request_id,
+                    LyOperationAuditLog.result == "success",
+                )
+                .count()
+            )
+            self.assertEqual(audit_count, 1)
+
+    def test_audit_cancelled_draft_returns_409(self) -> None:
+        create_response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:stock_entry_cancel,warehouse:read"),
+            json=self._payload(),
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.text)
+        draft_id = int(create_response.json()["data"]["id"])
+
+        cancel_payload = self._cancel_payload(reason="cancel before audit")
+        cancel_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+            headers=self._headers(
+                "warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    cancel_payload,
+                    operation="cancel_stock_entry_draft",
+                    status_action="cancel",
+                ),
+            ),
+            json=cancel_payload,
+        )
+        self.assertEqual(cancel_response.status_code, 200, cancel_response.text)
+
+        audit_payload = self._audit_payload(reason="should fail")
+        audit_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    audit_payload,
+                    operation="audit_stock_entry_draft",
+                    status_action="audit",
+                ),
+            ),
+            json=audit_payload,
+        )
+        self.assertEqual(audit_response.status_code, 409, audit_response.text)
+        self.assertEqual(audit_response.json()["code"], "WAREHOUSE_DRAFT_ALREADY_CANCELLED")
 
     def test_list_drafts_keyword_matches_item_code(self) -> None:
         payload = self._sale_outbound_payload(qty="3")
