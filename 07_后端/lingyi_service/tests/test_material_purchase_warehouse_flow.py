@@ -252,6 +252,14 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             "/api/warehouse/purchase-receipts?company=COMP-A&material_item_code=FAB-A",
             headers=self._headers(),
         )
+        purchase_receipts_by_no = self.client.get(
+            "/api/warehouse/purchase-receipts?company=COMP-A&purchase_no=PO-A5-001",
+            headers=self._headers(),
+        )
+        purchase_receipts_missing = self.client.get(
+            "/api/warehouse/purchase-receipts?company=COMP-A&purchase_no=PO-A5-MISSING",
+            headers=self._headers(),
+        )
 
         self.assertEqual(receipt.status_code, 201, receipt.text)
         self.assertEqual(receipt.json()["data"]["status"], "pending_outbox")
@@ -275,6 +283,11 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(purchase_receipts.status_code, 200, purchase_receipts.text)
         receipt_rows = purchase_receipts.json()["data"]["items"]
         self.assertEqual(purchase_receipts.json()["data"]["total"], 1)
+        self.assertEqual(purchase_receipts_by_no.status_code, 200, purchase_receipts_by_no.text)
+        self.assertEqual(purchase_receipts_by_no.json()["data"]["total"], 1)
+        self.assertEqual(purchase_receipts_by_no.json()["data"]["items"][0]["purchase_no"], "PO-A5-001")
+        self.assertEqual(purchase_receipts_missing.status_code, 200, purchase_receipts_missing.text)
+        self.assertEqual(purchase_receipts_missing.json()["data"]["total"], 0)
         self.assertEqual(receipt_rows[0]["receipt_no"], "LY-WH-PR-1")
         self.assertNotEqual(receipt_rows[0]["receipt_no"], "PR-FR-001")
         self.assertEqual(receipt_rows[0]["purchase_no"], "PO-A5-001")

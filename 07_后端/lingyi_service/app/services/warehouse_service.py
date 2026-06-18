@@ -283,6 +283,7 @@ class WarehouseService:
         warehouse: str | None,
         item_code: str | None,
         material_item_code: str | None,
+        purchase_no: str | None,
         supplier_name: str | None,
         status: str | None,
         page: int,
@@ -293,6 +294,7 @@ class WarehouseService:
         normalized_warehouse = self._text(warehouse)
         normalized_item_code = self._text(item_code)
         normalized_material_item_code = self._text(material_item_code)
+        normalized_purchase_no = self._text(purchase_no)
         normalized_supplier_name = self._text(supplier_name)
         normalized_status = self._text(status)
         try:
@@ -336,6 +338,8 @@ class WarehouseService:
         items: list[WarehousePurchaseReceiptItem] = []
         for draft, line in rows:
             purchase_no = self._purchase_no_from_source_id(str(draft.source_id)) or str(draft.source_id)
+            if normalized_purchase_no and purchase_no != normalized_purchase_no:
+                continue
             order = orders.get((str(draft.company), purchase_no))
             order_line = order_lines.get((str(draft.company), purchase_no, str(line.item_code)))
             row_material_item_code = str(order_line.material_item_code) if order_line is not None else str(line.item_code)
