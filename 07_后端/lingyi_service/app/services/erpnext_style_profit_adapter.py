@@ -15,6 +15,7 @@ from urllib import request
 
 from fastapi import Request
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -31,15 +32,18 @@ from app.models.production import LyProductionPlan
 from app.models.workshop import YsWorkshopTicket
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.services.warehouse_service import WarehouseService
 
 
 class ERPNextStyleProfitAdapter:
     """Load trusted source facts for style-profit snapshot creation.
 
     Rules:
-    - Revenue/stock facts come from ERPNext REST read APIs.
-    - BOM/workshop/subcontract bridge facts come from local DB.
-    - Any ERPNext source failure is fail-closed with STYLE_PROFIT_SOURCE_UNAVAILABLE.
+    - Revenue fallback can still read legacy ERPNext sources until local invoice flow is complete.
+    - Stock/BOM/workshop/subcontract facts come from FastAPI-local DB.
+    - Any external source failure is fail-closed with STYLE_PROFIT_SOURCE_UNAVAILABLE.
     """
     _SUBCONTRACT_DIAGNOSTIC_LIMIT_ENV = "STYLE_PROFIT_SUBCONTRACT_DIAGNOSTIC_LIMIT"
     _DEFAULT_SUBCONTRACT_DIAGNOSTIC_LIMIT = 200
@@ -257,72 +261,60 @@ class ERPNextStyleProfitAdapter:
         *,
         allowed_material_item_codes: list[str],
     ) -> list[dict[str, Any]]:
-        """Load ERPNext SLE rows; caller still applies allow-list fail-closed filter."""
-        if not allowed_material_item_codes:
+        """Load FastAPI-local stock ledger rows for style-profit material cost."""
+        allowed_codes = sorted(
+            {self._normalize_text(code) for code in allowed_material_item_codes if self._normalize_text(code)}
+        )
+        if not allowed_codes:
+            return []
+        if not self._has_sqlite_tables(
+            {LyWarehouseStockEntryDraft.__tablename__, LyWarehouseStockEntryDraftItem.__tablename__}
+        ):
             return []
 
+        service = WarehouseService(session=self.session)
         rows: list[dict[str, Any]] = []
-        for material_code in sorted({self._normalize_text(code) for code in allowed_material_item_codes if self._normalize_text(code)}):
-            filters = [
-                ["company", "=", self._normalize_text(selector.company)],
-                ["item_code", "=", material_code],
-                ["posting_date", ">=", selector.from_date.isoformat()],
-                ["posting_date", "<=", selector.to_date.isoformat()],
-            ]
-            payload = self._request_json(
-                method="GET",
-                path=(
-                    "/api/resource/Stock%20Ledger%20Entry"
-                    f"?fields={parse.quote(json.dumps(['name','voucher_type','voucher_no','item_code','warehouse','actual_qty','valuation_rate','stock_value_difference','posting_date','company','docstatus','status','is_cancelled','sales_order','work_order','production_plan_id','job_card','custom_ly_sales_order','custom_ly_work_order','custom_ly_production_plan','custom_ly_job_card','currency'], ensure_ascii=False), safe='')}"
-                    f"&filters={parse.quote(json.dumps(filters, ensure_ascii=False), safe='')}"
-                    "&limit_page_length=2000"
-                ),
-                allow_404=True,
-            )
-            if payload is None:
-                continue
-            data = payload.get("data")
-            if not isinstance(data, list):
-                raise self._source_unavailable("Stock Ledger Entry 返回结构异常")
-            for entry in data:
-                if not isinstance(entry, dict):
-                    continue
-                rows.append(
-                    {
-                        "name": self._normalize_text(entry.get("name")),
-                        "voucher_type": self._normalize_text(entry.get("voucher_type")) or "Stock Ledger Entry",
-                        "voucher_no": self._normalize_text(entry.get("voucher_no")),
-                        "item_code": self._normalize_text(entry.get("item_code")),
-                        "warehouse": self._normalize_text(entry.get("warehouse")) or None,
-                        "actual_qty": self._decimal_text(entry.get("actual_qty")),
-                        "valuation_rate": self._decimal_text(entry.get("valuation_rate")),
-                        "stock_value_difference": self._decimal_text(entry.get("stock_value_difference")),
-                        "posting_date": self._normalize_text(entry.get("posting_date")),
-                        "company": self._normalize_text(entry.get("company")) or None,
-                        "docstatus": entry.get("docstatus"),
-                        "status": self._normalize_text(entry.get("status")) or None,
-                        "is_cancelled": entry.get("is_cancelled"),
-                        "sales_order": self._normalize_text(
-                            entry.get("sales_order") or entry.get("custom_ly_sales_order")
-                        )
-                        or None,
-                        "work_order": self._normalize_text(
-                            entry.get("work_order") or entry.get("custom_ly_work_order")
-                        )
-                        or None,
-                        "production_plan_id": entry.get("production_plan_id", entry.get("custom_ly_production_plan")),
-                        "job_card": self._normalize_text(
-                            entry.get("job_card") or entry.get("custom_ly_job_card")
-                        )
-                        or None,
-                        "custom_ly_sales_order": self._normalize_text(entry.get("custom_ly_sales_order")) or None,
-                        "custom_ly_work_order": self._normalize_text(entry.get("custom_ly_work_order")) or None,
-                        "custom_ly_production_plan": entry.get("custom_ly_production_plan"),
-                        "custom_ly_job_card": self._normalize_text(entry.get("custom_ly_job_card")) or None,
-                        "currency": self._normalize_text(entry.get("currency")) or None,
-                        "line_no": self._normalize_text(entry.get("name")),
-                    }
+        for material_code in allowed_codes:
+            page = 1
+            page_size = 1000
+            while True:
+                data = service.list_local_stock_ledger(
+                    company=self._normalize_text(selector.company),
+                    warehouse=None,
+                    item_code=material_code,
+                    from_date=selector.from_date,
+                    to_date=selector.to_date,
+                    page=page,
+                    page_size=page_size,
                 )
+                for index, entry in enumerate(data.items, start=1 + (page - 1) * page_size):
+                    voucher_no = self._normalize_text(entry.voucher_no)
+                    scope = self._local_stock_scope_fields(voucher_no=voucher_no)
+                    stock_value_difference = Decimal(str(entry.actual_qty)) * Decimal(str(entry.valuation_rate))
+                    rows.append(
+                        {
+                            "source_system": "fastapi",
+                            "name": f"FASTAPI-SLE-{voucher_no or index}-{entry.item_code}-{index}",
+                            "voucher_type": self._normalize_text(entry.voucher_type) or "FastAPI Stock Ledger",
+                            "voucher_no": voucher_no,
+                            "item_code": self._normalize_text(entry.item_code),
+                            "warehouse": self._normalize_text(entry.warehouse) or None,
+                            "actual_qty": self._decimal_text(entry.actual_qty),
+                            "valuation_rate": self._decimal_text(entry.valuation_rate),
+                            "stock_value_difference": self._decimal_text(stock_value_difference),
+                            "posting_date": entry.posting_date.isoformat(),
+                            "company": self._normalize_text(entry.company) or None,
+                            "docstatus": 1,
+                            "status": "submitted",
+                            "is_cancelled": 0,
+                            "currency": "CNY",
+                            "line_no": f"{voucher_no or 'LOCAL'}:{entry.item_code}:{index}",
+                            **scope,
+                        }
+                    )
+                if page * page_size >= data.total:
+                    break
+                page += 1
         rows.sort(
             key=lambda row: (
                 str(row.get("posting_date") or ""),
@@ -331,6 +323,64 @@ class ERPNextStyleProfitAdapter:
             )
         )
         return rows
+
+    def _local_stock_scope_fields(self, *, voucher_no: str) -> dict[str, Any]:
+        draft_id = self._local_draft_id_from_voucher_no(voucher_no)
+        if draft_id is None:
+            return {}
+        try:
+            draft = (
+                self.session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.id == draft_id)
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed("利润来源读取失败") from exc
+        if draft is None:
+            return {}
+
+        source_type = self._normalize_text(draft.source_type)
+        source_id = self._normalize_text(draft.source_id)
+        fields: dict[str, Any] = {}
+        if source_type == "production_plan":
+            plan_id = self._production_plan_id_from_source_id(source_id)
+            if plan_id is not None:
+                fields["production_plan_id"] = plan_id
+                fields["custom_ly_production_plan"] = plan_id
+        elif source_type == "sales_order_local" and source_id:
+            fields["sales_order"] = source_id
+            fields["custom_ly_sales_order"] = source_id
+        return fields
+
+    @staticmethod
+    def _local_draft_id_from_voucher_no(voucher_no: str) -> int | None:
+        text = (voucher_no or "").strip()
+        if not text.startswith("DRAFT-"):
+            return None
+        try:
+            return int(text.removeprefix("DRAFT-"))
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _production_plan_id_from_source_id(source_id: str) -> int | None:
+        text = (source_id or "").strip()
+        if text.isdigit():
+            return int(text)
+        parts = text.split(":")
+        if len(parts) >= 2 and parts[0] == "production_plan":
+            try:
+                return int(parts[1])
+            except ValueError:
+                return None
+        return None
+
+    def _has_sqlite_tables(self, table_names: set[str]) -> bool:
+        bind = self.session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        existing_tables = set(inspect(bind).get_table_names())
+        return table_names.issubset(existing_tables)
 
     def load_purchase_receipt_rows(
         self,

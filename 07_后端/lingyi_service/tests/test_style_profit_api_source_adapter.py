@@ -22,13 +22,18 @@ from app.models.bom import LyBomOperation
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
+from app.models.quality import Base as QualityBase
 from app.models.subcontract import Base as SubcontractBase
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.workshop import Base as WorkshopBase
 from app.models.workshop import YsWorkshopTicket
+from app.routers.style_profit import _build_local_style_profit_fallback_request
 from app.schemas.style_profit import StyleProfitSnapshotSelectorRequest
 from app.services.erpnext_style_profit_adapter import ERPNextStyleProfitAdapter
+from app.services.style_profit_api_source_collector import StyleProfitApiSourceCollector
 
 
 class ERPNextStyleProfitAdapterTest(unittest.TestCase):
@@ -45,6 +50,7 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
         BomBase.metadata.create_all(bind=cls.engine)
         WorkshopBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
+        QualityBase.metadata.create_all(bind=cls.engine)
         # Subcontract models use a dedicated declarative metadata and hold FK to ly_apparel_bom.
         # Mirror BOM table into subcontract metadata so FK resolution works in isolated test DB.
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
@@ -73,6 +79,8 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
             session.query(LyProductionPlan).delete()
             session.query(LySubcontractInspection).delete()
             session.query(LySubcontractOrder).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyBomOperation).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
@@ -207,36 +215,151 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
         self.assertEqual(rows[0]["register_qty"], "8")
         self.assertEqual(rows[0]["reversal_qty"], "0")
 
-    def test_load_stock_ledger_rows_keeps_missing_status_fields_without_defaults(self) -> None:
+    def test_load_stock_ledger_rows_uses_fastapi_local_warehouse_rows_without_remote_call(self) -> None:
         with self.SessionLocal() as session:
+            plan = LyProductionPlan(
+                plan_no="PLAN-STOCK-001",
+                company="COMP-A",
+                sales_order="SO-001",
+                sales_order_item="SO-001-1",
+                customer="CUST-1",
+                item_code="STYLE-A",
+                bom_id=1,
+                bom_version="V1",
+                planned_qty=Decimal("10"),
+                status="material_issued",
+                idempotency_key="plan-stock-idem-1",
+                request_hash="plan-stock-hash-1",
+                created_by="tester",
+            )
+            session.add(plan)
+            session.flush()
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Issue",
+                source_type="production_plan",
+                source_id=f"production_plan:{int(plan.id)}:material_issue",
+                source_warehouse="WH-MAT",
+                target_warehouse=None,
+                status="pending_outbox",
+                created_by="tester",
+                created_at=datetime(2026, 4, 12, 10, 0, 0),
+                idempotency_key="idem-local-style-profit-stock",
+                event_key="evt-local-style-profit-stock",
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company="COMP-A",
+                    item_code="FAB-A",
+                    qty=Decimal("5"),
+                    uom="米",
+                    source_warehouse="WH-MAT",
+                    target_warehouse=None,
+                )
+            )
+            session.commit()
+
             adapter = ERPNextStyleProfitAdapter(session=session)
             adapter.base_url = "https://fake.local"
-
-            def _fake_request_json(**kwargs):
-                _ = kwargs
-                return {
-                    "data": [
-                        {
-                            "name": "SLE-001",
-                            "voucher_type": "Stock Entry",
-                            "voucher_no": "STE-001",
-                            "item_code": "MAT-A",
-                            "company": "COMP-A",
-                            "stock_value_difference": "-10",
-                        }
-                    ]
-                }
-
-            adapter._request_json = _fake_request_json  # type: ignore[method-assign]
-            rows = adapter.load_stock_ledger_rows(
-                self.selector,
-                allowed_material_item_codes=["MAT-A"],
-            )
+            with patch.object(adapter, "_request_json", side_effect=AssertionError("ERPNext must not be called")):
+                rows = adapter.load_stock_ledger_rows(
+                    self.selector,
+                    allowed_material_item_codes=["FAB-A"],
+                )
 
         self.assertEqual(len(rows), 1)
-        self.assertIsNone(rows[0]["docstatus"])
-        self.assertIsNone(rows[0]["status"])
-        self.assertIsNone(rows[0]["is_cancelled"])
+        self.assertEqual(rows[0]["source_system"], "fastapi")
+        self.assertEqual(rows[0]["item_code"], "FAB-A")
+        self.assertEqual(rows[0]["docstatus"], 1)
+        self.assertEqual(rows[0]["status"], "submitted")
+        self.assertEqual(rows[0]["production_plan_id"], int(plan.id))
+        self.assertEqual(Decimal(str(rows[0]["actual_qty"])), Decimal("-5"))
+        self.assertEqual(Decimal(str(rows[0]["valuation_rate"])), Decimal("8.6"))
+        self.assertEqual(Decimal(str(rows[0]["stock_value_difference"])), Decimal("-43"))
+
+    def test_local_style_profit_fallback_request_includes_fastapi_stock_ledger_rows(self) -> None:
+        with self.SessionLocal() as session:
+            bom = LyApparelBom(
+                id=10,
+                bom_no="BOM-FALLBACK-001",
+                item_code="STYLE-A",
+                version_no="V1",
+                is_default=True,
+                status="active",
+                created_by="tester",
+                updated_by="tester",
+            )
+            session.add(bom)
+            session.flush()
+            session.add(
+                LyApparelBomItem(
+                    id=10,
+                    bom_id=int(bom.id),
+                    material_item_code="FAB-A",
+                    qty_per_piece=Decimal("1"),
+                    loss_rate=Decimal("0"),
+                    uom="米",
+                )
+            )
+            plan = LyProductionPlan(
+                plan_no="PLAN-FALLBACK-001",
+                company="COMP-A",
+                sales_order="SO-001",
+                sales_order_item="SO-001-1",
+                customer="CUST-1",
+                item_code="STYLE-A",
+                bom_id=int(bom.id),
+                bom_version="V1",
+                planned_qty=Decimal("10"),
+                status="material_issued",
+                idempotency_key="plan-fallback-idem-1",
+                request_hash="plan-fallback-hash-1",
+                created_by="tester",
+            )
+            session.add(plan)
+            session.flush()
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Issue",
+                source_type="production_plan",
+                source_id=f"production_plan:{int(plan.id)}:material_issue",
+                source_warehouse="WH-MAT",
+                status="pending_outbox",
+                created_by="tester",
+                created_at=datetime(2026, 4, 12, 10, 0, 0),
+                idempotency_key="idem-local-style-profit-fallback-stock",
+                event_key="evt-local-style-profit-fallback-stock",
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company="COMP-A",
+                    item_code="FAB-A",
+                    qty=Decimal("2"),
+                    uom="米",
+                    source_warehouse="WH-MAT",
+                )
+            )
+            session.commit()
+
+            adapter = ERPNextStyleProfitAdapter(session=session)
+            collector = StyleProfitApiSourceCollector(session=session, adapter=adapter)
+            with patch.object(adapter, "_request_json", side_effect=AssertionError("ERPNext must not be called")):
+                request = _build_local_style_profit_fallback_request(
+                    selector=self.selector,
+                    idempotency_key="idem-fallback-with-local-stock",
+                    collector=collector,
+                )
+
+        self.assertEqual(len(request.stock_ledger_rows), 1)
+        self.assertEqual(request.stock_ledger_rows[0]["source_system"], "fastapi")
+        self.assertEqual(request.stock_ledger_rows[0]["production_plan_id"], int(plan.id))
+        self.assertEqual(Decimal(str(request.stock_ledger_rows[0]["stock_value_difference"])), Decimal("-17.2"))
 
     def test_load_subcontract_rows_returns_candidates_instead_of_silent_empty(self) -> None:
         with self.SessionLocal() as session:

@@ -388,7 +388,7 @@ class StyleProfitSourceService:
         status_label = self._normalize_text(row.get("status")).lower() or "unknown"
 
         return StyleProfitMaterialSourceDTO(
-            source_system="erpnext",
+            source_system=self._normalize_text(row.get("source_system")) or "erpnext",
             source_doctype=source_doctype,
             source_status=status_label,
             source_name=source_name,

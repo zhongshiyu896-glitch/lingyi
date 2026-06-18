@@ -302,6 +302,10 @@ def _build_local_style_profit_fallback_request(
             item_code=selector.item_code,
             planned_qty=Decimal("1"),
         )
+        stock_ledger_rows = collector.adapter.load_stock_ledger_rows(
+            selector,
+            allowed_material_item_codes=allowed_material_item_codes,
+        )
         workshop_ticket_rows = collector.adapter.load_workshop_ticket_rows(selector)
         subcontract_rows = collector.adapter.load_subcontract_rows(selector)
     except (BusinessException, DatabaseReadFailed):
@@ -344,7 +348,7 @@ def _build_local_style_profit_fallback_request(
         sales_order_rows=synthetic_sales_order_rows,
         bom_material_rows=bom_material_rows,
         bom_operation_rows=bom_operation_rows,
-        stock_ledger_rows=[],
+        stock_ledger_rows=stock_ledger_rows,
         purchase_receipt_rows=[],
         workshop_ticket_rows=workshop_ticket_rows,
         subcontract_rows=subcontract_rows,
