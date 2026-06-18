@@ -35,7 +35,7 @@ from app.routers.production import get_db_session as production_db_dep
 
 
 class ProductionReportSuiteApiTest(unittest.TestCase):
-    """Validate A7 report-suite read model, permissions and cost/profit math."""
+    """Validate A8 report-suite read model, permissions and cost/profit math."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -356,6 +356,16 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
                 )
             )
             session.add(
+                LyBomOperation(
+                    id=4,
+                    bom_id=int(bom.id),
+                    process_name="外协压胶",
+                    sequence_no=2,
+                    is_subcontract=True,
+                    subcontract_cost_per_piece=Decimal("2"),
+                )
+            )
+            session.add(
                 LyProductionPlan(
                     plan_no="PP-RPT-PUR",
                     company="COMP-A",
@@ -410,11 +420,23 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
             headers=self._headers(),
         )
         self.assertEqual(profit_response.status_code, 200, profit_response.text)
-        profit_row = profit_response.json()["data"]["items"][0]
+        profit_payload = profit_response.json()["data"]
+        basis_text = "；".join(profit_payload["data_basis"])
+        self.assertIn("BOM 用量", basis_text)
+        self.assertIn("本地采购单价", basis_text)
+        self.assertIn("工序工价预测", basis_text)
+        profit_row = profit_payload["items"][0]
         self.assertEqual(Decimal(str(profit_row["materialCost"])), Decimal("797.50000000"))
         self.assertEqual(Decimal(str(profit_row["laborCost"])), Decimal("50.000000000000"))
-        self.assertEqual(Decimal(str(profit_row["totalCost"])), Decimal("847.500000000000"))
-        self.assertEqual(Decimal(str(profit_row["profit"])), Decimal("152.500000000000"))
+        self.assertEqual(Decimal(str(profit_row["outsourceCost"])), Decimal("100.000000000000"))
+        self.assertEqual(Decimal(str(profit_row["totalCost"])), Decimal("947.500000000000"))
+        self.assertEqual(
+            Decimal(str(profit_row["totalCost"])),
+            Decimal(str(profit_row["materialCost"]))
+            + Decimal(str(profit_row["laborCost"]))
+            + Decimal(str(profit_row["outsourceCost"])),
+        )
+        self.assertEqual(Decimal(str(profit_row["profit"])), Decimal("52.500000000000"))
 
         material_response = self.client.get(
             "/api/production/report-suite?report_key=productionCostMaterialDetailReport&company=COMP-A&keyword=SO-RPT-PUR",
