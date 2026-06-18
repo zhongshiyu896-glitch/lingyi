@@ -45,6 +45,7 @@ from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
+from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.sample import get_db_session as sample_db_dep
 from app.routers.style_master import get_db_session as style_master_db_dep
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
@@ -81,6 +82,7 @@ class MaterialBomApiTest(unittest.TestCase):
 
         app.dependency_overrides[auth_db_dep] = _override_db
         app.dependency_overrides[style_master_db_dep] = _override_db
+        app.dependency_overrides[sales_inventory_db_dep] = _override_db
         app.dependency_overrides[sample_db_dep] = _override_db
         app.dependency_overrides[production_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
@@ -92,6 +94,7 @@ class MaterialBomApiTest(unittest.TestCase):
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
         app.dependency_overrides.pop(style_master_db_dep, None)
+        app.dependency_overrides.pop(sales_inventory_db_dep, None)
         app.dependency_overrides.pop(sample_db_dep, None)
         app.dependency_overrides.pop(production_db_dep, None)
         cls.engine.dispose()

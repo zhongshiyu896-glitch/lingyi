@@ -103,6 +103,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyMaterialPurchaseRequirement).delete()
+            session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlan).delete()
             session.query(LySalesOrderItem).delete()

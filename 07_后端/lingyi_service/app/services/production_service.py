@@ -1731,6 +1731,7 @@ class ProductionService:
             data_basis=[
                 "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
                 "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
+                "报表行通过 sourceLabel/sourceStatus/hasSnapshot 显式标识实际快照、部分估算或纯估算口径",
                 "成品入库、发货开票、回款已接本地 FastAPI 闭环；报表只读披露来自当前本地单据与库存流水",
             ],
             pending_b_phase_fields=[
@@ -2114,6 +2115,22 @@ class ProductionService:
             amount = self._dec(getattr(sales_item, "qty", None)) * self._dec(getattr(sales_item, "rate", None))
 
         material_cost, labor_cost, outsource_cost = self._estimated_costs(plan=plan, context=context)
+        has_snapshot = snapshot is not None
+        snapshot_no = str(getattr(snapshot, "snapshot_no", "") or "") if has_snapshot else ""
+        revenue_source_status = str(getattr(snapshot, "revenue_status", "") or "").strip().lower() if has_snapshot else "sales_order_estimated"
+        cost_source_status = "actual" if has_snapshot else "estimated"
+        if has_snapshot and revenue_source_status == "actual":
+            source_status = "actual"
+            source_label = "利润快照"
+            source_note = f"成本与收入来自款式利润快照 {snapshot_no}"
+        elif has_snapshot:
+            source_status = "mixed"
+            source_label = "利润快照/估算收入"
+            source_note = f"成本来自款式利润快照 {snapshot_no}；收入状态 {revenue_source_status or 'unknown'}"
+        else:
+            source_status = "estimated"
+            source_label = "BOM/采购价估算"
+            source_note = "缺少款式利润快照，成本按 BOM 用量、本地采购单价和工序工价预测"
         if snapshot is not None:
             material_cost = self._dec(snapshot.actual_material_cost)
             labor_cost = self._dec(snapshot.actual_workshop_cost)
@@ -2146,6 +2163,15 @@ class ProductionService:
             "progress": Decimal("0"),
             "delayDays": Decimal("0"),
             "remark": "A期现有页：利润按本地真实订单、BOM/利润快照计算；成品入库、发货开票、回款已接本地闭环，剩余执行端按待补口径披露。",
+            "sourceType": "style_profit_snapshot" if has_snapshot else "bom_purchase_estimate",
+            "sourceLabel": source_label,
+            "sourceNote": source_note,
+            "sourceStatus": source_status,
+            "isEstimated": source_status != "actual",
+            "hasSnapshot": has_snapshot,
+            "snapshotNo": snapshot_no,
+            "revenueSourceStatus": revenue_source_status,
+            "costSourceStatus": cost_source_status,
         }
 
     def _estimated_costs(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> tuple[Decimal, Decimal, Decimal]:

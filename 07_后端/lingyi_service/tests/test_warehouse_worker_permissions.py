@@ -6,8 +6,11 @@ import os
 import unittest
 from unittest.mock import patch
 
+from fastapi.testclient import TestClient
+
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.routers.warehouse import get_current_user as warehouse_get_current_user
 from app.models.audit import LySecurityAuditLog
 from tests.test_warehouse_stock_entry_draft import WarehouseStockEntryDraftApiBase
 
@@ -78,14 +81,17 @@ class WarehouseWorkerPermissionTest(WarehouseStockEntryDraftApiBase):
         from app.main import app
 
         app.dependency_overrides[get_current_user] = lambda: app_user
+        app.dependency_overrides[warehouse_get_current_user] = lambda: app_user
         try:
             with patch("app.services.warehouse_service.WarehouseService.run_stock_entry_outbox_once") as run_mock:
-                response = self.client.post(
-                    "/api/warehouse/internal/stock-entry-sync/run-once",
-                    json={"batch_size": 5, "dry_run": False},
-                )
+                with TestClient(app) as client:
+                    response = client.post(
+                        "/api/warehouse/internal/stock-entry-sync/run-once",
+                        json={"batch_size": 5, "dry_run": False},
+                    )
         finally:
             app.dependency_overrides.pop(get_current_user, None)
+            app.dependency_overrides.pop(warehouse_get_current_user, None)
             for key, value in old_env.items():
                 if value is None:
                     os.environ.pop(key, None)

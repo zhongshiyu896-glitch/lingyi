@@ -450,9 +450,11 @@ class ServiceAccountPolicyTest(unittest.TestCase):
         old_env = {
             "APP_ENV": os.environ.get("APP_ENV"),
             "ENABLE_INTERNAL_WORKER_API": os.environ.get("ENABLE_INTERNAL_WORKER_API"),
+            "WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC": os.environ.get("WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC"),
         }
         os.environ["APP_ENV"] = "production"
         os.environ["ENABLE_INTERNAL_WORKER_API"] = "true"
+        os.environ["WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC"] = "true"
 
         outbox_allowed = self._seed_pending_outbox(job_card="JC-SVC-PROD-ALLOW-001", item_code="ITEM-B", company="COMP-A")
         outbox_denied = self._seed_pending_outbox(job_card="JC-SVC-PROD-DENY-001", item_code="ITEM-A", company="COMP-A")
@@ -480,6 +482,10 @@ class ServiceAccountPolicyTest(unittest.TestCase):
                 os.environ.pop("ENABLE_INTERNAL_WORKER_API", None)
             else:
                 os.environ["ENABLE_INTERNAL_WORKER_API"] = old_env["ENABLE_INTERNAL_WORKER_API"]
+            if old_env["WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC"] is None:
+                os.environ.pop("WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC", None)
+            else:
+                os.environ["WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC"] = old_env["WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC"]
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
