@@ -39,6 +39,7 @@ from app.models.sample import LySampleTrackingTemplate
 from app.models.style_master import LyStyleMaster
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
+from app.models.master_data import LyMasterDataRecord
 from app.schemas.sample import SampleOrderConvertRequest
 from app.schemas.sample import SampleOrderCreateRequest
 from app.schemas.sample import SampleOrderItem
@@ -459,6 +460,7 @@ class SampleService:
                 idempotent=True,
             )
 
+        self._ensure_material_bom_items_active(company=company, items=payload.items)
         bom = self._find_sample_material_bom(order=order)
         before = self._sample_material_bom_data(order=order, bom=bom).model_dump(mode="json") if bom else None
         try:
@@ -533,6 +535,7 @@ class SampleService:
         if not source_items:
             raise BusinessException(code=BOM_NOT_FOUND, message="款式用料 BOM 明细为空，无法复制到样板")
 
+        self._ensure_material_bom_items_active(company=company, items=source_items)
         request_hash = self._request_hash(
             operation="sample_material_bom_copy_from_style",
             company=company,
@@ -1248,6 +1251,35 @@ class SampleService:
     def _ensure_sample_material_bom_writable(self, order: LySampleOrder) -> None:
         if str(order.status) not in self.MATERIAL_BOM_WRITABLE_ORDER_STATUSES:
             raise BusinessException(code=SAMPLE_INVALID_STATUS, message="当前样板单状态不允许维护打样用料 BOM")
+
+    def _ensure_material_bom_items_active(self, *, company: str, items: list[Any]) -> None:
+        codes: list[str] = []
+        for item in items:
+            code = self._require_text(getattr(item, "material_item_code", ""), "material_item_code")
+            if code not in codes:
+                codes.append(code)
+        if not codes:
+            return
+        try:
+            rows = (
+                self.session.query(LyMasterDataRecord.code)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code.in_(codes),
+                    LyMasterDataRecord.status == "active",
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        active_codes = {str(row.code) for row in rows}
+        invalid_codes = [code for code in codes if code not in active_codes]
+        if invalid_codes:
+            raise BusinessException(
+                code=STYLE_MASTER_INVALID_REFERENCE,
+                message=f"物料主数据不存在或已停用: {', '.join(invalid_codes)}",
+            )
 
     def _get_material_bom_operation(
         self,

@@ -160,6 +160,7 @@ class MaterialBomApiTest(unittest.TestCase):
         for index, (code, name, status) in enumerate(
             [
                 ("FAB-BLK-001", "黑色主面料", "active"),
+                ("FAB-ALT-001", "可替代面料", "active"),
                 ("FAB-OFF-001", "停用面料", "inactive"),
             ],
             start=1,
@@ -361,6 +362,69 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LySampleMaterialBom).count(), 1)
             self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
             self.assertEqual(session.query(LyApparelBomItem).one().material_item_code, "FAB-BLK-001")
+
+    def test_sample_material_bom_rejects_missing_or_inactive_material(self) -> None:
+        style_id = self._seed_style()
+        with self.SessionLocal() as session:
+            order = LySampleOrder(
+                company="COMP-MB",
+                sample_no="SMP-MB-INVALID",
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="建档",
+                progress=0,
+                status="draft",
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.commit()
+            order_id = int(order.id)
+
+        payload = {
+            "operation": "upsert",
+            "company": "COMP-MB",
+            "idempotency_key": "IDEMP-SAMPLE-MB-MISSING",
+            "version_no": "S1",
+            "items": [
+                {
+                    "material_item_code": "FAB-MISSING-001",
+                    "color": "黑",
+                    "part": "前片",
+                    "qty_per_piece": "1.5",
+                    "loss_rate": "0.10",
+                    "uom": "米",
+                    "is_alternative": False,
+                    "replace_group": None,
+                    "remark": "缺失料",
+                }
+            ],
+        }
+        missing = self.client.put(
+            f"/api/sample/orders/{order_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-MISSING-MATERIAL"),
+            json=payload,
+        )
+        self.assertEqual(missing.status_code, 409, missing.text)
+        self.assertEqual(missing.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+        self.assertIn("FAB-MISSING-001", missing.json()["message"])
+
+        payload["idempotency_key"] = "IDEMP-SAMPLE-MB-INACTIVE"
+        payload["items"][0]["material_item_code"] = "FAB-OFF-001"
+        inactive = self.client.put(
+            f"/api/sample/orders/{order_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-INACTIVE-MATERIAL"),
+            json=payload,
+        )
+        self.assertEqual(inactive.status_code, 409, inactive.text)
+        self.assertEqual(inactive.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+        self.assertIn("FAB-OFF-001", inactive.json()["message"])
 
     @staticmethod
     def _sales_order(*, item_code: str = "ST-MB-001") -> ERPNextSalesOrder:
