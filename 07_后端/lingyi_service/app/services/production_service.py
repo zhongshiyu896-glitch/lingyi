@@ -37,7 +37,6 @@ from app.core.error_codes import PRODUCTION_WORK_ORDER_SYNC_FAILED
 from app.core.exceptions import BusinessException
 from app.core.exceptions import DatabaseReadFailed
 from app.core.exceptions import DatabaseWriteFailed
-from app.core.exceptions import ERPNextServiceUnavailableError
 from app.core.request_id import is_request_id_valid
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
@@ -2303,6 +2302,7 @@ class ProductionService:
             payload_item_code=payload.item_code,
             payload_bom_id=payload.bom_id,
         )
+        native_order, native_item = self._ensure_plan_native_sales_order_link(plan=plan)
         warehouse = self._require_non_blank(
             payload.warehouse,
             code=PRODUCTION_WAREHOUSE_REQUIRED,
@@ -2405,7 +2405,7 @@ class ProductionService:
 
         previous = str(plan.status)
         plan.status = "material_checked"
-        self._mark_native_sales_order_item_material_checked(plan=plan, operator=operator)
+        self._mark_native_sales_order_item_material_checked(order=native_order, line=native_item, operator=operator)
         self.session.flush()
         MaterialPurchaseService(self.session).sync_requirements_from_production_plan(plan=plan, actor=operator)
         self._log_status(
@@ -2583,6 +2583,7 @@ class ProductionService:
             payload_item_code=payload.item_code,
             payload_bom_id=payload.bom_id,
         )
+        self._ensure_plan_native_sales_order_link(plan=plan)
         idempotency_key = self._require_non_blank(
             payload.idempotency_key,
             code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
@@ -3097,11 +3098,13 @@ class ProductionService:
             raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="生产计划不存在")
         return row
 
-    def _mark_native_sales_order_item_material_checked(self, *, plan: LyProductionPlan, operator: str) -> None:
+    def _ensure_plan_native_sales_order_link(self, *, plan: LyProductionPlan) -> tuple[LySalesOrder, LySalesOrderItem]:
         sales_order = str(plan.sales_order or "").strip()
         sales_order_item = str(plan.sales_order_item or "").strip()
-        if not sales_order or not sales_order_item:
-            return
+        if not sales_order:
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="生产计划缺少 Sales Order")
+        if not sales_order_item:
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="生产计划缺少 Sales Order 行")
         try:
             order = (
                 self.session.query(LySalesOrder)
@@ -3112,7 +3115,9 @@ class ProductionService:
                 .first()
             )
             if order is None:
-                return
+                raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="生产计划关联的 Sales Order 不存在")
+            if str(order.status or "").strip().lower() == "cancelled" or int(order.docstatus or 0) == 2:
+                raise BusinessException(code=PRODUCTION_SO_CLOSED_OR_CANCELLED, message="Sales Order 已关闭或已取消")
             line = (
                 self.session.query(LySalesOrderItem)
                 .filter(
@@ -3123,10 +3128,21 @@ class ProductionService:
             )
         except SQLAlchemyError as exc:
             if self._is_missing_native_sales_order_table(exc):
-                return
+                raise DatabaseReadFailed() from exc
             raise DatabaseReadFailed() from exc
         if line is None:
-            return
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="生产计划关联的 Sales Order 行不存在")
+        if str(line.item_code or "").strip() != str(plan.item_code or "").strip():
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="生产计划关联的 Sales Order 行物料不匹配")
+        return order, line
+
+    @staticmethod
+    def _mark_native_sales_order_item_material_checked(
+        *,
+        order: LySalesOrder,
+        line: LySalesOrderItem,
+        operator: str,
+    ) -> None:
         line.ys_material_calc_state = "已算料"
         order.updated_by = operator
 
@@ -3360,36 +3376,7 @@ class ProductionService:
         native_context = self._build_native_sales_order_context(payload=payload)
         if native_context is not None:
             return native_context
-
-        sales_order = None
-        try:
-            sales_order = self.erp_adapter.get_sales_order(sales_order=sales_order_name)
-        except ERPNextServiceUnavailableError:
-            local_scenario_context = self._build_local_scenario_sales_order_context(payload=payload, request_id=request_id)
-            if local_scenario_context is not None:
-                return local_scenario_context
-            raise
-
-        if sales_order is None:
-            local_scenario_context = self._build_local_scenario_sales_order_context(payload=payload, request_id=request_id)
-            if local_scenario_context is not None:
-                return local_scenario_context
-            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order 不存在")
-
-        if int(sales_order.docstatus) != 1:
-            raise BusinessException(code=PRODUCTION_SO_NOT_APPROVED, message="Sales Order 未提交")
-        if (sales_order.status or "").strip().lower() in {"cancelled", "closed"}:
-            raise BusinessException(code=PRODUCTION_SO_CLOSED_OR_CANCELLED, message="Sales Order 已关闭或已取消")
-
-        target_item = self._select_sales_order_item(
-            sales_items=list(sales_order.items),
-            item_code=payload.item_code.strip(),
-            sales_order_item=(payload.sales_order_item.strip() if payload.sales_order_item else None),
-        )
-        company = (sales_order.company or "").strip()
-        if not company:
-            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order company 缺失")
-        return sales_order, target_item, company
+        raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message=f"Sales Order 不存在: {sales_order_name}")
 
     def _build_native_sales_order_context(
         self,
@@ -3404,13 +3391,13 @@ class ProductionService:
             )
         except SQLAlchemyError as exc:
             if self._is_missing_native_sales_order_table(exc):
-                return None
+                raise DatabaseReadFailed() from exc
             raise DatabaseReadFailed() from exc
         if order is None:
             return None
 
         status = str(order.status or "").strip().lower()
-        if status == "cancelled":
+        if status == "cancelled" or int(order.docstatus or 0) == 2:
             raise BusinessException(code=PRODUCTION_SO_CLOSED_OR_CANCELLED, message="Sales Order 已关闭或已取消")
 
         try:
@@ -3422,7 +3409,7 @@ class ProductionService:
             )
         except SQLAlchemyError as exc:
             if self._is_missing_native_sales_order_table(exc):
-                return None
+                raise DatabaseReadFailed() from exc
             raise DatabaseReadFailed() from exc
         if not item_rows:
             raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="Sales Order 行不存在")

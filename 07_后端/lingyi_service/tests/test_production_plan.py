@@ -29,6 +29,13 @@ from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
 from app.models.production import LyProductionWorkOrderLink
 from app.models.production import LyProductionWorkOrderOutbox
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderIdempotency
+from app.models.sales_order import LySalesOrderItem
+from app.models.warehouse import Base as WarehouseBase
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
@@ -54,8 +61,10 @@ class ProductionPlanTest(unittest.TestCase):
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
         BomBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        WarehouseBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         with cls.SessionLocal() as session:
@@ -113,12 +122,18 @@ class ProductionPlanTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             session.query(LyMaterialPurchaseRequirement).delete()
+            session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionWorkOrderOutbox).delete()
             session.query(LyProductionWorkOrderLink).delete()
             session.query(LyProductionPlan).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrderIdempotency).delete()
+            session.query(LySalesOrder).delete()
             session.commit()
+        self._seed_sales_order()
 
     @staticmethod
     def _request_id(scenario_tag: str) -> str:
@@ -149,6 +164,115 @@ class ProductionPlanTest(unittest.TestCase):
                 ERPNextSalesOrderItem(name="SOI-001", item_code="ITEM-A", qty=Decimal(qty)),
             ),
         )
+
+    def _seed_sales_order(
+        self,
+        *,
+        sales_order_no: str = "SO-TEST-001",
+        company: str = "COMP-A",
+        qty: str = "100",
+        status: str = "draft",
+        docstatus: int = 0,
+        items: list[dict[str, str]] | None = None,
+    ) -> None:
+        line_rows = items or [
+            {
+                "sales_order_item": "SOI-001",
+                "item_code": "ITEM-A",
+                "qty": qty,
+            }
+        ]
+        with self.SessionLocal() as session:
+            existing = (
+                session.query(LySalesOrder)
+                .filter(
+                    LySalesOrder.company == company,
+                    LySalesOrder.sales_order_no == sales_order_no,
+                )
+                .first()
+            )
+            if existing is not None:
+                session.query(LySalesOrderItem).filter(LySalesOrderItem.sales_order_id == int(existing.id)).delete()
+                session.delete(existing)
+                session.flush()
+            order = LySalesOrder(
+                company=company,
+                sales_order_no=sales_order_no,
+                customer="CUST-A",
+                status=status,
+                docstatus=docstatus,
+                currency="CNY",
+                grand_total=Decimal("0"),
+                idempotency_key=f"seed-{sales_order_no}",
+                request_hash=f"seed-{sales_order_no}",
+                payload={},
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.flush()
+            for index, line in enumerate(line_rows, start=1):
+                session.add(
+                    LySalesOrderItem(
+                        sales_order_id=int(order.id),
+                        company=company,
+                        line_no=index,
+                        sales_order_item=line["sales_order_item"],
+                        item_code=line["item_code"],
+                        item_name=line.get("item_name") or line["item_code"],
+                        qty=Decimal(str(line["qty"])),
+                        planned_qty=Decimal("0"),
+                        delivered_qty=Decimal("0"),
+                        ys_material_calc_state="待算料",
+                        uom="Nos",
+                    )
+                )
+            session.commit()
+
+    def _clear_sales_orders(self) -> None:
+        with self.SessionLocal() as session:
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrderIdempotency).delete()
+            session.query(LySalesOrder).delete()
+            session.commit()
+
+    def _seed_orphan_plan(self, *, status: str = "planned", with_ready_snapshot: bool = False) -> int:
+        with self.SessionLocal() as session:
+            plan = LyProductionPlan(
+                plan_no="PP-ORPHAN-001",
+                company="COMP-A",
+                sales_order="SO-TEST-001",
+                sales_order_item="SOI-001",
+                customer="CUST-A",
+                item_code="ITEM-A",
+                bom_id=101,
+                bom_version="v1",
+                planned_qty=Decimal("10"),
+                status=status,
+                idempotency_key=f"orphan-{status}",
+                request_hash=f"orphan-{status}",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.flush()
+            if with_ready_snapshot:
+                session.add(
+                    LyProductionPlanMaterial(
+                        plan_id=int(plan.id),
+                        bom_item_id=1001,
+                        material_item_code="MAT-A",
+                        warehouse="WIP Warehouse - LY",
+                        qty_per_piece=Decimal("1"),
+                        loss_rate=Decimal("0"),
+                        required_qty=Decimal("1"),
+                        available_qty=Decimal("1"),
+                        shortage_qty=Decimal("0"),
+                        checked_at=datetime.utcnow(),
+                    )
+                )
+            plan_id = int(plan.id)
+            session.commit()
+            return plan_id
 
     @staticmethod
     def _payload(
@@ -214,6 +338,23 @@ class ProductionPlanTest(unittest.TestCase):
         }
 
     @staticmethod
+    def _material_issue_payload(
+        *,
+        plan_id: int,
+        idempotency_key: str,
+        warehouse: str = "WIP Warehouse - LY",
+    ) -> dict[str, str | int]:
+        return {
+            **ProductionPlanTest._plan_action_carriers(
+                plan_id=plan_id,
+                idempotency_key=idempotency_key,
+                operation="material_issue",
+            ),
+            "warehouse": warehouse,
+            "business_date": "2026-04-13",
+        }
+
+    @staticmethod
     def _create_work_order_payload(*, plan_id: int, idempotency_key: str) -> dict[str, str | int]:
         return {
             **ProductionPlanTest._plan_action_carriers(
@@ -234,7 +375,7 @@ class ProductionPlanTest(unittest.TestCase):
             session.commit()
 
     def test_create_plan_success_and_idempotent_retry(self) -> None:
-        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
             response_1 = self.client.post(
                 "/api/production/plans",
                 headers=self._headers(),
@@ -245,6 +386,7 @@ class ProductionPlanTest(unittest.TestCase):
                 headers=self._headers(),
                 json=self._payload(idempotency_key="idem-pp-001", planned_qty="10"),
             )
+            adapter_lookup.assert_not_called()
 
         self.assertEqual(response_1.status_code, 200)
         self.assertEqual(response_2.status_code, 200)
@@ -255,6 +397,24 @@ class ProductionPlanTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyProductionPlan).count(), 1)
+            line = session.query(LySalesOrderItem).filter(LySalesOrderItem.sales_order_item == "SOI-001").first()
+            self.assertIsNotNone(line)
+            self.assertEqual(Decimal(str(line.planned_qty)), Decimal("10.000000"))
+
+    def test_create_plan_rejects_missing_native_sales_order_without_adapter(self) -> None:
+        self._clear_sales_orders()
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-native-missing", planned_qty="10"),
+            )
+            adapter_lookup.assert_not_called()
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["code"], "PRODUCTION_SO_NOT_FOUND")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlan).count(), 0)
 
     def test_create_plan_idempotency_conflict_when_payload_changed(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
@@ -331,47 +491,29 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertEqual(detail_response.json()["data"]["planned_start_date"], "2026-04-13")
 
-    def test_create_plan_rejects_unapproved_sales_order(self) -> None:
-        with patch.object(
-            ERPNextProductionAdapter,
-            "get_sales_order",
-            return_value=self._sales_order(docstatus=0, status="Draft"),
-        ):
+    def test_create_plan_accepts_native_draft_sales_order_from_existing_page(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
             response = self.client.post(
                 "/api/production/plans",
                 headers=self._headers(),
                 json=self._payload(idempotency_key="idem-pp-003", planned_qty="10"),
             )
+            adapter_lookup.assert_not_called()
 
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.json()["code"], "PRODUCTION_SO_NOT_APPROVED")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["status"], "planned")
         with self.SessionLocal() as session:
-            self.assertEqual(session.query(LyProductionPlan).count(), 0)
+            self.assertEqual(session.query(LyProductionPlan).count(), 1)
 
-    def test_create_plan_rejects_closed_or_cancelled_sales_order(self) -> None:
-        with patch.object(
-            ERPNextProductionAdapter,
-            "get_sales_order",
-            return_value=self._sales_order(docstatus=1, status="Closed"),
-        ):
-            closed_response = self.client.post(
-                "/api/production/plans",
-                headers=self._headers(),
-                json=self._payload(idempotency_key="idem-pp-closed", planned_qty="10"),
-            )
-        self.assertEqual(closed_response.status_code, 409)
-        self.assertEqual(closed_response.json()["code"], "PRODUCTION_SO_CLOSED_OR_CANCELLED")
-
-        with patch.object(
-            ERPNextProductionAdapter,
-            "get_sales_order",
-            return_value=self._sales_order(docstatus=1, status="Cancelled"),
-        ):
+    def test_create_plan_rejects_cancelled_native_sales_order(self) -> None:
+        self._seed_sales_order(status="cancelled", docstatus=2)
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
             cancelled_response = self.client.post(
                 "/api/production/plans",
                 headers=self._headers(),
                 json=self._payload(idempotency_key="idem-pp-cancelled", planned_qty="10"),
             )
+            adapter_lookup.assert_not_called()
         self.assertEqual(cancelled_response.status_code, 409)
         self.assertEqual(cancelled_response.json()["code"], "PRODUCTION_SO_CLOSED_OR_CANCELLED")
 
@@ -402,6 +544,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "PRODUCTION_SO_ITEM_NOT_FOUND")
 
     def test_create_plan_rejects_when_planned_qty_exceeded(self) -> None:
+        self._seed_sales_order(qty="8")
         with patch.object(
             ERPNextProductionAdapter,
             "get_sales_order",
@@ -581,6 +724,48 @@ class ProductionPlanTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
+
+    def test_material_check_rejects_orphan_plan_without_requirements(self) -> None:
+        self._clear_sales_orders()
+        plan_id = self._seed_orphan_plan()
+
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
+            response = self.client.post(
+                f"/api/production/plans/{plan_id}/material-check",
+                headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+                json=self._material_check_payload(
+                    plan_id=plan_id,
+                    idempotency_key="idem-material-orphan-plan",
+                ),
+            )
+            adapter_lookup.assert_not_called()
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["code"], "PRODUCTION_SO_NOT_FOUND")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
+
+    def test_material_issue_rejects_orphan_plan_without_stock_outbox(self) -> None:
+        self._clear_sales_orders()
+        plan_id = self._seed_orphan_plan(status="material_checked", with_ready_snapshot=True)
+
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
+            response = self.client.post(
+                f"/api/production/plans/{plan_id}/material-issue",
+                headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+                json=self._material_issue_payload(
+                    plan_id=plan_id,
+                    idempotency_key="idem-material-issue-orphan-plan",
+                ),
+            )
+            adapter_lookup.assert_not_called()
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["code"], "PRODUCTION_SO_NOT_FOUND")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 0)
+            self.assertEqual(session.query(LyWarehouseStockEntryOutboxEvent).count(), 0)
 
     def test_material_check_replays_idempotently_without_recomputing(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):

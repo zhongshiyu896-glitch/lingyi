@@ -34,6 +34,10 @@ from app.models.sample import LySampleMaterialBom
 from app.models.sample import LySampleMaterialBomItem
 from app.models.sample import LySampleMaterialBomOperation
 from app.models.sample import LySampleOrder
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderIdempotency
+from app.models.sales_order import LySalesOrderItem
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleDictionary
 from app.models.style_master import LyStyleMaster
@@ -43,8 +47,6 @@ from app.routers.production import get_db_session as production_db_dep
 from app.routers.sample import get_db_session as sample_db_dep
 from app.routers.style_master import get_db_session as style_master_db_dep
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
-from app.services.erpnext_production_adapter import ERPNextSalesOrder
-from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 
 
 class MaterialBomApiTest(unittest.TestCase):
@@ -63,6 +65,7 @@ class MaterialBomApiTest(unittest.TestCase):
         StyleMasterBase.metadata.create_all(bind=cls.engine)
         BomBase.metadata.create_all(bind=cls.engine)
         SampleBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         MasterDataBase.metadata.create_all(bind=cls.engine)
@@ -113,11 +116,15 @@ class MaterialBomApiTest(unittest.TestCase):
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
             session.query(LyMasterDataRecord).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrderIdempotency).delete()
+            session.query(LySalesOrder).delete()
             session.query(LyStyleMasterIdempotency).delete()
             session.query(LyStyleMaster).delete()
             session.query(LyStyleDictionary).delete()
             self._seed_style_dictionaries(session)
             self._seed_material_master(session)
+            self._seed_sales_order(session)
             session.commit()
 
     @staticmethod
@@ -184,6 +191,40 @@ class MaterialBomApiTest(unittest.TestCase):
                     updated_by="seed",
                 )
             )
+
+    @staticmethod
+    def _seed_sales_order(session) -> None:
+        order = LySalesOrder(
+            company="COMP-MB",
+            sales_order_no="SO-MB-001",
+            customer="BOM 客户",
+            status="draft",
+            docstatus=0,
+            currency="CNY",
+            grand_total=Decimal("0"),
+            idempotency_key="seed-SO-MB-001",
+            request_hash="seed-SO-MB-001",
+            payload={},
+            created_by="seed",
+            updated_by="seed",
+        )
+        session.add(order)
+        session.flush()
+        session.add(
+            LySalesOrderItem(
+                sales_order_id=int(order.id),
+                company="COMP-MB",
+                line_no=1,
+                sales_order_item="SOI-MB-001",
+                item_code="ST-MB-001",
+                item_name="BOM 测试款",
+                qty=Decimal("50"),
+                planned_qty=Decimal("0"),
+                delivered_qty=Decimal("0"),
+                ys_material_calc_state="待算料",
+                uom="Nos",
+            )
+        )
 
     def _seed_style(self, *, style_no: str = "ST-MB-001") -> int:
         with self.SessionLocal() as session:
@@ -430,17 +471,6 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(inactive.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
         self.assertIn("FAB-OFF-001", inactive.json()["message"])
 
-    @staticmethod
-    def _sales_order(*, item_code: str = "ST-MB-001") -> ERPNextSalesOrder:
-        return ERPNextSalesOrder(
-            name="SO-MB-001",
-            docstatus=1,
-            status="To Deliver",
-            company="COMP-MB",
-            customer="BOM 客户",
-            items=(ERPNextSalesOrderItem(name="SOI-MB-001", item_code=item_code, qty=Decimal("50")),),
-        )
-
     def _production_payload(self, *, item_code: str = "ST-MB-001", idempotency_key: str = "idem") -> dict:
         scenario = "Z003-PROD-PLAN-20260618-701"
         return {
@@ -462,12 +492,13 @@ class MaterialBomApiTest(unittest.TestCase):
             json=self._style_bom_payload(idempotency_key="IDEMP-PROD-MB-SEED"),
         )
         scenario = "Z003-PROD-PLAN-20260618-701"
-        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
             created = self.client.post(
                 "/api/production/plans",
                 headers=self._headers(role="Production Manager", request_id=f"req-{scenario}"),
                 json=self._production_payload(idempotency_key="default-bom"),
             )
+            adapter_lookup.assert_not_called()
         self.assertEqual(created.status_code, 200, created.text)
         plan_id = int(created.json()["data"]["plan_id"])
         with self.SessionLocal() as session:
@@ -509,6 +540,37 @@ class MaterialBomApiTest(unittest.TestCase):
             )
             session.add(empty_bom)
             session.commit()
+            empty_order = LySalesOrder(
+                company="COMP-MB",
+                sales_order_no="SO-MB-EMPTY",
+                customer="BOM 客户",
+                status="draft",
+                docstatus=0,
+                currency="CNY",
+                grand_total=Decimal("0"),
+                idempotency_key="seed-SO-MB-EMPTY",
+                request_hash="seed-SO-MB-EMPTY",
+                payload={},
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(empty_order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(empty_order.id),
+                    company="COMP-MB",
+                    line_no=1,
+                    sales_order_item="SOI-MB-EMPTY",
+                    item_code="ST-MB-EMPTY",
+                    item_name="BOM 空款",
+                    qty=Decimal("10"),
+                    planned_qty=Decimal("0"),
+                    delivered_qty=Decimal("0"),
+                    ys_material_calc_state="待算料",
+                    uom="Nos",
+                )
+            )
             empty_plan = LyProductionPlan(
                 plan_no="PP-MB-EMPTY",
                 company="COMP-MB",
