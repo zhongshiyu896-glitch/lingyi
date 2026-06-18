@@ -639,6 +639,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(check_response.status_code, 200)
         self.assertEqual(check_response.json()["data"]["snapshot_count"], 1)
         self.assertEqual(check_response.json()["data"]["items"][0]["warehouse"], "WIP Warehouse - LY")
+        self.assertEqual(check_response.json()["data"]["items"][0]["uom"], "Nos")
         self.assertIsNotNone(check_response.json()["data"]["items"][0]["checked_at"])
 
         outbox_response = self.client.post(
@@ -663,6 +664,8 @@ class ProductionPlanTest(unittest.TestCase):
             )
             self.assertEqual(len(outbox_rows), 1)
             self.assertEqual(outbox_rows[0].status, "pending")
+            snapshot = session.query(LyProductionPlanMaterial).filter_by(plan_id=plan_id).one()
+            self.assertEqual(snapshot.uom, "Nos")
 
     def test_plan_detail_returns_work_order_link_fields(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):

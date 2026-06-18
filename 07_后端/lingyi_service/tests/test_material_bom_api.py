@@ -528,7 +528,7 @@ class MaterialBomApiTest(unittest.TestCase):
                         "part": "样板改料",
                         "qty_per_piece": "3",
                         "loss_rate": "0.10",
-                        "uom": "米",
+                        "uom": "码",
                         "is_alternative": True,
                         "replace_group": "FAB-01",
                         "remark": "样板替代料",
@@ -608,6 +608,7 @@ class MaterialBomApiTest(unittest.TestCase):
         material_row = checked.json()["data"]["items"][0]
         self.assertEqual(material_row["material_item_code"], "FAB-ALT-001")
         self.assertEqual(material_row["bom_item_id"], None)
+        self.assertEqual(material_row["uom"], "码")
         self.assertEqual(material_row["required_qty"], "3.300000")
 
         with self.SessionLocal() as session:
@@ -615,9 +616,11 @@ class MaterialBomApiTest(unittest.TestCase):
             requirement = session.query(LyMaterialPurchaseRequirement).one()
             self.assertIsNone(snapshot.bom_item_id)
             self.assertEqual(snapshot.material_item_code, "FAB-ALT-001")
+            self.assertEqual(snapshot.uom, "码")
             self.assertEqual(str(snapshot.required_qty), "3.300000")
             self.assertEqual(requirement.sales_order, bulk_no)
             self.assertEqual(requirement.material_item_code, "FAB-ALT-001")
+            self.assertEqual(requirement.uom, "码")
             self.assertEqual(str(requirement.net_required_qty), "3.300000")
 
     def test_sample_material_bom_rejects_missing_or_inactive_material(self) -> None:

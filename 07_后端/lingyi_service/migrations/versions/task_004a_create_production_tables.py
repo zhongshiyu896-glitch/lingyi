@@ -127,6 +127,7 @@ def _create_tables(bind, schema: str | None) -> None:
             sa.Column("bom_item_id", sa.BigInteger(), nullable=True),
             sa.Column("material_item_code", sa.String(length=140), nullable=False),
             sa.Column("warehouse", sa.String(length=140), nullable=False, server_default=""),
+            sa.Column("uom", sa.String(length=32), nullable=False, server_default="米"),
             sa.Column("qty_per_piece", sa.Numeric(18, 6), nullable=False),
             sa.Column("loss_rate", sa.Numeric(12, 6), nullable=False, server_default="0"),
             sa.Column("required_qty", sa.Numeric(18, 6), nullable=False),
@@ -147,6 +148,12 @@ def _create_tables(bind, schema: str | None) -> None:
         op.add_column(
             material_table,
             sa.Column("warehouse", sa.String(length=140), nullable=False, server_default=""),
+            schema=schema,
+        )
+    if not _column_exists(bind, schema, material_table, "uom"):
+        op.add_column(
+            material_table,
+            sa.Column("uom", sa.String(length=32), nullable=False, server_default="米"),
             schema=schema,
         )
     if not _column_exists(bind, schema, material_table, "checked_at"):

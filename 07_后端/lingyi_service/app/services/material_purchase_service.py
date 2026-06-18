@@ -375,9 +375,12 @@ class MaterialPurchaseService:
                 row.required_qty = required_qty
                 row.available_qty = available_qty
                 row.net_required_qty = net_required_qty
-                row.uom = str(getattr(bom_item, "uom", None) or "米")
+                row.uom = self._optional_text(getattr(snapshot, "uom", None)) or str(
+                    getattr(bom_item, "uom", None) or "米"
+                )
                 row.unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
                 row.payload = {
+                    "uom": row.uom,
                     "qty_per_piece": str(snapshot.qty_per_piece or 0),
                     "loss_rate": str(snapshot.loss_rate or 0),
                     "checked_at": snapshot.checked_at.isoformat() if snapshot.checked_at else None,

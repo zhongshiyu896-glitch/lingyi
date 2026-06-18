@@ -73,6 +73,7 @@ class LyProductionPlanMaterial(Base):
     bom_item_id = Column(BigInteger, nullable=True)
     material_item_code = Column(String(140), nullable=False)
     warehouse = Column(String(140), nullable=False)
+    uom = Column(String(32), nullable=False, server_default="米")
     qty_per_piece = Column(Numeric(18, 6), nullable=False)
     loss_rate = Column(Numeric(12, 6), nullable=False, server_default="0")
     required_qty = Column(Numeric(18, 6), nullable=False)

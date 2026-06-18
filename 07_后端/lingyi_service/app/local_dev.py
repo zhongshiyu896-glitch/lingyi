@@ -98,6 +98,7 @@ def _create_local_tables() -> None:
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
     _ensure_local_bom_company_style_columns()
+    _ensure_local_production_material_uom_column()
 
 
 def _ensure_local_master_data_config_entities() -> None:
@@ -591,6 +592,26 @@ def _ensure_local_bom_company_style_columns() -> None:
             "ON ly_apparel_bom(company, item_code) "
             "WHERE is_default = 1 AND status = 'active'"
         )
+
+
+def _ensure_local_production_material_uom_column() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_production_plan_material'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_production_plan_material)").fetchall()
+        }
+        if "uom" not in existing_columns:
+            conn.execute(
+                "ALTER TABLE ly_production_plan_material ADD COLUMN uom VARCHAR(32) NOT NULL DEFAULT '米'"
+            )
 
 
 def _seed_local_bom() -> None:

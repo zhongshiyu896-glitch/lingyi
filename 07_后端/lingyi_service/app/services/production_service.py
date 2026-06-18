@@ -2521,6 +2521,7 @@ class ProductionService:
             loss_rate = Decimal(str(row.loss_rate or 0))
             required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
             material_item_code = str(row.material_item_code)
+            uom = str(getattr(row, "uom", None) or "米").strip() or "米"
             availability_key = (str(plan.company), warehouse, material_item_code)
             if availability_key not in available_budget:
                 available_budget[availability_key] = self._local_material_stock_balance(
@@ -2538,6 +2539,7 @@ class ProductionService:
                     bom_item_id=(int(row.id) if isinstance(row, LyApparelBomItem) else None),
                     material_item_code=material_item_code,
                     warehouse=warehouse,
+                    uom=uom,
                     qty_per_piece=qty_per_piece,
                     loss_rate=loss_rate,
                     required_qty=required_qty,
@@ -2551,6 +2553,7 @@ class ProductionService:
                     bom_item_id=(int(row.id) if isinstance(row, LyApparelBomItem) else None),
                     material_item_code=material_item_code,
                     warehouse=warehouse,
+                    uom=uom,
                     qty_per_piece=qty_per_piece,
                     loss_rate=loss_rate,
                     required_qty=required_qty,
@@ -3322,6 +3325,9 @@ class ProductionService:
         return Decimal("0")
 
     def _bom_uom_for_snapshot(self, *, snapshot: LyProductionPlanMaterial) -> str:
+        snapshot_uom = str(getattr(snapshot, "uom", None) or "").strip()
+        if snapshot_uom:
+            return snapshot_uom
         if snapshot.bom_item_id is None:
             return "米"
         try:
