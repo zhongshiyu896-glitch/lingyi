@@ -56,6 +56,7 @@ class BackendContractAssetsTest(unittest.TestCase):
             "/api/bom/styles": "app.routers.bom",
             "/api/bom/style-bom-process": "app.routers.bom",
             "/api/bom/process-requirement-templates": "app.routers.bom",
+            "/api/production/material-issues": "app.routers.production",
             "/api/production/work-orders": "app.routers.production",
             "/api/production/followup-templates": "app.routers.production",
             "/api/sales-inventory/suppliers": "app.routers.sales_inventory",
@@ -142,6 +143,7 @@ class BackendContractAssetsTest(unittest.TestCase):
             "/api/factory-statements/customer-receivables",
             "/api/factory-statements/purchase-invoices",
             "/api/production/followup-templates",
+            "/api/production/material-issues",
             "/api/production/plans",
             "/api/production/work-orders",
             "/api/sales-inventory/customers",
@@ -224,6 +226,13 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertTrue(material_issue_row["is_real_write_db"])
         self.assertEqual(material_issue_row["frontend_connect_status"], "needs_dedicated_write_task")
         self.assertIn("data.draft_id", material_issue_row["response_fields"])
+
+        material_issue_read_row = route_map[("GET", "/api/production/material-issues")]
+        self.assertEqual(material_issue_read_row["class"], "A")
+        self.assertFalse(material_issue_read_row["is_real_write_db"])
+        self.assertEqual(material_issue_read_row["frontend_connect_status"], "candidate")
+        self.assertIn("material_item_code", material_issue_read_row["response_fields"])
+        self.assertIn("issued_qty", material_issue_read_row["response_fields"])
 
 
 if __name__ == "__main__":

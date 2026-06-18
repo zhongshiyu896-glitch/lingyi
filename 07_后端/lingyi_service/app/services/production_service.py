@@ -70,6 +70,9 @@ from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
 from app.schemas.production import ProductionMaterialIssueData
 from app.schemas.production import ProductionMaterialIssueItem
+from app.schemas.production import ProductionMaterialIssueListData
+from app.schemas.production import ProductionMaterialIssueListItem
+from app.schemas.production import ProductionMaterialIssueQuery
 from app.schemas.production import ProductionMaterialIssueRequest
 from app.schemas.production import ProductionMaterialCostListData
 from app.schemas.production import ProductionMaterialCostListItem
@@ -2432,6 +2435,130 @@ class ProductionService:
         self.session.flush()
         return response
 
+    def list_material_issues(
+        self,
+        *,
+        query: ProductionMaterialIssueQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionMaterialIssueListData:
+        try:
+            sql = (
+                self.session.query(LyProductionPlanMaterial, LyProductionPlan, LyProductionWorkOrderLink)
+                .join(LyProductionPlan, LyProductionPlanMaterial.plan_id == LyProductionPlan.id)
+                .outerjoin(LyProductionWorkOrderLink, LyProductionWorkOrderLink.plan_id == LyProductionPlan.id)
+            )
+            if query.company:
+                sql = sql.filter(LyProductionPlan.company == query.company)
+            if query.sales_order:
+                sql = sql.filter(LyProductionPlan.sales_order == query.sales_order)
+            if query.item_code:
+                sql = sql.filter(LyProductionPlan.item_code == query.item_code)
+            if query.material_item_code:
+                sql = sql.filter(LyProductionPlanMaterial.material_item_code == query.material_item_code)
+            if query.warehouse:
+                sql = sql.filter(LyProductionPlanMaterial.warehouse == query.warehouse)
+            if query.from_date:
+                sql = sql.filter(func.date(LyProductionPlanMaterial.checked_at) >= query.from_date)
+            if query.to_date:
+                sql = sql.filter(func.date(LyProductionPlanMaterial.checked_at) <= query.to_date)
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                sql = sql.filter(
+                    or_(
+                        LyProductionPlan.plan_no.like(keyword),
+                        LyProductionPlan.sales_order.like(keyword),
+                        LyProductionPlan.sales_order_item.like(keyword),
+                        LyProductionPlan.item_code.like(keyword),
+                        LyProductionPlanMaterial.material_item_code.like(keyword),
+                        LyProductionPlanMaterial.warehouse.like(keyword),
+                        LyProductionWorkOrderLink.work_order.like(keyword),
+                    )
+                )
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionMaterialIssueListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionMaterialIssueListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+            rows: list[tuple[LyProductionPlanMaterial, LyProductionPlan, LyProductionWorkOrderLink | None]] = (
+                sql.order_by(LyProductionPlan.id.desc(), LyProductionPlanMaterial.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        draft_map: dict[str, LyWarehouseStockEntryDraft] = {}
+        issued_qty_map: dict[tuple[str, str, str], Decimal] = {}
+        source_ids = {f"production_plan:{int(plan.id)}:material_issue" for _snapshot, plan, _link in rows}
+        if source_ids and self._has_sqlite_tables({LyWarehouseStockEntryDraft.__tablename__, LyWarehouseStockEntryDraftItem.__tablename__}):
+            try:
+                draft_rows = (
+                    self.session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+                    .join(LyWarehouseStockEntryDraftItem, LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id)
+                    .filter(
+                        LyWarehouseStockEntryDraft.source_type == "production_plan",
+                        LyWarehouseStockEntryDraft.purpose == "Material Issue",
+                        LyWarehouseStockEntryDraft.status != "cancelled",
+                        LyWarehouseStockEntryDraft.source_id.in_(sorted(source_ids)),
+                    )
+                    .order_by(LyWarehouseStockEntryDraft.id.desc(), LyWarehouseStockEntryDraftItem.id.asc())
+                    .all()
+                )
+            except SQLAlchemyError as exc:
+                raise DatabaseReadFailed() from exc
+
+            for draft, line in draft_rows:
+                source_id = str(draft.source_id)
+                draft_map.setdefault(source_id, draft)
+                item_code = str(line.item_code)
+                warehouse = str(line.source_warehouse or draft.source_warehouse or "")
+                key = (source_id, item_code, warehouse)
+                issued_qty_map[key] = issued_qty_map.get(key, Decimal("0")) + Decimal(str(line.qty or 0))
+
+        items: list[ProductionMaterialIssueListItem] = []
+        for snapshot, plan, link in rows:
+            source_id = f"production_plan:{int(plan.id)}:material_issue"
+            material_item_code = str(snapshot.material_item_code)
+            warehouse = str(snapshot.warehouse or "")
+            required_qty = Decimal(str(snapshot.required_qty or 0)).quantize(Decimal("0.000001"))
+            available_qty = Decimal(str(snapshot.available_qty or 0)).quantize(Decimal("0.000001"))
+            shortage_qty = Decimal(str(snapshot.shortage_qty or 0)).quantize(Decimal("0.000001"))
+            issued_qty = issued_qty_map.get((source_id, material_item_code, warehouse), Decimal("0")).quantize(Decimal("0.000001"))
+            draft = draft_map.get(source_id)
+            status = self._material_issue_read_status(required_qty=required_qty, issued_qty=issued_qty, shortage_qty=shortage_qty)
+            if query.status and status != query.status:
+                continue
+            items.append(
+                ProductionMaterialIssueListItem(
+                    plan_id=int(plan.id),
+                    plan_no=str(plan.plan_no),
+                    work_order=str(link.work_order) if link and link.work_order else None,
+                    company=str(plan.company),
+                    sales_order=str(plan.sales_order),
+                    sales_order_item=str(plan.sales_order_item),
+                    item_code=str(plan.item_code),
+                    material_item_code=material_item_code,
+                    warehouse=warehouse,
+                    required_qty=required_qty,
+                    available_qty=available_qty,
+                    issued_qty=issued_qty,
+                    shortage_qty=shortage_qty,
+                    status=status,
+                    draft_id=int(draft.id) if draft is not None else None,
+                    source_id=source_id,
+                    stock_entry_status=str(draft.status) if draft is not None else None,
+                    checked_at=snapshot.checked_at,
+                    issued_at=draft.created_at if draft is not None else None,
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return ProductionMaterialIssueListData(items=items[start:end], total=total, page=query.page, page_size=query.page_size)
+
     def create_material_issue_draft(
         self,
         *,
@@ -3144,6 +3271,16 @@ class ProductionService:
     def _build_material_issue_event_key(*, company: str, plan_id: int, idempotency_key: str) -> str:
         raw = "|".join([company, str(plan_id), idempotency_key]).encode("utf-8")
         return f"pmi:{hashlib.sha256(raw).hexdigest()}"
+
+    @staticmethod
+    def _material_issue_read_status(*, required_qty: Decimal, issued_qty: Decimal, shortage_qty: Decimal) -> str:
+        if shortage_qty > Decimal("0"):
+            return "shortage"
+        if issued_qty <= Decimal("0"):
+            return "ready"
+        if issued_qty < required_qty:
+            return "partially_issued"
+        return "issued"
 
     def _get_plan_operation(self, *, company: str, operation: str, idempotency_key: str) -> LyProductionPlanOperation | None:
         try:

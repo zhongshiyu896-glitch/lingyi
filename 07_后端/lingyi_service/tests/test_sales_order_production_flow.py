@@ -461,6 +461,27 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(material_issue.json()["data"]["items"][0]["material_item_code"], "FABRIC-DEMO")
         self.assertEqual(Decimal(str(material_issue.json()["data"]["items"][0]["qty"])), Decimal("84.000000"))
 
+        material_issue_rows = self.client.get(
+            "/api/production/material-issues?company=COMP-A&keyword=SO-A4-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(material_issue_rows.status_code, 200, material_issue_rows.text)
+        material_issue_payload = material_issue_rows.json()["data"]
+        self.assertEqual(material_issue_payload["total"], 1)
+        issue_row = material_issue_payload["items"][0]
+        self.assertEqual(issue_row["plan_id"], plan_id)
+        self.assertEqual(issue_row["sales_order"], "SO-A4-001")
+        self.assertEqual(issue_row["item_code"], "DEMO-TEE")
+        self.assertEqual(issue_row["material_item_code"], "FABRIC-DEMO")
+        self.assertEqual(issue_row["warehouse"], "WH-A")
+        self.assertEqual(issue_row["status"], "issued")
+        self.assertEqual(issue_row["stock_entry_status"], "pending_outbox")
+        self.assertEqual(issue_row["source_id"], f"production_plan:{plan_id}:material_issue")
+        self.assertEqual(Decimal(str(issue_row["required_qty"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(issue_row["available_qty"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(issue_row["issued_qty"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(issue_row["shortage_qty"])), Decimal("0.000000"))
+
         ledger_after_issue = self.client.get(
             "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=FABRIC-DEMO&page=1&page_size=20",
             headers=self._headers(),

@@ -50,6 +50,8 @@ from app.schemas.production import ProductionFollowupTemplateQuery
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
 from app.schemas.production import ProductionMaterialIssueData
+from app.schemas.production import ProductionMaterialIssueListData
+from app.schemas.production import ProductionMaterialIssueQuery
 from app.schemas.production import ProductionMaterialIssueRequest
 from app.schemas.production import ProductionMaterialCostListData
 from app.schemas.production import ProductionMaterialCostQuery
@@ -1106,6 +1108,68 @@ def get_production_report_suite(
             page_size=page_size,
         )
         data = _service(session=session, request=request).get_report_suite(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/material-issues", response_model=ApiResponse[ProductionMaterialIssueListData])
+def list_production_material_issues(
+    request: Request,
+    company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    sales_order: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    material_item_code: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_material_issue",
+            resource_id=None,
+        )
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionMaterialIssueQuery(
+            company=company,
+            keyword=keyword,
+            sales_order=sales_order,
+            item_code=item_code,
+            material_item_code=material_item_code,
+            warehouse=warehouse,
+            status=status,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_material_issues(
             query=query,
             readable_companies=readable_companies,
             readable_item_codes=readable_items,

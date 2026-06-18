@@ -641,6 +641,55 @@ class ProductionMaterialIssueData(BaseModel):
     items: List[ProductionMaterialIssueItem]
 
 
+class ProductionMaterialIssueQuery(BaseModel):
+    """Production material issue readonly query."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    material_item_code: Optional[str] = Field(default=None, max_length=140)
+    warehouse: Optional[str] = Field(default=None, max_length=140)
+    status: Optional[str] = Field(default=None, max_length=40)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+
+class ProductionMaterialIssueListItem(BaseModel):
+    """Production material issue readonly row."""
+
+    plan_id: int
+    plan_no: str
+    work_order: Optional[str] = None
+    company: str
+    sales_order: str
+    sales_order_item: str
+    item_code: str
+    material_item_code: str
+    warehouse: str
+    required_qty: Decimal
+    available_qty: Decimal
+    issued_qty: Decimal
+    shortage_qty: Decimal
+    status: str
+    draft_id: Optional[int] = None
+    source_id: Optional[str] = None
+    stock_entry_status: Optional[str] = None
+    checked_at: Optional[datetime] = None
+    issued_at: Optional[datetime] = None
+
+
+class ProductionMaterialIssueListData(BaseModel):
+    """Production material issue readonly list result."""
+
+    items: List[ProductionMaterialIssueListItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class ProductionMaterialIssueRequest(BaseModel):
     """Create material issue draft from checked production plan materials."""
 

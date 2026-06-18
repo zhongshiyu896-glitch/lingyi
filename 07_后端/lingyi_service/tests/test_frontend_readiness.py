@@ -115,7 +115,6 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/bom/colors",
         "/api/bom/sizes",
         "/api/bom/sample-progress",
-        "/api/production/material-issues",
         "/api/bom/material-requests",
         "/api/subcontract/material-issues",
         "/api/subcontract/receipts",
@@ -582,7 +581,6 @@ class FrontendReadinessTest(unittest.TestCase):
 
     def test_six_module_supplement_fields_are_available(self) -> None:
         field_expectations = {
-            "/api/production/material-issues": {"work_order", "material_item_code", "required_qty", "issued_qty"},
             "/api/bom/material-requests": {"request_no", "material_item_code", "supplier_name", "qty", "status"},
             "/api/warehouse/purchase-receipts": {"receipt_no", "purchase_no", "material_item_code", "received_qty"},
             "/api/factory-statements/purchase-invoices": {

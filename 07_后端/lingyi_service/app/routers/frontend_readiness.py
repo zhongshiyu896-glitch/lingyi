@@ -32,7 +32,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
     "/api/bom/colors": "colors",
     "/api/bom/sizes": "sizes",
     "/api/bom/sample-progress": "sample_progress",
-    "/api/production/material-issues": "production_material_issues",
     "/api/bom/material-requests": "material_requests",
     "/api/subcontract/material-issues": "subcontract_material_issues",
     "/api/subcontract/receipts": "subcontract_receipts",
