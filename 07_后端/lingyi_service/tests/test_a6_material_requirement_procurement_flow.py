@@ -592,6 +592,57 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(snapshot.available_qty)), Decimal("0.000000"))
             self.assertEqual(Decimal(str(snapshot.shortage_qty)), Decimal("10.000000"))
 
+    def test_partial_purchase_receipt_keeps_requirement_and_plan_not_ready(self) -> None:
+        purchase_no = "PO-A6-PARTIAL-001"
+        source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}"
+        idempotency_key = f"{self.WAREHOUSE_SCENARIO}:receipt:{purchase_no}:partial"
+        self._seed_receipt_backed_purchase_chain(
+            plan_id=9803,
+            order_id=9804,
+            line_id=98041,
+            purchase_no=purchase_no,
+            qty="10",
+        )
+
+        self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=source_id,
+            idempotency_key=idempotency_key,
+            qty="4",
+        )
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&keyword={purchase_no}",
+            headers=self._headers("req-a6-partial-requirement"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_data = requirements.json()["data"]["items"][0]
+        self.assertEqual(requirement_data["status"], "purchased")
+        self.assertFalse(requirement_data["has_completed"])
+        self.assertEqual(Decimal(str(requirement_data["received_qty"])), Decimal("4.000000"))
+
+        plan_detail = self.client.get("/api/production/plans/9803", headers=self._headers("req-a6-partial-plan"))
+        self.assertEqual(plan_detail.status_code, 200, plan_detail.text)
+        plan_data = plan_detail.json()["data"]
+        self.assertFalse(plan_data["material_ready"])
+        self.assertEqual(plan_data["purchase_status"], "purchasing")
+        self.assertEqual(plan_data["pending_requirement_count"], 1)
+        self.assertEqual(Decimal(str(plan_data["available_qty_total"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(plan_data["shortage_qty_total"])), Decimal("6.000000"))
+
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no=purchase_no).one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=int(order.id)).one()
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(purchase_no=purchase_no).one()
+            snapshot = session.query(LyProductionPlanMaterial).filter_by(plan_id=9803).one()
+            self.assertEqual(str(order.status), "partially_received")
+            self.assertEqual(Decimal(str(order.received_qty)), Decimal("4.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("4.000000"))
+            self.assertEqual(str(requirement.status), "purchased")
+            self.assertEqual(Decimal(str(requirement.received_qty)), Decimal("4.000000"))
+            self.assertEqual(Decimal(str(snapshot.available_qty)), Decimal("4.000000"))
+            self.assertEqual(Decimal(str(snapshot.shortage_qty)), Decimal("6.000000"))
+
     def test_purchase_receipt_rejects_wrong_purchase_line_warehouse(self) -> None:
         purchase_no = "PO-A6-WH-GUARD-001"
         source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}"
