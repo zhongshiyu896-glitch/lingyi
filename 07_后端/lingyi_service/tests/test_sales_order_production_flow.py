@@ -123,6 +123,22 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             session.add(style)
             session.flush()
             session.add(
+                LyStyleMaster(
+                    company="COMP-A",
+                    ys_style_no="DEMO-DISABLED",
+                    ys_style_name_cn="Disabled Tee",
+                    ys_season="SS",
+                    ys_year="2026",
+                    ys_brand="LY",
+                    ys_style_status="disabled",
+                    colors=[],
+                    sizes=[],
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.add(
                 LyApparelBom(
                     id=1,
                     bom_no="BOM-DEMO-TEE-V1",
@@ -155,6 +171,11 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             "X-LY-Dev-Roles": "System Manager",
             "X-Request-ID": "req-a4-flow",
         }
+
+    def _style_id(self, style_no: str) -> int:
+        with self.SessionLocal() as session:
+            row = session.query(LyStyleMaster).filter(LyStyleMaster.ys_style_no == style_no).one()
+            return int(row.id)
 
     def _add_stock_entry(
         self,
@@ -258,7 +279,10 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(detail.status_code, 200)
         detail_data = detail.json()["data"]
         sales_order_item = detail_data["items"][0]["name"]
+        style_id = self._style_id("DEMO-TEE")
         self.assertEqual(sales_order_item, "SO-A4-001-001")
+        self.assertEqual(create_order.json()["data"]["items"][0]["style_master_id"], style_id)
+        self.assertEqual(detail_data["items"][0]["style_master_id"], style_id)
         self.assertEqual(detail_data["items"][0]["item_name"], "Demo Tee")
         self.assertEqual(detail_data["items"][0]["color"], "白色")
         self.assertEqual(detail_data["items"][0]["size"], "M")
@@ -493,6 +517,84 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertIn("production:plan_create", audit_actions)
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("production:material_issue", audit_actions)
+
+    def test_sales_order_draft_validates_style_master_id(self) -> None:
+        style_id = self._style_id("DEMO-TEE")
+        disabled_style_id = self._style_id("DEMO-DISABLED")
+
+        valid = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json={
+                "company": "COMP-A",
+                "customer": "CUST-A",
+                "operation": "create_draft",
+                "sales_order_no": "SO-A4-STYLE-001",
+                "source_order_ref": "SO-A4-STYLE-001",
+                "idempotency_key": "idem-so-a4-style-001",
+                "transaction_date": "2026-06-16",
+                "delivery_date": "2026-06-30",
+                "currency": "CNY",
+                "items": [
+                    {
+                        "style_master_id": style_id,
+                        "item_code": "DEMO-TEE",
+                        "item_name": "Ignored Name",
+                        "qty": 10,
+                        "rate": 80,
+                        "uom": "件",
+                    }
+                ],
+            },
+        )
+        mismatch = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json={
+                "company": "COMP-A",
+                "customer": "CUST-A",
+                "operation": "create_draft",
+                "sales_order_no": "SO-A4-STYLE-MISMATCH",
+                "source_order_ref": "SO-A4-STYLE-MISMATCH",
+                "idempotency_key": "idem-so-a4-style-mismatch",
+                "items": [
+                    {
+                        "style_master_id": style_id,
+                        "item_code": "OTHER-STYLE",
+                        "qty": 10,
+                        "uom": "件",
+                    }
+                ],
+            },
+        )
+        disabled = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json={
+                "company": "COMP-A",
+                "customer": "CUST-A",
+                "operation": "create_draft",
+                "sales_order_no": "SO-A4-STYLE-DISABLED",
+                "source_order_ref": "SO-A4-STYLE-DISABLED",
+                "idempotency_key": "idem-so-a4-style-disabled",
+                "items": [
+                    {
+                        "style_master_id": disabled_style_id,
+                        "item_code": "DEMO-DISABLED",
+                        "qty": 10,
+                        "uom": "件",
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(valid.status_code, 201, valid.text)
+        self.assertEqual(valid.json()["data"]["items"][0]["style_master_id"], style_id)
+        self.assertEqual(valid.json()["data"]["items"][0]["item_name"], "Demo Tee")
+        self.assertEqual(mismatch.status_code, 409)
+        self.assertEqual(mismatch.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+        self.assertEqual(disabled.status_code, 409)
+        self.assertEqual(disabled.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
 
     def test_sales_order_cancel_uses_payload_idempotency_key(self) -> None:
         order_payload = {

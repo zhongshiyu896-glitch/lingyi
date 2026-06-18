@@ -595,6 +595,7 @@ class SampleApiTest(unittest.TestCase):
             self.assertEqual(sales_order.status, "draft")
             self.assertEqual(sales_order.customer, "A3 客户")
             self.assertEqual(sales_order.source_order_ref, "SAMPLE-SMP-A3-CONVERT")
+            self.assertEqual(sales_item.style_master_id, row.style_master_id)
             self.assertEqual(sales_item.item_code, "ST-A3-001")
             self.assertEqual(str(sales_item.qty), "1.000000")
             self.assertEqual(session.query(LySalesOrderIdempotency).count(), 1)

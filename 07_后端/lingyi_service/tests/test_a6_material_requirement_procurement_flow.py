@@ -29,7 +29,16 @@ from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.quality import Base as QualityBase
+from app.models.sample import Base as SampleBase
+from app.models.sample import LySampleIdempotency
+from app.models.sample import LySampleOrder
+from app.models.sample import LySampleTrackingEvent
+from app.models.sample import LySampleTrackingNode
+from app.models.sample import LySampleTrackingTemplate
 from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderIdempotency
+from app.models.sales_order import LySalesOrderItem
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
@@ -38,6 +47,7 @@ from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.material_purchase import get_db_session as material_purchase_db_dep
 from app.routers.production import get_db_session as production_db_dep
+from app.routers.sample import get_db_session as sample_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
 from app.services.material_purchase_service import MaterialPurchaseService
@@ -65,6 +75,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         StyleMasterBase.metadata.create_all(bind=cls.engine)
+        SampleBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         BomBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
@@ -80,6 +91,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 db.close()
 
         app.dependency_overrides[auth_db_dep] = _override_db
+        app.dependency_overrides[sample_db_dep] = _override_db
         app.dependency_overrides[sales_inventory_db_dep] = _override_db
         app.dependency_overrides[production_db_dep] = _override_db
         app.dependency_overrides[material_purchase_db_dep] = _override_db
@@ -92,6 +104,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
     def tearDownClass(cls) -> None:
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
+        app.dependency_overrides.pop(sample_db_dep, None)
         app.dependency_overrides.pop(sales_inventory_db_dep, None)
         app.dependency_overrides.pop(production_db_dep, None)
         app.dependency_overrides.pop(material_purchase_db_dep, None)
@@ -115,6 +128,15 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             session.query(LyMaterialPurchaseOrderItem).delete()
             session.query(LyMaterialPurchaseOrder).delete()
             session.query(LyProductionPlanMaterial).delete()
+            session.query(LyProductionPlan).delete()
+            session.query(LySampleIdempotency).delete()
+            session.query(LySampleTrackingEvent).delete()
+            session.query(LySampleTrackingNode).delete()
+            session.query(LySampleTrackingTemplate).delete()
+            session.query(LySampleOrder).delete()
+            session.query(LySalesOrderIdempotency).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrder).delete()
             session.query(LyStyleMaster).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
@@ -167,6 +189,32 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             "X-LY-Dev-User": "a6.procurement.user",
             "X-LY-Dev-Roles": "System Manager",
             "X-Request-ID": request_id,
+        }
+
+    def _style_id(self) -> int:
+        with self.SessionLocal() as session:
+            row = session.query(LyStyleMaster).filter_by(company=self.COMPANY, ys_style_no=self.STYLE).one()
+            return int(row.id)
+
+    def _sample_payload(self, *, sample_no: str, idempotency_key: str) -> dict[str, object]:
+        return {
+            "operation": "create",
+            "company": self.COMPANY,
+            "sample_no": sample_no,
+            "style_master_id": self._style_id(),
+            "style_no": self.STYLE,
+            "style_name": "A6 Tee",
+            "customer": "CUST-A6",
+            "factory": "A6 样衣组",
+            "sample_type": "初样",
+            "stage": "建档",
+            "progress": 0,
+            "pattern_maker": "版师 A6",
+            "sample_maker": "样衣工 A6",
+            "due_date": "2026-06-30",
+            "status": "draft",
+            "image_tone": "blue",
+            "idempotency_key": idempotency_key,
         }
 
     def _seed_requirement(
@@ -317,6 +365,121 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 201, response.text)
+
+    def test_sample_convert_uses_same_style_bom_for_procurement_requirement(self) -> None:
+        sample_no = "SMP-A6-BOM-001"
+        style_id = self._style_id()
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers("req-a6-sample-create"),
+            json=self._sample_payload(sample_no=sample_no, idempotency_key="idem-a6-sample-create"),
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        order_id = int(created.json()["data"]["id"])
+        self.assertEqual(created.json()["data"]["style_master_id"], style_id)
+
+        submitted = self.client.post(
+            f"/api/sample/orders/{order_id}/submit",
+            headers=self._headers("req-a6-sample-submit"),
+            json={
+                "company": self.COMPANY,
+                "idempotency_key": "idem-a6-sample-submit",
+            },
+        )
+        sealed = self.client.post(
+            f"/api/sample/orders/{order_id}/seal",
+            headers=self._headers("req-a6-sample-seal"),
+            json={
+                "company": self.COMPANY,
+                "idempotency_key": "idem-a6-sample-seal",
+            },
+        )
+        converted = self.client.post(
+            f"/api/sample/orders/{order_id}/convert-to-bulk",
+            headers=self._headers("req-a6-sample-convert"),
+            json={
+                "operation": "convert",
+                "company": self.COMPANY,
+                "idempotency_key": "idem-a6-sample-convert",
+            },
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        self.assertEqual(sealed.status_code, 200, sealed.text)
+        self.assertEqual(converted.status_code, 200, converted.text)
+        bulk_no = converted.json()["data"]["bulk_handoff_no"]
+
+        detail = self.client.get(f"/api/sales-inventory/sales-orders/{bulk_no}", headers=self._headers("req-a6-bulk-detail"))
+        self.assertEqual(detail.status_code, 200, detail.text)
+        sales_item = detail.json()["data"]["items"][0]
+        self.assertEqual(sales_item["style_master_id"], style_id)
+        self.assertEqual(sales_item["item_code"], self.STYLE)
+        sales_order_item = sales_item["name"]
+
+        plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers("req-a6-sample-plan"),
+            json={
+                "sales_order": bulk_no,
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "planned_qty": 1,
+                "planned_start_date": "2026-06-18",
+                "operation": "create_plan",
+                "idempotency_key": "idem-a6-sample-plan",
+                "company": self.COMPANY,
+            },
+        )
+        self.assertEqual(plan.status_code, 200, plan.text)
+        plan_id = int(plan.json()["data"]["plan_id"])
+
+        material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260618-401"
+        request_id = f"req-{material_check_scenario}"
+        material_check = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers={**self._headers(request_id), "X-Request-ID": request_id},
+            json={
+                "warehouse": self.WAREHOUSE,
+                "operation": "material_check",
+                "idempotency_key": f"{material_check_scenario}:idem-a6-sample-material-check",
+                "scenario_tag": material_check_scenario,
+                "plan_id": plan_id,
+                "sales_order": bulk_no,
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "request_id": request_id,
+            },
+        )
+        self.assertEqual(material_check.status_code, 200, material_check.text)
+        material_row = material_check.json()["data"]["items"][0]
+        self.assertEqual(material_row["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(material_row["required_qty"])), Decimal("2.100000"))
+        self.assertEqual(Decimal(str(material_row["available_qty"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(material_row["shortage_qty"])), Decimal("2.100000"))
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword={bulk_no}",
+            headers=self._headers("req-a6-sample-requirements"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_rows = requirements.json()["data"]["items"]
+        self.assertEqual(len(requirement_rows), 1)
+        requirement = requirement_rows[0]
+        self.assertEqual(requirement["sales_order"], bulk_no)
+        self.assertEqual(requirement["sales_order_item"], sales_order_item)
+        self.assertEqual(requirement["item_code"], self.STYLE)
+        self.assertEqual(requirement["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(requirement["net_required_qty"])), Decimal("2.100000"))
+
+        with self.SessionLocal() as session:
+            sample = session.query(LySampleOrder).one()
+            sales_line = session.query(LySalesOrderItem).one()
+            requirement_row = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertEqual(sample.bulk_handoff_no, bulk_no)
+            self.assertEqual(sales_line.style_master_id, sample.style_master_id)
+            self.assertEqual(requirement_row.sales_order, bulk_no)
+            self.assertEqual(requirement_row.material_item_code, self.MATERIAL)
 
     def test_material_check_creates_requirement_and_receipt_closes_shortage(self) -> None:
         self._create_stock_receipt(

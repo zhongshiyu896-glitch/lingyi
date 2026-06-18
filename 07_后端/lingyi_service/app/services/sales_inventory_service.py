@@ -218,7 +218,12 @@ class SalesInventoryService:
         grand_total = Decimal("0")
         for index, line in enumerate(payload.items, start=1):
             item_code = self._require_text(line.item_code, f"items[{index}].item_code")
-            style = self._resolve_enabled_style(company=company, style_no=item_code)
+            requested_style_master_id = int(line.style_master_id) if line.style_master_id is not None else None
+            style = self._resolve_enabled_style(
+                company=company,
+                style_no=item_code,
+                style_master_id=requested_style_master_id,
+            )
             qty = self._positive_decimal(line.qty, f"items[{index}].qty")
             rate = self._decimal_or_none(line.rate)
             amount = qty * rate if rate is not None else None
@@ -226,6 +231,8 @@ class SalesInventoryService:
                 grand_total += amount
             line_rows.append(
                 {
+                    "style_master_id": int(style.id),
+                    "requested_style_master_id": requested_style_master_id,
                     "item_code": str(style.ys_style_no),
                     "item_name": str(style.ys_style_name_cn),
                     "color": self._text(line.color),
@@ -248,20 +255,7 @@ class SalesInventoryService:
                 "currency": currency,
                 "transaction_date": transaction_date.isoformat() if transaction_date else None,
                 "delivery_date": delivery_date.isoformat() if delivery_date else None,
-                "items": [
-                    {
-                        "item_code": row["item_code"],
-                        "item_name": row["item_name"],
-                        "color": row["color"],
-                        "size": row["size"],
-                        "qty": str(row["qty"]),
-                        "rate": str(row["rate"]) if row["rate"] is not None else None,
-                        "uom": row["uom"],
-                        "warehouse": row["warehouse"],
-                        "delivery_date": row["delivery_date"].isoformat() if row["delivery_date"] else None,
-                    }
-                    for row in line_rows
-                ],
+                "items": [self._native_sales_order_line_hash_item(row) for row in line_rows],
             }
         )
 
@@ -323,6 +317,7 @@ class SalesInventoryService:
                     company=company,
                     line_no=index,
                     sales_order_item=f"{sales_order_no}-{index:03d}",
+                    style_master_id=item["style_master_id"],
                     item_code=item["item_code"],
                     item_name=item["item_name"],
                     color=item["color"],
@@ -386,7 +381,12 @@ class SalesInventoryService:
         grand_total = Decimal("0")
         for index, line in enumerate(payload.items, start=1):
             item_code = self._require_text(line.item_code, f"items[{index}].item_code")
-            style = self._resolve_enabled_style(company=company, style_no=item_code)
+            requested_style_master_id = int(line.style_master_id) if line.style_master_id is not None else None
+            style = self._resolve_enabled_style(
+                company=company,
+                style_no=item_code,
+                style_master_id=requested_style_master_id,
+            )
             qty = self._positive_decimal(line.qty, f"items[{index}].qty")
             rate = self._decimal_or_none(line.rate)
             amount = qty * rate if rate is not None else None
@@ -394,6 +394,8 @@ class SalesInventoryService:
                 grand_total += amount
             line_rows.append(
                 {
+                    "style_master_id": int(style.id),
+                    "requested_style_master_id": requested_style_master_id,
                     "item_code": str(style.ys_style_no),
                     "item_name": str(style.ys_style_name_cn),
                     "color": self._text(line.color),
@@ -417,20 +419,7 @@ class SalesInventoryService:
                 "currency": currency,
                 "transaction_date": payload.transaction_date.isoformat() if payload.transaction_date else None,
                 "delivery_date": payload.delivery_date.isoformat() if payload.delivery_date else None,
-                "items": [
-                    {
-                        "item_code": row["item_code"],
-                        "item_name": row["item_name"],
-                        "color": row["color"],
-                        "size": row["size"],
-                        "qty": str(row["qty"]),
-                        "rate": str(row["rate"]) if row["rate"] is not None else None,
-                        "uom": row["uom"],
-                        "warehouse": row["warehouse"],
-                        "delivery_date": row["delivery_date"].isoformat() if row["delivery_date"] else None,
-                    }
-                    for row in line_rows
-                ],
+                "items": [self._native_sales_order_line_hash_item(row) for row in line_rows],
             }
         )
 
@@ -460,6 +449,7 @@ class SalesInventoryService:
                         company=company,
                         line_no=index,
                         sales_order_item=f"{order.sales_order_no}-{index:03d}",
+                        style_master_id=row["style_master_id"],
                         item_code=row["item_code"],
                         item_name=row["item_name"],
                         color=row["color"],
@@ -485,7 +475,15 @@ class SalesInventoryService:
                 raise SalesInventoryServiceError(409, "SALES_ORDER_QTY_BELOW_DELIVERED", "订单数量不得小于已交付数量")
             if (planned_qty > 0 or delivered_qty > 0) and str(existing_item.item_code) != row["item_code"]:
                 raise SalesInventoryServiceError(409, "SALES_ORDER_PLANNED_ITEM_LOCKED", "已排产或已交付订单行不允许改款号")
+            existing_style_master_id = int(existing_item.style_master_id) if existing_item.style_master_id is not None else None
+            if (
+                (planned_qty > 0 or delivered_qty > 0)
+                and existing_style_master_id is not None
+                and existing_style_master_id != int(row["style_master_id"])
+            ):
+                raise SalesInventoryServiceError(409, "SALES_ORDER_PLANNED_ITEM_LOCKED", "已排产或已交付订单行不允许改款式主档")
 
+            existing_item.style_master_id = row["style_master_id"]
             existing_item.item_code = row["item_code"]
             existing_item.item_name = row["item_name"]
             existing_item.color = row["color"]
@@ -4291,6 +4289,7 @@ class SalesInventoryService:
     def _sales_order_line_item(cls, row: dict[str, Any]) -> SalesOrderLineItem:
         return SalesOrderLineItem(
             name=cls._text(row.get("name")),
+            style_master_id=(int(row["style_master_id"]) if row.get("style_master_id") is not None else None),
             item_code=str(row.get("item_code") or ""),
             item_name=cls._text(row.get("item_name")),
             color=cls._text(row.get("color")),
@@ -4319,15 +4318,28 @@ class SalesInventoryService:
             raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", f"{field_name} 不能为空")
         return normalized
 
-    def _resolve_enabled_style(self, *, company: str, style_no: str) -> LyStyleMaster:
+    def _resolve_enabled_style(self, *, company: str, style_no: str | None, style_master_id: int | None = None) -> LyStyleMaster:
         session = self._require_session()
+        normalized_style_no = self._text(style_no)
+        if style_master_id is not None:
+            row = (
+                session.query(LyStyleMaster)
+                .filter(LyStyleMaster.id == int(style_master_id), LyStyleMaster.company == company)
+                .first()
+            )
+            if row is None or str(row.ys_style_status) != "enabled":
+                raise SalesInventoryServiceError(409, STYLE_MASTER_INVALID_REFERENCE, f"{style_master_id} 款式主档不存在或未启用")
+            if normalized_style_no is not None and normalized_style_no != str(row.ys_style_no):
+                raise SalesInventoryServiceError(409, STYLE_MASTER_INVALID_REFERENCE, "销售订单款式主档与款号不一致")
+            return row
+        normalized_style_no = self._require_text(normalized_style_no, "item_code")
         row = (
             session.query(LyStyleMaster)
-            .filter(LyStyleMaster.company == company, LyStyleMaster.ys_style_no == style_no)
+            .filter(LyStyleMaster.company == company, LyStyleMaster.ys_style_no == normalized_style_no)
             .first()
         )
         if row is None or str(row.ys_style_status) != "enabled":
-            raise SalesInventoryServiceError(409, STYLE_MASTER_INVALID_REFERENCE, f"{style_no} 款式不存在或未启用")
+            raise SalesInventoryServiceError(409, STYLE_MASTER_INVALID_REFERENCE, f"{normalized_style_no} 款式不存在或未启用")
         return row
 
     def _ensure_sales_order_not_material_issued(self, *, order: LySalesOrder) -> None:
@@ -4557,6 +4569,7 @@ class SalesInventoryService:
             items=[
                 SalesOrderLineItem(
                     name=str(item.sales_order_item),
+                    style_master_id=int(item.style_master_id) if item.style_master_id is not None else None,
                     item_code=str(item.item_code),
                     item_name=self._text(item.item_name) or str(item.item_code),
                     color=self._text(item.color),
@@ -4597,6 +4610,7 @@ class SalesInventoryService:
                 SalesOrderDraftLineItemData(
                     id=int(item.id),
                     draft_id=int(order.id),
+                    style_master_id=int(item.style_master_id) if item.style_master_id is not None else None,
                     item_code=str(item.item_code),
                     item_name=self._text(item.item_name) or str(item.item_code),
                     color=self._text(item.color),
@@ -4616,6 +4630,23 @@ class SalesInventoryService:
     def _native_sales_order_request_hash(payload: dict[str, Any]) -> str:
         raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
+
+    @staticmethod
+    def _native_sales_order_line_hash_item(row: dict[str, Any]) -> dict[str, Any]:
+        item = {
+            "item_code": row["item_code"],
+            "item_name": row["item_name"],
+            "color": row["color"],
+            "size": row["size"],
+            "qty": str(row["qty"]),
+            "rate": str(row["rate"]) if row["rate"] is not None else None,
+            "uom": row["uom"],
+            "warehouse": row["warehouse"],
+            "delivery_date": row["delivery_date"].isoformat() if row["delivery_date"] else None,
+        }
+        if row.get("requested_style_master_id") is not None:
+            item["style_master_id"] = int(row["style_master_id"])
+        return item
 
     @staticmethod
     def _sales_order_draft_response_json(response: SalesOrderDraftData) -> dict[str, Any]:

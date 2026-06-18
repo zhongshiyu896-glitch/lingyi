@@ -67,6 +67,7 @@ class LySalesOrderItem(Base):
         Index("uk_ly_sales_order_item_line", "sales_order_id", "line_no", unique=True),
         Index("idx_ly_sales_order_item_order", "sales_order_id"),
         Index("idx_ly_sales_order_item_code", "company", "item_code"),
+        Index("idx_ly_sales_order_item_style_master", "company", "style_master_id"),
         Index("idx_ly_sales_order_item_material_calc", "company", "ys_material_calc_state"),
         CheckConstraint("qty > 0", name="ck_ly_sales_order_item_qty_positive"),
         CheckConstraint("ys_material_calc_state IN ('待算料','已算料')", name="ck_ly_sales_order_item_calc_state"),
@@ -78,6 +79,7 @@ class LySalesOrderItem(Base):
     company = Column(String(140), nullable=False)
     line_no = Column(Integer, nullable=False)
     sales_order_item = Column(String(140), nullable=False)
+    style_master_id = Column(IDType, nullable=True)
     item_code = Column(String(140), nullable=False)
     item_name = Column(String(255), nullable=True)
     color = Column(String(64), nullable=True)

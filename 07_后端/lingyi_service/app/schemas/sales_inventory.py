@@ -215,6 +215,7 @@ class SalesOrderLineItem(BaseModel):
     """Read-only Sales Order item row."""
 
     name: str | None = None
+    style_master_id: int | None = None
     item_code: str
     item_name: str | None = None
     color: str | None = None
@@ -247,6 +248,7 @@ class SalesOrderDetailData(BaseModel):
 class SalesOrderDraftLineItemCreateRequest(BaseModel):
     """Create local sales-order draft line payload."""
 
+    style_master_id: int | None = None
     item_code: str
     item_name: str | None = None
     color: str | None = None
@@ -305,6 +307,7 @@ class SalesOrderDraftLineItemData(BaseModel):
 
     id: int
     draft_id: int
+    style_master_id: int | None = None
     item_code: str
     item_name: str | None = None
     color: str | None = None

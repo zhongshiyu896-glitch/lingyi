@@ -1262,6 +1262,7 @@ class SampleService:
                 currency="CNY",
                 items=[
                     SalesOrderDraftLineItemCreateRequest(
+                        style_master_id=int(row.style_master_id) if row.style_master_id is not None else None,
                         item_code=row.style_no,
                         item_name=row.style_name,
                         qty=Decimal("1"),
