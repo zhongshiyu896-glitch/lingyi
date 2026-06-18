@@ -445,7 +445,7 @@ class ProductionService:
 
     def _material_bom_rows_for_plan(self, *, plan: LyProductionPlan) -> list[Any]:
         sample_rows = self._sample_material_bom_rows_for_plan(plan=plan)
-        if sample_rows:
+        if sample_rows is not None:
             return sample_rows
         try:
             return (
@@ -457,7 +457,7 @@ class ProductionService:
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
-    def _sample_material_bom_rows_for_plan(self, *, plan: LyProductionPlan) -> list[LySampleMaterialBomItem]:
+    def _sample_material_bom_rows_for_plan(self, *, plan: LyProductionPlan) -> list[LySampleMaterialBomItem] | None:
         try:
             sales_order = (
                 self.session.query(LySalesOrder)
@@ -469,16 +469,16 @@ class ProductionService:
             )
         except SQLAlchemyError as exc:
             if self._is_missing_native_sales_order_table(exc):
-                return []
+                return None
             raise DatabaseReadFailed() from exc
         if sales_order is None:
-            return []
+            return None
         source_ref = str(sales_order.source_order_ref or "").strip()
         if not source_ref.startswith("SAMPLE-"):
-            return []
+            return None
         sample_no = source_ref.removeprefix("SAMPLE-").strip()
         if not sample_no:
-            return []
+            return None
         try:
             sample = (
                 self.session.query(LySampleOrder)
@@ -489,9 +489,9 @@ class ProductionService:
                 .first()
             )
             if sample is None:
-                return []
+                return None
             if sample.bulk_handoff_no and str(sample.bulk_handoff_no) != str(plan.sales_order):
-                return []
+                return None
             bom = (
                 self.session.query(LySampleMaterialBom)
                 .filter(
@@ -503,7 +503,7 @@ class ProductionService:
                 .first()
             )
             if bom is None:
-                return []
+                return None
             return (
                 self.session.query(LySampleMaterialBomItem)
                 .filter(LySampleMaterialBomItem.bom_id == int(bom.id))
