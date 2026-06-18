@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import os
 from pathlib import Path
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -119,6 +120,94 @@ class LocalDevAsgiContractTest(unittest.TestCase):
         self.assertEqual(data["production_safety"]["erpnext_production_write_requests"], 0)
         self.assertFalse(data["production_safety"]["real_production_account_used"])
         self.assertTrue(self._temp_db_path.exists())
+        self._assert_repo_db_stats_unchanged()
+
+    def test_local_dev_migrates_legacy_sales_order_item_style_master_column(self) -> None:
+        with sqlite3.connect(self._temp_db_path) as connection:
+            connection.execute(
+                """
+                CREATE TABLE ly_sales_order_item (
+                    id INTEGER PRIMARY KEY,
+                    sales_order_id INTEGER NOT NULL,
+                    company VARCHAR(140) NOT NULL,
+                    line_no INTEGER NOT NULL,
+                    sales_order_item VARCHAR(140) NOT NULL,
+                    item_code VARCHAR(140) NOT NULL,
+                    item_name VARCHAR(255),
+                    color VARCHAR(64),
+                    size VARCHAR(64),
+                    qty NUMERIC NOT NULL,
+                    planned_qty NUMERIC NOT NULL DEFAULT 0,
+                    delivered_qty NUMERIC NOT NULL DEFAULT 0,
+                    ys_material_calc_state VARCHAR(32) NOT NULL DEFAULT '待算料',
+                    rate NUMERIC,
+                    amount NUMERIC,
+                    uom VARCHAR(32) NOT NULL DEFAULT 'Nos',
+                    warehouse VARCHAR(140),
+                    delivery_date DATE
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE ly_style_master (
+                    id INTEGER PRIMARY KEY,
+                    company VARCHAR(140) NOT NULL,
+                    ys_style_no VARCHAR(140) NOT NULL,
+                    ys_style_name_cn VARCHAR(255) NOT NULL,
+                    ys_season VARCHAR(64),
+                    ys_year VARCHAR(16),
+                    ys_brand VARCHAR(64),
+                    ys_style_status VARCHAR(32) NOT NULL,
+                    colors JSON NOT NULL DEFAULT '[]',
+                    sizes JSON NOT NULL DEFAULT '[]',
+                    version INTEGER NOT NULL DEFAULT 1,
+                    created_by VARCHAR(140) NOT NULL DEFAULT 'legacy.test',
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_by VARCHAR(140) NOT NULL DEFAULT 'legacy.test',
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    disabled_by VARCHAR(140),
+                    disabled_at DATETIME,
+                    disable_reason VARCHAR(255)
+                )
+                """
+            )
+            connection.execute(
+                """
+                INSERT INTO ly_style_master (
+                    id, company, ys_style_no, ys_style_name_cn, ys_style_status
+                )
+                VALUES (101, '默认公司', 'LEGACY-STYLE', '旧表款式', 'enabled')
+                """
+            )
+            connection.execute(
+                """
+                INSERT INTO ly_sales_order_item (
+                    id, sales_order_id, company, line_no, sales_order_item, item_code, qty
+                )
+                VALUES (1, 1, '默认公司', 1, 'SO-LEGACY-001-001', 'LEGACY-STYLE', 10)
+                """
+            )
+            connection.commit()
+
+        self._load_local_dev_module()
+
+        with sqlite3.connect(self._temp_db_path) as connection:
+            columns = {
+                str(row[1])
+                for row in connection.execute("PRAGMA table_info(ly_sales_order_item)").fetchall()
+            }
+            indexes = {
+                str(row[1])
+                for row in connection.execute("PRAGMA index_list(ly_sales_order_item)").fetchall()
+            }
+            linked_id = connection.execute(
+                "SELECT style_master_id FROM ly_sales_order_item WHERE id = 1"
+            ).fetchone()[0]
+
+        self.assertIn("style_master_id", columns)
+        self.assertIn("idx_ly_sales_order_item_style_master", indexes)
+        self.assertEqual(linked_id, 101)
         self._assert_repo_db_stats_unchanged()
 
     def test_local_dev_checkpoint_rollback_is_explicit_no_op(self) -> None:

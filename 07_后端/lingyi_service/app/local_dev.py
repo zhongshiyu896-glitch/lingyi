@@ -163,6 +163,8 @@ def _ensure_local_sales_order_item_calc_columns() -> None:
             str(row[1])
             for row in conn.execute("PRAGMA table_info(ly_sales_order_item)").fetchall()
         }
+        if "style_master_id" not in existing_columns:
+            conn.execute("ALTER TABLE ly_sales_order_item ADD COLUMN style_master_id INTEGER")
         if "color" not in existing_columns:
             conn.execute("ALTER TABLE ly_sales_order_item ADD COLUMN color VARCHAR(64)")
         if "size" not in existing_columns:
@@ -171,6 +173,28 @@ def _ensure_local_sales_order_item_calc_columns() -> None:
             conn.execute(
                 "ALTER TABLE ly_sales_order_item ADD COLUMN ys_material_calc_state VARCHAR(32) NOT NULL DEFAULT '待算料'"
             )
+        style_table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_style_master'"
+        ).fetchone()
+        if style_table_exists:
+            conn.execute(
+                """
+                UPDATE ly_sales_order_item
+                SET style_master_id = (
+                    SELECT sm.id
+                    FROM ly_style_master sm
+                    WHERE sm.company = ly_sales_order_item.company
+                      AND sm.ys_style_no = ly_sales_order_item.item_code
+                      AND sm.ys_style_status = 'enabled'
+                    ORDER BY sm.id
+                    LIMIT 1
+                )
+                WHERE style_master_id IS NULL
+                """
+            )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ly_sales_order_item_style_master ON ly_sales_order_item(company, style_master_id)"
+        )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ly_sales_order_item_material_calc ON ly_sales_order_item(company, ys_material_calc_state)"
         )
