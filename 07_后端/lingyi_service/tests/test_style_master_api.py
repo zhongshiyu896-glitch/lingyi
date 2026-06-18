@@ -17,6 +17,7 @@ from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleDictionary
+from app.models.style_master import LyStyleGallery
 from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
 from app.routers.auth import get_db_session as auth_db_dep
@@ -68,6 +69,7 @@ class StyleMasterApiTest(unittest.TestCase):
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.query(LyStyleMasterIdempotency).delete()
+            session.query(LyStyleGallery).delete()
             session.query(LyStyleMaster).delete()
             session.query(LyStyleDictionary).delete()
             session.commit()
@@ -257,6 +259,78 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         self.assertEqual(invalid_size_ref.status_code, 409)
         self.assertEqual(invalid_size_ref.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
+    def test_style_gallery_linked_to_style_and_visible_on_style_list(self) -> None:
+        self._seed_style_dictionaries()
+        created = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-GALLERY-STYLE-001"),
+            json=self._style_payload(style_no="ST-GAL-001", idempotency_key="IDEMP-ST-GAL-001-C"),
+        )
+        self.assertEqual(created.status_code, 201)
+        style_id = int(created.json()["data"]["id"])
+
+        gallery = self.client.post(
+            "/api/style-master/style-gallery",
+            headers=self._headers(request_id="STYLE-GALLERY-CREATE-001"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "style_master_id": style_id,
+                "image_url": "https://example.test/style-main.jpg",
+                "thumbnail_url": "https://example.test/style-main-thumb.jpg",
+                "image_name": "主图",
+                "image_type": "main",
+                "is_primary": True,
+            },
+        )
+        self.assertEqual(gallery.status_code, 201)
+        gallery_body = gallery.json()["data"]
+        self.assertEqual(gallery_body["ys_style_no"], "ST-GAL-001")
+        self.assertEqual(gallery_body["ys_style_name_cn"], "A3 最小款式")
+        self.assertTrue(gallery_body["is_primary"])
+        gallery_id = int(gallery_body["id"])
+
+        listed_gallery = self.client.get(
+            f"/api/style-master/style-gallery?company=COMP-A&style_id={style_id}",
+            headers=self._headers(request_id="STYLE-GALLERY-LIST-001"),
+        )
+        self.assertEqual(listed_gallery.status_code, 200)
+        self.assertEqual(listed_gallery.json()["data"]["total"], 1)
+        self.assertEqual(listed_gallery.json()["data"]["items"][0]["ys_style_no"], "ST-GAL-001")
+
+        styles = self.client.get(
+            "/api/style-master/styles?company=COMP-A&keyword=ST-GAL-001",
+            headers=self._headers(request_id="STYLE-GALLERY-STYLES-001"),
+        )
+        self.assertEqual(styles.status_code, 200)
+        style_item = styles.json()["data"]["items"][0]
+        self.assertEqual(style_item["primary_thumbnail_url"], "https://example.test/style-main-thumb.jpg")
+        self.assertEqual(style_item["primary_image_url"], "https://example.test/style-main.jpg")
+        self.assertEqual(style_item["gallery_count"], 1)
+
+        deactivated = self.client.post(
+            f"/api/style-master/style-gallery/{gallery_id}/deactivate",
+            headers=self._headers(request_id="STYLE-GALLERY-DEACTIVATE-001"),
+            json={"operation": "deactivate", "company": "COMP-A", "reason": "测试停用图库"},
+        )
+        self.assertEqual(deactivated.status_code, 200)
+
+        listed_after = self.client.get(
+            f"/api/style-master/style-gallery?company=COMP-A&style_id={style_id}",
+            headers=self._headers(request_id="STYLE-GALLERY-LIST-002"),
+        )
+        self.assertEqual(listed_after.status_code, 200)
+        self.assertEqual(listed_after.json()["data"]["total"], 0)
+
+        styles_after = self.client.get(
+            "/api/style-master/styles?company=COMP-A&keyword=ST-GAL-001",
+            headers=self._headers(request_id="STYLE-GALLERY-STYLES-002"),
+        )
+        self.assertEqual(styles_after.status_code, 200)
+        style_after = styles_after.json()["data"]["items"][0]
+        self.assertIsNone(style_after["primary_thumbnail_url"])
+        self.assertEqual(style_after["gallery_count"], 0)
 
     def test_style_manage_permission_fail_closed(self) -> None:
         denied = self.client.post(

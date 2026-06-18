@@ -27,6 +27,9 @@ from app.core.permissions import STYLE_MASTER_READ
 from app.schemas.style_master import StyleDictionaryCreateRequest
 from app.schemas.style_master import StyleDictionaryDeactivateRequest
 from app.schemas.style_master import StyleDictionaryUpdateRequest
+from app.schemas.style_master import StyleGalleryCreateRequest
+from app.schemas.style_master import StyleGalleryDeactivateRequest
+from app.schemas.style_master import StyleGalleryUpdateRequest
 from app.schemas.style_master import StyleMaterialBomExplodeRequest
 from app.schemas.style_master import StyleMaterialBomUpsertRequest
 from app.schemas.style_master import StyleMasterCreateRequest
@@ -180,6 +183,117 @@ def list_styles(
     except AppException as exc:
         return _err(exc)
     return _ok(data)
+
+
+@router.get("/style-gallery")
+def list_style_gallery(
+    request: Request,
+    company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    style_id: int | None = Query(default=None, ge=1),
+    image_type: str | None = Query(default=None),
+    is_primary: bool | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=STYLE_MASTER_READ,
+        resource_type="STYLE_GALLERY",
+    )
+    try:
+        data = StyleMasterService(session).list_style_gallery(
+            company=company,
+            keyword=keyword,
+            style_id=style_id,
+            image_type=image_type,
+            is_primary=is_primary,
+            page=page,
+            page_size=page_size,
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(data)
+
+
+@router.post("/style-gallery")
+def create_style_gallery(
+    payload: StyleGalleryCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    try:
+        result = _mutate(
+            action="create_style_gallery",
+            resource_type="STYLE_GALLERY",
+            resource_id=None,
+            resource_no=None,
+            request=request,
+            current_user=current_user,
+            session=session,
+            mutate=lambda service: service.create_style_gallery(payload=payload, actor=current_user.username),
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _created(result.item)
+
+
+@router.patch("/style-gallery/{gallery_id}")
+def update_style_gallery(
+    gallery_id: int,
+    payload: StyleGalleryUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    try:
+        result = _mutate(
+            action="update_style_gallery",
+            resource_type="STYLE_GALLERY",
+            resource_id=gallery_id,
+            resource_no=None,
+            request=request,
+            current_user=current_user,
+            session=session,
+            mutate=lambda service: service.update_style_gallery(gallery_id=gallery_id, payload=payload, actor=current_user.username),
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(result.item)
+
+
+@router.post("/style-gallery/{gallery_id}/deactivate")
+def deactivate_style_gallery(
+    gallery_id: int,
+    payload: StyleGalleryDeactivateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    try:
+        result = _mutate(
+            action="deactivate_style_gallery",
+            resource_type="STYLE_GALLERY",
+            resource_id=gallery_id,
+            resource_no=None,
+            request=request,
+            current_user=current_user,
+            session=session,
+            mutate=lambda service: service.deactivate_style_gallery(
+                gallery_id=gallery_id,
+                company=payload.company,
+                reason=payload.reason,
+                actor=current_user.username,
+            ),
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(result.item)
 
 
 @router.post("/styles")

@@ -12,6 +12,7 @@ from pydantic import Field
 StyleStatus = Literal["draft", "enabled", "disabled"]
 StyleDictionaryType = Literal["season", "year", "brand", "color", "size"]
 StyleDictionaryStatus = Literal["active", "inactive"]
+StyleGalleryImageType = Literal["main", "detail", "color", "process", "other"]
 
 
 class ApiResponse(BaseModel):
@@ -95,6 +96,9 @@ class StyleMasterItem(BaseModel):
     ys_style_status: StyleStatus
     colors: list[StyleColorItem]
     sizes: list[StyleSizeItem]
+    primary_image_url: str | None = None
+    primary_thumbnail_url: str | None = None
+    gallery_count: int = 0
     source: Literal["fastapi_style_master"] = "fastapi_style_master"
     version: int
     created_by: str
@@ -110,6 +114,68 @@ class StyleMasterListData(BaseModel):
     """Paginated style master response."""
 
     items: list[StyleMasterItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class StyleGalleryCreateRequest(BaseModel):
+    """Create one URL-backed style gallery record."""
+
+    operation: Literal["create"] = "create"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    style_master_id: int = Field(..., gt=0)
+    image_url: str = Field(..., min_length=1, max_length=2048)
+    thumbnail_url: str | None = Field(default=None, max_length=2048)
+    image_name: str | None = Field(default=None, max_length=255)
+    image_type: StyleGalleryImageType = "main"
+    is_primary: bool = False
+
+
+class StyleGalleryUpdateRequest(BaseModel):
+    """Update one style gallery record."""
+
+    operation: Literal["update"] = "update"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    image_url: str | None = Field(default=None, min_length=1, max_length=2048)
+    thumbnail_url: str | None = Field(default=None, max_length=2048)
+    image_name: str | None = Field(default=None, max_length=255)
+    image_type: StyleGalleryImageType | None = None
+    is_primary: bool | None = None
+
+
+class StyleGalleryDeactivateRequest(BaseModel):
+    """Deactivate one style gallery record."""
+
+    operation: Literal["deactivate"] = "deactivate"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    reason: str = Field(default="前端款式图库页停用", min_length=1, max_length=255)
+
+
+class StyleGalleryItem(BaseModel):
+    """Style gallery card returned to frontend pages."""
+
+    id: int
+    company: str
+    style_master_id: int
+    ys_style_no: str
+    ys_style_name_cn: str
+    image_url: str
+    thumbnail_url: str | None = None
+    image_name: str | None = None
+    image_type: StyleGalleryImageType
+    is_primary: bool
+    designer: str | None = None
+    style_type: str | None = None
+    created_by: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class StyleGalleryListData(BaseModel):
+    """Paginated style gallery response."""
+
+    items: list[StyleGalleryItem]
     total: int
     page: int
     page_size: int

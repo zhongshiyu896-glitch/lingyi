@@ -31,12 +31,17 @@ from app.models.bom import LyApparelBomItem
 from app.models.bom import LyApparelBomWriteOperation
 from app.models.master_data import LyMasterDataRecord
 from app.models.style_master import LyStyleDictionary
+from app.models.style_master import LyStyleGallery
 from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
 from app.schemas.style_master import StyleDictionaryCreateRequest
 from app.schemas.style_master import StyleDictionaryItem
 from app.schemas.style_master import StyleDictionaryListData
 from app.schemas.style_master import StyleDictionaryUpdateRequest
+from app.schemas.style_master import StyleGalleryCreateRequest
+from app.schemas.style_master import StyleGalleryItem
+from app.schemas.style_master import StyleGalleryListData
+from app.schemas.style_master import StyleGalleryUpdateRequest
 from app.schemas.style_master import StyleMaterialBomData
 from app.schemas.style_master import StyleMaterialBomExplodeData
 from app.schemas.style_master import StyleMaterialBomHeader
@@ -51,13 +56,14 @@ from app.schemas.style_master import StyleMasterUpdateRequest
 STYLE_STATUSES = {"draft", "enabled", "disabled"}
 DICTIONARY_TYPES = {"season", "year", "brand", "color", "size"}
 DICTIONARY_STATUSES = {"active", "inactive"}
+GALLERY_IMAGE_TYPES = {"main", "detail", "color", "process", "other"}
 
 
 @dataclass(frozen=True)
 class StyleMasterMutationResult:
     """Mutation output plus audit snapshots."""
 
-    item: StyleMasterItem | StyleDictionaryItem
+    item: Any
     before: dict[str, Any] | None
     after: dict[str, Any]
     resource_type: str
@@ -114,7 +120,159 @@ class StyleMasterService:
             raise
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
-        return StyleMasterListData(items=[self._style_item(row) for row in rows], total=total, page=page, page_size=page_size)
+        summaries = self._style_gallery_summaries([int(row.id) for row in rows])
+        return StyleMasterListData(
+            items=[self._style_item(row, gallery_summary=summaries.get(int(row.id))) for row in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_style_gallery(
+        self,
+        *,
+        company: str | None,
+        keyword: str | None,
+        style_id: int | None,
+        image_type: str | None,
+        is_primary: bool | None,
+        page: int,
+        page_size: int,
+    ) -> StyleGalleryListData:
+        try:
+            query = (
+                self.session.query(LyStyleGallery, LyStyleMaster)
+                .join(LyStyleMaster, LyStyleMaster.id == LyStyleGallery.style_master_id)
+                .filter(LyStyleGallery.status == "active")
+            )
+            normalized_company = self._optional_text(company)
+            if normalized_company:
+                query = query.filter(LyStyleGallery.company == normalized_company)
+            if style_id:
+                query = query.filter(LyStyleGallery.style_master_id == int(style_id))
+            normalized_type = self._optional_text(image_type)
+            if normalized_type and normalized_type != "all":
+                query = query.filter(LyStyleGallery.image_type == self._normalize_gallery_image_type(normalized_type))
+            if is_primary is not None:
+                query = query.filter(LyStyleGallery.is_primary.is_(bool(is_primary)))
+            normalized_keyword = self._optional_text(keyword)
+            if normalized_keyword:
+                like_value = f"%{normalized_keyword.lower()}%"
+                query = query.filter(
+                    (func.lower(LyStyleMaster.ys_style_no).like(like_value))
+                    | (func.lower(LyStyleMaster.ys_style_name_cn).like(like_value))
+                    | (func.lower(LyStyleMaster.ys_brand).like(like_value))
+                    | (func.lower(LyStyleGallery.image_name).like(like_value))
+                )
+            total = int(query.count())
+            rows = (
+                query.order_by(
+                    LyStyleGallery.is_primary.desc(),
+                    LyStyleGallery.updated_at.desc(),
+                    LyStyleGallery.id.desc(),
+                )
+                .offset(max(page - 1, 0) * page_size)
+                .limit(page_size)
+                .all()
+            )
+        except BusinessException:
+            raise
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return StyleGalleryListData(
+            items=[self._gallery_item(row=gallery, style=style) for gallery, style in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def create_style_gallery(self, *, payload: StyleGalleryCreateRequest, actor: str) -> StyleMasterMutationResult:
+        company = self._require_text(payload.company, "company")
+        style = self._get_style_for_read(style_id=payload.style_master_id, company=company)
+        image_url = self._require_text(payload.image_url, "image_url")
+        image_type = self._normalize_gallery_image_type(payload.image_type)
+        now = datetime.now(UTC)
+        try:
+            if payload.is_primary:
+                self._clear_other_primary_gallery(company=company, style_master_id=int(style.id))
+            row = LyStyleGallery(
+                company=company,
+                style_master_id=int(style.id),
+                image_url=image_url,
+                thumbnail_url=self._optional_text(payload.thumbnail_url) or image_url,
+                image_name=self._optional_text(payload.image_name),
+                image_type=image_type,
+                is_primary=bool(payload.is_primary),
+                status="active",
+                created_by=actor,
+                updated_by=actor,
+                updated_at=now,
+            )
+            self.session.add(row)
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._snapshot_gallery(row=row, style=style)
+        return self._gallery_result(row=row, style=style, before=None, after=after)
+
+    def update_style_gallery(
+        self,
+        *,
+        gallery_id: int,
+        payload: StyleGalleryUpdateRequest,
+        actor: str,
+    ) -> StyleMasterMutationResult:
+        company = self._require_text(payload.company, "company")
+        row = self._get_gallery_for_mutation(gallery_id=gallery_id, company=company)
+        style = self._get_style_for_read(style_id=int(row.style_master_id), company=company)
+        before = self._snapshot_gallery(row=row, style=style)
+        try:
+            if payload.image_url is not None:
+                row.image_url = self._require_text(payload.image_url, "image_url")
+            if payload.thumbnail_url is not None:
+                row.thumbnail_url = self._optional_text(payload.thumbnail_url) or row.image_url
+            if payload.image_name is not None:
+                row.image_name = self._optional_text(payload.image_name)
+            if payload.image_type is not None:
+                row.image_type = self._normalize_gallery_image_type(payload.image_type)
+            if payload.is_primary is not None:
+                if payload.is_primary:
+                    self._clear_other_primary_gallery(company=company, style_master_id=int(row.style_master_id), exclude_gallery_id=int(row.id))
+                row.is_primary = bool(payload.is_primary)
+            row.updated_by = actor
+            row.updated_at = datetime.now(UTC)
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._snapshot_gallery(row=row, style=style)
+        return self._gallery_result(row=row, style=style, before=before, after=after)
+
+    def deactivate_style_gallery(
+        self,
+        *,
+        gallery_id: int,
+        company: str,
+        reason: str,
+        actor: str,
+    ) -> StyleMasterMutationResult:
+        company = self._require_text(company, "company")
+        reason = self._require_text(reason, "reason")
+        row = self._get_gallery_for_mutation(gallery_id=gallery_id, company=company)
+        style = self._get_style_for_read(style_id=int(row.style_master_id), company=company)
+        before = self._snapshot_gallery(row=row, style=style)
+        try:
+            row.status = "inactive"
+            row.is_primary = False
+            row.deactivated_by = actor
+            row.deactivated_at = datetime.now(UTC)
+            row.deactivate_reason = reason
+            row.updated_by = actor
+            row.updated_at = datetime.now(UTC)
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._snapshot_gallery(row=row, style=style)
+        return self._gallery_result(row=row, style=style, before=before, after=after)
 
     def create_style(self, *, payload: StyleMasterCreateRequest, actor: str) -> StyleMasterMutationResult:
         company = self._require_text(payload.company, "company")
@@ -681,6 +839,60 @@ class StyleMasterService:
             raise BusinessException(code=STYLE_MASTER_NOT_FOUND)
         return row
 
+    def _get_gallery_for_mutation(self, *, gallery_id: int, company: str) -> LyStyleGallery:
+        row = (
+            self.session.query(LyStyleGallery)
+            .filter(
+                LyStyleGallery.id == int(gallery_id),
+                LyStyleGallery.company == company,
+                LyStyleGallery.status == "active",
+            )
+            .first()
+        )
+        if row is None:
+            raise BusinessException(code=STYLE_MASTER_NOT_FOUND, message="款式图库记录不存在或已停用")
+        return row
+
+    def _clear_other_primary_gallery(self, *, company: str, style_master_id: int, exclude_gallery_id: int | None = None) -> None:
+        query = self.session.query(LyStyleGallery).filter(
+            LyStyleGallery.company == company,
+            LyStyleGallery.style_master_id == int(style_master_id),
+            LyStyleGallery.status == "active",
+            LyStyleGallery.is_primary.is_(True),
+        )
+        if exclude_gallery_id is not None:
+            query = query.filter(LyStyleGallery.id != int(exclude_gallery_id))
+        for row in query.all():
+            row.is_primary = False
+
+    def _style_gallery_summaries(self, style_ids: list[int]) -> dict[int, dict[str, Any]]:
+        if not style_ids:
+            return {}
+        try:
+            rows = (
+                self.session.query(LyStyleGallery)
+                .filter(
+                    LyStyleGallery.style_master_id.in_(style_ids),
+                    LyStyleGallery.status == "active",
+                )
+                .order_by(LyStyleGallery.is_primary.desc(), LyStyleGallery.updated_at.desc(), LyStyleGallery.id.desc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        summaries: dict[int, dict[str, Any]] = {
+            int(style_id): {"gallery_count": 0, "primary_image_url": None, "primary_thumbnail_url": None}
+            for style_id in style_ids
+        }
+        for row in rows:
+            style_id = int(row.style_master_id)
+            summary = summaries.setdefault(style_id, {"gallery_count": 0, "primary_image_url": None, "primary_thumbnail_url": None})
+            summary["gallery_count"] = int(summary["gallery_count"] or 0) + 1
+            if bool(row.is_primary) and not summary["primary_image_url"]:
+                summary["primary_image_url"] = row.image_url
+                summary["primary_thumbnail_url"] = row.thumbnail_url or row.image_url
+        return summaries
+
     def _find_style_material_bom(self, *, style: LyStyleMaster) -> LyApparelBom | None:
         return (
             self.session.query(LyApparelBom)
@@ -911,7 +1123,25 @@ class StyleMasterService:
             idempotent=idempotent,
         )
 
-    def _style_item(self, row: LyStyleMaster) -> StyleMasterItem:
+    def _gallery_result(
+        self,
+        *,
+        row: LyStyleGallery,
+        style: LyStyleMaster,
+        before: dict[str, Any] | None,
+        after: dict[str, Any],
+    ) -> StyleMasterMutationResult:
+        return StyleMasterMutationResult(
+            item=self._gallery_item(row=row, style=style),
+            before=before,
+            after=after,
+            resource_type="STYLE_GALLERY",
+            resource_id=int(row.id),
+            resource_no=str(style.ys_style_no),
+        )
+
+    def _style_item(self, row: LyStyleMaster, gallery_summary: dict[str, Any] | None = None) -> StyleMasterItem:
+        gallery_summary = gallery_summary or {}
         return StyleMasterItem(
             id=int(row.id),
             company=row.company,
@@ -923,6 +1153,9 @@ class StyleMasterService:
             ys_style_status=self._normalize_style_status(row.ys_style_status),
             colors=list(row.colors or []),
             sizes=list(row.sizes or []),
+            primary_image_url=gallery_summary.get("primary_image_url"),
+            primary_thumbnail_url=gallery_summary.get("primary_thumbnail_url"),
+            gallery_count=int(gallery_summary.get("gallery_count") or 0),
             version=int(row.version or 1),
             created_by=row.created_by,
             created_at=row.created_at,
@@ -931,6 +1164,26 @@ class StyleMasterService:
             disabled_by=row.disabled_by,
             disabled_at=row.disabled_at,
             disable_reason=row.disable_reason,
+        )
+
+    def _gallery_item(self, *, row: LyStyleGallery, style: LyStyleMaster | None = None) -> StyleGalleryItem:
+        style = style or self._get_style_for_read(style_id=int(row.style_master_id), company=str(row.company))
+        return StyleGalleryItem(
+            id=int(row.id),
+            company=str(row.company),
+            style_master_id=int(row.style_master_id),
+            ys_style_no=str(style.ys_style_no),
+            ys_style_name_cn=str(style.ys_style_name_cn),
+            image_url=str(row.image_url),
+            thumbnail_url=row.thumbnail_url or row.image_url,
+            image_name=row.image_name,
+            image_type=self._normalize_gallery_image_type(str(row.image_type)),
+            is_primary=bool(row.is_primary),
+            designer=style.updated_by or style.created_by,
+            style_type=style.ys_brand,
+            created_by=str(row.created_by),
+            created_at=row.created_at,
+            updated_at=row.updated_at,
         )
 
     def _dictionary_item(self, row: LyStyleDictionary) -> StyleDictionaryItem:
@@ -960,6 +1213,9 @@ class StyleMasterService:
     def _snapshot_dictionary(self, row: LyStyleDictionary) -> dict[str, Any]:
         return self._dictionary_item(row).model_dump(mode="json")
 
+    def _snapshot_gallery(self, *, row: LyStyleGallery, style: LyStyleMaster | None = None) -> dict[str, Any]:
+        return self._gallery_item(row=row, style=style).model_dump(mode="json")
+
     def _normalize_style_status(self, value: str) -> str:
         normalized = self._require_text(value, "ys_style_status")
         if normalized not in STYLE_STATUSES:
@@ -976,6 +1232,12 @@ class StyleMasterService:
         normalized = self._require_text(value, "status")
         if normalized not in DICTIONARY_STATUSES:
             raise BusinessException(code=STYLE_MASTER_INVALID_STATUS, message="字典状态非法")
+        return normalized
+
+    def _normalize_gallery_image_type(self, value: str) -> str:
+        normalized = self._require_text(value, "image_type")
+        if normalized not in GALLERY_IMAGE_TYPES:
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="图片类型非法")
         return normalized
 
     def _request_hash(self, **payload: Any) -> str:

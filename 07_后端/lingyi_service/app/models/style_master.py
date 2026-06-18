@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sqlalchemy import Boolean
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import DateTime
@@ -72,6 +73,36 @@ class LyStyleDictionary(Base):
     status = Column(String(16), nullable=False, server_default="active")
     sort_no = Column(Integer, nullable=False, server_default="10")
     version = Column(Integer, nullable=False, server_default="1")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    deactivated_by = Column(String(140), nullable=True)
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
+    deactivate_reason = Column(Text, nullable=True)
+
+
+class LyStyleGallery(Base):
+    """URL-backed style gallery linked to style master."""
+
+    __tablename__ = "ly_style_gallery"
+    __table_args__ = (
+        Index("idx_ly_style_gallery_company_style", "company", "style_master_id", "status"),
+        Index("idx_ly_style_gallery_company_primary", "company", "style_master_id", "is_primary", "status"),
+        CheckConstraint("image_type IN ('main','detail','color','process','other')", name="ck_ly_style_gallery_type"),
+        CheckConstraint("status IN ('active','inactive')", name="ck_ly_style_gallery_status"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生款式图库 URL 记录"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    style_master_id = Column(IDType, nullable=False)
+    image_url = Column(Text, nullable=False)
+    thumbnail_url = Column(Text, nullable=True)
+    image_name = Column(String(255), nullable=True)
+    image_type = Column(String(32), nullable=False, server_default="main")
+    is_primary = Column(Boolean, nullable=False, server_default="0")
+    status = Column(String(16), nullable=False, server_default="active")
     created_by = Column(String(140), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_by = Column(String(140), nullable=True)
