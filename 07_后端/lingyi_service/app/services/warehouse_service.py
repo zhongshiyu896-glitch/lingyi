@@ -557,9 +557,15 @@ class WarehouseService:
         if normalized is None:
             return None
         parts = normalized.split(":")
+        if "purchase" in parts:
+            index = len(parts) - 1 - list(reversed(parts)).index("purchase")
+            if index + 1 < len(parts):
+                return parts[index + 1]
+        if len(parts) > 1 and parts[-1].startswith("PO-"):
+            return parts[-1]
         if len(parts) >= 2 and parts[-2].startswith("PO-"):
             return parts[-2]
-        return parts[-1]
+        return normalized
 
     def _local_stock_entry_readback_status(self, *, draft: LyWarehouseStockEntryDraft) -> str:
         outbox = self._latest_outbox_for_draft(int(draft.id))
@@ -2004,6 +2010,9 @@ class WarehouseService:
             )
             return self._build_draft_data(existing_by_source)
 
+        if source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt":
+            self._validate_material_purchase_receipt(company=company, source_id=source_id, items=item_rows)
+
         now = datetime.now(timezone.utc)
         event_key = self._build_event_key(
             company=company,
@@ -2128,17 +2137,27 @@ class WarehouseService:
         if str(draft.status) not in {"draft", "pending_outbox"}:
             raise WarehouseServiceError(409, "WAREHOUSE_INVALID_STATUS", "当前状态不允许取消")
 
+        events = (
+            session.query(LyWarehouseStockEntryOutboxEvent)
+            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == draft_id)
+            .all()
+        )
+        if any(str(event.status) == "succeeded" for event in events):
+            raise WarehouseServiceError(409, "WAREHOUSE_INVALID_STATUS", "已同步成功的入库草稿不可直接取消")
+
+        if str(draft.source_type) == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and str(draft.purpose) == "Material Receipt":
+            self._reverse_material_purchase_receipt(
+                company=str(draft.company),
+                source_id=str(draft.source_id),
+                items=self._draft_purchase_receipt_rows(draft_id=draft_id),
+            )
+
         now = datetime.now(timezone.utc)
         draft.status = "cancelled"
         draft.cancelled_by = cancelled_by
         draft.cancelled_at = now
         draft.cancel_reason = self._require_text(reason, "reason")
 
-        events = (
-            session.query(LyWarehouseStockEntryOutboxEvent)
-            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == draft_id)
-            .all()
-        )
         for event in events:
             if str(event.status) in {"in_pending", "processing", "failed"}:
                 event.status = "cancelled"
@@ -2606,18 +2625,74 @@ class WarehouseService:
         source_id: str,
         items: list[dict[str, Any]],
     ) -> None:
-        quantities: dict[str, Decimal] = {}
-        for item in items:
-            item_code = str(item["item_code"]).strip()
-            quantities[item_code] = quantities.get(item_code, Decimal("0")) + Decimal(str(item["qty"]))
         try:
-            MaterialPurchaseService(self.session).apply_receipt(
+            MaterialPurchaseService(self.session).apply_receipt_rows(
                 company=company,
                 purchase_no=self._purchase_no_from_source_id(source_id) or source_id,
-                item_quantities=quantities,
+                items=self._material_purchase_receipt_rows(items),
             )
         except BusinessException as exc:
             raise WarehouseServiceError(exc.status_code, exc.code, exc.message) from exc
+
+    def _validate_material_purchase_receipt(
+        self,
+        *,
+        company: str,
+        source_id: str,
+        items: list[dict[str, Any]],
+    ) -> None:
+        try:
+            MaterialPurchaseService(self.session).validate_receipt_rows(
+                company=company,
+                purchase_no=self._purchase_no_from_source_id(source_id) or source_id,
+                items=self._material_purchase_receipt_rows(items),
+            )
+        except BusinessException as exc:
+            raise WarehouseServiceError(exc.status_code, exc.code, exc.message) from exc
+
+    def _reverse_material_purchase_receipt(
+        self,
+        *,
+        company: str,
+        source_id: str,
+        items: list[dict[str, Any]],
+    ) -> None:
+        try:
+            MaterialPurchaseService(self.session).reverse_receipt_rows(
+                company=company,
+                purchase_no=self._purchase_no_from_source_id(source_id) or source_id,
+                items=self._material_purchase_receipt_rows(items),
+            )
+        except BusinessException as exc:
+            raise WarehouseServiceError(exc.status_code, exc.code, exc.message) from exc
+
+    def _draft_purchase_receipt_rows(self, *, draft_id: int) -> list[dict[str, Any]]:
+        items = (
+            self._require_session()
+            .query(LyWarehouseStockEntryDraftItem)
+            .filter(LyWarehouseStockEntryDraftItem.draft_id == draft_id)
+            .order_by(LyWarehouseStockEntryDraftItem.id.asc())
+            .all()
+        )
+        return [
+            {
+                "item_code": str(item.item_code),
+                "qty": Decimal(str(item.qty or 0)),
+                "target_warehouse": self._text(item.target_warehouse),
+                "source_warehouse": self._text(item.source_warehouse),
+            }
+            for item in items
+        ]
+
+    def _material_purchase_receipt_rows(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [
+            {
+                "item_code": str(item["item_code"]).strip(),
+                "qty": Decimal(str(item["qty"])),
+                "warehouse": self._text(item.get("target_warehouse")) or self._text(item.get("warehouse")),
+            }
+            for item in items
+        ]
 
     def _latest_outbox_for_draft(self, draft_id: int) -> LyWarehouseStockEntryOutboxEvent | None:
         return (

@@ -276,6 +276,109 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             session.commit()
             return int(row.id)
 
+    def _seed_receipt_backed_purchase_chain(
+        self,
+        *,
+        plan_id: int,
+        order_id: int,
+        line_id: int,
+        purchase_no: str,
+        qty: str,
+    ) -> None:
+        with self.SessionLocal() as session:
+            plan = LyProductionPlan(
+                id=plan_id,
+                plan_no=f"PP-{purchase_no}",
+                company=self.COMPANY,
+                sales_order=f"SO-{purchase_no}",
+                sales_order_item=f"SO-{purchase_no}-ITEM",
+                customer="CUST-A6",
+                item_code=self.STYLE,
+                bom_id=601,
+                bom_version="V1",
+                planned_qty=Decimal("5"),
+                status="material_checked",
+                idempotency_key=f"idem-plan-{purchase_no}",
+                request_hash=f"hash-plan-{purchase_no}",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.add(
+                LyProductionPlanMaterial(
+                    plan_id=plan_id,
+                    bom_item_id=6011,
+                    material_item_code=self.MATERIAL,
+                    warehouse=self.WAREHOUSE,
+                    qty_per_piece=Decimal("2"),
+                    loss_rate=Decimal("0"),
+                    required_qty=Decimal(qty),
+                    available_qty=Decimal("0"),
+                    shortage_qty=Decimal(qty),
+                )
+            )
+            order = LyMaterialPurchaseOrder(
+                id=order_id,
+                company=self.COMPANY,
+                purchase_no=purchase_no,
+                supplier_name="SUP-A6",
+                status="draft",
+                total_qty=Decimal(qty),
+                received_qty=Decimal("0"),
+                total_amount=Decimal(qty) * Decimal("12.5"),
+                currency="CNY",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.add(
+                LyMaterialPurchaseOrderItem(
+                    id=line_id,
+                    order_id=order_id,
+                    company=self.COMPANY,
+                    item_code=self.MATERIAL,
+                    material_item_code=self.MATERIAL,
+                    material_name="A6 棉布",
+                    qty=Decimal(qty),
+                    received_qty=Decimal("0"),
+                    uom="米",
+                    unit_price=Decimal("12.5"),
+                    amount=Decimal(qty) * Decimal("12.5"),
+                    warehouse=self.WAREHOUSE,
+                )
+            )
+            session.add(
+                LyMaterialPurchaseRequirement(
+                    company=self.COMPANY,
+                    requirement_no=f"REQ-{purchase_no}",
+                    source_type="production_plan",
+                    source_id=str(plan_id),
+                    source_no=f"PP-{purchase_no}",
+                    plan_id=plan_id,
+                    bom_item_id=6011,
+                    sales_order=f"SO-{purchase_no}",
+                    sales_order_item=f"SO-{purchase_no}-ITEM",
+                    item_code=self.STYLE,
+                    material_item_code=self.MATERIAL,
+                    material_name="A6 棉布",
+                    supplier_name="SUP-A6",
+                    warehouse=self.WAREHOUSE,
+                    required_qty=Decimal(qty),
+                    available_qty=Decimal("0"),
+                    net_required_qty=Decimal(qty),
+                    purchased_qty=Decimal(qty),
+                    received_qty=Decimal("0"),
+                    purchase_order_id=order_id,
+                    purchase_order_item_id=line_id,
+                    purchase_no=purchase_no,
+                    uom="米",
+                    unit_price=Decimal("12.5"),
+                    status="purchased",
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
     def _from_requirements_payload(
         self,
         *,
@@ -313,23 +416,33 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         return normalized or "0"
 
     @classmethod
-    def _warehouse_request_id(cls, *, idempotency_key: str, source_ref: str, item_code: str, quantity: object) -> str:
+    def _warehouse_request_id(
+        cls,
+        *,
+        idempotency_key: str,
+        source_ref: str,
+        item_code: str,
+        quantity: object,
+        warehouse: str | None = None,
+        operation_code: str = "C",
+        status_action_code: str = "C",
+    ) -> str:
         return "-".join(
             [
                 cls.WAREHOUSE_SCENARIO,
                 "RW",
-                "C",
+                operation_code,
                 cls._carrier_code(idempotency_key),
                 cls._carrier_code(source_ref),
-                cls._carrier_code(cls.WAREHOUSE),
+                cls._carrier_code(warehouse or cls.WAREHOUSE),
                 cls._carrier_code(item_code),
                 cls._carrier_code(cls._decimal_text(quantity)),
                 cls._carrier_code(cls.BUSINESS_DATE),
-                cls._carrier_code("C"),
+                cls._carrier_code(status_action_code),
             ]
         )
 
-    def _create_stock_receipt(self, *, source_type: str, source_id: str, idempotency_key: str, qty: str) -> None:
+    def _create_stock_receipt(self, *, source_type: str, source_id: str, idempotency_key: str, qty: str) -> dict[str, object]:
         response = self.client.post(
             "/api/warehouse/stock-entry-drafts",
             headers=self._headers(
@@ -366,6 +479,210 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 201, response.text)
+        return response.json()["data"]
+
+    def _cancel_stock_receipt(self, *, draft: dict[str, object], source_id: str, idempotency_key: str, qty: str):
+        return self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{int(draft['id'])}/cancel",
+            headers=self._headers(
+                self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_id,
+                    item_code=self.MATERIAL,
+                    quantity=qty,
+                    operation_code="X",
+                    status_action_code="X",
+                )
+            ),
+            json={
+                "reason": "撤销采购入库",
+                "idempotency_key": idempotency_key,
+                "source_ref": source_id,
+                "warehouse": self.WAREHOUSE,
+                "item_code": self.MATERIAL,
+                "operation": "cancel_stock_entry_draft",
+                "quantity": qty,
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "cancel",
+                "scenario_tag": self.WAREHOUSE_SCENARIO,
+            },
+        )
+
+    def test_purchase_receipt_cancel_reverses_requirement_plan_and_stock(self) -> None:
+        purchase_no = "PO-A6-CANCEL-001"
+        source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}"
+        idempotency_key = f"{self.WAREHOUSE_SCENARIO}:receipt:{purchase_no}"
+        self._seed_receipt_backed_purchase_chain(
+            plan_id=9801,
+            order_id=9802,
+            line_id=98021,
+            purchase_no=purchase_no,
+            qty="10",
+        )
+
+        draft = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=source_id,
+            idempotency_key=idempotency_key,
+            qty="10",
+        )
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no=purchase_no).one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=int(order.id)).one()
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(purchase_no=purchase_no).one()
+            snapshot = session.query(LyProductionPlanMaterial).filter_by(plan_id=9801).one()
+            self.assertEqual(str(order.status), "received")
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("10.000000"))
+            self.assertEqual(str(requirement.status), "completed")
+            self.assertEqual(Decimal(str(requirement.received_qty)), Decimal("10.000000"))
+            self.assertEqual(Decimal(str(snapshot.available_qty)), Decimal("10.000000"))
+            self.assertEqual(Decimal(str(snapshot.shortage_qty)), Decimal("0.000000"))
+
+        cancelled = self._cancel_stock_receipt(
+            draft=draft,
+            source_id=source_id,
+            idempotency_key=idempotency_key,
+            qty="10",
+        )
+        self.assertEqual(cancelled.status_code, 200, cancelled.text)
+        self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancelled.json()["data"]["outbox"]["status"], "cancelled")
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&keyword={purchase_no}",
+            headers=self._headers("req-a6-cancel-requirement"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_data = requirements.json()["data"]["items"][0]
+        self.assertEqual(requirement_data["status"], "purchased")
+        self.assertFalse(requirement_data["has_completed"])
+        self.assertEqual(Decimal(str(requirement_data["received_qty"])), Decimal("0.000000"))
+
+        stock_ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-cancel-ledger"),
+        )
+        purchase_receipts = self.client.get(
+            f"/api/warehouse/purchase-receipts?company={self.COMPANY}&material_item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-cancel-receipts"),
+        )
+        self.assertEqual(stock_ledger.status_code, 200, stock_ledger.text)
+        self.assertEqual(stock_ledger.json()["data"]["total"], 0)
+        self.assertEqual(purchase_receipts.status_code, 200, purchase_receipts.text)
+        self.assertEqual(purchase_receipts.json()["data"]["total"], 0)
+
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no=purchase_no).one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=int(order.id)).one()
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(purchase_no=purchase_no).one()
+            snapshot = session.query(LyProductionPlanMaterial).filter_by(plan_id=9801).one()
+            self.assertEqual(str(order.status), "draft")
+            self.assertEqual(Decimal(str(order.received_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("0.000000"))
+            self.assertEqual(str(requirement.status), "purchased")
+            self.assertEqual(Decimal(str(requirement.received_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(snapshot.available_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(snapshot.shortage_qty)), Decimal("10.000000"))
+
+    def test_purchase_receipt_rejects_wrong_purchase_line_warehouse(self) -> None:
+        purchase_no = "PO-A6-WH-GUARD-001"
+        source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}"
+        idempotency_key = f"{self.WAREHOUSE_SCENARIO}:receipt:{purchase_no}"
+        wrong_warehouse = "WH-A6-WRONG"
+        self._seed_receipt_backed_purchase_chain(
+            plan_id=9811,
+            order_id=9812,
+            line_id=98121,
+            purchase_no=purchase_no,
+            qty="10",
+        )
+
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_id,
+                    warehouse=wrong_warehouse,
+                    item_code=self.MATERIAL,
+                    quantity="10",
+                )
+            ),
+            json={
+                "operation": "create_stock_entry_draft",
+                "company": self.COMPANY,
+                "purpose": "Material Receipt",
+                "source_type": "material_purchase_order",
+                "source_id": source_id,
+                "source_ref": source_id,
+                "warehouse": wrong_warehouse,
+                "item_code": self.MATERIAL,
+                "quantity": "10",
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "create",
+                "scenario_tag": self.WAREHOUSE_SCENARIO,
+                "target_warehouse": wrong_warehouse,
+                "idempotency_key": idempotency_key,
+                "items": [
+                    {
+                        "item_code": self.MATERIAL,
+                        "qty": "10",
+                        "uom": "米",
+                        "target_warehouse": wrong_warehouse,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 0)
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no=purchase_no).one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=int(order.id)).one()
+            self.assertEqual(str(order.status), "draft")
+            self.assertEqual(Decimal(str(order.received_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("0.000000"))
+
+    def test_purchase_receipt_cancel_rejects_succeeded_outbox_without_reverse_doc(self) -> None:
+        purchase_no = "PO-A6-CANCEL-SUCCEEDED"
+        source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}"
+        idempotency_key = f"{self.WAREHOUSE_SCENARIO}:receipt:{purchase_no}"
+        self._seed_receipt_backed_purchase_chain(
+            plan_id=9821,
+            order_id=9822,
+            line_id=98221,
+            purchase_no=purchase_no,
+            qty="10",
+        )
+        draft = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=source_id,
+            idempotency_key=idempotency_key,
+            qty="10",
+        )
+        with self.SessionLocal() as session:
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).filter_by(draft_id=int(draft["id"])).one()
+            outbox.status = "succeeded"
+            outbox.external_ref = "STE-A6-SUCCEEDED"
+            session.commit()
+
+        cancelled = self._cancel_stock_receipt(
+            draft=draft,
+            source_id=source_id,
+            idempotency_key=idempotency_key,
+            qty="10",
+        )
+        self.assertEqual(cancelled.status_code, 409, cancelled.text)
+        self.assertEqual(cancelled.json()["code"], "WAREHOUSE_INVALID_STATUS")
+
+        with self.SessionLocal() as session:
+            draft_row = session.query(LyWarehouseStockEntryDraft).filter_by(id=int(draft["id"])).one()
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no=purchase_no).one()
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(purchase_no=purchase_no).one()
+            self.assertEqual(str(draft_row.status), "pending_outbox")
+            self.assertEqual(str(order.status), "received")
+            self.assertEqual(str(requirement.status), "completed")
 
     def test_sample_convert_uses_same_style_bom_for_procurement_requirement(self) -> None:
         sample_no = "SMP-A6-BOM-001"

@@ -546,24 +546,91 @@ class MaterialPurchaseService:
         item_quantities: dict[str, Decimal],
     ) -> None:
         """Apply material receipt draft quantities to a purchase order."""
+        self.apply_receipt_rows(
+            company=company,
+            purchase_no=purchase_no,
+            items=[{"item_code": item_code, "qty": qty} for item_code, qty in item_quantities.items()],
+        )
+
+    def validate_receipt_rows(
+        self,
+        *,
+        company: str,
+        purchase_no: str,
+        items: list[dict[str, Any]],
+    ) -> None:
+        """Validate receipt rows against purchase order lines without mutating state."""
+        self._apply_receipt_delta(company=company, purchase_no=purchase_no, items=items, direction=Decimal("1"), mutate=False)
+
+    def apply_receipt_rows(
+        self,
+        *,
+        company: str,
+        purchase_no: str,
+        items: list[dict[str, Any]],
+    ) -> None:
+        """Apply receipt rows to a purchase order, matching material and warehouse."""
+        self._apply_receipt_delta(company=company, purchase_no=purchase_no, items=items, direction=Decimal("1"), mutate=True)
+
+    def reverse_receipt_rows(
+        self,
+        *,
+        company: str,
+        purchase_no: str,
+        items: list[dict[str, Any]],
+    ) -> None:
+        """Reverse receipt rows from a purchase order after a local draft cancel."""
+        self._apply_receipt_delta(company=company, purchase_no=purchase_no, items=items, direction=Decimal("-1"), mutate=True)
+
+    def _apply_receipt_delta(
+        self,
+        *,
+        company: str,
+        purchase_no: str,
+        items: list[dict[str, Any]],
+        direction: Decimal,
+        mutate: bool,
+    ) -> None:
         order = self._get_order_by_no(company=company, purchase_no=purchase_no)
         if order is None:
             raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购单不存在")
         if str(order.status) == "cancelled":
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购单已取消")
         lines = self._get_lines(order_id=int(order.id))
-        line_by_material = {str(line.material_item_code): line for line in lines}
-        for item_code, qty in item_quantities.items():
-            line = line_by_material.get(item_code)
-            if line is None:
-                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"收货物料不在采购单中: {item_code}")
-            next_received = Decimal(str(line.received_qty or 0)) + Decimal(str(qty))
+        line_deltas: dict[int, tuple[LyMaterialPurchaseOrderItem, Decimal]] = {}
+        for item in self._normalize_receipt_rows(items):
+            line = self._match_receipt_line(
+                lines=lines,
+                item_code=str(item["item_code"]),
+                warehouse=self._optional_text(item.get("warehouse")),
+            )
+            line_id = int(line.id)
+            delta = Decimal(str(item["qty"])) * direction
+            if line_id in line_deltas:
+                line_deltas[line_id] = (line, line_deltas[line_id][1] + delta)
+            else:
+                line_deltas[line_id] = (line, delta)
+
+        for line, delta in line_deltas.values():
+            current_received = Decimal(str(line.received_qty or 0))
+            next_received = current_received + delta
+            if next_received < Decimal("0"):
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"反冲收货数量超过已收数量: {line.material_item_code}")
             if next_received > Decimal(str(line.qty)):
-                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"收货数量超过采购数量: {item_code}")
-            line.received_qty = next_received
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"收货数量超过采购数量: {line.material_item_code}")
+            if mutate:
+                line.received_qty = next_received
+
+        if not mutate:
+            return
+
         total_received = sum(Decimal(str(line.received_qty or 0)) for line in lines)
+        total_qty = Decimal(str(order.total_qty or 0))
         order.received_qty = total_received
-        order.status = "received" if total_received >= Decimal(str(order.total_qty or 0)) else "partially_received"
+        if total_received <= Decimal("0"):
+            order.status = "draft"
+        else:
+            order.status = "received" if total_received >= total_qty else "partially_received"
         self._apply_requirement_receipts(order=order, lines=lines)
         self.session.flush()
 
@@ -1213,6 +1280,59 @@ class MaterialPurchaseService:
                 message=f"请求供应商 {requested_supplier} 与需求供应商 {requirement_supplier} 不一致",
             )
         return requested_supplier or requirement_supplier or "未指定供应商"
+
+    def _normalize_receipt_rows(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        normalized: list[dict[str, Any]] = []
+        for index, item in enumerate(items, start=1):
+            item_code = self._require_text(item.get("item_code"), f"items[{index}].item_code")
+            try:
+                qty = Decimal(str(item.get("qty")))
+            except Exception as exc:
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"items[{index}].qty 非法") from exc
+            if qty <= Decimal("0"):
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"items[{index}].qty 必须大于 0")
+            normalized.append(
+                {
+                    "item_code": item_code,
+                    "qty": qty,
+                    "warehouse": self._optional_text(item.get("warehouse"))
+                    or self._optional_text(item.get("target_warehouse"))
+                    or self._optional_text(item.get("source_warehouse")),
+                }
+            )
+        return normalized
+
+    def _match_receipt_line(
+        self,
+        *,
+        lines: list[LyMaterialPurchaseOrderItem],
+        item_code: str,
+        warehouse: str | None,
+    ) -> LyMaterialPurchaseOrderItem:
+        candidates = [
+            line
+            for line in lines
+            if item_code in {str(line.material_item_code), str(line.item_code)}
+        ]
+        if not candidates:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"收货物料不在采购单中: {item_code}")
+
+        if warehouse is not None:
+            exact_warehouse = [line for line in candidates if self._optional_text(line.warehouse) == warehouse]
+            if exact_warehouse:
+                candidates = exact_warehouse
+            else:
+                warehouse_unspecified = [line for line in candidates if self._optional_text(line.warehouse) is None]
+                if len(warehouse_unspecified) == 1:
+                    candidates = warehouse_unspecified
+                else:
+                    raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"收货仓库与采购明细不一致: {item_code}")
+        elif any(self._optional_text(line.warehouse) is not None for line in candidates):
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购入库必须提供采购明细仓库: {item_code}")
+
+        if len(candidates) != 1:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购单中物料明细不唯一: {item_code}")
+        return candidates[0]
 
     def _apply_requirement_receipts(
         self,
