@@ -108,6 +108,13 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
         }
 
     @staticmethod
+    def _worker_headers() -> dict[str, str]:
+        return {
+            "X-LY-Dev-User": "warehouse.worker",
+            "X-LY-Dev-Roles": "System Manager",
+        }
+
+    @staticmethod
     def _payload(
         *,
         company: str = "COMP-A",
@@ -509,6 +516,127 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
                 .count(),
                 1,
             )
+
+    def test_confirm_adjustment_outbox_worker_succeeds(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=self._payload(),
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        count_id = int(create_resp.json()["data"]["id"])
+
+        submit_resp = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/submit",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(submit_resp.status_code, 200, submit_resp.text)
+
+        detail = self.client.get(
+            f"/api/warehouse/inventory-counts/{count_id}",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        variance_item_id = int(detail.json()["data"]["items"][0]["id"])
+
+        review_complete = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/variance-review",
+            headers=self._headers("warehouse:inventory_count"),
+            json={
+                "items": [
+                    {
+                        "item_id": variance_item_id,
+                        "review_status": "accepted",
+                        "variance_reason": "复核通过",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(review_complete.status_code, 200, review_complete.text)
+
+        confirm_ok = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/confirm",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(confirm_ok.status_code, 200, confirm_ok.text)
+        self.assertEqual(confirm_ok.json()["data"]["status"], "confirmed")
+
+        with self.SessionLocal() as session:
+            adjustment_draft = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment")
+                .one()
+            )
+            adjustment_outbox = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == adjustment_draft.id)
+                .one()
+            )
+            self.assertEqual(str(adjustment_outbox.status), "in_pending")
+            self.assertEqual(str(adjustment_outbox.event_type), "warehouse_stock_entry_sync")
+            self.assertEqual(adjustment_outbox.payload["source_type"], "inventory_count_adjustment")
+            self.assertEqual(adjustment_outbox.payload["draft_id"], int(adjustment_draft.id))
+            self.assertEqual(adjustment_outbox.payload["purpose"], "Material Issue")
+            self.assertTrue(str(adjustment_outbox.payload["source_id"]).startswith("inventory_count:"))
+            self.assertEqual(adjustment_outbox.payload["business_date"], "2026-04-20")
+            self.assertEqual(adjustment_outbox.payload["source_warehouse"], "WH-A")
+            self.assertIsNone(adjustment_outbox.payload["target_warehouse"])
+            self.assertEqual(adjustment_outbox.payload["items"][0]["item_code"], "ITEM-A")
+            self.assertEqual(adjustment_outbox.payload["items"][0]["uom"], "Pcs")
+            self.assertEqual(Decimal(str(adjustment_outbox.payload["items"][0]["qty"])), Decimal("2.000000"))
+
+            seed_outboxes = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.id != adjustment_outbox.id)
+                .all()
+            )
+            for outbox in seed_outboxes:
+                outbox.status = "succeeded"
+                outbox.external_ref = f"STE-SEED-{outbox.id}"
+            session.commit()
+            adjustment_draft_id = int(adjustment_draft.id)
+            adjustment_outbox_id = int(adjustment_outbox.id)
+            adjustment_event_key = str(adjustment_outbox.event_key)
+
+        with patch(
+            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.create_stock_entry_draft_from_outbox",
+            return_value="STE-INV-ADJ-001",
+        ) as mocked_adapter:
+            worker_resp = self.client.post(
+                "/api/warehouse/internal/stock-entry-sync/run-once",
+                headers=self._worker_headers(),
+                json={"batch_size": 5, "dry_run": False},
+            )
+        self.assertEqual(worker_resp.status_code, 200, worker_resp.text)
+        worker_data = worker_resp.json()["data"]
+        self.assertFalse(worker_data["dry_run"])
+        self.assertEqual(int(worker_data["processed_count"]), 1)
+        self.assertEqual(int(worker_data["skipped_count"]), 0)
+        self.assertEqual(int(worker_data["succeeded_count"]), 1)
+        self.assertEqual(int(worker_data["failed_count"]), 0)
+        self.assertEqual(int(worker_data["dead_count"]), 0)
+        mocked_adapter.assert_called_once()
+        self.assertEqual(mocked_adapter.call_args.kwargs["event_key"], adjustment_event_key)
+        adapter_payload = mocked_adapter.call_args.kwargs["payload_json"]
+        self.assertEqual(adapter_payload["draft_id"], adjustment_draft_id)
+        self.assertEqual(adapter_payload["purpose"], "Material Issue")
+        self.assertEqual(adapter_payload["source_type"], "inventory_count_adjustment")
+        self.assertTrue(str(adapter_payload["source_id"]).startswith("inventory_count:"))
+        self.assertEqual(adapter_payload["business_date"], "2026-04-20")
+        self.assertEqual(adapter_payload["source_warehouse"], "WH-A")
+        self.assertIsNone(adapter_payload["target_warehouse"])
+        self.assertEqual(adapter_payload["items"][0]["uom"], "Pcs")
+
+        with self.SessionLocal() as session:
+            adjustment_outbox = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.id == adjustment_outbox_id)
+                .one()
+            )
+            self.assertEqual(str(adjustment_outbox.status), "succeeded")
+            self.assertEqual(str(adjustment_outbox.external_ref), "STE-INV-ADJ-001")
+            self.assertEqual(int(adjustment_outbox.retry_count), 1)
+            self.assertIsNotNone(adjustment_outbox.processed_at)
 
     def test_zero_variance_inventory_count_confirms_without_adjustment(self) -> None:
         payload = self._payload()
