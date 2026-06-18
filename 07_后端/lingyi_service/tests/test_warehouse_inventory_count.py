@@ -479,6 +479,16 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
         summary_rows = summary_after_confirm.json()["data"]["items"]
         self.assertEqual(Decimal(str(summary_rows[0]["actual_qty"])), Decimal("8.000000"))
 
+        ledger_after_confirm = self.client.get(
+            "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(ledger_after_confirm.status_code, 200, ledger_after_confirm.text)
+        ledger_rows = ledger_after_confirm.json()["data"]["items"]
+        self.assertEqual([Decimal(str(row["actual_qty"])) for row in ledger_rows], [Decimal("10.000000"), Decimal("-2.000000")])
+        self.assertEqual(Decimal(str(ledger_rows[-1]["qty_after_transaction"])), Decimal("8.000000"))
+        self.assertEqual(ledger_rows[-1]["voucher_type"], "Stock Entry Draft/Material Issue")
+
         repeat_confirm = self.client.post(
             f"/api/warehouse/inventory-counts/{count_id}/confirm",
             headers=self._headers("warehouse:inventory_count"),
