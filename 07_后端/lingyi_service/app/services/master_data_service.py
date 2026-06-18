@@ -37,6 +37,7 @@ ENTITY_PATH_TO_TYPE = {
     "factories": "factory",
     "warehouses": "warehouse",
     "materials": "material",
+    "sample-types": "sample_type",
 }
 ENTITY_TYPES = set(ENTITY_PATH_TO_TYPE.values())
 

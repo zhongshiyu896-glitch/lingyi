@@ -88,6 +88,7 @@ def _create_local_tables() -> None:
     if "ly_schema.ly_apparel_bom" not in SubcontractBase.metadata.tables:
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
     SubcontractBase.metadata.create_all(bind=main_module.engine)
+    _ensure_local_master_data_sample_type_entity()
     _ensure_local_sample_idempotency_supports_seal()
     _ensure_local_sales_order_item_calc_columns()
     _ensure_local_sales_order_idempotency_supports_update()
@@ -97,6 +98,66 @@ def _create_local_tables() -> None:
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
     _ensure_local_bom_company_style_columns()
+
+
+def _ensure_local_master_data_sample_type_entity() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_master_data_record'"
+        ).fetchone()
+        existing_sql = str(row[0]) if row else ""
+        if not row or "'sample_type'" in existing_sql:
+            return
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            DROP INDEX IF EXISTS uk_ly_master_data_entity_company_code;
+            DROP INDEX IF EXISTS idx_ly_master_data_entity_company_status;
+            DROP INDEX IF EXISTS idx_ly_master_data_entity_name;
+            CREATE TABLE ly_master_data_record_new (
+                id INTEGER NOT NULL,
+                entity_type VARCHAR(32) NOT NULL,
+                company VARCHAR(140) NOT NULL,
+                code VARCHAR(140) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                status VARCHAR(16) DEFAULT 'active' NOT NULL,
+                payload JSON NOT NULL,
+                version INTEGER DEFAULT '1' NOT NULL,
+                created_by VARCHAR(140) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                updated_by VARCHAR(140),
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                deactivated_by VARCHAR(140),
+                deactivated_at DATETIME,
+                deactivate_reason TEXT,
+                PRIMARY KEY (id),
+                CONSTRAINT ck_ly_master_data_entity_type CHECK (entity_type IN ('customer','supplier','factory','warehouse','material','sample_type')),
+                CONSTRAINT ck_ly_master_data_status CHECK (status IN ('active','inactive'))
+            );
+            INSERT INTO ly_master_data_record_new (
+                id, entity_type, company, code, name, status, payload, version,
+                created_by, created_at, updated_by, updated_at, deactivated_by,
+                deactivated_at, deactivate_reason
+            )
+            SELECT
+                id, entity_type, company, code, name, status, payload, version,
+                created_by, created_at, updated_by, updated_at, deactivated_by,
+                deactivated_at, deactivate_reason
+            FROM ly_master_data_record;
+            DROP TABLE ly_master_data_record;
+            ALTER TABLE ly_master_data_record_new RENAME TO ly_master_data_record;
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_master_data_entity_company_code
+                ON ly_master_data_record (entity_type, company, code);
+            CREATE INDEX IF NOT EXISTS idx_ly_master_data_entity_company_status
+                ON ly_master_data_record (entity_type, company, status);
+            CREATE INDEX IF NOT EXISTS idx_ly_master_data_entity_name
+                ON ly_master_data_record (entity_type, name);
+            PRAGMA foreign_keys=on;
+            """
+        )
 
 
 def _ensure_local_sample_idempotency_supports_seal() -> None:

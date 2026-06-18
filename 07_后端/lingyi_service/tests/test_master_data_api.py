@@ -286,6 +286,69 @@ class MasterDataApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "material").count(), 1)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "master_data").count(), 3)
 
+    def test_sample_type_dictionary_crud_uses_master_data(self) -> None:
+        created = self.client.post(
+            "/api/master-data/sample-types",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-TYPE-001"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "SMP-FIRST",
+                "name": "初样",
+                "idempotency_key": "IDEMP-SMP-TYPE-001-C",
+                "payload": {"displayName": "初样", "usage": "设计打样", "sort": 10},
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        record_id = int(created.json()["data"]["id"])
+        self.assertEqual(created.json()["data"]["entity_type"], "sample_type")
+
+        listed = self.client.get(
+            "/api/master-data/sample-types?company=COMP-A&keyword=SMP-FIRST",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-TYPE-002"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["data"]["total"], 1)
+        self.assertEqual(listed.json()["data"]["items"][0]["name"], "初样")
+
+        updated = self.client.patch(
+            f"/api/master-data/sample-types/{record_id}",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-TYPE-003"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "name": "头样",
+                "idempotency_key": "IDEMP-SMP-TYPE-001-U",
+                "payload": {"displayName": "头样", "usage": "设计打样", "sort": 20},
+            },
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["data"]["name"], "头样")
+        self.assertEqual(updated.json()["data"]["payload"]["sort"], 20)
+
+        deactivated = self.client.post(
+            f"/api/master-data/sample-types/{record_id}/deactivate",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-TYPE-004"),
+            json={
+                "operation": "deactivate",
+                "company": "COMP-A",
+                "reason": "样板类型停用测试",
+                "idempotency_key": "IDEMP-SMP-TYPE-001-X",
+            },
+        )
+        self.assertEqual(deactivated.status_code, 200)
+        self.assertTrue(deactivated.json()["data"]["disabled"])
+
+        active_only = self.client.get(
+            "/api/master-data/sample-types?company=COMP-A&disabled=false",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-TYPE-005"),
+        )
+        self.assertEqual(active_only.status_code, 200)
+        self.assertEqual(active_only.json()["data"]["total"], 0)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "sample_type").count(), 1)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "master_data").count(), 3)
+
     def test_manage_permission_fails_closed(self) -> None:
         response = self.client.post(
             "/api/master-data/customers",

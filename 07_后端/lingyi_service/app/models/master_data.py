@@ -30,7 +30,7 @@ class LyMasterDataRecord(Base):
         Index("idx_ly_master_data_entity_company_status", "entity_type", "company", "status"),
         Index("idx_ly_master_data_entity_name", "entity_type", "name"),
         CheckConstraint(
-            "entity_type IN ('customer','supplier','factory','warehouse','material')",
+            "entity_type IN ('customer','supplier','factory','warehouse','material','sample_type')",
             name="ck_ly_master_data_entity_type",
         ),
         CheckConstraint("status IN ('active','inactive')", name="ck_ly_master_data_status"),

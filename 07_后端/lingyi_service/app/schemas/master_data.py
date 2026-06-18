@@ -10,13 +10,14 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 
-MasterDataEntityType = Literal["customer", "supplier", "factory", "warehouse", "material"]
+MasterDataEntityType = Literal["customer", "supplier", "factory", "warehouse", "material", "sample_type"]
 MasterDataEntityPath = Literal[
     "customers",
     "suppliers",
     "factories",
     "warehouses",
     "materials",
+    "sample-types",
 ]
 
 
