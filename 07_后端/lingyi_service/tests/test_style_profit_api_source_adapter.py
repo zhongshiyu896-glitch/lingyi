@@ -23,6 +23,10 @@ from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.quality import Base as QualityBase
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LyDeliveryInvoice
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.models.subcontract import Base as SubcontractBase
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
@@ -51,6 +55,7 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
         WorkshopBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
         # Subcontract models use a dedicated declarative metadata and hold FK to ly_apparel_bom.
         # Mirror BOM table into subcontract metadata so FK resolution works in isolated test DB.
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
@@ -77,6 +82,9 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
             session.query(YsWorkshopTicket).delete()
             session.query(LyProductionJobCardLink).delete()
             session.query(LyProductionPlan).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrder).delete()
+            session.query(LyDeliveryInvoice).delete()
             session.query(LySubcontractInspection).delete()
             session.query(LySubcontractOrder).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
@@ -280,8 +288,119 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
         self.assertEqual(Decimal(str(rows[0]["valuation_rate"])), Decimal("8.6"))
         self.assertEqual(Decimal(str(rows[0]["stock_value_difference"])), Decimal("-43"))
 
+    def test_load_sales_order_rows_uses_fastapi_local_planned_order_without_remote_call(self) -> None:
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no="SO-001",
+                company="COMP-A",
+                customer="CUST-A",
+                status="planned",
+                transaction_date=date(2026, 4, 3),
+                grand_total=Decimal("432.10"),
+                idempotency_key="idem-local-style-profit-sales-order",
+                request_hash="hash-local-style-profit-sales-order",
+                created_by="tester",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-001-1",
+                    item_code="STYLE-A",
+                    item_name="Style A",
+                    qty=Decimal("12.5"),
+                    rate=Decimal("34.568"),
+                    amount=Decimal("432.10"),
+                )
+            )
+            session.commit()
+
+            adapter = ERPNextStyleProfitAdapter(session=session)
+            adapter.base_url = "https://fake.local"
+            with patch.object(adapter, "_request_json", side_effect=AssertionError("ERPNext must not be called")):
+                rows = adapter.load_submitted_sales_order_rows(self.selector)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["source_system"], "fastapi")
+        self.assertEqual(rows[0]["sales_order"], "SO-001")
+        self.assertEqual(rows[0]["status"], "planned")
+        self.assertEqual(rows[0]["item_code"], "STYLE-A")
+        self.assertEqual(Decimal(str(rows[0]["qty"])), Decimal("12.5"))
+        self.assertEqual(Decimal(str(rows[0]["rate"])), Decimal("34.568"))
+        self.assertEqual(Decimal(str(rows[0]["base_amount"])), Decimal("432.1"))
+
+    def test_load_sales_invoice_rows_uses_fastapi_local_delivery_invoice_without_remote_call(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyDeliveryInvoice(
+                    company="COMP-A",
+                    delivery_note="DN-001",
+                    sales_invoice="SI-001",
+                    sales_order="SO-001",
+                    customer="CUST-A",
+                    item_code="STYLE-A",
+                    item_name="Style A",
+                    warehouse="WH-FG",
+                    delivered_qty=Decimal("5"),
+                    rate=Decimal("40"),
+                    grand_total=Decimal("200"),
+                    paid_amount=Decimal("0"),
+                    outstanding_amount=Decimal("200"),
+                    posting_date=date(2026, 4, 15),
+                    status="submitted",
+                    docstatus=1,
+                    source_ref="delivery:SO-001:1",
+                    idempotency_key="idem-local-style-profit-sales-invoice",
+                    request_hash="hash-local-style-profit-sales-invoice",
+                    created_by="tester",
+                )
+            )
+            session.commit()
+
+            adapter = ERPNextStyleProfitAdapter(session=session)
+            adapter.base_url = "https://fake.local"
+            with patch.object(adapter, "_request_json", side_effect=AssertionError("ERPNext must not be called")):
+                rows = adapter.load_submitted_sales_invoice_rows(self.selector)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["source_system"], "fastapi")
+        self.assertEqual(rows[0]["sales_order"], "SO-001")
+        self.assertEqual(rows[0]["name"], "SI-001")
+        self.assertEqual(Decimal(str(rows[0]["qty"])), Decimal("5"))
+        self.assertEqual(Decimal(str(rows[0]["rate"])), Decimal("40"))
+        self.assertEqual(Decimal(str(rows[0]["base_net_amount"])), Decimal("200"))
+
     def test_local_style_profit_fallback_request_includes_fastapi_stock_ledger_rows(self) -> None:
         with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no="SO-001",
+                company="COMP-A",
+                customer="CUST-A",
+                status="planned",
+                transaction_date=date(2026, 4, 3),
+                grand_total=Decimal("987.65"),
+                idempotency_key="idem-local-style-profit-fallback-sales-order",
+                request_hash="hash-local-style-profit-fallback-sales-order",
+                created_by="tester",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-001-1",
+                    item_code="STYLE-A",
+                    item_name="Style A",
+                    qty=Decimal("19"),
+                    rate=Decimal("51.981579"),
+                    amount=Decimal("987.65"),
+                )
+            )
             bom = LyApparelBom(
                 id=10,
                 bom_no="BOM-FALLBACK-001",
@@ -357,6 +476,10 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
                 )
 
         self.assertEqual(len(request.stock_ledger_rows), 1)
+        self.assertEqual(len(request.sales_order_rows), 1)
+        self.assertEqual(request.sales_order_rows[0]["source_system"], "fastapi")
+        self.assertEqual(Decimal(str(request.sales_order_rows[0]["base_amount"])), Decimal("987.65"))
+        self.assertNotEqual(Decimal(str(request.sales_order_rows[0]["base_amount"])), Decimal("1000"))
         self.assertEqual(request.stock_ledger_rows[0]["source_system"], "fastapi")
         self.assertEqual(request.stock_ledger_rows[0]["production_plan_id"], int(plan.id))
         self.assertEqual(Decimal(str(request.stock_ledger_rows[0]["stock_value_difference"])), Decimal("-17.2"))

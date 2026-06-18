@@ -278,18 +278,6 @@ def _validate_local_style_profit_write_gate(
     }
 
 
-def _to_decimal_text_safe(value: Any) -> str:
-    try:
-        normalized = format(Decimal(str(value)), "f")
-    except Exception:
-        normalized = "0"
-    if "." in normalized:
-        normalized = normalized.rstrip("0").rstrip(".")
-    if normalized in {"", "-0"}:
-        normalized = "0"
-    return normalized
-
-
 def _build_local_style_profit_fallback_request(
     *,
     selector: StyleProfitSnapshotSelectorRequest,
@@ -297,6 +285,8 @@ def _build_local_style_profit_fallback_request(
     collector: StyleProfitApiSourceCollector,
 ) -> StyleProfitSnapshotCreateRequest:
     try:
+        sales_invoice_rows = collector.adapter.load_submitted_sales_invoice_rows(selector)
+        sales_order_rows = collector.adapter.load_submitted_sales_order_rows(selector)
         bom_material_rows, bom_operation_rows, allowed_material_item_codes = collector.adapter.load_active_default_bom_rows(
             company=selector.company,
             item_code=selector.item_code,
@@ -316,24 +306,6 @@ def _build_local_style_profit_fallback_request(
             message="本地利润快照回退来源构建失败",
         ) from exc
 
-    synthetic_qty = Decimal("100")
-    synthetic_rate = Decimal("10")
-    synthetic_amount = synthetic_qty * synthetic_rate
-    synthetic_sales_order_rows = [
-        {
-            "docstatus": 1,
-            "status": "submitted",
-            "company": selector.company,
-            "sales_order": selector.sales_order,
-            "item_code": selector.item_code,
-            "name": f"LOCAL-{selector.sales_order}",
-            "line_no": "1",
-            "qty": _to_decimal_text_safe(synthetic_qty),
-            "rate": _to_decimal_text_safe(synthetic_rate),
-            "base_amount": _to_decimal_text_safe(synthetic_amount),
-        }
-    ]
-
     return StyleProfitSnapshotCreateRequest(
         company=selector.company,
         item_code=selector.item_code,
@@ -344,8 +316,8 @@ def _build_local_style_profit_fallback_request(
         include_provisional_subcontract=selector.include_provisional_subcontract,
         formula_version=selector.formula_version,
         idempotency_key=idempotency_key,
-        sales_invoice_rows=[],
-        sales_order_rows=synthetic_sales_order_rows,
+        sales_invoice_rows=sales_invoice_rows,
+        sales_order_rows=sales_order_rows,
         bom_material_rows=bom_material_rows,
         bom_operation_rows=bom_operation_rows,
         stock_ledger_rows=stock_ledger_rows,
@@ -1105,6 +1077,11 @@ def create_snapshot(
                     idempotency_key=selector.idempotency_key,
                     collector=collector,
                 )
+            elif exc.code == STYLE_PROFIT_REVENUE_SOURCE_REQUIRED:
+                raise BusinessException(
+                    code=STYLE_PROFIT_SOURCE_UNAVAILABLE,
+                    message="未检测到有效收入来源，拒绝创建利润快照",
+                ) from exc
             else:
                 raise
         if not create_request.has_revenue_sources():

@@ -63,7 +63,7 @@ class StyleProfitSourceService:
     }
     _STATUS_ALLOWED_WITHOUT_DOCSTATUS: dict[str, set[str]] = {
         "sales invoice": {"paid", "unpaid", "overdue", "partly paid"},
-        "sales order": {"to deliver and bill", "to bill", "to deliver", "completed"},
+        "sales order": {"to deliver and bill", "to bill", "to deliver", "completed", "planned"},
     }
     _STATUS_NOT_SUBMITTED = {
         "draft",
@@ -357,6 +357,7 @@ class StyleProfitSourceService:
             rate = self._to_decimal(row.get("rate", "0"))
             collected.append(
                 StyleProfitRevenueSourceDTO(
+                    source_system=self._normalize_text(row.get("source_system")) or "erpnext",
                     source_type=source_type,
                     source_name=source_name,
                     source_line_no=source_line_no,

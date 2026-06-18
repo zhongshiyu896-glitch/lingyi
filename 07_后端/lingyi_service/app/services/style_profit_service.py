@@ -336,6 +336,7 @@ class StyleProfitService:
                     "source_type": row.source_type,
                     "source_name": row.source_name,
                     "source_line_no": row.source_line_no,
+                    "source_system": row.source_system,
                 },
             )
             session.add(detail)
@@ -348,7 +349,7 @@ class StyleProfitService:
                     sales_order=snapshot.sales_order,
                     style_item_code=str(snapshot.item_code),
                     source_item_code=row.item_code,
-                    source_system="erpnext",
+                    source_system=row.source_system,
                     source_doctype=row.source_type,
                     source_status=row.source_status or "unknown",
                     source_name=row.source_name,
@@ -363,6 +364,7 @@ class StyleProfitService:
                         "source_type": row.source_type,
                         "source_name": row.source_name,
                         "source_line_no": row.source_line_no,
+                        "source_system": row.source_system,
                     },
                     include_in_profit=True,
                     mapping_status="mapped",

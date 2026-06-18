@@ -18,6 +18,7 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.sales_order import Base as SalesOrderBase
 from app.models.style_profit import Base as StyleProfitBase
 from app.models.style_profit import LyStyleProfitDetail
 from app.models.style_profit import LyStyleProfitSnapshot
@@ -42,6 +43,7 @@ class StyleProfitApiBase(unittest.TestCase):
             execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
         StyleProfitBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 

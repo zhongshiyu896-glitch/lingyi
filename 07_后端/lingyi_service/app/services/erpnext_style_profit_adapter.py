@@ -29,6 +29,9 @@ from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
+from app.models.sales_order import LyDeliveryInvoice
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.models.workshop import YsWorkshopTicket
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
@@ -41,8 +44,7 @@ class ERPNextStyleProfitAdapter:
     """Load trusted source facts for style-profit snapshot creation.
 
     Rules:
-    - Revenue fallback can still read legacy ERPNext sources until local invoice flow is complete.
-    - Stock/BOM/workshop/subcontract facts come from FastAPI-local DB.
+    - Revenue, stock, BOM, workshop and subcontract facts come from FastAPI-local DB.
     - Any external source failure is fail-closed with STYLE_PROFIT_SOURCE_UNAVAILABLE.
     """
     _SUBCONTRACT_DIAGNOSTIC_LIMIT_ENV = "STYLE_PROFIT_SUBCONTRACT_DIAGNOSTIC_LIMIT"
@@ -57,102 +59,97 @@ class ERPNextStyleProfitAdapter:
     # Revenue facts
     # -----------------------------
     def load_submitted_sales_invoice_rows(self, selector: Any) -> list[dict[str, Any]]:
-        """Load submitted Sales Invoice rows matching selector scope."""
-        headers = self._list_sales_invoice_headers(selector)
-        rows: list[dict[str, Any]] = []
-        for header in headers:
-            invoice_name = self._normalize_text(header.get("name"))
-            if not invoice_name:
-                continue
-            doc = self._get_sales_invoice_doc(invoice_name)
-            if not self._is_submitted_doc(doc):
-                continue
+        """Load FastAPI-native delivery/invoice rows matching selector scope."""
+        company = self._normalize_text(selector.company)
+        sales_order = self._normalize_text(selector.sales_order)
+        item_code = self._normalize_text(selector.item_code)
+        if not company or not sales_order or not item_code:
+            return []
 
-            company = self._normalize_text(doc.get("company"))
-            if company and company != self._normalize_text(selector.company):
-                continue
-
-            status = self._normalize_text(doc.get("status")).lower() or "submitted"
-            header_order = self._normalize_text(doc.get("sales_order"))
-            items = doc.get("items") if isinstance(doc.get("items"), list) else []
-            for item in items:
-                if not isinstance(item, dict):
-                    continue
-                item_code = self._normalize_text(item.get("item_code"))
-                if item_code != self._normalize_text(selector.item_code):
-                    continue
-                sales_order = self._normalize_text(item.get("sales_order")) or header_order
-                if sales_order != self._normalize_text(selector.sales_order):
-                    continue
-                rows.append(
-                    {
-                        "docstatus": 1,
-                        "status": status,
-                        "company": company,
-                        "sales_order": sales_order,
-                        "item_code": item_code,
-                        "name": invoice_name,
-                        "line_no": self._normalize_text(item.get("idx") or item.get("name") or ""),
-                        "qty": self._decimal_text(item.get("qty")),
-                        "rate": self._decimal_text(item.get("rate")),
-                        "base_net_amount": self._decimal_text(
-                            item.get("base_net_amount", item.get("base_amount", item.get("amount")))
-                        ),
-                        "posting_date": self._normalize_text(doc.get("posting_date")),
-                    }
+        try:
+            invoices = (
+                self.session.query(LyDeliveryInvoice)
+                .filter(
+                    LyDeliveryInvoice.company == company,
+                    LyDeliveryInvoice.sales_order == sales_order,
+                    LyDeliveryInvoice.item_code == item_code,
+                    LyDeliveryInvoice.docstatus == 1,
+                    LyDeliveryInvoice.status != "cancelled",
+                    LyDeliveryInvoice.posting_date >= selector.from_date,
+                    LyDeliveryInvoice.posting_date <= selector.to_date,
                 )
+                .order_by(LyDeliveryInvoice.posting_date.asc(), LyDeliveryInvoice.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed("利润来源读取失败") from exc
+
+        rows: list[dict[str, Any]] = []
+        for row in invoices:
+            rows.append(
+                {
+                    "source_system": "fastapi",
+                    "docstatus": 1,
+                    "status": self._normalize_text(row.status).lower() or "submitted",
+                    "company": self._normalize_text(row.company),
+                    "sales_order": self._normalize_text(row.sales_order),
+                    "item_code": self._normalize_text(row.item_code),
+                    "name": self._normalize_text(row.sales_invoice),
+                    "line_no": str(row.id),
+                    "qty": self._decimal_text(row.delivered_qty),
+                    "rate": self._decimal_text(row.rate),
+                    "base_net_amount": self._decimal_text(row.grand_total),
+                    "posting_date": row.posting_date.isoformat() if row.posting_date else "",
+                }
+            )
         rows.sort(key=lambda row: (str(row.get("name") or ""), str(row.get("line_no") or "")))
         return rows
 
     def load_submitted_sales_order_rows(self, selector: Any) -> list[dict[str, Any]]:
-        """Load submitted Sales Order rows as estimated revenue fallback."""
+        """Load FastAPI-native planned Sales Order rows as estimated revenue fallback."""
+        company = self._normalize_text(selector.company)
         sales_order = self._normalize_text(selector.sales_order)
-        if not sales_order:
+        item_code = self._normalize_text(selector.item_code)
+        if not company or not sales_order or not item_code:
             return []
 
-        payload = self._request_json(
-            method="GET",
-            path=(
-                f"/api/resource/Sales%20Order/{parse.quote(sales_order, safe='')}"
-                f"?fields={parse.quote('[\"name\",\"docstatus\",\"status\",\"company\",\"items\"]', safe='')}"
-            ),
-            allow_404=True,
-        )
-        if payload is None:
-            return []
-        data = payload.get("data")
-        if not isinstance(data, dict):
-            raise self._source_unavailable("Sales Order 返回结构异常")
-        if not self._is_submitted_doc(data):
-            return []
+        try:
+            items = (
+                self.session.query(LySalesOrder, LySalesOrderItem)
+                .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+                .filter(
+                    LySalesOrder.company == company,
+                    LySalesOrder.sales_order_no == sales_order,
+                    LySalesOrder.status == "planned",
+                    LySalesOrderItem.company == company,
+                    LySalesOrderItem.item_code == item_code,
+                )
+                .order_by(LySalesOrderItem.line_no.asc(), LySalesOrderItem.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed("利润来源读取失败") from exc
 
-        company = self._normalize_text(data.get("company"))
-        if company and company != self._normalize_text(selector.company):
-            return []
-
-        status = self._normalize_text(data.get("status")).lower() or "submitted"
         rows: list[dict[str, Any]] = []
-        items = data.get("items") if isinstance(data.get("items"), list) else []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            item_code = self._normalize_text(item.get("item_code"))
-            if item_code != self._normalize_text(selector.item_code):
-                continue
+        for order, item in items:
+            qty = self._to_decimal(item.qty)
+            rate = self._to_decimal(item.rate)
+            amount = self._to_decimal(item.amount)
+            if amount == Decimal("0") and qty != Decimal("0") and rate != Decimal("0"):
+                amount = qty * rate
             rows.append(
                 {
-                    "docstatus": 1,
-                    "status": status,
-                    "company": company,
+                    "source_system": "fastapi",
+                    "status": self._normalize_text(order.status).lower() or "planned",
+                    "company": self._normalize_text(order.company),
                     "sales_order": sales_order,
-                    "item_code": item_code,
-                    "name": self._normalize_text(data.get("name") or sales_order),
-                    "line_no": self._normalize_text(item.get("idx") or item.get("name") or ""),
-                    "qty": self._decimal_text(item.get("qty")),
-                    "rate": self._decimal_text(item.get("rate")),
-                    "base_amount": self._decimal_text(
-                        item.get("base_amount", item.get("base_net_amount", item.get("amount")))
-                    ),
+                    "item_code": self._normalize_text(item.item_code),
+                    "name": sales_order,
+                    "line_no": str(item.line_no),
+                    "qty": self._decimal_text(qty),
+                    "rate": self._decimal_text(rate),
+                    "base_amount": self._decimal_text(amount),
+                    "transaction_date": order.transaction_date.isoformat() if order.transaction_date else "",
                 }
             )
         rows.sort(key=lambda row: (str(row.get("name") or ""), str(row.get("line_no") or "")))
@@ -751,51 +748,12 @@ class ERPNextStyleProfitAdapter:
         return None, None
 
     def _load_item_price(self, *, material_item_code: str, company: str) -> Decimal | None:
-        if not self.base_url:
-            return None
-        filters = [
-            ["item_code", "=", material_item_code],
-            ["buying", "=", 1],
-        ]
-        if company:
-            filters.append(["company", "=", company])
-        payload = self._request_json(
-            method="GET",
-            path=(
-                "/api/resource/Item%20Price"
-                f"?fields={parse.quote(json.dumps(['price_list_rate','valid_from','name'], ensure_ascii=False), safe='')}"
-                f"&filters={parse.quote(json.dumps(filters, ensure_ascii=False), safe='')}"
-                "&order_by=valid_from desc&limit_page_length=1"
-            ),
-            allow_404=True,
-        )
-        if payload is None:
-            return None
-        rows = payload.get("data")
-        if not isinstance(rows, list) or not rows:
-            return None
-        first = rows[0]
-        if not isinstance(first, dict):
-            return None
-        return self._to_decimal_or_none(first.get("price_list_rate"))
+        _ = material_item_code, company
+        return None
 
     def _load_item_valuation_rate(self, *, material_item_code: str) -> Decimal | None:
-        if not self.base_url:
-            return None
-        payload = self._request_json(
-            method="GET",
-            path=(
-                f"/api/resource/Item/{parse.quote(material_item_code, safe='')}"
-                f"?fields={parse.quote('[\"name\",\"valuation_rate\"]', safe='')}"
-            ),
-            allow_404=True,
-        )
-        if payload is None:
-            return None
-        data = payload.get("data")
-        if not isinstance(data, dict):
-            return None
-        return self._to_decimal_or_none(data.get("valuation_rate"))
+        _ = material_item_code
+        return None
 
     def _request_json(
         self,

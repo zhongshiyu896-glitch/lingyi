@@ -40,6 +40,7 @@ class ApiResponse(BaseModel, Generic[T]):
 class StyleProfitRevenueSourceDTO(BaseModel):
     """Resolved revenue source row."""
 
+    source_system: str = "erpnext"
     source_type: str
     source_name: str
     source_line_no: str

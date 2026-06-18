@@ -152,6 +152,24 @@ class StyleProfitServiceTest(unittest.TestCase):
                 0,
             )
 
+    def test_create_snapshot_persists_revenue_source_system_from_source_row(self) -> None:
+        request = self._request(idempotency_key="idem-fastapi-revenue-source")
+        request.sales_invoice_rows[0]["source_system"] = "fastapi"
+
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="tester")
+            revenue_map = (
+                session.query(LyStyleProfitSourceMap)
+                .filter(
+                    LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
+                    LyStyleProfitSourceMap.source_doctype == "Sales Invoice",
+                )
+                .one()
+            )
+
+        self.assertEqual(revenue_map.source_system, "fastapi")
+        self.assertEqual(revenue_map.raw_ref["source_system"], "fastapi")
+
     def test_invalid_period_raises_business_error(self) -> None:
         request = self._request()
         request.from_date = date(2026, 4, 30)
