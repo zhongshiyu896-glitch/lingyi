@@ -728,6 +728,45 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
         self.assertEqual(rows[0]["company"], "COMP-A")
         self.assertEqual(rows[0]["warehouse"], "WH-A")
 
+    def test_list_filters_by_keyword_and_paginates(self) -> None:
+        first = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count"),
+            json=self._payload(company="COMP-A", warehouse="WH-A"),
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        first_data = first.json()["data"]
+        self._seed_stock_balance(company="COMP-A", warehouse="WH-B", item_code="ITEM-C", qty="8")
+        second_payload = self._payload(company="COMP-A", warehouse="WH-B", count_date="2026-04-21")
+        second_payload["items"][0]["item_code"] = "ITEM-C"
+        second_payload["items"][1]["item_code"] = "ITEM-C-ALT"
+        second_payload["items"][1]["variance_reason"] = "测试替代物料差异"
+        second = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count", warehouse="WH-B", count_date="2026-04-21"),
+            json=second_payload,
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+
+        by_count_no = self.client.get(
+            f"/api/warehouse/inventory-counts?company=COMP-A&keyword={first_data['count_no']}&page=1&page_size=1",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(by_count_no.status_code, 200, by_count_no.text)
+        payload = by_count_no.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["page"], 1)
+        self.assertEqual(payload["page_size"], 1)
+        self.assertEqual(payload["items"][0]["count_no"], first_data["count_no"])
+
+        by_item = self.client.get(
+            "/api/warehouse/inventory-counts?company=COMP-A&keyword=ITEM-C",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(by_item.status_code, 200, by_item.text)
+        self.assertEqual(by_item.json()["data"]["total"], 1)
+        self.assertEqual(by_item.json()["data"]["items"][0]["warehouse"], "WH-B")
+
     def test_list_invalid_date_range_returns_400(self) -> None:
         list_resp = self.client.get(
             "/api/warehouse/inventory-counts?from_date=2026-04-20&to_date=2026-04-19",

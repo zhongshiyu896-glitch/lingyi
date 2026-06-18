@@ -2919,14 +2919,19 @@ class WarehouseService:
         company: str | None,
         warehouse: str | None,
         status: str | None,
+        keyword: str | None,
         from_date: date | None,
         to_date: date | None,
         item_code: str | None,
+        page: int,
+        page_size: int,
     ) -> WarehouseInventoryCountListData:
-        query = self._require_session().query(LyWarehouseInventoryCount)
+        session = self._require_session()
+        query = session.query(LyWarehouseInventoryCount)
         normalized_company = self._text(company)
         normalized_warehouse = self._text(warehouse)
         normalized_status = self._text(status)
+        normalized_keyword = self._text(keyword)
         normalized_item_code = self._text(item_code)
 
         if normalized_company is not None:
@@ -2941,16 +2946,42 @@ class WarehouseService:
             query = query.filter(LyWarehouseInventoryCount.count_date <= to_date)
         if normalized_item_code is not None:
             subquery = (
-                self._require_session()
+                session
                 .query(LyWarehouseInventoryCountItem.count_id)
                 .filter(LyWarehouseInventoryCountItem.item_code == normalized_item_code)
                 .distinct()
             )
             query = query.filter(LyWarehouseInventoryCount.id.in_(subquery))
+        if normalized_keyword is not None:
+            like_value = f"%{normalized_keyword.lower()}%"
+            item_keyword_exists = (
+                session.query(LyWarehouseInventoryCountItem.id)
+                .filter(
+                    LyWarehouseInventoryCountItem.count_id == LyWarehouseInventoryCount.id,
+                    func.lower(LyWarehouseInventoryCountItem.item_code).like(like_value),
+                )
+                .exists()
+            )
+            query = query.filter(
+                or_(
+                    func.lower(LyWarehouseInventoryCount.count_no).like(like_value),
+                    func.lower(LyWarehouseInventoryCount.warehouse).like(like_value),
+                    func.lower(LyWarehouseInventoryCount.status).like(like_value),
+                    item_keyword_exists,
+                )
+            )
 
-        rows = query.order_by(LyWarehouseInventoryCount.count_date.desc(), LyWarehouseInventoryCount.id.desc()).all()
+        total = int(query.count())
+        rows = (
+            query.order_by(LyWarehouseInventoryCount.count_date.desc(), LyWarehouseInventoryCount.id.desc())
+            .offset(max(page - 1, 0) * page_size)
+            .limit(page_size)
+            .all()
+        )
         return WarehouseInventoryCountListData(
-            total=len(rows),
+            total=total,
+            page=page,
+            page_size=page_size,
             items=[self._build_inventory_count_data(inventory_count=row) for row in rows],
         )
 

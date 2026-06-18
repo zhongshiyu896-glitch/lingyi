@@ -3767,9 +3767,12 @@ def list_inventory_counts(
     company: str | None = Query(default=None),
     warehouse: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
     from_date: str | None = Query(default=None),
     to_date: str | None = Query(default=None),
     item_code: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, ge=1, le=100),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -3812,9 +3815,12 @@ def list_inventory_counts(
             company=_scope_text(company),
             warehouse=_scope_text(warehouse),
             status=_scope_text(status),
+            keyword=_scope_text(keyword),
             from_date=parsed_from_date,
             to_date=parsed_to_date,
             item_code=_scope_text(item_code),
+            page=page,
+            page_size=page_size,
         )
     except WarehouseServiceError as exc:
         _raise_service_error(exc)

@@ -726,6 +726,8 @@ class WarehouseInventoryCountListData(BaseModel):
     """Inventory-count list response."""
 
     total: int
+    page: int = 1
+    page_size: int = 100
     items: list[WarehouseInventoryCountData]
 
 
