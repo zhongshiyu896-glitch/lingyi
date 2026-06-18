@@ -88,6 +88,12 @@ class ProductionPlanListItem(BaseModel):
     planned_qty: Decimal
     planned_start_date: Optional[date] = None
     status: str
+    material_ready: bool = False
+    required_qty_total: Decimal = Decimal("0")
+    available_qty_total: Decimal = Decimal("0")
+    shortage_qty_total: Decimal = Decimal("0")
+    pending_requirement_count: int = 0
+    purchase_status: str = "not_calculated"
     latest_work_order_outbox: Optional[ProductionWorkOrderOutboxSummary] = None
     created_at: datetime
 
@@ -595,6 +601,12 @@ class ProductionPlanDetailData(BaseModel):
     latest_work_order_outbox: Optional[ProductionWorkOrderOutboxSummary] = None
     write_entry_frozen: bool = True
     write_entry_frozen_reason: Optional[str] = None
+    material_ready: bool = False
+    required_qty_total: Decimal = Decimal("0")
+    available_qty_total: Decimal = Decimal("0")
+    shortage_qty_total: Decimal = Decimal("0")
+    pending_requirement_count: int = 0
+    purchase_status: str = "not_calculated"
     material_snapshots: List[ProductionPlanMaterialSnapshotItem] = Field(default_factory=list)
     job_cards: List[ProductionJobCardLinkItem] = Field(default_factory=list)
     created_at: datetime

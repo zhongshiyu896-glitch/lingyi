@@ -44,6 +44,7 @@ from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
+from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -298,10 +299,13 @@ class ProductionService:
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
-        latest_map = self.outbox_service.latest_by_plan_ids(plan_ids=[int(row.id) for row in rows])
+        plan_ids = [int(row.id) for row in rows]
+        latest_map = self.outbox_service.latest_by_plan_ids(plan_ids=plan_ids)
+        readiness_map = self._material_readiness_by_plan_ids(plan_ids=plan_ids)
 
         items: list[ProductionPlanListItem] = []
         for row in rows:
+            material_readiness = readiness_map.get(int(row.id), self._empty_material_readiness_summary())
             summary = None
             latest = latest_map.get(int(row.id))
             if latest is not None:
@@ -326,12 +330,126 @@ class ProductionService:
                     planned_qty=Decimal(str(row.planned_qty)),
                     planned_start_date=row.planned_start_date,
                     status=str(row.status),
+                    material_ready=bool(material_readiness["material_ready"]),
+                    required_qty_total=Decimal(str(material_readiness["required_qty_total"])),
+                    available_qty_total=Decimal(str(material_readiness["available_qty_total"])),
+                    shortage_qty_total=Decimal(str(material_readiness["shortage_qty_total"])),
+                    pending_requirement_count=int(material_readiness["pending_requirement_count"]),
+                    purchase_status=str(material_readiness["purchase_status"]),
                     latest_work_order_outbox=summary,
                     created_at=row.created_at,
                 )
             )
 
         return ProductionPlanListData(items=items, total=int(total), page=query.page, page_size=query.page_size)
+
+    def _material_readiness_by_plan_ids(self, *, plan_ids: list[int]) -> dict[int, dict[str, Any]]:
+        normalized_ids = sorted({int(plan_id) for plan_id in plan_ids if int(plan_id) > 0})
+        if not normalized_ids:
+            return {}
+
+        summaries: dict[int, dict[str, Any]] = {
+            plan_id: self._empty_material_readiness_summary(include_private=True) for plan_id in normalized_ids
+        }
+        try:
+            material_rows = (
+                self.session.query(
+                    LyProductionPlanMaterial.plan_id.label("plan_id"),
+                    func.count(LyProductionPlanMaterial.id).label("snapshot_count"),
+                    func.coalesce(func.sum(LyProductionPlanMaterial.required_qty), 0).label("required_qty_total"),
+                    func.coalesce(func.sum(LyProductionPlanMaterial.available_qty), 0).label("available_qty_total"),
+                    func.coalesce(func.sum(LyProductionPlanMaterial.shortage_qty), 0).label("shortage_qty_total"),
+                )
+                .filter(LyProductionPlanMaterial.plan_id.in_(normalized_ids))
+                .group_by(LyProductionPlanMaterial.plan_id)
+                .all()
+            )
+            requirement_rows = (
+                self.session.query(
+                    LyMaterialPurchaseRequirement.plan_id.label("plan_id"),
+                    LyMaterialPurchaseRequirement.status.label("status"),
+                    func.count(LyMaterialPurchaseRequirement.id).label("requirement_count"),
+                )
+                .filter(
+                    LyMaterialPurchaseRequirement.plan_id.in_(normalized_ids),
+                    LyMaterialPurchaseRequirement.status.in_(("pending", "purchased")),
+                )
+                .group_by(LyMaterialPurchaseRequirement.plan_id, LyMaterialPurchaseRequirement.status)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        for row in material_rows:
+            plan_id = int(row.plan_id)
+            summary = summaries.setdefault(plan_id, self._empty_material_readiness_summary(include_private=True))
+            summary["_snapshot_count"] = int(row.snapshot_count or 0)
+            summary["required_qty_total"] = Decimal(str(row.required_qty_total or 0))
+            summary["available_qty_total"] = Decimal(str(row.available_qty_total or 0))
+            summary["shortage_qty_total"] = Decimal(str(row.shortage_qty_total or 0))
+
+        for row in requirement_rows:
+            if row.plan_id is None:
+                continue
+            plan_id = int(row.plan_id)
+            summary = summaries.setdefault(plan_id, self._empty_material_readiness_summary(include_private=True))
+            count = int(row.requirement_count or 0)
+            if str(row.status) == "purchased":
+                summary["_purchased_requirement_count"] = int(summary["_purchased_requirement_count"]) + count
+            else:
+                summary["_pending_requirement_count"] = int(summary["_pending_requirement_count"]) + count
+
+        return {plan_id: self._finalize_material_readiness_summary(summary) for plan_id, summary in summaries.items()}
+
+    @staticmethod
+    def _empty_material_readiness_summary(*, include_private: bool = False) -> dict[str, Any]:
+        summary: dict[str, Any] = {
+            "material_ready": False,
+            "required_qty_total": Decimal("0"),
+            "available_qty_total": Decimal("0"),
+            "shortage_qty_total": Decimal("0"),
+            "pending_requirement_count": 0,
+            "purchase_status": "not_calculated",
+        }
+        if include_private:
+            summary.update(
+                {
+                    "_snapshot_count": 0,
+                    "_pending_requirement_count": 0,
+                    "_purchased_requirement_count": 0,
+                }
+            )
+        return summary
+
+    @staticmethod
+    def _finalize_material_readiness_summary(summary: dict[str, Any]) -> dict[str, Any]:
+        snapshot_count = int(summary.get("_snapshot_count") or 0)
+        pending_count = int(summary.get("_pending_requirement_count") or 0)
+        purchased_count = int(summary.get("_purchased_requirement_count") or 0)
+        active_requirement_count = pending_count + purchased_count
+        shortage_qty_total = Decimal(str(summary.get("shortage_qty_total") or 0))
+
+        if snapshot_count <= 0:
+            purchase_status = "not_calculated"
+        elif shortage_qty_total <= Decimal("0") and active_requirement_count == 0:
+            purchase_status = "ready"
+        elif purchased_count > 0:
+            purchase_status = "purchasing"
+        elif pending_count > 0:
+            purchase_status = "pending_purchase"
+        elif shortage_qty_total > Decimal("0"):
+            purchase_status = "shortage"
+        else:
+            purchase_status = "ready"
+
+        return {
+            "material_ready": purchase_status == "ready",
+            "required_qty_total": Decimal(str(summary.get("required_qty_total") or 0)),
+            "available_qty_total": Decimal(str(summary.get("available_qty_total") or 0)),
+            "shortage_qty_total": shortage_qty_total,
+            "pending_requirement_count": active_requirement_count,
+            "purchase_status": purchase_status,
+        }
 
     def list_tracking_reconciliations(
         self,
@@ -2068,7 +2186,12 @@ class ProductionService:
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
-        latest = self.outbox_service.latest_by_plan_ids(plan_ids=[int(plan.id)]).get(int(plan.id))
+        plan_id_value = int(plan.id)
+        latest = self.outbox_service.latest_by_plan_ids(plan_ids=[plan_id_value]).get(plan_id_value)
+        material_readiness = self._material_readiness_by_plan_ids(plan_ids=[plan_id_value]).get(
+            plan_id_value,
+            self._empty_material_readiness_summary(),
+        )
         summary = None
         if latest is not None:
             summary = ProductionWorkOrderOutboxSummary(
@@ -2099,6 +2222,12 @@ class ProductionService:
             latest_work_order_outbox=summary,
             write_entry_frozen=True,
             write_entry_frozen_reason=PRODUCTION_WRITE_ENTRY_FROZEN_REASON,
+            material_ready=bool(material_readiness["material_ready"]),
+            required_qty_total=Decimal(str(material_readiness["required_qty_total"])),
+            available_qty_total=Decimal(str(material_readiness["available_qty_total"])),
+            shortage_qty_total=Decimal(str(material_readiness["shortage_qty_total"])),
+            pending_requirement_count=int(material_readiness["pending_requirement_count"]),
+            purchase_status=str(material_readiness["purchase_status"]),
             material_snapshots=[
                 ProductionPlanMaterialSnapshotItem(
                     bom_item_id=(int(row.bom_item_id) if row.bom_item_id is not None else None),

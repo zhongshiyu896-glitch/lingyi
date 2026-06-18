@@ -560,6 +560,25 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(material_row["available_qty"])), Decimal("30.000000"))
         self.assertEqual(Decimal(str(material_row["shortage_qty"])), Decimal("54.000000"))
 
+        checked_detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers())
+        self.assertEqual(checked_detail.status_code, 200, checked_detail.text)
+        checked_plan = checked_detail.json()["data"]
+        self.assertFalse(checked_plan["material_ready"])
+        self.assertEqual(checked_plan["purchase_status"], "pending_purchase")
+        self.assertEqual(checked_plan["pending_requirement_count"], 1)
+        self.assertEqual(Decimal(str(checked_plan["required_qty_total"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(checked_plan["available_qty_total"])), Decimal("30.000000"))
+        self.assertEqual(Decimal(str(checked_plan["shortage_qty_total"])), Decimal("54.000000"))
+
+        checked_list = self.client.get(
+            "/api/production/plans?sales_order=SO-A6-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(checked_list.status_code, 200, checked_list.text)
+        checked_list_row = checked_list.json()["data"]["items"][0]
+        self.assertEqual(checked_list_row["purchase_status"], "pending_purchase")
+        self.assertEqual(Decimal(str(checked_list_row["shortage_qty_total"])), Decimal("54.000000"))
+
         requirements = self.client.get(
             f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending",
             headers=self._headers(),
@@ -624,6 +643,26 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(list_after_receipt_by_purchase_no.status_code, 200, list_after_receipt_by_purchase_no.text)
         self.assertEqual(list_after_receipt_by_purchase_no.json()["data"]["total"], 1)
         self.assertEqual(list_after_receipt_by_purchase_no.json()["data"]["items"][0]["purchase_no"], purchase_no)
+
+        ready_detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers())
+        self.assertEqual(ready_detail.status_code, 200, ready_detail.text)
+        ready_plan = ready_detail.json()["data"]
+        self.assertTrue(ready_plan["material_ready"])
+        self.assertEqual(ready_plan["purchase_status"], "ready")
+        self.assertEqual(ready_plan["pending_requirement_count"], 0)
+        self.assertEqual(Decimal(str(ready_plan["required_qty_total"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(ready_plan["available_qty_total"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(ready_plan["shortage_qty_total"])), Decimal("0.000000"))
+
+        ready_list = self.client.get(
+            "/api/production/plans?sales_order=SO-A6-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(ready_list.status_code, 200, ready_list.text)
+        ready_list_row = ready_list.json()["data"]["items"][0]
+        self.assertTrue(ready_list_row["material_ready"])
+        self.assertEqual(ready_list_row["purchase_status"], "ready")
+        self.assertEqual(Decimal(str(ready_list_row["shortage_qty_total"])), Decimal("0.000000"))
 
         with self.SessionLocal() as session:
             requirement_row = session.query(LyMaterialPurchaseRequirement).one()
