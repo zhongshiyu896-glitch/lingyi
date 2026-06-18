@@ -225,6 +225,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         net_required_qty: str = "10",
         sales_order: str = "SO-A6-SEED",
         sales_order_item: str = "SO-A6-SEED-ITEM",
+        supplier_name: str = "SUP-A6",
     ) -> int:
         with self.SessionLocal() as session:
             row = LyMaterialPurchaseRequirement(
@@ -240,7 +241,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 item_code=self.STYLE,
                 material_item_code=self.MATERIAL,
                 material_name="A6 棉布",
-                supplier_name="SUP-A6",
+                supplier_name=supplier_name,
                 warehouse=self.WAREHOUSE,
                 required_qty=Decimal(net_required_qty),
                 available_qty=Decimal("0"),
@@ -834,6 +835,55 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(len(completed_rows), 2)
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
+
+    def test_from_requirements_rejects_mixed_requirement_suppliers(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-SUP-A",
+            supplier_name="SUP-A6-A",
+            sales_order="SO-A6-SUP-A",
+            sales_order_item="SO-A6-SUP-A-ITEM",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-SUP-B",
+            supplier_name="SUP-A6-B",
+            sales_order="SO-A6-SUP-B",
+            sales_order_item="SO-A6-SUP-B-ITEM",
+        )
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-mixed-suppliers"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_a, requirement_b],
+                idempotency_key="idem-a6-mixed-suppliers",
+            ),
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("供应商不一致", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            requirement_rows = session.query(LyMaterialPurchaseRequirement).all()
+            self.assertTrue(all(str(row.status) == "pending" for row in requirement_rows))
+
+    def test_from_requirements_rejects_requested_supplier_mismatch(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-SUP-MISMATCH", supplier_name="SUP-A6")
+        payload = self._from_requirements_payload(
+            requirement_ids=[requirement_id],
+            idempotency_key="idem-a6-supplier-mismatch",
+        )
+        payload["supplier_name"] = "SUP-A6-OTHER"
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-supplier-mismatch"),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("请求供应商", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
 
     def test_from_requirements_unauthenticated_security_audit_is_write_requirement(self) -> None:
         response = self.client.post(

@@ -452,7 +452,10 @@ class MaterialPurchaseService:
         if self._get_order_by_no(company=company, purchase_no=purchase_no) is not None:
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"{purchase_no} 已存在")
 
-        supplier_name = requested_supplier or self._optional_text(requirements[0].supplier_name) or "未指定供应商"
+        supplier_name = self._resolve_requirement_supplier(
+            requirements=requirements,
+            requested_supplier=requested_supplier,
+        )
         grouped = self._group_requirements_for_order(requirements=requirements, group_by_material=payload.group_by_material)
         total_qty = Decimal("0")
         total_amount = Decimal("0")
@@ -1177,6 +1180,39 @@ class MaterialPurchaseService:
             bucket["qty"] = Decimal(str(bucket["qty"])) + Decimal(str(requirement.net_required_qty or 0))
             bucket["requirements"].append(requirement)
         return list(grouped.values())
+
+    def _resolve_requirement_supplier(
+        self,
+        *,
+        requirements: list[LyMaterialPurchaseRequirement],
+        requested_supplier: str | None,
+    ) -> str:
+        suppliers = sorted(
+            {
+                supplier
+                for supplier in (
+                    self._optional_text(requirement.supplier_name)
+                    for requirement in requirements
+                )
+                if supplier is not None
+            }
+        )
+        if len(suppliers) > 1:
+            raise BusinessException(
+                code=MATERIAL_PURCHASE_CONFLICT,
+                message=f"所选需求供应商不一致: {'、'.join(suppliers)}",
+            )
+        requirement_supplier = suppliers[0] if suppliers else None
+        if (
+            requested_supplier is not None
+            and requirement_supplier is not None
+            and requested_supplier != requirement_supplier
+        ):
+            raise BusinessException(
+                code=MATERIAL_PURCHASE_CONFLICT,
+                message=f"请求供应商 {requested_supplier} 与需求供应商 {requirement_supplier} 不一致",
+            )
+        return requested_supplier or requirement_supplier or "未指定供应商"
 
     def _apply_requirement_receipts(
         self,
