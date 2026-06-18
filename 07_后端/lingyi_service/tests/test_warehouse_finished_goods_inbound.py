@@ -87,16 +87,24 @@ class WarehouseFinishedGoodsInboundApiBase(unittest.TestCase):
         return f"{hash_value:08X}"[-3:]
 
     @classmethod
-    def _stock_entry_request_id(cls, payload: dict) -> str:
+    def _stock_entry_request_id(
+        cls,
+        payload: dict,
+        *,
+        operation: str = "create_stock_entry_draft",
+        status_action: str = "create",
+    ) -> str:
+        operation_code = "C" if operation == "create_stock_entry_draft" else "X"
+        status_action_code = "C" if status_action == "create" else "X"
         return (
-            f"{payload['scenario_tag']}-RW-C-"
+            f"{payload['scenario_tag']}-RW-{operation_code}-"
             f"{cls._carrier_code(payload['idempotency_key'])}-"
             f"{cls._carrier_code(payload['source_ref'])}-"
             f"{cls._carrier_code(payload['warehouse'])}-"
             f"{cls._carrier_code(payload['item_code'])}-"
             f"{cls._carrier_code(str(payload['quantity']))}-"
             f"{cls._carrier_code(payload['business_date'])}-"
-            f"{cls._carrier_code('C')}"
+            f"{cls._carrier_code(status_action_code)}"
         )
 
     @classmethod
@@ -282,6 +290,73 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
         self.assertEqual(rows[0]["warehouse"], "FG-WH-001")
         self.assertEqual(rows[0]["inbound_status"], "outbox_pending")
         self.assertEqual(Decimal(str(rows[0]["inbound_qty"])), Decimal("3.000000"))
+
+    def test_cancel_finished_goods_draft_removes_effective_stock(self) -> None:
+        payload = self._draft_payload(qty="3", item_code="FG-CANCEL-001")
+        payload["source_id"] = f"{self.STOCK_ENTRY_SCENARIO_TAG}-LOCAL-FG-CANCEL"
+        payload["source_ref"] = payload["source_id"]
+        payload["finished_goods_source_id"] = payload["source_id"]
+        payload["items"][0]["item_code"] = "FG-CANCEL-001"
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._stock_entry_request_id(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        draft_id = int(create_resp.json()["data"]["id"])
+
+        summary_before = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=FG-WH-001&item_code=FG-CANCEL-001",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(summary_before.status_code, 200, summary_before.text)
+        before_rows = summary_before.json()["data"]["items"]
+        self.assertEqual(len(before_rows), 1)
+        self.assertEqual(Decimal(str(before_rows[0]["actual_qty"])), Decimal("3.000000"))
+
+        cancel_payload = {
+            "reason": "成品入库取消不计库存",
+            "idempotency_key": payload["idempotency_key"],
+            "source_ref": payload["source_id"],
+            "warehouse": "FG-WH-001",
+            "item_code": "FG-CANCEL-001",
+            "operation": "cancel_stock_entry_draft",
+            "quantity": payload["quantity"],
+            "business_date": payload["business_date"],
+            "status_action": "cancel",
+            "scenario_tag": payload["scenario_tag"],
+        }
+        cancel_resp = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+            headers=self._headers(
+                "warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._stock_entry_request_id(
+                    cancel_payload,
+                    operation="cancel_stock_entry_draft",
+                    status_action="cancel",
+                ),
+            ),
+            json=cancel_payload,
+        )
+        self.assertEqual(cancel_resp.status_code, 200, cancel_resp.text)
+        self.assertEqual(cancel_resp.json()["data"]["status"], "cancelled")
+
+        summary_after = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=FG-WH-001&item_code=FG-CANCEL-001",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(summary_after.status_code, 200, summary_after.text)
+        self.assertEqual(summary_after.json()["data"]["items"], [])
+
+        readback_after = self.client.get(
+            "/api/warehouse/finished-goods-inbound?company=COMP-A&item_code=FG-CANCEL-001",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(readback_after.status_code, 200, readback_after.text)
+        self.assertEqual(readback_after.json()["data"]["items"], [])
 
     def test_create_finished_goods_draft_candidate_disabled_fail_closed(self) -> None:
         with patch(
