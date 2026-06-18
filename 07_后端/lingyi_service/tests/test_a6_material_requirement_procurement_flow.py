@@ -1113,6 +1113,43 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(requirement["net_required_qty"])), Decimal("54.000000"))
         self.assertFalse(requirement["has_completed"])
 
+        locked_update = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{order.json()['data']['id']}",
+            headers=self._headers("req-a6-locked-after-material-check"),
+            json={
+                "company": self.COMPANY,
+                "customer": "CUST-A6",
+                "operation": "update_draft",
+                "idempotency_key": "idem-so-a6-001-update-after-material-check",
+                "transaction_date": "2026-06-17",
+                "delivery_date": "2026-07-01",
+                "currency": "CNY",
+                "items": [
+                    {
+                        "item_code": self.STYLE,
+                        "item_name": "Ignored",
+                        "color": "白",
+                        "size": "M",
+                        "qty": 120,
+                        "rate": 80,
+                        "uom": "件",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(locked_update.status_code, 409, locked_update.text)
+        self.assertEqual(locked_update.json()["code"], "SALES_ORDER_MATERIAL_CALCULATED_LOCKED")
+        requirements_after_locked_update = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending",
+            headers=self._headers("req-a6-requirements-after-locked-update"),
+        )
+        self.assertEqual(requirements_after_locked_update.status_code, 200, requirements_after_locked_update.text)
+        self.assertEqual(requirements_after_locked_update.json()["data"]["total"], 1)
+        self.assertEqual(
+            Decimal(str(requirements_after_locked_update.json()["data"]["items"][0]["net_required_qty"])),
+            Decimal("54.000000"),
+        )
+
         create_po_payload = {
             "operation": "create_order_from_requirements",
             "company": self.COMPANY,

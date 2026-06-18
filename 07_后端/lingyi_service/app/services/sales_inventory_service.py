@@ -14,7 +14,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
+from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import LyProductionPlan
+from app.models.production import LyProductionPlanMaterial
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.sales_order import LySalesOrder
@@ -438,6 +440,7 @@ class SalesInventoryService:
             return self._build_native_sales_order_draft_data(order)
 
         self._ensure_sales_order_not_material_issued(order=order)
+        self._ensure_sales_order_not_material_calculated(order=order)
 
         existing_items = {int(item.line_no): item for item in self._native_sales_order_items(order_id=int(order.id))}
         for index, row in enumerate(line_rows, start=1):
@@ -720,6 +723,8 @@ class SalesInventoryService:
                 raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_ALREADY_CANCELLED", "草稿已取消")
             if str(native_order.status) not in {"draft", "planned"}:
                 raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_INVALID_STATUS", "当前状态不允许取消")
+            self._ensure_sales_order_not_material_issued(order=native_order)
+            self._ensure_sales_order_not_material_calculated(order=native_order)
             native_order.status = "cancelled"
             native_order.docstatus = 2
             native_order.cancelled_by = cancelled_by
@@ -4390,6 +4395,66 @@ class SalesInventoryService:
                 409,
                 "SALES_ORDER_MATERIAL_ISSUED_LOCKED",
                 "已创建生产领料，不允许编辑订单",
+            )
+
+    def _ensure_sales_order_not_material_calculated(self, *, order: LySalesOrder) -> None:
+        session = self._require_session()
+        company = str(order.company)
+        sales_order_refs = {
+            ref
+            for ref in (
+                self._text(order.sales_order_no),
+                self._text(order.source_order_ref),
+            )
+            if ref
+        }
+        if not sales_order_refs:
+            return
+
+        plans = (
+            session.query(LyProductionPlan)
+            .filter(
+                LyProductionPlan.company == company,
+                LyProductionPlan.sales_order.in_(sorted(sales_order_refs)),
+                LyProductionPlan.status != "cancelled",
+            )
+            .all()
+        )
+        plan_ids = [int(plan.id) for plan in plans]
+        material_checked_statuses = {"material_checked", "work_order_pending", "work_order_created", "job_cards_synced"}
+        if any(str(plan.status or "") in material_checked_statuses for plan in plans):
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_ORDER_MATERIAL_CALCULATED_LOCKED",
+                "订单已算料或已进入待采购池，不允许编辑或取消",
+            )
+        if plan_ids:
+            snapshot = (
+                session.query(LyProductionPlanMaterial.id)
+                .filter(LyProductionPlanMaterial.plan_id.in_(plan_ids))
+                .first()
+            )
+            if snapshot is not None:
+                raise SalesInventoryServiceError(
+                    409,
+                    "SALES_ORDER_MATERIAL_CALCULATED_LOCKED",
+                    "订单已算料或已进入待采购池，不允许编辑或取消",
+                )
+
+        active_requirement = (
+            session.query(LyMaterialPurchaseRequirement.id)
+            .filter(
+                LyMaterialPurchaseRequirement.company == company,
+                LyMaterialPurchaseRequirement.sales_order.in_(sorted(sales_order_refs)),
+                LyMaterialPurchaseRequirement.status.in_(("pending", "purchased", "completed")),
+            )
+            .first()
+        )
+        if active_requirement is not None:
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_ORDER_MATERIAL_CALCULATED_LOCKED",
+                "订单已算料或已进入待采购池，不允许编辑或取消",
             )
 
     @classmethod

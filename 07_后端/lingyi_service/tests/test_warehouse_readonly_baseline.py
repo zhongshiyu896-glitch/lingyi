@@ -288,6 +288,10 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
             ("POST", "/api/warehouse/inventory-counts/{count_id}/variance-review"),  # TASK-050C 审计意见书第385份
             ("POST", "/api/warehouse/inventory-counts/{count_id}/confirm"),  # TASK-050C 审计意见书第385份
             ("POST", "/api/warehouse/inventory-counts/{count_id}/cancel"),  # TASK-050C 审计意见书第385份
+            (
+                "POST",
+                "/api/warehouse/factory-return-material-report/{report_no}/return-draft",
+            ),  # A期加工厂应退料退料草稿
         }
         discovered_write_routes: set[tuple[str, str]] = set()
         for route in warehouse_routes:
