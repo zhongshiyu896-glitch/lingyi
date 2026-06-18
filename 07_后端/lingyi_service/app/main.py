@@ -67,6 +67,7 @@ from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
+from app.core.permissions import SALES_INVENTORY_WRITE
 from app.core.permissions import SAMPLE_MANAGE
 from app.core.permissions import SAMPLE_READ
 from app.core.permissions import MATERIAL_PURCHASE_READ
@@ -490,6 +491,22 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
     if path.startswith("/api/sales-inventory"):
         if path.endswith("/diagnostic"):
             return "sales_inventory", SALES_INVENTORY_DIAGNOSTIC, "SalesInventoryDiagnostic", None
+        if path in {"/api/sales-inventory/delivery-invoices", "/api/sales-inventory/delivery-invoices/"}:
+            if method == "POST":
+                return "sales_inventory", SALES_INVENTORY_WRITE, "DeliveryInvoice", None
+            return "sales_inventory", SALES_INVENTORY_READ, "DeliveryInvoice", None
+        if path in {"/api/sales-inventory/payment-entries", "/api/sales-inventory/payment-entries/"}:
+            if method == "POST":
+                return "sales_inventory", SALES_INVENTORY_WRITE, "SalesPaymentEntry", None
+            return "sales_inventory", SALES_INVENTORY_READ, "SalesPaymentEntry", None
+        if path in {"/api/sales-inventory/sales-orders/drafts", "/api/sales-inventory/sales-orders/drafts/"}:
+            if method == "POST":
+                return "sales_inventory", SALES_INVENTORY_WRITE, "SalesOrderDraft", None
+            return "sales_inventory", SALES_INVENTORY_READ, "SalesOrderDraft", None
+        if re.match(r"^/api/sales-inventory/sales-orders/drafts/\d+(?:/cancel)?/?$", path):
+            if method in {"PATCH", "POST"}:
+                return "sales_inventory", SALES_INVENTORY_WRITE, "SalesOrderDraft", _extract_sales_order_draft_id(path)
+            return "sales_inventory", SALES_INVENTORY_READ, "SalesOrderDraft", _extract_sales_order_draft_id(path)
         if "/sales-orders/" in path:
             return "sales_inventory", SALES_INVENTORY_READ, "SalesOrder", _extract_sales_order_name(path)
         if path.startswith("/api/sales-inventory/items/"):
@@ -660,6 +677,13 @@ def _extract_factory_statement_id(path: str) -> str | None:
 
 def _extract_sales_order_name(path: str) -> str | None:
     match = re.match(r"^/api/sales-inventory/sales-orders/([^/]+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_sales_order_draft_id(path: str) -> str | None:
+    match = re.match(r"^/api/sales-inventory/sales-orders/drafts/(\d+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None
