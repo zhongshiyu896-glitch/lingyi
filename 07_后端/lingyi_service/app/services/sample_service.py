@@ -18,6 +18,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.error_codes import BOM_NOT_FOUND
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.error_codes import DATABASE_WRITE_FAILED
 from app.core.error_codes import SAMPLE_CONFLICT
@@ -28,17 +29,29 @@ from app.core.error_codes import SAMPLE_NOT_FOUND
 from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
 from app.core.exceptions import BusinessException
 from app.models.sample import LySampleIdempotency
+from app.models.sample import LySampleMaterialBom
+from app.models.sample import LySampleMaterialBomItem
+from app.models.sample import LySampleMaterialBomOperation
 from app.models.sample import LySampleOrder
 from app.models.sample import LySampleTrackingEvent
 from app.models.sample import LySampleTrackingNode
 from app.models.sample import LySampleTrackingTemplate
 from app.models.style_master import LyStyleMaster
+from app.models.bom import LyApparelBom
+from app.models.bom import LyApparelBomItem
 from app.schemas.sample import SampleOrderConvertRequest
 from app.schemas.sample import SampleOrderCreateRequest
 from app.schemas.sample import SampleOrderItem
 from app.schemas.sample import SampleOrderListData
 from app.schemas.sample import SampleOrderStatusRequest
 from app.schemas.sample import SampleOrderUpdateRequest
+from app.schemas.sample import SampleMaterialBomCopyRequest
+from app.schemas.sample import SampleMaterialBomData
+from app.schemas.sample import SampleMaterialBomExplodeData
+from app.schemas.sample import SampleMaterialBomHeader
+from app.schemas.sample import SampleMaterialBomItem
+from app.schemas.sample import SampleMaterialBomRequirementItem
+from app.schemas.sample import SampleMaterialBomUpsertRequest
 from app.schemas.sample import SampleTrackingNodeCreateRequest
 from app.schemas.sample import SampleTrackingNodeItem
 from app.schemas.sample import SampleTrackingNodeUpdateRequest
@@ -75,6 +88,7 @@ class SampleService:
     ORDER_STATUSES = {"draft", "pending", "patterning", "fitting", "sealed", "reversed", "converted"}
     FORM_WRITABLE_ORDER_STATUSES = {"draft"}
     EDITABLE_ORDER_STATUSES = {"draft", "reversed"}
+    MATERIAL_BOM_WRITABLE_ORDER_STATUSES = {"draft", "reversed", "pending", "patterning", "fitting"}
 
     def __init__(self, session: Session):
         self.session = session
@@ -395,6 +409,232 @@ class SampleService:
         after["order_before"] = before_order
         after["order_after"] = self._snapshot_order(order)
         return self._event_result(row=row, order=order, before=None, after=after)
+
+    def get_material_bom(self, *, order_id: int, company: str | None) -> SampleMaterialBomData:
+        company = self._require_text(company, "company")
+        order = self._get_order_for_read(order_id=order_id, company=company)
+        bom = self._find_sample_material_bom(order=order)
+        if bom is None:
+            return SampleMaterialBomData(bom=None, items=[])
+        return self._sample_material_bom_data(order=order, bom=bom)
+
+    def upsert_material_bom(
+        self,
+        *,
+        order_id: int,
+        payload: SampleMaterialBomUpsertRequest,
+        actor: str,
+    ) -> SampleMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        order = self._get_order_for_mutation(order_id=order_id, company=company)
+        self._ensure_sample_material_bom_writable(order)
+        request_hash = self._request_hash(
+            operation="sample_material_bom_upsert",
+            company=company,
+            order_id=order_id,
+            version_no=payload.version_no,
+            items=[item.model_dump(mode="json") for item in payload.items],
+        )
+        existing_operation = self._get_material_bom_operation(
+            company=company,
+            operation="upsert",
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if existing_operation.request_hash != request_hash:
+                raise BusinessException(code=SAMPLE_IDEMPOTENCY_CONFLICT, message="幂等键冲突，且请求内容不一致")
+            bom = self._must_get_sample_material_bom_by_id(int(existing_operation.bom_id))
+            data = self._sample_material_bom_data(order=order, bom=bom)
+            return SampleMutationResult(
+                item=data,
+                before=data.model_dump(mode="json"),
+                after=data.model_dump(mode="json"),
+                resource_type="SAMPLE_MATERIAL_BOM",
+                resource_id=int(bom.id),
+                resource_no=str(order.sample_no),
+                idempotent=True,
+            )
+
+        bom = self._find_sample_material_bom(order=order)
+        before = self._sample_material_bom_data(order=order, bom=bom).model_dump(mode="json") if bom else None
+        try:
+            bom = self._upsert_sample_material_bom_header(
+                order=order,
+                source_bom_id=(int(bom.source_bom_id) if bom and bom.source_bom_id is not None else None),
+                version_no=payload.version_no,
+                actor=actor,
+                existing=bom,
+            )
+            self.session.query(LySampleMaterialBomItem).filter(LySampleMaterialBomItem.bom_id == int(bom.id)).delete()
+            for item in payload.items:
+                self.session.add(
+                    LySampleMaterialBomItem(
+                        bom_id=int(bom.id),
+                        source_bom_item_id=None,
+                        material_item_code=item.material_item_code.strip(),
+                        color=self._optional_text(item.color),
+                        part=self._optional_text(item.part),
+                        qty_per_piece=item.qty_per_piece,
+                        loss_rate=item.loss_rate,
+                        uom=item.uom.strip(),
+                        is_alternative=1 if item.is_alternative else 0,
+                        replace_group=self._optional_text(item.replace_group),
+                        remark=self._optional_text(item.remark),
+                    )
+                )
+            self.session.flush()
+            data = self._sample_material_bom_data(order=order, bom=bom)
+            self._insert_material_bom_operation(
+                bom_id=int(bom.id),
+                company=company,
+                operation="upsert",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=data,
+                actor=actor,
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        return SampleMutationResult(
+            item=data,
+            before=before,
+            after=data.model_dump(mode="json"),
+            resource_type="SAMPLE_MATERIAL_BOM",
+            resource_id=int(data.bom.id) if data.bom else int(order.id),
+            resource_no=str(order.sample_no),
+        )
+
+    def copy_material_bom_from_style(
+        self,
+        *,
+        order_id: int,
+        payload: SampleMaterialBomCopyRequest,
+        actor: str,
+    ) -> SampleMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        order = self._get_order_for_mutation(order_id=order_id, company=company)
+        self._ensure_sample_material_bom_writable(order)
+        style_bom = self._resolve_style_material_bom_for_sample(order=order, style_bom_id=payload.style_bom_id)
+        source_items = (
+            self.session.query(LyApparelBomItem)
+            .filter(LyApparelBomItem.bom_id == int(style_bom.id))
+            .order_by(LyApparelBomItem.id.asc())
+            .all()
+        )
+        if not source_items:
+            raise BusinessException(code=BOM_NOT_FOUND, message="款式用料 BOM 明细为空，无法复制到样板")
+
+        request_hash = self._request_hash(
+            operation="sample_material_bom_copy_from_style",
+            company=company,
+            order_id=order_id,
+            source_bom_id=int(style_bom.id),
+            source_item_ids=[int(item.id) for item in source_items],
+        )
+        existing_operation = self._get_material_bom_operation(
+            company=company,
+            operation="copy_from_style",
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if existing_operation.request_hash != request_hash:
+                raise BusinessException(code=SAMPLE_IDEMPOTENCY_CONFLICT, message="幂等键冲突，且请求内容不一致")
+            bom = self._must_get_sample_material_bom_by_id(int(existing_operation.bom_id))
+            data = self._sample_material_bom_data(order=order, bom=bom)
+            return SampleMutationResult(
+                item=data,
+                before=data.model_dump(mode="json"),
+                after=data.model_dump(mode="json"),
+                resource_type="SAMPLE_MATERIAL_BOM",
+                resource_id=int(bom.id),
+                resource_no=str(order.sample_no),
+                idempotent=True,
+            )
+
+        bom = self._find_sample_material_bom(order=order)
+        before = self._sample_material_bom_data(order=order, bom=bom).model_dump(mode="json") if bom else None
+        try:
+            bom = self._upsert_sample_material_bom_header(
+                order=order,
+                source_bom_id=int(style_bom.id),
+                version_no="S1",
+                actor=actor,
+                existing=bom,
+            )
+            self.session.query(LySampleMaterialBomItem).filter(LySampleMaterialBomItem.bom_id == int(bom.id)).delete()
+            for item in source_items:
+                self.session.add(
+                    LySampleMaterialBomItem(
+                        bom_id=int(bom.id),
+                        source_bom_item_id=int(item.id),
+                        material_item_code=str(item.material_item_code),
+                        color=item.color,
+                        part=getattr(item, "part", None),
+                        qty_per_piece=Decimal(str(item.qty_per_piece)),
+                        loss_rate=Decimal(str(item.loss_rate or 0)),
+                        uom=str(item.uom),
+                        is_alternative=0,
+                        replace_group=None,
+                        remark=item.remark,
+                    )
+                )
+            self.session.flush()
+            data = self._sample_material_bom_data(order=order, bom=bom)
+            self._insert_material_bom_operation(
+                bom_id=int(bom.id),
+                company=company,
+                operation="copy_from_style",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=data,
+                actor=actor,
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        return SampleMutationResult(
+            item=data,
+            before=before,
+            after=data.model_dump(mode="json"),
+            resource_type="SAMPLE_MATERIAL_BOM",
+            resource_id=int(data.bom.id) if data.bom else int(order.id),
+            resource_no=str(order.sample_no),
+        )
+
+    def explode_material_bom(self, *, order_id: int, company: str | None, order_qty: Decimal) -> SampleMaterialBomExplodeData:
+        company = self._require_text(company, "company")
+        order = self._get_order_for_read(order_id=order_id, company=company)
+        bom = self._find_sample_material_bom(order=order)
+        if bom is None:
+            raise BusinessException(code=BOM_NOT_FOUND, message="该样板单未维护打样用料 BOM")
+        data = self._sample_material_bom_data(order=order, bom=bom)
+        if not data.items:
+            raise BusinessException(code=BOM_NOT_FOUND, message="该样板单打样用料 BOM 明细为空")
+        items: list[SampleMaterialBomRequirementItem] = []
+        total = Decimal("0")
+        for item in data.items:
+            required_qty = (Decimal(str(order_qty)) * item.qty_per_piece * (Decimal("1") + item.loss_rate)).quantize(Decimal("0.000001"))
+            total += required_qty
+            items.append(
+                SampleMaterialBomRequirementItem(
+                    material_item_code=item.material_item_code,
+                    color=item.color,
+                    part=item.part,
+                    uom=item.uom,
+                    qty_per_piece=item.qty_per_piece,
+                    loss_rate=item.loss_rate,
+                    required_qty=required_qty,
+                )
+            )
+        return SampleMaterialBomExplodeData(
+            sample_order_id=int(order.id),
+            order_qty=Decimal(str(order_qty)),
+            items=items,
+            total_required_qty=total.quantize(Decimal("0.000001")),
+        )
 
     def convert_order(self, *, order_id: int, payload: SampleOrderConvertRequest, actor: str) -> SampleMutationResult:
         company = self._require_text(payload.company, "company")
@@ -877,6 +1117,163 @@ class SampleService:
         if row is None:
             raise BusinessException(code=SAMPLE_NOT_FOUND, message="样板单不存在")
         return row
+
+    def _find_sample_material_bom(self, *, order: LySampleOrder) -> LySampleMaterialBom | None:
+        return (
+            self.session.query(LySampleMaterialBom)
+            .filter(
+                LySampleMaterialBom.company == order.company,
+                LySampleMaterialBom.sample_order_id == int(order.id),
+            )
+            .order_by(LySampleMaterialBom.id.desc())
+            .first()
+        )
+
+    def _must_get_sample_material_bom_by_id(self, bom_id: int) -> LySampleMaterialBom:
+        row = self.session.query(LySampleMaterialBom).filter(LySampleMaterialBom.id == int(bom_id)).first()
+        if row is None:
+            raise BusinessException(code=BOM_NOT_FOUND, message="样板用料 BOM 不存在")
+        return row
+
+    def _sample_material_bom_data(self, *, order: LySampleOrder, bom: LySampleMaterialBom) -> SampleMaterialBomData:
+        items = (
+            self.session.query(LySampleMaterialBomItem)
+            .filter(LySampleMaterialBomItem.bom_id == int(bom.id))
+            .order_by(LySampleMaterialBomItem.id.asc())
+            .all()
+        )
+        return SampleMaterialBomData(
+            bom=SampleMaterialBomHeader(
+                id=int(bom.id),
+                company=str(bom.company),
+                sample_order_id=int(order.id),
+                sample_no=str(order.sample_no),
+                style_master_id=int(bom.style_master_id) if bom.style_master_id is not None else None,
+                item_code=str(bom.item_code),
+                source_bom_id=int(bom.source_bom_id) if bom.source_bom_id is not None else None,
+                version_no=str(bom.version_no),
+                status=str(bom.status),
+                updated_at=bom.updated_at,
+            ),
+            items=[
+                SampleMaterialBomItem(
+                    id=int(item.id),
+                    source_bom_item_id=int(item.source_bom_item_id) if item.source_bom_item_id is not None else None,
+                    material_item_code=str(item.material_item_code),
+                    color=item.color,
+                    part=item.part,
+                    qty_per_piece=Decimal(str(item.qty_per_piece)),
+                    loss_rate=Decimal(str(item.loss_rate or 0)),
+                    uom=str(item.uom),
+                    is_alternative=bool(item.is_alternative),
+                    replace_group=item.replace_group,
+                    remark=item.remark,
+                )
+                for item in items
+            ],
+        )
+
+    def _upsert_sample_material_bom_header(
+        self,
+        *,
+        order: LySampleOrder,
+        source_bom_id: int | None,
+        version_no: str,
+        actor: str,
+        existing: LySampleMaterialBom | None,
+    ) -> LySampleMaterialBom:
+        now = datetime.now(UTC)
+        if existing is not None:
+            existing.company = str(order.company)
+            existing.sample_order_id = int(order.id)
+            existing.style_master_id = int(order.style_master_id) if order.style_master_id is not None else None
+            existing.item_code = str(order.style_no)
+            existing.source_bom_id = source_bom_id
+            existing.version_no = str(version_no or "S1")
+            existing.status = "draft"
+            existing.updated_by = actor
+            existing.updated_at = now
+            self.session.flush()
+            return existing
+
+        row = LySampleMaterialBom(
+            company=str(order.company),
+            sample_order_id=int(order.id),
+            style_master_id=int(order.style_master_id) if order.style_master_id is not None else None,
+            item_code=str(order.style_no),
+            source_bom_id=source_bom_id,
+            version_no=str(version_no or "S1"),
+            status="draft",
+            created_by=actor,
+            updated_by=actor,
+        )
+        self.session.add(row)
+        self.session.flush()
+        return row
+
+    def _resolve_style_material_bom_for_sample(self, *, order: LySampleOrder, style_bom_id: int | None) -> LyApparelBom:
+        query = self.session.query(LyApparelBom).filter(LyApparelBom.company == order.company)
+        if style_bom_id is not None:
+            query = query.filter(LyApparelBom.id == int(style_bom_id))
+        else:
+            if order.style_master_id is None:
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="样板单缺少 style_master_id，无法复制款用料 BOM")
+            query = query.filter(
+                LyApparelBom.style_master_id == int(order.style_master_id),
+                LyApparelBom.item_code == str(order.style_no),
+                LyApparelBom.status == "active",
+                LyApparelBom.is_default.is_(True),
+            )
+        row = query.order_by(LyApparelBom.id.desc()).first()
+        if row is None:
+            raise BusinessException(code=BOM_NOT_FOUND, message="该样板所选款式未维护默认用料 BOM")
+        if str(row.item_code) != str(order.style_no):
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="款 BOM 与样板单款号不一致")
+        return row
+
+    def _ensure_sample_material_bom_writable(self, order: LySampleOrder) -> None:
+        if str(order.status) not in self.MATERIAL_BOM_WRITABLE_ORDER_STATUSES:
+            raise BusinessException(code=SAMPLE_INVALID_STATUS, message="当前样板单状态不允许维护打样用料 BOM")
+
+    def _get_material_bom_operation(
+        self,
+        *,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+    ) -> LySampleMaterialBomOperation | None:
+        return (
+            self.session.query(LySampleMaterialBomOperation)
+            .filter(
+                LySampleMaterialBomOperation.company == company,
+                LySampleMaterialBomOperation.operation == operation,
+                LySampleMaterialBomOperation.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+
+    def _insert_material_bom_operation(
+        self,
+        *,
+        bom_id: int,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+        request_hash: str,
+        response: SampleMaterialBomData,
+        actor: str,
+    ) -> None:
+        self.session.add(
+            LySampleMaterialBomOperation(
+                bom_id=bom_id,
+                company=company,
+                operation=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response_json=json.dumps(response.model_dump(mode="json"), ensure_ascii=False, default=str),
+                created_by=actor,
+            )
+        )
 
     def _get_order_for_mutation(self, *, order_id: int, company: str) -> LySampleOrder:
         row = (

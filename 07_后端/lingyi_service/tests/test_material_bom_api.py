@@ -1,0 +1,422 @@
+"""Material BOM vertical API tests."""
+
+from __future__ import annotations
+
+from decimal import Decimal
+import os
+import unittest
+from unittest.mock import patch
+
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.main as main_module
+from app.main import app
+from app.models.audit import Base as AuditBase
+from app.models.audit import LyOperationAuditLog
+from app.models.audit import LySecurityAuditLog
+from app.models.bom import Base as BomBase
+from app.models.bom import LyApparelBom
+from app.models.bom import LyApparelBomItem
+from app.models.bom import LyApparelBomWriteOperation
+from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionPlan
+from app.models.production import LyProductionPlanMaterial
+from app.models.production import LyProductionPlanOperation
+from app.models.sample import Base as SampleBase
+from app.models.sample import LySampleMaterialBom
+from app.models.sample import LySampleMaterialBomItem
+from app.models.sample import LySampleMaterialBomOperation
+from app.models.sample import LySampleOrder
+from app.models.style_master import Base as StyleMasterBase
+from app.models.style_master import LyStyleDictionary
+from app.models.style_master import LyStyleMaster
+from app.models.style_master import LyStyleMasterIdempotency
+from app.routers.auth import get_db_session as auth_db_dep
+from app.routers.production import get_db_session as production_db_dep
+from app.routers.sample import get_db_session as sample_db_dep
+from app.routers.style_master import get_db_session as style_master_db_dep
+from app.services.erpnext_production_adapter import ERPNextProductionAdapter
+from app.services.erpnext_production_adapter import ERPNextSalesOrder
+from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
+
+
+class MaterialBomApiTest(unittest.TestCase):
+    """Validate style/sample material BOM and production material calculation."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.engine = create_engine(
+            "sqlite+pysqlite://",
+            future=True,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+            execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
+        )
+        cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
+        StyleMasterBase.metadata.create_all(bind=cls.engine)
+        BomBase.metadata.create_all(bind=cls.engine)
+        SampleBase.metadata.create_all(bind=cls.engine)
+        ProductionBase.metadata.create_all(bind=cls.engine)
+        MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        AuditBase.metadata.create_all(bind=cls.engine)
+
+        def _override_db():
+            db = cls.SessionLocal()
+            try:
+                yield db
+            finally:
+                db.close()
+
+        app.dependency_overrides[auth_db_dep] = _override_db
+        app.dependency_overrides[style_master_db_dep] = _override_db
+        app.dependency_overrides[sample_db_dep] = _override_db
+        app.dependency_overrides[production_db_dep] = _override_db
+        cls._old_main_session_local = main_module.SessionLocal
+        main_module.SessionLocal = cls.SessionLocal
+        cls.client = TestClient(app)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        main_module.SessionLocal = cls._old_main_session_local
+        app.dependency_overrides.pop(auth_db_dep, None)
+        app.dependency_overrides.pop(style_master_db_dep, None)
+        app.dependency_overrides.pop(sample_db_dep, None)
+        app.dependency_overrides.pop(production_db_dep, None)
+        cls.engine.dispose()
+
+    def setUp(self) -> None:
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
+        os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
+        with self.SessionLocal() as session:
+            session.query(LyOperationAuditLog).delete()
+            session.query(LySecurityAuditLog).delete()
+            session.query(LyMaterialPurchaseRequirement).delete()
+            session.query(LyProductionPlanOperation).delete()
+            session.query(LyProductionPlanMaterial).delete()
+            session.query(LyProductionPlan).delete()
+            session.query(LySampleMaterialBomOperation).delete()
+            session.query(LySampleMaterialBomItem).delete()
+            session.query(LySampleMaterialBom).delete()
+            session.query(LySampleOrder).delete()
+            session.query(LyApparelBomWriteOperation).delete()
+            session.query(LyApparelBomItem).delete()
+            session.query(LyApparelBom).delete()
+            session.query(LyStyleMasterIdempotency).delete()
+            session.query(LyStyleMaster).delete()
+            session.query(LyStyleDictionary).delete()
+            self._seed_style_dictionaries(session)
+            session.commit()
+
+    @staticmethod
+    def _headers(role: str = "System Manager", request_id: str = "MATERIAL-BOM-REQ") -> dict[str, str]:
+        return {
+            "X-LY-Dev-User": "material.bom.user",
+            "X-LY-Dev-Roles": role,
+            "X-Request-ID": request_id,
+        }
+
+    @staticmethod
+    def _seed_style_dictionaries(session) -> None:
+        for index, (dict_type, code, name) in enumerate(
+            [
+                ("season", "SS", "春夏"),
+                ("year", "2026", "2026"),
+                ("brand", "LY", "领意"),
+                ("color", "BLK", "黑色"),
+                ("size", "M", "M"),
+            ],
+            start=1,
+        ):
+            session.add(
+                LyStyleDictionary(
+                    id=index,
+                    company="COMP-MB",
+                    dict_type=dict_type,
+                    code=code,
+                    name=name,
+                    status="active",
+                    sort_no=index,
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+
+    def _seed_style(self, *, style_no: str = "ST-MB-001") -> int:
+        with self.SessionLocal() as session:
+            row = LyStyleMaster(
+                company="COMP-MB",
+                ys_style_no=style_no,
+                ys_style_name_cn="BOM 测试款",
+                ys_season="SS",
+                ys_year="2026",
+                ys_brand="LY",
+                ys_style_status="enabled",
+                colors=[{"ys_color_code": "BLK", "ys_color_name": "黑色"}],
+                sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
+                version=1,
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(row)
+            session.commit()
+            return int(row.id)
+
+    def _style_bom_payload(self, *, idempotency_key: str = "IDEMP-STYLE-MB-UPSERT") -> dict:
+        return {
+            "operation": "upsert",
+            "company": "COMP-MB",
+            "idempotency_key": idempotency_key,
+            "version_no": "V1",
+            "items": [
+                {
+                    "material_item_code": "FAB-BLK-001",
+                    "color": "黑",
+                    "part": "前片",
+                    "qty_per_piece": "2",
+                    "loss_rate": "0.05",
+                    "uom": "米",
+                    "remark": "面料",
+                }
+            ],
+        }
+
+    def test_style_material_bom_upsert_explode_and_style_no_sync(self) -> None:
+        style_id = self._seed_style()
+        upserted = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="STYLE-MB-UPSERT"),
+            json=self._style_bom_payload(),
+        )
+        self.assertEqual(upserted.status_code, 200, upserted.text)
+        self.assertEqual(upserted.json()["data"]["bom"]["item_code"], "ST-MB-001")
+        self.assertEqual(upserted.json()["data"]["items"][0]["part"], "前片")
+
+        exploded = self.client.post(
+            f"/api/style-master/styles/{style_id}/material-bom/explode?company=COMP-MB",
+            headers=self._headers(request_id="STYLE-MB-EXPLODE"),
+            json={"order_qty": "10"},
+        )
+        self.assertEqual(exploded.status_code, 200, exploded.text)
+        self.assertEqual(exploded.json()["data"]["items"][0]["required_qty"], "21.000000")
+
+        updated_style = self.client.patch(
+            f"/api/style-master/styles/{style_id}",
+            headers=self._headers(request_id="STYLE-MB-STYLE-NO-SYNC"),
+            json={
+                "operation": "update",
+                "company": "COMP-MB",
+                "ys_style_no": "ST-MB-001-R",
+                "idempotency_key": "IDEMP-STYLE-MB-NO-SYNC",
+            },
+        )
+        self.assertEqual(updated_style.status_code, 200, updated_style.text)
+        with self.SessionLocal() as session:
+            bom = session.query(LyApparelBom).one()
+            self.assertEqual(bom.style_master_id, style_id)
+            self.assertEqual(bom.item_code, "ST-MB-001-R")
+            self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 1)
+
+    def test_sample_material_bom_copies_style_snapshot_and_can_be_edited(self) -> None:
+        style_id = self._seed_style()
+        self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-SEED-STYLE"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-SEED-STYLE"),
+        )
+        with self.SessionLocal() as session:
+            order = LySampleOrder(
+                company="COMP-MB",
+                sample_no="SMP-MB-001",
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="建档",
+                progress=0,
+                status="draft",
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.commit()
+            order_id = int(order.id)
+
+        copied = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/copy-from-style",
+            headers=self._headers(request_id="SAMPLE-MB-COPY"),
+            json={
+                "operation": "copy_from_style",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-COPY",
+            },
+        )
+        self.assertEqual(copied.status_code, 200, copied.text)
+        self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+
+        edited = self.client.put(
+            f"/api/sample/orders/{order_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-EDIT"),
+            json={
+                "operation": "upsert",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-EDIT",
+                "version_no": "S2",
+                "items": [
+                    {
+                        "material_item_code": "FAB-ALT-001",
+                        "color": "黑",
+                        "part": "袖口",
+                        "qty_per_piece": "1.5",
+                        "loss_rate": "0.10",
+                        "uom": "米",
+                        "is_alternative": True,
+                        "replace_group": "FAB-01",
+                        "remark": "替代料",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(edited.status_code, 200, edited.text)
+        self.assertTrue(edited.json()["data"]["items"][0]["is_alternative"])
+
+        exploded = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/explode?company=COMP-MB",
+            headers=self._headers(request_id="SAMPLE-MB-EXPLODE"),
+            json={"order_qty": "20"},
+        )
+        self.assertEqual(exploded.status_code, 200, exploded.text)
+        self.assertEqual(exploded.json()["data"]["items"][0]["required_qty"], "33.000000")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleMaterialBom).count(), 1)
+            self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
+            self.assertEqual(session.query(LyApparelBomItem).one().material_item_code, "FAB-BLK-001")
+
+    @staticmethod
+    def _sales_order(*, item_code: str = "ST-MB-001") -> ERPNextSalesOrder:
+        return ERPNextSalesOrder(
+            name="SO-MB-001",
+            docstatus=1,
+            status="To Deliver",
+            company="COMP-MB",
+            customer="BOM 客户",
+            items=(ERPNextSalesOrderItem(name="SOI-MB-001", item_code=item_code, qty=Decimal("50")),),
+        )
+
+    def _production_payload(self, *, item_code: str = "ST-MB-001", idempotency_key: str = "idem") -> dict:
+        scenario = "Z003-PROD-PLAN-20260618-701"
+        return {
+            "sales_order": "SO-MB-001",
+            "sales_order_item": "SOI-MB-001",
+            "item_code": item_code,
+            "planned_qty": "10",
+            "scenario_tag": scenario,
+            "operation": "create",
+            "idempotency_key": f"{scenario}-{idempotency_key}",
+            "company": "COMP-MB",
+        }
+
+    def test_production_plan_defaults_bom_and_material_check_rejects_empty_bom(self) -> None:
+        style_id = self._seed_style()
+        self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="PROD-MB-SEED-STYLE"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-PROD-MB-SEED"),
+        )
+        scenario = "Z003-PROD-PLAN-20260618-701"
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            created = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(role="Production Manager", request_id=f"req-{scenario}"),
+                json=self._production_payload(idempotency_key="default-bom"),
+            )
+        self.assertEqual(created.status_code, 200, created.text)
+        plan_id = int(created.json()["data"]["plan_id"])
+        with self.SessionLocal() as session:
+            plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one()
+            self.assertGreater(int(plan.bom_id), 0)
+            bom_id = int(plan.bom_id)
+
+        detail_scenario = "Z003-PROD-PLAN-DETAIL-20260618-701"
+        checked = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(role="Production Manager", request_id=f"req-{detail_scenario}"),
+            json={
+                "operation": "material_check",
+                "idempotency_key": f"{detail_scenario}-check",
+                "scenario_tag": detail_scenario,
+                "plan_id": plan_id,
+                "sales_order": "SO-MB-001",
+                "sales_order_item": "SOI-MB-001",
+                "item_code": "ST-MB-001",
+                "bom_id": bom_id,
+                "warehouse": "WH-MB",
+                "request_id": f"req-{detail_scenario}",
+            },
+        )
+        self.assertEqual(checked.status_code, 200, checked.text)
+        self.assertEqual(checked.json()["data"]["items"][0]["required_qty"], "21.000000")
+
+        with self.SessionLocal() as session:
+            empty_bom = LyApparelBom(
+                id=9001,
+                bom_no="BOM-ST-MB-EMPTY",
+                company="COMP-MB",
+                item_code="ST-MB-EMPTY",
+                version_no="V1",
+                is_default=True,
+                status="active",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(empty_bom)
+            session.commit()
+            empty_plan = LyProductionPlan(
+                plan_no="PP-MB-EMPTY",
+                company="COMP-MB",
+                sales_order="SO-MB-EMPTY",
+                sales_order_item="SOI-MB-EMPTY",
+                item_code="ST-MB-EMPTY",
+                bom_id=9001,
+                bom_version="V1",
+                planned_qty=Decimal("10"),
+                status="planned",
+                idempotency_key="EMPTY-PLAN",
+                request_hash="EMPTY-HASH",
+                created_by="seed",
+            )
+            session.add(empty_plan)
+            session.commit()
+            empty_plan_id = int(empty_plan.id)
+
+        empty_detail_scenario = "Z003-PROD-PLAN-DETAIL-20260618-702"
+        empty_checked = self.client.post(
+            f"/api/production/plans/{empty_plan_id}/material-check",
+            headers=self._headers(role="Production Manager", request_id=f"req-{empty_detail_scenario}"),
+            json={
+                "operation": "material_check",
+                "idempotency_key": f"{empty_detail_scenario}-check",
+                "scenario_tag": empty_detail_scenario,
+                "plan_id": empty_plan_id,
+                "sales_order": "SO-MB-EMPTY",
+                "sales_order_item": "SOI-MB-EMPTY",
+                "item_code": "ST-MB-EMPTY",
+                "bom_id": 9001,
+                "warehouse": "WH-MB",
+                "request_id": f"req-{empty_detail_scenario}",
+            },
+        )
+        self.assertEqual(empty_checked.status_code, 404)
+        self.assertEqual(empty_checked.json()["code"], "PRODUCTION_BOM_NOT_FOUND")

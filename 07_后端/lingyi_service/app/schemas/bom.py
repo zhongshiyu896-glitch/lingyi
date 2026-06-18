@@ -29,6 +29,7 @@ class BomItemPayload(BaseModel):
 
     material_item_code: str = Field(..., min_length=1, max_length=140)
     color: Optional[str] = None
+    part: Optional[str] = Field(default=None, max_length=100)
     size: Optional[str] = None
     qty_per_piece: Decimal = Field(..., gt=0)
     loss_rate: Decimal = Field(default=Decimal("0"), ge=0)
@@ -287,6 +288,7 @@ class BomItemView(BaseModel):
     id: int
     material_item_code: str
     color: Optional[str]
+    part: Optional[str] = None
     size: Optional[str]
     qty_per_piece: Decimal
     loss_rate: Decimal
@@ -694,6 +696,7 @@ class ExplodedMaterialItem(BaseModel):
 
     material_item_code: str
     color: Optional[str]
+    part: Optional[str] = None
     size: Optional[str]
     uom: str
     qty: Decimal

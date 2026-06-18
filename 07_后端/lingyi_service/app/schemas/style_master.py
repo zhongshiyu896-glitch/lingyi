@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel
@@ -176,3 +177,87 @@ class StyleDictionaryListData(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class StyleMaterialBomItemPayload(BaseModel):
+    """Style material BOM line payload."""
+
+    material_item_code: str = Field(..., min_length=1, max_length=140)
+    color: str | None = Field(default=None, max_length=64)
+    part: str | None = Field(default=None, max_length=100)
+    qty_per_piece: Decimal = Field(..., gt=0)
+    loss_rate: Decimal = Field(default=Decimal("0"), ge=0)
+    uom: str = Field(..., min_length=1, max_length=32)
+    remark: str | None = Field(default=None, max_length=500)
+
+
+class StyleMaterialBomUpsertRequest(BaseModel):
+    """Upsert style material BOM."""
+
+    operation: Literal["upsert"] = "upsert"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    version_no: str = Field(default="V1", min_length=1, max_length=32)
+    items: list[StyleMaterialBomItemPayload] = Field(..., min_length=1)
+
+
+class StyleMaterialBomExplodeRequest(BaseModel):
+    """Explode style material BOM."""
+
+    order_qty: Decimal = Field(..., gt=0)
+
+
+class StyleMaterialBomHeader(BaseModel):
+    """Style material BOM header."""
+
+    id: int
+    bom_no: str
+    company: str
+    style_master_id: int
+    item_code: str
+    version_no: str
+    is_default: bool
+    status: str
+    updated_at: datetime | None = None
+
+
+class StyleMaterialBomItem(BaseModel):
+    """Style material BOM line."""
+
+    id: int
+    material_item_code: str
+    color: str | None = None
+    part: str | None = None
+    qty_per_piece: Decimal
+    loss_rate: Decimal
+    uom: str
+    remark: str | None = None
+
+
+class StyleMaterialBomData(BaseModel):
+    """Style material BOM response."""
+
+    bom: StyleMaterialBomHeader | None = None
+    items: list[StyleMaterialBomItem] = Field(default_factory=list)
+
+
+class StyleMaterialBomRequirementItem(BaseModel):
+    """Style material BOM explode row."""
+
+    material_item_code: str
+    color: str | None = None
+    part: str | None = None
+    uom: str
+    qty_per_piece: Decimal
+    loss_rate: Decimal
+    required_qty: Decimal
+
+
+class StyleMaterialBomExplodeData(BaseModel):
+    """Style material BOM explode response."""
+
+    style_master_id: int
+    item_code: str
+    order_qty: Decimal
+    items: list[StyleMaterialBomRequirementItem]
+    total_required_qty: Decimal

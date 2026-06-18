@@ -404,6 +404,16 @@ def _ensure_local_bom_company_style_columns() -> None:
         ).fetchone()
         if not table_exists:
             return
+        item_table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_apparel_bom_item'"
+        ).fetchone()
+        if item_table_exists:
+            item_columns = {
+                str(row[1])
+                for row in conn.execute("PRAGMA table_info(ly_apparel_bom_item)").fetchall()
+            }
+            if "part" not in item_columns:
+                conn.execute("ALTER TABLE ly_apparel_bom_item ADD COLUMN part VARCHAR(100)")
         existing_columns = {
             str(row[1])
             for row in conn.execute("PRAGMA table_info(ly_apparel_bom)").fetchall()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel
@@ -278,3 +279,101 @@ class SampleTrackingEventCreateRequest(BaseModel):
     result: SampleTrackingResult = "in_progress"
     remark: str = Field(default="", max_length=1000)
     actor: str | None = Field(default=None, max_length=140)
+
+
+class SampleMaterialBomItemPayload(BaseModel):
+    """Sample material BOM line payload."""
+
+    material_item_code: str = Field(..., min_length=1, max_length=140)
+    color: str | None = Field(default=None, max_length=64)
+    part: str | None = Field(default=None, max_length=100)
+    qty_per_piece: Decimal = Field(..., gt=0)
+    loss_rate: Decimal = Field(default=Decimal("0"), ge=0)
+    uom: str = Field(..., min_length=1, max_length=32)
+    is_alternative: bool = False
+    replace_group: str | None = Field(default=None, max_length=64)
+    remark: str | None = Field(default=None, max_length=500)
+
+
+class SampleMaterialBomUpsertRequest(BaseModel):
+    """Upsert sample material BOM snapshot."""
+
+    operation: Literal["upsert"] = "upsert"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    version_no: str = Field(default="S1", min_length=1, max_length=32)
+    items: list[SampleMaterialBomItemPayload] = Field(..., min_length=1)
+
+
+class SampleMaterialBomCopyRequest(BaseModel):
+    """Copy style default BOM into sample snapshot."""
+
+    operation: Literal["copy_from_style"] = "copy_from_style"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    style_bom_id: int | None = Field(default=None, ge=1)
+
+
+class SampleMaterialBomExplodeRequest(BaseModel):
+    """Explode sample material BOM."""
+
+    order_qty: Decimal = Field(..., gt=0)
+
+
+class SampleMaterialBomHeader(BaseModel):
+    """Sample material BOM header."""
+
+    id: int
+    company: str
+    sample_order_id: int
+    sample_no: str
+    style_master_id: int | None = None
+    item_code: str
+    source_bom_id: int | None = None
+    version_no: str
+    status: str
+    updated_at: datetime | None = None
+
+
+class SampleMaterialBomItem(BaseModel):
+    """Sample material BOM line."""
+
+    id: int
+    source_bom_item_id: int | None = None
+    material_item_code: str
+    color: str | None = None
+    part: str | None = None
+    qty_per_piece: Decimal
+    loss_rate: Decimal
+    uom: str
+    is_alternative: bool = False
+    replace_group: str | None = None
+    remark: str | None = None
+
+
+class SampleMaterialBomData(BaseModel):
+    """Sample material BOM response."""
+
+    bom: SampleMaterialBomHeader | None = None
+    items: list[SampleMaterialBomItem] = Field(default_factory=list)
+
+
+class SampleMaterialBomRequirementItem(BaseModel):
+    """Sample material BOM explode row."""
+
+    material_item_code: str
+    color: str | None = None
+    part: str | None = None
+    uom: str
+    qty_per_piece: Decimal
+    loss_rate: Decimal
+    required_qty: Decimal
+
+
+class SampleMaterialBomExplodeData(BaseModel):
+    """Sample material BOM explode response."""
+
+    sample_order_id: int
+    order_qty: Decimal
+    items: list[SampleMaterialBomRequirementItem]
+    total_required_qty: Decimal

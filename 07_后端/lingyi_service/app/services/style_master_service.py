@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime
+from decimal import Decimal
 import hashlib
 import json
 from typing import Any
@@ -18,12 +19,16 @@ from sqlalchemy.orm import Session
 
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.error_codes import DATABASE_WRITE_FAILED
+from app.core.error_codes import BOM_NOT_FOUND
 from app.core.error_codes import STYLE_MASTER_CONFLICT
 from app.core.error_codes import STYLE_MASTER_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
 from app.core.error_codes import STYLE_MASTER_INVALID_STATUS
 from app.core.error_codes import STYLE_MASTER_NOT_FOUND
 from app.core.exceptions import BusinessException
+from app.models.bom import LyApparelBom
+from app.models.bom import LyApparelBomItem
+from app.models.bom import LyApparelBomWriteOperation
 from app.models.style_master import LyStyleDictionary
 from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
@@ -31,6 +36,12 @@ from app.schemas.style_master import StyleDictionaryCreateRequest
 from app.schemas.style_master import StyleDictionaryItem
 from app.schemas.style_master import StyleDictionaryListData
 from app.schemas.style_master import StyleDictionaryUpdateRequest
+from app.schemas.style_master import StyleMaterialBomData
+from app.schemas.style_master import StyleMaterialBomExplodeData
+from app.schemas.style_master import StyleMaterialBomHeader
+from app.schemas.style_master import StyleMaterialBomItem
+from app.schemas.style_master import StyleMaterialBomRequirementItem
+from app.schemas.style_master import StyleMaterialBomUpsertRequest
 from app.schemas.style_master import StyleMasterCreateRequest
 from app.schemas.style_master import StyleMasterItem
 from app.schemas.style_master import StyleMasterListData
@@ -178,6 +189,7 @@ class StyleMasterService:
         try:
             for key, value in values.items():
                 setattr(row, key, value)
+            self._sync_style_bom_item_code(style_id=int(row.id), company=company, item_code=str(values["ys_style_no"]), actor=actor)
             row.updated_by = actor
             row.version = int(row.version or 0) + 1
             self._insert_idempotency(
@@ -238,6 +250,156 @@ class StyleMasterService:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
         after = self._snapshot_style(row)
         return self._style_result(row=row, before=before, after=after)
+
+    def get_style_material_bom(self, *, style_id: int, company: str | None) -> StyleMaterialBomData:
+        """Return the current material BOM snapshot for a style."""
+        normalized_company = self._require_text(company, "company")
+        style = self._get_style_for_read(style_id=style_id, company=normalized_company)
+        bom = self._find_style_material_bom(style=style)
+        if bom is None:
+            return StyleMaterialBomData(bom=None, items=[])
+        return self._style_material_bom_data(style=style, bom=bom)
+
+    def upsert_style_material_bom(
+        self,
+        *,
+        style_id: int,
+        payload: StyleMaterialBomUpsertRequest,
+        actor: str,
+    ) -> StyleMasterMutationResult:
+        """Create or replace the style material BOM lines."""
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        style = self._get_style_for_mutation(style_id=style_id, company=company)
+        if str(style.ys_style_status) == "disabled":
+            raise BusinessException(code=STYLE_MASTER_INVALID_STATUS, message="停用款式不允许维护用料 BOM")
+        payload_items = [item.model_dump(mode="json") for item in payload.items]
+        request_hash = self._request_hash(
+            operation="style_material_bom_upsert",
+            company=company,
+            style_id=style_id,
+            item_code=str(style.ys_style_no),
+            version_no=payload.version_no,
+            items=payload_items,
+        )
+        idem = self._get_bom_operation(company=company, operation="style_material_bom_upsert", idempotency_key=idempotency_key)
+        if idem:
+            if idem.request_hash != request_hash:
+                raise BusinessException(code=STYLE_MASTER_IDEMPOTENCY_CONFLICT)
+            bom = self._must_get_style_bom_by_id(int(idem.bom_id))
+            data = self._style_material_bom_data(style=style, bom=bom)
+            return StyleMasterMutationResult(
+                item=data,
+                before=data.model_dump(mode="json"),
+                after=data.model_dump(mode="json"),
+                resource_type="STYLE_MATERIAL_BOM",
+                resource_id=int(bom.id),
+                resource_no=str(bom.bom_no),
+                idempotent=True,
+            )
+
+        existing = self._find_style_material_bom(style=style)
+        before = self._style_material_bom_data(style=style, bom=existing).model_dump(mode="json") if existing else None
+        now = datetime.now(UTC)
+        try:
+            bom = existing
+            if bom is None:
+                bom = LyApparelBom(
+                    bom_no=self._next_material_bom_no(item_code=str(style.ys_style_no), version_no=payload.version_no),
+                    company=company,
+                    style_master_id=int(style.id),
+                    item_code=str(style.ys_style_no),
+                    version_no=str(payload.version_no),
+                    is_default=True,
+                    status="active",
+                    effective_date=now.date(),
+                    created_by=actor,
+                    updated_by=actor,
+                )
+                self.session.add(bom)
+                self.session.flush()
+            else:
+                bom.company = company
+                bom.style_master_id = int(style.id)
+                bom.item_code = str(style.ys_style_no)
+                bom.version_no = str(payload.version_no)
+                bom.is_default = True
+                bom.status = "active"
+                bom.effective_date = bom.effective_date or now.date()
+                bom.updated_by = actor
+                bom.updated_at = now
+
+            self.session.query(LyApparelBomItem).filter(LyApparelBomItem.bom_id == int(bom.id)).delete()
+            for item in payload.items:
+                self.session.add(
+                    LyApparelBomItem(
+                        bom_id=int(bom.id),
+                        material_item_code=item.material_item_code.strip(),
+                        color=self._optional_text(item.color),
+                        part=self._optional_text(item.part),
+                        qty_per_piece=item.qty_per_piece,
+                        loss_rate=item.loss_rate,
+                        uom=item.uom.strip(),
+                        remark=self._optional_text(item.remark),
+                    )
+                )
+            self.session.flush()
+            data = self._style_material_bom_data(style=style, bom=bom)
+            self.session.add(
+                LyApparelBomWriteOperation(
+                    bom_id=int(bom.id),
+                    company=company,
+                    operation="style_material_bom_upsert",
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                    response_json=json.dumps(data.model_dump(mode="json"), ensure_ascii=False, default=str),
+                    created_by=actor,
+                )
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+
+        return StyleMasterMutationResult(
+            item=data,
+            before=before,
+            after=data.model_dump(mode="json"),
+            resource_type="STYLE_MATERIAL_BOM",
+            resource_id=int(data.bom.id) if data.bom else int(style.id),
+            resource_no=data.bom.bom_no if data.bom else str(style.ys_style_no),
+        )
+
+    def explode_style_material_bom(self, *, style_id: int, company: str | None, order_qty: Decimal) -> StyleMaterialBomExplodeData:
+        """Calculate material requirements from the style material BOM."""
+        normalized_company = self._require_text(company, "company")
+        style = self._get_style_for_read(style_id=style_id, company=normalized_company)
+        bom = self._find_style_material_bom(style=style)
+        if bom is None:
+            raise BusinessException(code=BOM_NOT_FOUND, message="该款式未维护用料 BOM")
+        data = self._style_material_bom_data(style=style, bom=bom)
+        items: list[StyleMaterialBomRequirementItem] = []
+        total = Decimal("0")
+        for item in data.items:
+            required_qty = (Decimal(str(order_qty)) * item.qty_per_piece * (Decimal("1") + item.loss_rate)).quantize(Decimal("0.000001"))
+            total += required_qty
+            items.append(
+                StyleMaterialBomRequirementItem(
+                    material_item_code=item.material_item_code,
+                    color=item.color,
+                    part=item.part,
+                    uom=item.uom,
+                    qty_per_piece=item.qty_per_piece,
+                    loss_rate=item.loss_rate,
+                    required_qty=required_qty,
+                )
+            )
+        return StyleMaterialBomExplodeData(
+            style_master_id=int(style.id),
+            item_code=str(style.ys_style_no),
+            order_qty=Decimal(str(order_qty)),
+            items=items,
+            total_required_qty=total.quantize(Decimal("0.000001")),
+        )
 
     def list_dictionaries(
         self,
@@ -506,6 +668,105 @@ class StyleMasterService:
         if not allow_disabled and row.ys_style_status == "disabled":
             raise BusinessException(code=STYLE_MASTER_INVALID_STATUS, message="款式已停用")
         return row
+
+    def _get_style_for_read(self, *, style_id: int, company: str) -> LyStyleMaster:
+        row = self.session.query(LyStyleMaster).filter(LyStyleMaster.id == int(style_id), LyStyleMaster.company == company).first()
+        if row is None:
+            raise BusinessException(code=STYLE_MASTER_NOT_FOUND)
+        return row
+
+    def _find_style_material_bom(self, *, style: LyStyleMaster) -> LyApparelBom | None:
+        return (
+            self.session.query(LyApparelBom)
+            .filter(
+                LyApparelBom.company == style.company,
+                LyApparelBom.style_master_id == int(style.id),
+            )
+            .order_by(
+                LyApparelBom.is_default.desc(),
+                LyApparelBom.status.asc(),
+                LyApparelBom.id.desc(),
+            )
+            .first()
+        )
+
+    def _must_get_style_bom_by_id(self, bom_id: int) -> LyApparelBom:
+        row = self.session.query(LyApparelBom).filter(LyApparelBom.id == int(bom_id)).first()
+        if row is None:
+            raise BusinessException(code=BOM_NOT_FOUND, message="BOM 不存在")
+        return row
+
+    def _style_material_bom_data(self, *, style: LyStyleMaster, bom: LyApparelBom) -> StyleMaterialBomData:
+        items = (
+            self.session.query(LyApparelBomItem)
+            .filter(LyApparelBomItem.bom_id == int(bom.id))
+            .order_by(LyApparelBomItem.id.asc())
+            .all()
+        )
+        return StyleMaterialBomData(
+            bom=StyleMaterialBomHeader(
+                id=int(bom.id),
+                bom_no=str(bom.bom_no),
+                company=str(bom.company),
+                style_master_id=int(style.id),
+                item_code=str(bom.item_code),
+                version_no=str(bom.version_no),
+                is_default=bool(bom.is_default),
+                status=str(bom.status),
+                updated_at=bom.updated_at,
+            ),
+            items=[
+                StyleMaterialBomItem(
+                    id=int(item.id),
+                    material_item_code=str(item.material_item_code),
+                    color=item.color,
+                    part=getattr(item, "part", None),
+                    qty_per_piece=Decimal(str(item.qty_per_piece)),
+                    loss_rate=Decimal(str(item.loss_rate or 0)),
+                    uom=str(item.uom),
+                    remark=item.remark,
+                )
+                for item in items
+            ],
+        )
+
+    def _get_bom_operation(self, *, company: str, operation: str, idempotency_key: str) -> LyApparelBomWriteOperation | None:
+        return (
+            self.session.query(LyApparelBomWriteOperation)
+            .filter(
+                LyApparelBomWriteOperation.company == company,
+                LyApparelBomWriteOperation.operation == operation,
+                LyApparelBomWriteOperation.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+
+    def _sync_style_bom_item_code(self, *, style_id: int, company: str, item_code: str, actor: str) -> None:
+        now = datetime.now(UTC)
+        try:
+            rows = (
+                self.session.query(LyApparelBom)
+                .filter(LyApparelBom.company == company, LyApparelBom.style_master_id == int(style_id))
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_missing_bom_table_error(exc):
+                return
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        for bom in rows:
+            bom.item_code = item_code
+            bom.updated_by = actor
+            bom.updated_at = now
+
+    @staticmethod
+    def _next_material_bom_no(*, item_code: str, version_no: str) -> str:
+        token = datetime.now(UTC).strftime("%Y%m%d%H%M%S%f")
+        return f"BOM-{item_code}-{version_no}-{token}"
+
+    @staticmethod
+    def _is_missing_bom_table_error(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "ly_apparel_bom" in message and ("no such table" in message or "does not exist" in message)
 
     def _get_dictionary_for_mutation(self, *, dictionary_id: int, company: str, allow_inactive: bool = False) -> LyStyleDictionary:
         row = self.session.query(LyStyleDictionary).filter(LyStyleDictionary.id == int(dictionary_id), LyStyleDictionary.company == company).first()

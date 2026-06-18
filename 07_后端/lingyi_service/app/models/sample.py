@@ -9,6 +9,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
 from sqlalchemy import Integer
+from sqlalchemy import Numeric
 from sqlalchemy import String
 from sqlalchemy import Text
 from sqlalchemy.orm import declarative_base
@@ -160,6 +161,89 @@ class LySampleTrackingEvent(Base):
     remark = Column(Text, nullable=False, default="")
     actor = Column(String(140), nullable=False)
     happened_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class LySampleMaterialBom(Base):
+    """Sample-specific material BOM snapshot."""
+
+    __tablename__ = "ly_sample_material_bom"
+    __table_args__ = (
+        Index("uk_ly_sample_material_bom_order", "company", "sample_order_id", unique=True),
+        Index("idx_ly_sample_material_bom_style", "company", "style_master_id"),
+        CheckConstraint("status IN ('draft','active')", name="ck_ly_sample_material_bom_status"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生样板用料BOM"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    sample_order_id = Column(IDType, ForeignKey("ly_schema.ly_sample_order.id"), nullable=False)
+    style_master_id = Column(IDType, nullable=True)
+    item_code = Column(String(140), nullable=False)
+    source_bom_id = Column(IDType, nullable=True)
+    version_no = Column(String(32), nullable=False, default="S1")
+    status = Column(String(32), nullable=False, default="draft")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    items = relationship(
+        "LySampleMaterialBomItem",
+        back_populates="bom",
+        cascade="all, delete-orphan",
+        order_by="LySampleMaterialBomItem.id.asc()",
+    )
+
+
+class LySampleMaterialBomItem(Base):
+    """Sample-specific material BOM line."""
+
+    __tablename__ = "ly_sample_material_bom_item"
+    __table_args__ = (
+        Index("idx_ly_sample_material_bom_item_bom", "bom_id"),
+        Index("idx_ly_sample_material_bom_item_material", "material_item_code"),
+        CheckConstraint("qty_per_piece > 0", name="ck_ly_sample_material_bom_item_qty"),
+        CheckConstraint("loss_rate >= 0", name="ck_ly_sample_material_bom_item_loss"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生样板用料BOM明细"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    bom_id = Column(IDType, ForeignKey("ly_schema.ly_sample_material_bom.id"), nullable=False)
+    source_bom_item_id = Column(IDType, nullable=True)
+    material_item_code = Column(String(140), nullable=False)
+    color = Column(String(64), nullable=True)
+    part = Column(String(100), nullable=True)
+    qty_per_piece = Column(Numeric(18, 6), nullable=False)
+    loss_rate = Column(Numeric(12, 6), nullable=False, default=0)
+    uom = Column(String(32), nullable=False)
+    is_alternative = Column(Integer, nullable=False, default=0)
+    replace_group = Column(String(64), nullable=True)
+    remark = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    bom = relationship("LySampleMaterialBom", back_populates="items")
+
+
+class LySampleMaterialBomOperation(Base):
+    """Idempotency ledger for sample material BOM writes."""
+
+    __tablename__ = "ly_sample_material_bom_operation"
+    __table_args__ = (
+        Index("uk_ly_sample_material_bom_operation_idem", "company", "operation", "idempotency_key", unique=True),
+        Index("idx_ly_sample_material_bom_operation_bom", "bom_id", "operation"),
+        CheckConstraint("operation IN ('upsert','copy_from_style')", name="ck_ly_sample_material_bom_operation"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生样板用料BOM写操作幂等账本"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    bom_id = Column(IDType, nullable=False)
+    company = Column(String(140), nullable=False)
+    operation = Column(String(32), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    response_json = Column(Text, nullable=False)
     created_by = Column(String(140), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 

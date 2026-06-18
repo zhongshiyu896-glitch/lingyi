@@ -1622,6 +1622,7 @@ class BomService:
                     id=int(row.id),
                     material_item_code=str(row.material_item_code),
                     color=row.color,
+                    part=getattr(row, "part", None),
                     size=row.size,
                     qty_per_piece=Decimal(row.qty_per_piece),
                     loss_rate=Decimal(row.loss_rate),
@@ -1832,7 +1833,7 @@ class BomService:
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
-        grouped: Dict[Tuple[str, str, str, str], Decimal] = {}
+        grouped: Dict[Tuple[str, str, str, str, str], Decimal] = {}
         total_material_qty = Decimal("0")
 
         for row in item_rows:
@@ -1846,6 +1847,7 @@ class BomService:
             key = (
                 str(row.material_item_code),
                 str(row.color or ""),
+                str(getattr(row, "part", None) or ""),
                 str(row.size or ""),
                 str(row.uom),
             )
@@ -1856,8 +1858,9 @@ class BomService:
             ExplodedMaterialItem(
                 material_item_code=k[0],
                 color=k[1] or None,
-                size=k[2] or None,
-                uom=k[3],
+                part=k[2] or None,
+                size=k[3] or None,
+                uom=k[4],
                 qty=v,
             )
             for k, v in grouped.items()
@@ -2017,6 +2020,7 @@ class BomService:
                 bom_id=bom_id,
                 material_item_code=item.material_item_code,
                 color=item.color,
+                part=item.part,
                 size=item.size,
                 qty_per_piece=item.qty_per_piece,
                 loss_rate=item.loss_rate,

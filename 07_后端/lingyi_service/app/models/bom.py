@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from sqlalchemy import BigInteger
 from sqlalchemy import Boolean
+from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
+from sqlalchemy import Integer
 from sqlalchemy import Numeric
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import String
@@ -19,6 +21,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 Base = declarative_base()
+IDType = BigInteger().with_variant(Integer(), "sqlite")
 
 
 class LyApparelBom(Base):
@@ -41,7 +44,7 @@ class LyApparelBom(Base):
         {"schema": "ly_schema", "comment": "BOM主表"},
     )
 
-    id = Column(BigInteger, autoincrement=True)
+    id = Column(IDType, autoincrement=True)
     bom_no = Column(String(64), nullable=False)
     company = Column(String(140), nullable=False, default="默认公司", server_default="默认公司")
     style_master_id = Column(BigInteger, nullable=True)
@@ -70,10 +73,11 @@ class LyApparelBomItem(Base):
         {"schema": "ly_schema", "comment": "BOM物料明细"},
     )
 
-    id = Column(BigInteger, autoincrement=True)
+    id = Column(IDType, autoincrement=True)
     bom_id = Column(BigInteger, ForeignKey("ly_schema.ly_apparel_bom.id"), nullable=False)
     material_item_code = Column(String(140), nullable=False)
     color = Column(String(64), nullable=True)
+    part = Column(String(100), nullable=True)
     size = Column(String(64), nullable=True)
     qty_per_piece = Column(Numeric(18, 6), nullable=False)
     loss_rate = Column(Numeric(12, 6), nullable=False, default=0)
@@ -94,7 +98,7 @@ class LyBomOperation(Base):
         {"schema": "ly_schema", "comment": "BOM工序明细"},
     )
 
-    id = Column(BigInteger, autoincrement=True)
+    id = Column(IDType, autoincrement=True)
     bom_id = Column(BigInteger, ForeignKey("ly_schema.ly_apparel_bom.id"), nullable=False)
     process_name = Column(String(100), nullable=False)
     sequence_no = Column(BigInteger, nullable=False)
@@ -104,3 +108,25 @@ class LyBomOperation(Base):
     remark = Column(Text, nullable=True)
 
     bom = relationship("LyApparelBom", back_populates="operations")
+
+
+class LyApparelBomWriteOperation(Base):
+    """Idempotency ledger for material BOM writes."""
+
+    __tablename__ = "ly_apparel_bom_write_operation"
+    __table_args__ = (
+        Index("uk_ly_apparel_bom_write_operation_idem", "company", "operation", "idempotency_key", unique=True),
+        Index("idx_ly_apparel_bom_write_operation_bom", "bom_id", "operation"),
+        CheckConstraint("operation IN ('style_material_bom_upsert')", name="ck_ly_apparel_bom_write_operation"),
+        {"schema": "ly_schema", "comment": "款式用料BOM写操作幂等账本"},
+    )
+
+    id = Column(IDType, autoincrement=True, primary_key=True)
+    bom_id = Column(BigInteger, nullable=False)
+    company = Column(String(140), nullable=False)
+    operation = Column(String(64), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    response_json = Column(Text, nullable=False)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

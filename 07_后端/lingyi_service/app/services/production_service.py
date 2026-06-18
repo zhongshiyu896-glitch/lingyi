@@ -2344,6 +2344,8 @@ class ProductionService:
             )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
+        if not bom_rows:
+            raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护用料 BOM 明细，无法算料")
 
         try:
             self.session.query(LyProductionPlanMaterial).filter(LyProductionPlanMaterial.plan_id == int(plan.id)).delete()
@@ -3459,8 +3461,6 @@ class ProductionService:
         if not PRODUCTION_PLAN_SCENARIO_TAG_PATTERN.fullmatch(scenario_tag):
             self._raise_gate_error("invalid_scenario_tag")
 
-        if not payload.bom_id:
-            self._raise_gate_error("mismatched_business_carrier")
         if (payload.operation or "").strip() != "create":
             self._raise_gate_error("mismatched_operation")
         if not (payload.sales_order_item or "").strip():
