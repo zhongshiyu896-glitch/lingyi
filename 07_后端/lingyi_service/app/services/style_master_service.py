@@ -29,6 +29,7 @@ from app.core.exceptions import BusinessException
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyApparelBomWriteOperation
+from app.models.master_data import LyMasterDataRecord
 from app.models.style_master import LyStyleDictionary
 from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
@@ -298,6 +299,7 @@ class StyleMasterService:
                 idempotent=True,
             )
 
+        self._ensure_style_bom_materials_active(company=company, items=payload.items)
         existing = self._find_style_material_bom(style=style)
         before = self._style_material_bom_data(style=style, bom=existing).model_dump(mode="json") if existing else None
         now = datetime.now(UTC)
@@ -699,6 +701,35 @@ class StyleMasterService:
         if row is None:
             raise BusinessException(code=BOM_NOT_FOUND, message="BOM 不存在")
         return row
+
+    def _ensure_style_bom_materials_active(self, *, company: str, items: list[Any]) -> None:
+        codes: list[str] = []
+        for item in items:
+            code = self._require_text(getattr(item, "material_item_code", ""), "material_item_code")
+            if code not in codes:
+                codes.append(code)
+        if not codes:
+            return
+        try:
+            rows = (
+                self.session.query(LyMasterDataRecord.code)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code.in_(codes),
+                    LyMasterDataRecord.status == "active",
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        active_codes = {str(row.code) for row in rows}
+        invalid_codes = [code for code in codes if code not in active_codes]
+        if invalid_codes:
+            raise BusinessException(
+                code=STYLE_MASTER_INVALID_REFERENCE,
+                message=f"物料主数据不存在或已停用: {', '.join(invalid_codes)}",
+            )
 
     def _style_material_bom_data(self, *, style: LyStyleMaster, bom: LyApparelBom) -> StyleMaterialBomData:
         items = (

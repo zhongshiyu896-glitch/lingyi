@@ -23,6 +23,8 @@ from app.models.bom import LyApparelBomItem
 from app.models.bom import LyApparelBomWriteOperation
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -63,6 +65,7 @@ class MaterialBomApiTest(unittest.TestCase):
         SampleBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -109,10 +112,12 @@ class MaterialBomApiTest(unittest.TestCase):
             session.query(LyApparelBomWriteOperation).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
+            session.query(LyMasterDataRecord).delete()
             session.query(LyStyleMasterIdempotency).delete()
             session.query(LyStyleMaster).delete()
             session.query(LyStyleDictionary).delete()
             self._seed_style_dictionaries(session)
+            self._seed_material_master(session)
             session.commit()
 
     @staticmethod
@@ -144,6 +149,35 @@ class MaterialBomApiTest(unittest.TestCase):
                     name=name,
                     status="active",
                     sort_no=index,
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+
+    @staticmethod
+    def _seed_material_master(session) -> None:
+        for index, (code, name, status) in enumerate(
+            [
+                ("FAB-BLK-001", "黑色主面料", "active"),
+                ("FAB-OFF-001", "停用面料", "inactive"),
+            ],
+            start=1,
+        ):
+            session.add(
+                LyMasterDataRecord(
+                    id=index,
+                    entity_type="material",
+                    company="COMP-MB",
+                    code=code,
+                    name=name,
+                    status=status,
+                    payload={
+                        "material_kind": "fabric",
+                        "material_item_code": code,
+                        "fabric_name": name,
+                        "uom": "米",
+                    },
                     version=1,
                     created_by="seed",
                     updated_by="seed",
@@ -188,6 +222,30 @@ class MaterialBomApiTest(unittest.TestCase):
                 }
             ],
         }
+
+    def test_style_material_bom_rejects_missing_or_inactive_material(self) -> None:
+        style_id = self._seed_style()
+        missing_payload = self._style_bom_payload(idempotency_key="IDEMP-STYLE-MB-MISSING")
+        missing_payload["items"][0]["material_item_code"] = "FAB-MISSING-001"
+        missing = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="STYLE-MB-MISSING-MATERIAL"),
+            json=missing_payload,
+        )
+        self.assertEqual(missing.status_code, 409, missing.text)
+        self.assertEqual(missing.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+        self.assertIn("FAB-MISSING-001", missing.json()["message"])
+
+        inactive_payload = self._style_bom_payload(idempotency_key="IDEMP-STYLE-MB-INACTIVE")
+        inactive_payload["items"][0]["material_item_code"] = "FAB-OFF-001"
+        inactive = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="STYLE-MB-INACTIVE-MATERIAL"),
+            json=inactive_payload,
+        )
+        self.assertEqual(inactive.status_code, 409, inactive.text)
+        self.assertEqual(inactive.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+        self.assertIn("FAB-OFF-001", inactive.json()["message"])
 
     def test_style_material_bom_upsert_explode_and_style_no_sync(self) -> None:
         style_id = self._seed_style()
