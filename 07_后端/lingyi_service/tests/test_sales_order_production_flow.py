@@ -41,6 +41,7 @@ from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
+from app.routers.warehouse import get_db_session as warehouse_db_dep
 
 
 class SalesOrderProductionFlowTest(unittest.TestCase):
@@ -75,6 +76,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         app.dependency_overrides[auth_db_dep] = _override_db
         app.dependency_overrides[sales_inventory_db_dep] = _override_db
         app.dependency_overrides[production_db_dep] = _override_db
+        app.dependency_overrides[warehouse_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
         main_module.SessionLocal = cls.SessionLocal
         cls.client = TestClient(app)
@@ -85,6 +87,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         app.dependency_overrides.pop(auth_db_dep, None)
         app.dependency_overrides.pop(sales_inventory_db_dep, None)
         app.dependency_overrides.pop(production_db_dep, None)
+        app.dependency_overrides.pop(warehouse_db_dep, None)
         cls.engine.dispose()
 
     def setUp(self) -> None:
@@ -457,6 +460,25 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(material_issue.json()["data"]["stock_entry_status"], "pending_outbox")
         self.assertEqual(material_issue.json()["data"]["items"][0]["material_item_code"], "FABRIC-DEMO")
         self.assertEqual(Decimal(str(material_issue.json()["data"]["items"][0]["qty"])), Decimal("84.000000"))
+
+        ledger_after_issue = self.client.get(
+            "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=FABRIC-DEMO&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        summary_after_issue = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=WH-A&item_code=FABRIC-DEMO",
+            headers=self._headers(),
+        )
+        self.assertEqual(ledger_after_issue.status_code, 200, ledger_after_issue.text)
+        self.assertEqual(summary_after_issue.status_code, 200, summary_after_issue.text)
+        ledger_rows = ledger_after_issue.json()["data"]["items"]
+        self.assertEqual([Decimal(str(row["actual_qty"])) for row in ledger_rows], [Decimal("84.000000"), Decimal("-84.000000")])
+        self.assertEqual([Decimal(str(row["qty_after_transaction"])) for row in ledger_rows], [Decimal("84.000000"), Decimal("0.000000")])
+        self.assertEqual(ledger_rows[-1]["voucher_type"], "Stock Entry Draft/Material Issue")
+        summary_rows = summary_after_issue.json()["data"]["items"]
+        self.assertEqual(len(summary_rows), 1)
+        self.assertEqual(Decimal(str(summary_rows[0]["actual_qty"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(summary_rows[0]["projected_qty"])), Decimal("0.000000"))
 
         list_after_material_check = self.client.get(
             "/api/sales-inventory/sales-orders?keyword=SO-A4-001",
