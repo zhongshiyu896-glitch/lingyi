@@ -247,6 +247,10 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(inactive.status_code, 409, inactive.text)
         self.assertEqual(inactive.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
         self.assertIn("FAB-OFF-001", inactive.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyApparelBom).count(), 0)
+            self.assertEqual(session.query(LyApparelBomItem).count(), 0)
+            self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 0)
 
     def test_style_material_bom_upsert_explode_and_style_no_sync(self) -> None:
         style_id = self._seed_style()
