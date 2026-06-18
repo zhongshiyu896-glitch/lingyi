@@ -31,6 +31,8 @@ from app.models.production import LyProductionPlanMaterial
 from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseInvoiceData
 from app.schemas.material_purchase import MaterialPurchaseInvoiceListData
+from app.schemas.material_purchase import MaterialPurchaseOrderCancelData
+from app.schemas.material_purchase import MaterialPurchaseOrderCancelRequest
 from app.schemas.material_purchase import MaterialPurchaseOrderCreateData
 from app.schemas.material_purchase import MaterialPurchaseOrderCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseOrderData
@@ -85,6 +87,18 @@ class PurchaseRequirementOrderMutationResult:
     """Purchase order created from material requirement pool rows."""
 
     item: MaterialPurchaseRequirementToOrderData
+    before: dict[str, Any] | None
+    after: dict[str, Any]
+    resource_id: int
+    resource_no: str
+    idempotent: bool = False
+
+
+@dataclass(frozen=True)
+class PurchaseOrderCancelMutationResult:
+    """Purchase order cancel result with released requirement pool rows."""
+
+    item: MaterialPurchaseOrderCancelData
     before: dict[str, Any] | None
     after: dict[str, Any]
     resource_id: int
@@ -533,6 +547,96 @@ class MaterialPurchaseService:
         return PurchaseRequirementOrderMutationResult(
             item=data,
             before=None,
+            after=data.model_dump(mode="json"),
+            resource_id=int(order.id),
+            resource_no=str(order.purchase_no),
+        )
+
+    def cancel_order(
+        self,
+        *,
+        order_id: int,
+        payload: MaterialPurchaseOrderCancelRequest,
+        actor: str,
+    ) -> PurchaseOrderCancelMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        reason = self._require_text(payload.reason, "reason")
+        request_hash = self._mutation_hash(
+            {
+                "operation": "cancel_order",
+                "company": company,
+                "order_id": int(order_id),
+                "reason": reason,
+            }
+        )
+
+        existing_idem = self._get_idempotency(company=company, idempotency_key=idempotency_key)
+        if existing_idem is not None:
+            if str(existing_idem.operation) != "cancel_order" or str(existing_idem.request_hash) != request_hash:
+                raise BusinessException(code=MATERIAL_PURCHASE_IDEMPOTENCY_CONFLICT, message="取消采购单幂等键重复但载荷不一致")
+            data = MaterialPurchaseOrderCancelData.model_validate(existing_idem.response_data)
+            snapshot = data.model_dump(mode="json")
+            return PurchaseOrderCancelMutationResult(
+                item=data,
+                before=snapshot,
+                after=snapshot,
+                resource_id=int(data.purchase_order.id),
+                resource_no=data.purchase_order.purchase_no,
+                idempotent=True,
+            )
+
+        order = self._get_order_by_id_for_company(company=company, order_id=int(order_id), for_update=True)
+        lines = self._get_lines(order_id=int(order.id))
+        requirements = self._requirements_by_order(company=company, order_id=int(order.id), for_update=True)
+        before = self._cancel_snapshot(order=order, requirements=requirements)
+        if str(order.status) == "cancelled":
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购单已取消")
+        if Decimal(str(order.received_qty or 0)) > Decimal("0") or any(
+            Decimal(str(line.received_qty or 0)) > Decimal("0") for line in lines
+        ):
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购单已有收货，不能取消")
+        if self._has_active_purchase_invoice(company=company, order=order):
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购单已有发票或应付，不能取消")
+        for requirement in requirements:
+            if Decimal(str(requirement.received_qty or 0)) > Decimal("0") or str(requirement.status) == "completed":
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"需求 {requirement.requirement_no} 已齐料，不能取消采购单")
+            if str(requirement.status) != "purchased":
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"需求 {requirement.requirement_no} 不是已采购状态")
+
+        try:
+            order.status = "cancelled"
+            order.updated_by = actor
+            order.updated_at = datetime.now(UTC)
+            for requirement in requirements:
+                requirement.status = "pending"
+                requirement.purchased_qty = Decimal("0")
+                requirement.received_qty = Decimal("0")
+                requirement.purchase_order_id = None
+                requirement.purchase_order_item_id = None
+                requirement.purchase_no = None
+                requirement.updated_by = actor
+                requirement.updated_at = datetime.now(UTC)
+                self._update_production_material_from_requirement(requirement=requirement)
+            data = self._cancel_data(order=order, requirements=requirements, idempotency_key=idempotency_key, reason=reason)
+            self.session.add(
+                LyMaterialPurchaseIdempotency(
+                    company=company,
+                    idempotency_key=idempotency_key,
+                    operation="cancel_order",
+                    request_hash=request_hash,
+                    record_id=int(order.id),
+                    response_data=data.model_dump(mode="json"),
+                    created_by=actor,
+                )
+            )
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+
+        return PurchaseOrderCancelMutationResult(
+            item=data,
+            before=before,
             after=data.model_dump(mode="json"),
             resource_id=int(order.id),
             resource_no=str(order.purchase_no),
@@ -1039,6 +1143,20 @@ class MaterialPurchaseService:
             requirements=[self._requirement_item(row) for row in requirements],
         )
 
+    def _cancel_data(
+        self,
+        *,
+        order: LyMaterialPurchaseOrder,
+        requirements: list[LyMaterialPurchaseRequirement],
+        idempotency_key: str,
+        reason: str,
+    ) -> MaterialPurchaseOrderCancelData:
+        return MaterialPurchaseOrderCancelData(
+            purchase_order=self._create_data(row=order, idempotency_key=idempotency_key),
+            requirements=[self._requirement_item(row) for row in requirements],
+            reason=reason,
+        )
+
     def _list_item(self, order: LyMaterialPurchaseOrder, line: LyMaterialPurchaseOrderItem) -> MaterialPurchaseOrderListItem:
         return MaterialPurchaseOrderListItem(
             id=int(line.id),
@@ -1164,6 +1282,18 @@ class MaterialPurchaseService:
             raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购单不存在")
         return row
 
+    def _get_order_by_id_for_company(self, *, company: str, order_id: int, for_update: bool = False) -> LyMaterialPurchaseOrder:
+        query = self.session.query(LyMaterialPurchaseOrder).filter(
+            LyMaterialPurchaseOrder.id == int(order_id),
+            LyMaterialPurchaseOrder.company == company,
+        )
+        if for_update:
+            query = query.with_for_update()
+        row = query.first()
+        if row is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购单不存在")
+        return row
+
     def _get_lines(self, *, order_id: int) -> list[LyMaterialPurchaseOrderItem]:
         return (
             self.session.query(LyMaterialPurchaseOrderItem)
@@ -1171,6 +1301,25 @@ class MaterialPurchaseService:
             .order_by(LyMaterialPurchaseOrderItem.id.asc())
             .all()
         )
+
+    def _requirements_by_order(
+        self,
+        *,
+        company: str,
+        order_id: int,
+        for_update: bool = False,
+    ) -> list[LyMaterialPurchaseRequirement]:
+        query = (
+            self.session.query(LyMaterialPurchaseRequirement)
+            .filter(
+                LyMaterialPurchaseRequirement.company == company,
+                LyMaterialPurchaseRequirement.purchase_order_id == int(order_id),
+            )
+            .order_by(LyMaterialPurchaseRequirement.id.asc())
+        )
+        if for_update:
+            query = query.with_for_update()
+        return query.all()
 
     def _requirements_by_ids(
         self,
@@ -1190,6 +1339,30 @@ class MaterialPurchaseService:
         if for_update:
             query = query.with_for_update()
         return query.all()
+
+    def _has_active_purchase_invoice(self, *, company: str, order: LyMaterialPurchaseOrder) -> bool:
+        return (
+            self.session.query(LyMaterialPurchaseInvoice)
+            .filter(
+                LyMaterialPurchaseInvoice.company == company,
+                LyMaterialPurchaseInvoice.purchase_order_id == int(order.id),
+                LyMaterialPurchaseInvoice.purchase_no == str(order.purchase_no),
+                LyMaterialPurchaseInvoice.status != "cancelled",
+            )
+            .first()
+            is not None
+        )
+
+    def _cancel_snapshot(
+        self,
+        *,
+        order: LyMaterialPurchaseOrder,
+        requirements: list[LyMaterialPurchaseRequirement],
+    ) -> dict[str, Any]:
+        return {
+            "purchase_order": self._create_data(row=order, idempotency_key="").model_dump(mode="json"),
+            "requirements": [self._requirement_item(row).model_dump(mode="json") for row in requirements],
+        }
 
     def _get_requirement_by_source(
         self,

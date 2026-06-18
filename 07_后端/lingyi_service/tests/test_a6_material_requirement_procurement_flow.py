@@ -399,6 +399,14 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             payload["purchase_no"] = purchase_no
         return payload
 
+    def _cancel_order_payload(self, *, idempotency_key: str, reason: str = "测试取消采购单") -> dict[str, object]:
+        return {
+            "operation": "cancel_order",
+            "company": self.COMPANY,
+            "reason": reason,
+            "idempotency_key": idempotency_key,
+        }
+
     @staticmethod
     def _carrier_code(value: object, *, length: int = 3) -> str:
         normalized = str(value).strip()
@@ -1191,6 +1199,132 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(len(completed_rows), 2)
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
+
+    def test_cancel_purchase_order_reverts_requirement_pool_and_is_idempotent(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-CANCEL-A",
+            net_required_qty="4",
+            sales_order="SO-A6-CANCEL-001",
+            sales_order_item="SO-A6-CANCEL-001-ITEM",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-CANCEL-B",
+            net_required_qty="6",
+            sales_order="SO-A6-CANCEL-002",
+            sales_order_item="SO-A6-CANCEL-002-ITEM",
+        )
+        create_response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-cancel-create"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_a, requirement_b],
+                idempotency_key="idem-a6-cancel-create",
+                purchase_no="PO-A6-CANCEL-REQ",
+            ),
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.text)
+        purchase_order = create_response.json()["data"]["purchase_order"]
+        self.assertEqual(purchase_order["status"], "draft")
+        order_id = int(purchase_order["id"])
+
+        payload = self._cancel_order_payload(idempotency_key="idem-a6-cancel-order")
+        cancel_response = self.client.post(
+            f"/api/material-purchase/orders/{order_id}/cancel",
+            headers=self._headers("req-a6-cancel-order"),
+            json=payload,
+        )
+        replay_response = self.client.post(
+            f"/api/material-purchase/orders/{order_id}/cancel",
+            headers=self._headers("req-a6-cancel-order-replay"),
+            json=payload,
+        )
+        self.assertEqual(cancel_response.status_code, 200, cancel_response.text)
+        self.assertEqual(replay_response.status_code, 200, replay_response.text)
+        self.assertEqual(cancel_response.json()["data"], replay_response.json()["data"])
+        conflict_response = self.client.post(
+            f"/api/material-purchase/orders/{order_id}/cancel",
+            headers=self._headers("req-a6-cancel-order-conflict"),
+            json=self._cancel_order_payload(idempotency_key="idem-a6-cancel-order", reason="换一个取消原因"),
+        )
+        self.assertEqual(conflict_response.status_code, 409, conflict_response.text)
+        self.assertEqual(conflict_response.json()["code"], "MATERIAL_PURCHASE_IDEMPOTENCY_CONFLICT")
+
+        data = cancel_response.json()["data"]
+        self.assertEqual(data["purchase_order"]["status"], "cancelled")
+        self.assertEqual(data["purchase_order"]["purchase_no"], "PO-A6-CANCEL-REQ")
+        self.assertEqual(data["reason"], "测试取消采购单")
+        self.assertEqual({row["status"] for row in data["requirements"]}, {"pending"})
+        self.assertEqual({Decimal(str(row["purchased_qty"])) for row in data["requirements"]}, {Decimal("0.000000")})
+        self.assertEqual({Decimal(str(row["received_qty"])) for row in data["requirements"]}, {Decimal("0.000000")})
+        self.assertTrue(all(row["purchase_no"] is None for row in data["requirements"]))
+
+        pending = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword=REQ-A6-CANCEL",
+            headers=self._headers("req-a6-cancel-pending"),
+        )
+        self.assertEqual(pending.status_code, 200, pending.text)
+        self.assertEqual(pending.json()["data"]["total"], 2)
+        with self.SessionLocal() as session:
+            order_row = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-CANCEL-REQ").one()
+            requirement_rows = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.requirement_no.asc()).all()
+            self.assertEqual(str(order_row.status), "cancelled")
+            self.assertEqual({str(row.status) for row in requirement_rows}, {"pending"})
+            self.assertTrue(all(row.purchase_order_id is None for row in requirement_rows))
+            self.assertTrue(all(row.purchase_order_item_id is None for row in requirement_rows))
+            self.assertTrue(all(row.purchase_no is None for row in requirement_rows))
+            audit_rows = session.query(LyOperationAuditLog).all()
+            audit_actions = {row.action for row in audit_rows}
+            self.assertIn("material_purchase:write", audit_actions)
+            self.assertTrue(any((row.after_data or {}).get("reason") == "测试取消采购单" for row in audit_rows))
+
+    def test_cancel_purchase_order_rejects_received_order_without_releasing_requirements(self) -> None:
+        self._seed_receipt_backed_purchase_chain(
+            plan_id=9001,
+            order_id=9101,
+            line_id=9201,
+            purchase_no="PO-A6-CANCEL-RECEIVED",
+            qty="8",
+        )
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-CANCEL-RECEIVED").one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=int(order.id)).one()
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(purchase_no="PO-A6-CANCEL-RECEIVED").one()
+            order.status = "partially_received"
+            order.received_qty = Decimal("2")
+            line.received_qty = Decimal("2")
+            requirement.received_qty = Decimal("2")
+            requirement.status = "purchased"
+            session.commit()
+
+        response = self.client.post(
+            "/api/material-purchase/orders/9101/cancel",
+            headers=self._headers("req-a6-cancel-received"),
+            json=self._cancel_order_payload(idempotency_key="idem-a6-cancel-received"),
+        )
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("已有收货", response.json()["message"])
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-CANCEL-RECEIVED").one()
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(purchase_no="PO-A6-CANCEL-RECEIVED").one()
+            self.assertEqual(str(order.status), "partially_received")
+            self.assertEqual(str(requirement.status), "purchased")
+            self.assertEqual(int(requirement.purchase_order_id), 9101)
+
+    def test_cancel_purchase_order_unauthenticated_security_audit_is_write_order(self) -> None:
+        response = self.client.post(
+            "/api/material-purchase/orders/123/cancel",
+            json=self._cancel_order_payload(idempotency_key="idem-a6-cancel-unauth"),
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).one()
+            self.assertEqual(row.module, "material_purchase")
+            self.assertEqual(row.action, "material_purchase:write")
+            self.assertEqual(row.resource_type, "MaterialPurchaseOrder")
+            self.assertEqual(row.resource_id, "123")
+            self.assertEqual(row.request_path, "/api/material-purchase/orders/123/cancel")
 
     def test_from_requirements_rejects_mixed_requirement_suppliers(self) -> None:
         requirement_a = self._seed_requirement(

@@ -20,12 +20,14 @@ from app.core.exceptions import AuditWriteFailed
 from app.core.permissions import MATERIAL_PURCHASE_READ
 from app.core.permissions import MATERIAL_PURCHASE_WRITE
 from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
+from app.schemas.material_purchase import MaterialPurchaseOrderCancelRequest
 from app.schemas.material_purchase import MaterialPurchaseOrderCreateRequest
 from app.schemas.material_purchase import MaterialPurchasePaymentCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderRequest
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
 from app.services.material_purchase_service import PurchaseRequirementOrderMutationResult
+from app.services.material_purchase_service import PurchaseOrderCancelMutationResult
 from app.services.material_purchase_service import MaterialPurchaseService
 from app.services.permission_service import PermissionService
 
@@ -242,6 +244,65 @@ def create_material_purchase_order_from_requirements(
         session.commit()
         return _err(exc)
     return _created(result.item)
+
+
+@router.post("/orders/{order_id}/cancel")
+def cancel_material_purchase_order(
+    order_id: int,
+    payload: MaterialPurchaseOrderCancelRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MATERIAL_PURCHASE_WRITE,
+        resource_type="MATERIAL_PURCHASE_ORDER",
+        resource_id=order_id,
+    )
+    audit = AuditService(session)
+    try:
+        result: PurchaseOrderCancelMutationResult = MaterialPurchaseService(session).cancel_order(
+            order_id=order_id,
+            payload=payload,
+            actor=current_user.username,
+        )
+        audit.record_success(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_ORDER",
+            resource_id=result.resource_id,
+            resource_no=result.resource_no,
+            before_data=result.before,
+            after_data=result.after,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except AuditWriteFailed as exc:
+        session.rollback()
+        return _err(exc)
+    except AppException as exc:
+        session.rollback()
+        audit.record_failure(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_ORDER",
+            resource_id=order_id,
+            resource_no=str(order_id),
+            before_data=None,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        return _err(exc)
+    return _ok(result.item)
 
 
 @router.get("/purchase-invoices")

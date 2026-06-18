@@ -509,6 +509,8 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
     if path.startswith("/api/material-purchase"):
         if path in {"/api/material-purchase/requirements", "/api/material-purchase/requirements/"}:
             return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseRequirement", None
+        if re.match(r"^/api/material-purchase/orders/\d+/cancel/?$", path):
+            return "material_purchase", MATERIAL_PURCHASE_WRITE, "MaterialPurchaseOrder", _extract_material_purchase_order_id(path)
         if path in {
             "/api/material-purchase/orders/from-requirements",
             "/api/material-purchase/orders/from-requirements/",
@@ -693,6 +695,13 @@ def _extract_quality_inspection_id(path: str) -> str | None:
 
 def _extract_warehouse_stock_entry_draft_id(path: str) -> str | None:
     match = re.match(r"^/api/warehouse/stock-entry-drafts/(\d+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_material_purchase_order_id(path: str) -> str | None:
+    match = re.match(r"^/api/material-purchase/orders/(\d+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None
