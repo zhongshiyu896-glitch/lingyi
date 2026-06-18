@@ -22,8 +22,10 @@ from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseIdempotency
+from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
+from app.models.material_purchase import LyMaterialPurchasePayment
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
@@ -122,6 +124,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyMaterialPurchasePayment).delete()
+            session.query(LyMaterialPurchaseInvoice).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
@@ -1344,16 +1348,85 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(ready_list_row["purchase_status"], "ready")
         self.assertEqual(Decimal(str(ready_list_row["shortage_qty_total"])), Decimal("0.000000"))
 
+        purchase_invoice_no = f"PINV-A6-{purchase_no}"
+        purchase_invoice = self.client.post(
+            "/api/material-purchase/purchase-invoices",
+            headers=self._headers("req-a6-same-chain-pinv"),
+            json={
+                "operation": "create_purchase_invoice",
+                "company": self.COMPANY,
+                "purchase_no": purchase_no,
+                "supplier_name": "SUP-A6",
+                "material_item_code": self.MATERIAL,
+                "qty": "54",
+                "rate": "12.5",
+                "posting_date": "2026-06-17",
+                "due_date": "2026-07-17",
+                "purchase_invoice": purchase_invoice_no,
+                "source_ref": f"SRC-A6-PINV-{purchase_no}",
+                "idempotency_key": f"idem-a6-pinv-{purchase_no}",
+                "scenario_tag": "A6-PURCHASE-INVOICE-001",
+            },
+        )
+        self.assertEqual(purchase_invoice.status_code, 201, purchase_invoice.text)
+        invoice_data = purchase_invoice.json()["data"]
+        self.assertEqual(invoice_data["purchase_no"], purchase_no)
+        self.assertEqual(invoice_data["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(invoice_data["grand_total"])), Decimal("675.000000"))
+        self.assertEqual(Decimal(str(invoice_data["outstanding_amount"])), Decimal("675.000000"))
+
+        purchase_payment = self.client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=self._headers("req-a6-same-chain-pay"),
+            json={
+                "operation": "create_purchase_payment",
+                "company": self.COMPANY,
+                "purchase_invoice": purchase_invoice_no,
+                "supplier_name": "SUP-A6",
+                "posting_date": "2026-06-18",
+                "paid_amount": "675",
+                "mode_of_payment": "Bank Transfer",
+                "reference_no": f"BANK-A6-{purchase_no}",
+                "reference_date": "2026-06-18",
+                "payment_entry": f"PP-A6-{purchase_no}",
+                "source_ref": f"SRC-A6-PP-{purchase_no}",
+                "idempotency_key": f"idem-a6-pp-{purchase_no}",
+                "scenario_tag": "A6-PURCHASE-PAYMENT-001",
+            },
+        )
+        self.assertEqual(purchase_payment.status_code, 201, purchase_payment.text)
+        payment_data = purchase_payment.json()["data"]
+        self.assertEqual(payment_data["purchase_no"], purchase_no)
+        self.assertEqual(Decimal(str(payment_data["outstanding_before"])), Decimal("675.000000"))
+        self.assertEqual(Decimal(str(payment_data["outstanding_after"])), Decimal("0.000000"))
+
+        paid_invoices = self.client.get(
+            f"/api/material-purchase/purchase-invoices?keyword={purchase_invoice_no}",
+            headers=self._headers("req-a6-same-chain-pinv-list"),
+        )
+        self.assertEqual(paid_invoices.status_code, 200, paid_invoices.text)
+        paid_invoice = paid_invoices.json()["data"]["items"][0]
+        self.assertEqual(paid_invoice["purchase_no"], purchase_no)
+        self.assertEqual(paid_invoice["status"], "paid")
+        self.assertEqual(Decimal(str(paid_invoice["outstanding_amount"])), Decimal("0.000000"))
+
         with self.SessionLocal() as session:
             requirement_row = session.query(LyMaterialPurchaseRequirement).one()
             snapshot = session.query(LyProductionPlanMaterial).one()
             order_row = session.query(LyMaterialPurchaseOrder).one()
             order_line = session.query(LyMaterialPurchaseOrderItem).one()
+            invoice_row = session.query(LyMaterialPurchaseInvoice).one()
+            payment_row = session.query(LyMaterialPurchasePayment).one()
             self.assertEqual(str(requirement_row.status), "completed")
             self.assertEqual(Decimal(str(snapshot.available_qty)), Decimal("84.000000"))
             self.assertEqual(Decimal(str(snapshot.shortage_qty)), Decimal("0.000000"))
             self.assertEqual(str(order_row.status), "received")
             self.assertEqual(Decimal(str(order_line.received_qty)), Decimal("54.000000"))
+            self.assertEqual(str(invoice_row.status), "paid")
+            self.assertEqual(str(invoice_row.purchase_no), purchase_no)
+            self.assertEqual(Decimal(str(invoice_row.outstanding_amount)), Decimal("0.000000"))
+            self.assertEqual(str(payment_row.purchase_no), purchase_no)
+            self.assertEqual(Decimal(str(payment_row.outstanding_after)), Decimal("0.000000"))
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("material_purchase:write", audit_actions)
