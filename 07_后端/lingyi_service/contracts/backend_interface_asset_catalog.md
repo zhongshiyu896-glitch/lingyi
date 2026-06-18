@@ -2,7 +2,7 @@
 
 来源：FastAPI `app.routes` 自动导出；readiness/stub 以 `app/routers/frontend_readiness.py` 为准。
 
-- A 类真实业务接口：185
+- A 类真实业务接口：186
 - B 类 dev/test readiness 只读接口：19
 - C 类 readiness flow 回执桩：7
 - D 类内部/诊断/不建议前端直连接口：11
@@ -96,6 +96,7 @@
 | A | GET | `/api/production/plans/{plan_id}` | 否 | 是 | 否 | candidate | code, message, data, data.id, data.plan_no, data.company, data.sales_order, data.sales_order_item, data.customer, data.item_code, data.bom_id, data.bom_version, ... | 真实业务只读接口候选 |
 | A | POST | `/api/production/plans/{plan_id}/create-work-order` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.plan_id, data.outbox_id, data.event_key, data.sync_status, data.work_order | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | POST | `/api/production/plans/{plan_id}/material-check` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.plan_id, data.snapshot_count, data.items, data.items.bom_item_id, data.items.material_item_code, data.items.warehouse, data.items.qty_per_piece, data.items.loss_rate, data.items.required_qty, ... | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
+| A | POST | `/api/production/plans/{plan_id}/material-issue` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.plan_id, data.draft_id, data.source_id, data.stock_entry_status, data.event_key, data.items, data.items.material_item_code, data.items.warehouse, data.items.qty, ... | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/production/quotes` | 是 | 是 | 否 | candidate | code, message, data, data.items, data.items.plan_id, data.items.quote_no, data.items.plan_no, data.items.company, data.items.sales_order, data.items.sales_order_item, data.items.customer, data.items.item_code, ... | 真实业务只读接口候选 |
 | C | POST | `/api/production/readiness/inventory-finance-flow` | 否 | 是 | 否 | do_not_connect_as_write | reservation_no, delivery_note, sales_invoice, summary_no, warehouse, item_code, inbound_qty, delivered_qty, book_qty, actual_qty, diff_qty, outstanding_amount, ... | readiness flow 回执桩; 不得当作真实写接口 |
 | C | POST | `/api/production/readiness/work-order-flow` | 否 | 是 | 否 | do_not_connect_as_write | plan_id, plan_no, outbox_id, event_key, sync_status, work_order, sales_order, sales_order_item, item_code, planned_qty, status | readiness flow 回执桩; 不得当作真实写接口 |

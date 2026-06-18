@@ -3103,6 +3103,47 @@
     },
     {
       "class": "A",
+      "method": "POST",
+      "path": "/api/production/plans/{plan_id}/material-issue",
+      "name": "create_material_issue_draft",
+      "tags": [
+        "production"
+      ],
+      "endpoint_module": "app.routers.production",
+      "request_params": {
+        "path": [
+          "plan_id"
+        ],
+        "query": [],
+        "body": [
+          "payload"
+        ]
+      },
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.plan_id",
+        "data.draft_id",
+        "data.source_id",
+        "data.stock_entry_status",
+        "data.event_key",
+        "data.items",
+        "data.items.material_item_code",
+        "data.items.warehouse",
+        "data.items.qty",
+        "data.items.uom"
+      ],
+      "is_paginated": false,
+      "requires_login": true,
+      "is_real_write_db": true,
+      "frontend_connect_status": "needs_dedicated_write_task",
+      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "duplicate_method_path_count": 1,
+      "registered_order": 55
+    },
+    {
+      "class": "A",
       "method": "GET",
       "path": "/api/production/quotes",
       "name": "list_production_quotes",

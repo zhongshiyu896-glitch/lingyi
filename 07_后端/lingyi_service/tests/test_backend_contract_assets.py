@@ -86,6 +86,14 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertTrue(real_row["is_paginated"])
         self.assertIn("material_item_code", real_row["response_fields"])
 
+        material_issue_row = catalog[
+            ("POST", "/api/production/plans/{plan_id}/material-issue", "app.routers.production")
+        ]
+        self.assertEqual(material_issue_row["class"], "A")
+        self.assertTrue(material_issue_row["is_real_write_db"])
+        self.assertEqual(material_issue_row["frontend_connect_status"], "needs_dedicated_write_task")
+        self.assertIn("data.draft_id", material_issue_row["response_fields"])
+
     def test_readiness_routes_are_dev_enabled_and_production_disabled(self) -> None:
         dev_app = load_app_for_env("test")
         dev_paths = {(method, route.path) for route in dev_app.routes for method in getattr(route, "methods", set())}
@@ -204,6 +212,18 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertNotIn("AUTH_REQUIRED", task3_md)
         self.assertNotIn("PERMISSION_DENIED", task3_md)
         self.assertNotIn("VALIDATION_ERROR", task3_md)
+
+    def test_backend_interface_asset_catalog_registers_material_issue(self) -> None:
+        route_asset = json.loads(
+            (REPO_ROOT / "contracts" / "backend_interface_asset_catalog.json").read_text(encoding="utf-8")
+        )
+        route_map = {(row["method"], row["path"]): row for row in route_asset["routes"]}
+
+        material_issue_row = route_map[("POST", "/api/production/plans/{plan_id}/material-issue")]
+        self.assertEqual(material_issue_row["class"], "A")
+        self.assertTrue(material_issue_row["is_real_write_db"])
+        self.assertEqual(material_issue_row["frontend_connect_status"], "needs_dedicated_write_task")
+        self.assertIn("data.draft_id", material_issue_row["response_fields"])
 
 
 if __name__ == "__main__":
