@@ -745,6 +745,54 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(checked.json()["data"]["items"][0]["required_qty"], "21.000000")
 
         with self.SessionLocal() as session:
+            material = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == "COMP-MB",
+                    LyMasterDataRecord.code == "FAB-BLK-001",
+                )
+                .one()
+            )
+            material.status = "inactive"
+            session.commit()
+
+        inactive_detail_scenario = "Z003-PROD-PLAN-DETAIL-20260618-704"
+        inactive_checked = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(role="Production Manager", request_id=f"req-{inactive_detail_scenario}"),
+            json={
+                "operation": "material_check",
+                "idempotency_key": f"{inactive_detail_scenario}-check",
+                "scenario_tag": inactive_detail_scenario,
+                "plan_id": plan_id,
+                "sales_order": "SO-MB-001",
+                "sales_order_item": "SOI-MB-001",
+                "item_code": "ST-MB-001",
+                "bom_id": bom_id,
+                "warehouse": "WH-MB",
+                "request_id": f"req-{inactive_detail_scenario}",
+            },
+        )
+        self.assertEqual(inactive_checked.status_code, 409, inactive_checked.text)
+        self.assertEqual(inactive_checked.json()["code"], "PRODUCTION_BOM_NOT_ACTIVE")
+        self.assertIn("FAB-BLK-001", inactive_checked.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 1)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 1)
+            material = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == "COMP-MB",
+                    LyMasterDataRecord.code == "FAB-BLK-001",
+                )
+                .one()
+            )
+            material.status = "active"
+            session.commit()
+
+        with self.SessionLocal() as session:
             empty_bom = LyApparelBom(
                 id=9001,
                 bom_no="BOM-ST-MB-EMPTY",

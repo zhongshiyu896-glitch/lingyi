@@ -44,6 +44,7 @@ from app.models.bom import LyBomOperation
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.master_data import LyMasterDataRecord
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -511,6 +512,51 @@ class ProductionService:
             )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
+
+    def _ensure_material_bom_rows_active(self, *, company: str, bom_rows: list[Any]) -> None:
+        if not self._has_sqlite_tables({LyMasterDataRecord.__tablename__}):
+            return
+
+        codes: list[str] = []
+        for row in bom_rows:
+            code = str(getattr(row, "material_item_code", "") or "").strip()
+            if code and code not in codes:
+                codes.append(code)
+        if not codes:
+            return
+
+        try:
+            material_master_count = (
+                self.session.query(func.count(LyMasterDataRecord.id))
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                )
+                .scalar()
+            )
+            if int(material_master_count or 0) == 0:
+                return
+
+            active_rows = (
+                self.session.query(LyMasterDataRecord.code)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code.in_(codes),
+                    LyMasterDataRecord.status == "active",
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        active_codes = {str(row.code) for row in active_rows}
+        invalid_codes = [code for code in codes if code not in active_codes]
+        if invalid_codes:
+            raise BusinessException(
+                code=PRODUCTION_BOM_NOT_ACTIVE,
+                message=f"用料物料主数据不存在或已停用: {', '.join(invalid_codes)}",
+            )
 
     @staticmethod
     def _empty_material_readiness_summary(*, include_private: bool = False) -> dict[str, Any]:
@@ -2532,6 +2578,7 @@ class ProductionService:
         bom_rows = self._filter_bom_rows_for_sales_order_item(bom_rows=bom_rows, sales_order_item=native_item)
         if not bom_rows:
             raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护匹配当前色码的用料 BOM 明细，无法算料")
+        self._ensure_material_bom_rows_active(company=str(plan.company), bom_rows=bom_rows)
 
         try:
             self.session.query(LyProductionPlanMaterial).filter(LyProductionPlanMaterial.plan_id == int(plan.id)).delete()
