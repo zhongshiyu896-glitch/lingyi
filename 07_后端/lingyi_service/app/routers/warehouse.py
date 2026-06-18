@@ -599,6 +599,7 @@ def _build_local_stock_ledger_fallback(
     company: str | None,
     warehouse: str | None,
     item_code: str | None,
+    keyword: str | None = None,
     from_date: date | None = None,
     to_date: date | None = None,
     page: int,
@@ -612,6 +613,7 @@ def _build_local_stock_ledger_fallback(
         to_date=to_date,
         page=page,
         page_size=page_size,
+        keyword=_scope_text(keyword),
     )
 
 
@@ -1248,6 +1250,7 @@ def list_stock_ledger(
     company: str | None = Query(default=None),
     warehouse: str | None = Query(default=None),
     item_code: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
     from_date: str | None = Query(default=None),
     to_date: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -1295,6 +1298,7 @@ def list_stock_ledger(
         company=company,
         warehouse=warehouse,
         item_code=item_code,
+        keyword=keyword,
         from_date=parsed_from_date,
         to_date=parsed_to_date,
         page=page,

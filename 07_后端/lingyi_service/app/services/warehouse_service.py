@@ -239,10 +239,12 @@ class WarehouseService:
         to_date: date | None,
         page: int,
         page_size: int,
+        keyword: str | None = None,
     ) -> WarehouseStockLedgerData:
         movements = self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code)
         running_qty: dict[tuple[str, str, str], Decimal] = {}
         ledger_rows: list[WarehouseStockLedgerItem] = []
+        normalized_keyword = self._text(keyword)
         for movement in movements:
             key = (movement.company, movement.warehouse, movement.item_code)
             next_balance = running_qty.get(key, Decimal("0")) + movement.actual_qty
@@ -251,19 +253,20 @@ class WarehouseService:
                 continue
             if to_date is not None and movement.posting_date > to_date:
                 continue
-            ledger_rows.append(
-                WarehouseStockLedgerItem(
-                    company=movement.company,
-                    warehouse=movement.warehouse,
-                    item_code=movement.item_code,
-                    posting_date=movement.posting_date,
-                    voucher_type=movement.voucher_type,
-                    voucher_no=movement.voucher_no,
-                    actual_qty=movement.actual_qty,
-                    qty_after_transaction=next_balance,
-                    valuation_rate=movement.valuation_rate,
-                )
+            row = WarehouseStockLedgerItem(
+                company=movement.company,
+                warehouse=movement.warehouse,
+                item_code=movement.item_code,
+                posting_date=movement.posting_date,
+                voucher_type=movement.voucher_type,
+                voucher_no=movement.voucher_no,
+                actual_qty=movement.actual_qty,
+                qty_after_transaction=next_balance,
+                valuation_rate=movement.valuation_rate,
             )
+            if normalized_keyword and not self._stock_ledger_keyword_matches(row=row, keyword=normalized_keyword):
+                continue
+            ledger_rows.append(row)
 
         total = len(ledger_rows)
         start = max(page - 1, 0) * page_size
@@ -272,6 +275,19 @@ class WarehouseService:
             total=total,
             page=page,
             page_size=page_size,
+        )
+
+    @staticmethod
+    def _stock_ledger_keyword_matches(*, row: WarehouseStockLedgerItem, keyword: str) -> bool:
+        lowered = keyword.lower()
+        return any(
+            lowered in str(value or "").lower()
+            for value in (
+                row.item_code,
+                row.warehouse,
+                row.voucher_type,
+                row.voucher_no,
+            )
         )
 
     def get_local_stock_summary(

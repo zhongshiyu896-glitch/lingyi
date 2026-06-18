@@ -159,6 +159,34 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         self.assertEqual(payload["items"][0]["voucher_type"], "Stock Entry Draft/Material Receipt")
         self.assertEqual(Decimal(str(payload["items"][0]["qty_after_transaction"])), Decimal("2.000000"))
 
+    def test_stock_ledger_keyword_filters_after_running_balance_recalculation(self) -> None:
+        self._seed_stock_entry(qty="10", event_key="EVT-WH-KEYWORD-001", created_at=datetime(2026, 4, 20, tzinfo=timezone.utc))
+        self._seed_stock_entry(
+            qty="3",
+            purpose="Material Issue",
+            event_key="EVT-WH-KEYWORD-002",
+            created_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
+        )
+        all_response = self.client.get(
+            "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(all_response.status_code, 200, all_response.text)
+        all_items = all_response.json()["data"]["items"]
+        issue_voucher_no = all_items[1]["voucher_no"]
+
+        response = self.client.get(
+            f"/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&keyword={issue_voucher_no}",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        row = payload["items"][0]
+        self.assertEqual(row["voucher_no"], issue_voucher_no)
+        self.assertEqual(Decimal(str(row["actual_qty"])), Decimal("-3.000000"))
+        self.assertEqual(Decimal(str(row["qty_after_transaction"])), Decimal("7.000000"))
+
     def test_stock_summary_returns_aggregation(self) -> None:
         self._seed_stock_entry(qty="2", event_key="EVT-WH-READ-SUMMARY-001")
         self._seed_stock_entry(qty="5", event_key="EVT-WH-READ-SUMMARY-002")
