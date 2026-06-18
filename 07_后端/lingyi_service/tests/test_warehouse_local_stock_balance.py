@@ -24,6 +24,8 @@ from app.models.subcontract import LySubcontractStockOutbox
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseInventoryCount
+from app.models.warehouse import LyWarehouseInventoryCountItem
 from app.services.warehouse_service import WarehouseService
 
 
@@ -59,6 +61,8 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
             session.query(LySubcontractMaterial).delete()
             session.query(LySubcontractStockOutbox).delete()
             session.query(LySubcontractOrder).delete()
+            session.query(LyWarehouseInventoryCountItem).delete()
+            session.query(LyWarehouseInventoryCount).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
@@ -330,6 +334,50 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
                     created_at=datetime(2026, 6, 3, tzinfo=timezone.utc),
                 )
             )
+            session.add_all(
+                [
+                    LyWarehouseInventoryCount(
+                        id=901,
+                        company="COMP-A",
+                        warehouse="WH-A",
+                        status="counted",
+                        count_no="INV-SUB-MAT-BAL-001",
+                        count_date=date(2026, 6, 4),
+                        created_by="warehouse.test",
+                    ),
+                    LyWarehouseInventoryCountItem(
+                        id=901,
+                        count_id=901,
+                        company="COMP-A",
+                        warehouse="WH-A",
+                        item_code="FAB-A",
+                        system_qty=Decimal("999"),
+                        counted_qty=Decimal("6"),
+                        variance_qty=Decimal("-993"),
+                        review_status="pending",
+                    ),
+                    LyWarehouseInventoryCount(
+                        id=902,
+                        company="COMP-A",
+                        warehouse="WH-FG",
+                        status="counted",
+                        count_no="INV-SUB-FG-BAL-001",
+                        count_date=date(2026, 6, 4),
+                        created_by="warehouse.test",
+                    ),
+                    LyWarehouseInventoryCountItem(
+                        id=902,
+                        count_id=902,
+                        company="COMP-A",
+                        warehouse="WH-FG",
+                        item_code="STYLE-BAL",
+                        system_qty=Decimal("0"),
+                        counted_qty=Decimal("3"),
+                        variance_qty=Decimal("3"),
+                        review_status="pending",
+                    ),
+                ]
+            )
             session.commit()
 
         with self.SessionLocal() as session:
@@ -354,6 +402,14 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
             )
             material_summary = service.get_stock_summary(company="COMP-A", warehouse="WH-A", item_code="FAB-A")
             output_summary = service.get_stock_summary(company="COMP-A", warehouse="WH-FG", item_code="STYLE-BAL")
+            reconciliation = service.list_local_inventory_balance_reconciliation(
+                company="COMP-A",
+                warehouse=None,
+                item_code=None,
+                status=None,
+                page=1,
+                page_size=20,
+            )
 
         self.assertEqual(
             [(row.voucher_type, row.voucher_no, Decimal(str(row.actual_qty)), Decimal(str(row.qty_after_transaction))) for row in material_ledger.items],
@@ -368,6 +424,14 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         self.assertEqual(Decimal(str(output_ledger.items[0].qty_after_transaction)), Decimal("3.000000"))
         self.assertEqual(Decimal(str(material_summary.items[0].actual_qty)), Decimal("6.000000"))
         self.assertEqual(Decimal(str(output_summary.items[0].actual_qty)), Decimal("3.000000"))
+        reconciliation_by_key = {(row.warehouse, row.item_code): row for row in reconciliation.items}
+        self.assertEqual(Decimal(str(reconciliation_by_key[("WH-A", "FAB-A")].book_qty)), Decimal("6.000000"))
+        self.assertEqual(Decimal(str(reconciliation_by_key[("WH-A", "FAB-A")].actual_qty)), Decimal("6.000000"))
+        self.assertEqual(Decimal(str(reconciliation_by_key[("WH-A", "FAB-A")].diff_qty)), Decimal("0.000000"))
+        self.assertEqual(reconciliation_by_key[("WH-A", "FAB-A")].status, "balanced")
+        self.assertEqual(Decimal(str(reconciliation_by_key[("WH-FG", "STYLE-BAL")].book_qty)), Decimal("3.000000"))
+        self.assertEqual(Decimal(str(reconciliation_by_key[("WH-FG", "STYLE-BAL")].actual_qty)), Decimal("3.000000"))
+        self.assertEqual(reconciliation_by_key[("WH-FG", "STYLE-BAL")].status, "balanced")
 
     def test_pending_subcontract_outbox_is_excluded_from_unified_stock_balance(self) -> None:
         with self.SessionLocal() as session:
@@ -660,6 +724,30 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
                     ),
                 ]
             )
+            session.add_all(
+                [
+                    LyWarehouseInventoryCount(
+                        id=701,
+                        company="COMP-A",
+                        warehouse="WH-PASS",
+                        status="counted",
+                        count_no="INV-QC-PASS-BAL-001",
+                        count_date=date(2026, 6, 4),
+                        created_by="quality.test",
+                    ),
+                    LyWarehouseInventoryCountItem(
+                        id=701,
+                        count_id=701,
+                        company="COMP-A",
+                        warehouse="WH-PASS",
+                        item_code="FAB-QC",
+                        system_qty=Decimal("0"),
+                        counted_qty=Decimal("8"),
+                        variance_qty=Decimal("8"),
+                        review_status="pending",
+                    ),
+                ]
+            )
             session.commit()
 
         with self.SessionLocal() as session:
@@ -674,6 +762,14 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
                 page_size=20,
             )
             summary = service.get_stock_summary(company="COMP-A", warehouse=None, item_code="FAB-QC")
+            reconciliation = service.list_local_inventory_balance_reconciliation(
+                company="COMP-A",
+                warehouse="WH-PASS",
+                item_code="FAB-QC",
+                status=None,
+                page=1,
+                page_size=20,
+            )
 
         self.assertEqual(
             [
@@ -697,6 +793,11 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
                 "WH-REJECT": Decimal("2.000000"),
             },
         )
+        self.assertEqual(reconciliation.total, 1)
+        self.assertEqual(Decimal(str(reconciliation.items[0].book_qty)), Decimal("8.000000"))
+        self.assertEqual(Decimal(str(reconciliation.items[0].actual_qty)), Decimal("8.000000"))
+        self.assertEqual(Decimal(str(reconciliation.items[0].diff_qty)), Decimal("0.000000"))
+        self.assertEqual(reconciliation.items[0].status, "balanced")
 
 
 if __name__ == "__main__":
