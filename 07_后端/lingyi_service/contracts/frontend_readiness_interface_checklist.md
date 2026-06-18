@@ -44,8 +44,8 @@
 | `GET /api/sales-inventory/warehouses` | `name, company, warehouse_name, disabled` | 既有端点优先；dev/test 无 ERPNext 时标准空分页 |
 | `GET /api/sales-inventory/sales-channels` | `dict_type, dict_code, dict_name, status, source, updated_at` | dev-gated 只读就绪 |
 | `GET /api/factory-statements/cashier-accounts` | `bank_name, account_name, account_no, currency, owner, remark` | dev-gated 只读就绪 |
-| `GET /api/bom/process-requirement-templates` | `process_type_code, process_type_name, process_name, sequence_no, subcontract_mode, pricing_mode, unit_rate, status, is_default` | dev-gated 只读就绪 |
-| `GET /api/bom/size-chart-templates` | `dict_type, dict_code, dict_name, status, source, updated_at` | dev-gated 只读就绪 |
+| `GET /api/bom/process-requirement-templates` | `id, company, template_type, template_code, name, scene, status, version, nodes` | 真实基础资料模板接口 |
+| `GET /api/bom/size-chart-templates` | `id, company, template_type, template_code, name, scene, status, version, nodes` | 真实基础资料模板接口 |
 | `GET /api/bom/sample-orders` | `dict_type, dict_code, dict_name, status, source, updated_at` | dev-gated 只读就绪 |
 | `GET /api/production/followup-templates` | `template_id, template_no, template_name, template_type, trigger_node, followup_role, followup_frequency, sla_hours, item_code, company, status, updated_at` | 既有端点优先；dev-gated 兜底已注册 |
 | `GET /api/factory-statements/supplier-evaluations` | `evaluation_no, statement_no, company, supplier, supplier_code, assessor, score, score_level, review_status, follow_up_status, evaluation_date, expiry_date, owner, remark` | 复用真实端点，已纳入冒烟矩阵 |

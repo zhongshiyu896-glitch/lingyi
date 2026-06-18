@@ -22,7 +22,8 @@
 | 物料开发 | 辅料包材 | GET | `/api/bom/accessories-packaging` | `material_name, category, supplier_name` | 是 |
 | 物料开发 | 采购单 | GET | `/api/bom/purchase-orders` | `purchase_no, supplier_name, total_amount` | 是 |
 | 物料开发 | 款式-BOM-工艺 | GET | `/api/bom/style-bom-process` | `bom_no, item_code, process_name, unit_rate` | 真实 |
-| 物料开发 | 工艺要求模板 | GET | `/api/bom/process-requirement-templates` | `process_type_code, process_type_name, process_name, unit_rate` | 真实 |
+| 基础资料 | 工艺要求模板 | GET | `/api/bom/process-requirement-templates` | `id, template_code, name, status, nodes` | 真实 |
+| 基础资料 | 尺寸表模板 | GET | `/api/bom/size-chart-templates` | `id, template_code, name, status, nodes` | 真实 |
 | 物料开发 | 打样进度 | GET | `/api/bom/sample-progress` | `sample_order_no, sample_type, item_code, status` | 是 |
 | 销售生产 | 销售订单 | GET | `/api/sales-inventory/sales-orders` | `name, customer, transaction_date, grand_total` | 是 |
 | 销售生产 | 生产计划 | GET | `/api/production/plans` | `plan_no, sales_order, item_code, planned_qty` | 是 |

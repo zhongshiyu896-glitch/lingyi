@@ -471,6 +471,119 @@ class BomProcessingTypeData(BaseModel):
     page_size: int
 
 
+class FoundationTemplateNodeItem(BaseModel):
+    """Foundation template node payload."""
+
+    id: int
+    template_id: int
+    code: str
+    name: str
+    node_type: str
+    required: bool
+    status: str
+    sort_no: int
+    owner: str
+    created_by: str
+    created_at: str
+    updated_at: str | None = None
+
+
+class FoundationTemplateItem(BaseModel):
+    """Foundation template payload for workmanship and size spec templates."""
+
+    id: int
+    company: str
+    template_type: str
+    template_code: str
+    name: str
+    scene: str
+    status: str
+    version: int
+    created_by: str
+    created_at: str
+    updated_at: str | None = None
+    nodes: List[FoundationTemplateNodeItem] = Field(default_factory=list)
+
+
+class FoundationTemplateListData(BaseModel):
+    """Foundation template paginated data."""
+
+    items: List[FoundationTemplateItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FoundationTemplateCreateRequest(BaseModel):
+    """Create a foundation template."""
+
+    operation: str = Field(default="create")
+    company: str = Field(..., min_length=1, max_length=140)
+    template_code: str = Field(..., min_length=1, max_length=140)
+    name: str = Field(..., min_length=1, max_length=255)
+    scene: str = Field(default="业务配置", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+
+
+class FoundationTemplateUpdateRequest(BaseModel):
+    """Update a foundation template."""
+
+    operation: str = Field(default="update")
+    company: str = Field(..., min_length=1, max_length=140)
+    template_code: Optional[str] = Field(default=None, min_length=1, max_length=140)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    scene: Optional[str] = Field(default=None, min_length=1, max_length=140)
+    status: Optional[str] = Field(default=None, min_length=1, max_length=16)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+
+
+class FoundationTemplateDeactivateRequest(BaseModel):
+    """Deactivate a foundation template."""
+
+    operation: str = Field(default="deactivate")
+    company: str = Field(..., min_length=1, max_length=140)
+    reason: str = Field(..., min_length=1, max_length=300)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+
+
+class FoundationTemplateNodeCreateRequest(BaseModel):
+    """Create a template node."""
+
+    operation: str = Field(default="create_node")
+    company: str = Field(..., min_length=1, max_length=140)
+    code: str = Field(..., min_length=1, max_length=140)
+    name: str = Field(..., min_length=1, max_length=255)
+    node_type: str = Field(..., min_length=1, max_length=100)
+    required: bool = False
+    sort_no: int = Field(default=10, ge=0)
+    owner: str = Field(default="业务", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+
+
+class FoundationTemplateNodeUpdateRequest(BaseModel):
+    """Update a template node."""
+
+    operation: str = Field(default="update_node")
+    company: str = Field(..., min_length=1, max_length=140)
+    code: Optional[str] = Field(default=None, min_length=1, max_length=140)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    node_type: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    required: Optional[bool] = None
+    status: Optional[str] = Field(default=None, min_length=1, max_length=16)
+    sort_no: Optional[int] = Field(default=None, ge=0)
+    owner: Optional[str] = Field(default=None, min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+
+
+class FoundationTemplateNodeDeactivateRequest(BaseModel):
+    """Deactivate a template node."""
+
+    operation: str = Field(default="deactivate_node")
+    company: str = Field(..., min_length=1, max_length=140)
+    reason: str = Field(default="停用节点", min_length=1, max_length=300)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+
+
 class BomMaterialProcessingItem(BaseModel):
     """Material-processing list row payload."""
 

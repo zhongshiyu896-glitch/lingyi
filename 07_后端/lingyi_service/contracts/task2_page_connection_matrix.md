@@ -7,7 +7,7 @@
 - 库存 / 财务 / 权限源采用 FastAPI 自建，不连接 ERPNext 9081。
 - 只把当前前端页面已声明且后端路由存在的 apiPath 标为 A 期真实接入。
 - readiness/stub 仅 dev 可用，不作为正式页面写接口。
-- 当前页面矩阵：共 57 页；真实后端可接 48 页；apiPath 未命中后端 0 页；待 B 期或产品契约 9 页。
+- 当前页面矩阵：共 57 页；真实后端可接 49 页；apiPath 未命中后端 0 页；待 B 期或产品契约 8 页。
 
 ## A 期已接真实后端页面
 
@@ -18,7 +18,8 @@
 | 基础资料 | 加工厂 | `/foundation/factory` | `/api/master-data/factories` | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest |
 | 基础资料 | 供应商 | `/foundation/supplier` | `/api/master-data/suppliers` | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest |
 | 基础资料 | 仓库管理 | `/foundation/warehouse` | `/api/master-data/warehouses` | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, WarehouseItem；WarehouseLocation: 仓库主数据增改停走 FastAPI MasterDataItem；仓库树子级/库位字段仍为 owner gap |
-| 基础资料 | 工艺要求模板 | `/foundation/workmanshipTemplate` | `/api/bom/process-requirement-templates` | BomProcessingTypeItem；WorkmanshipTemplate: 契约无 WorkmanshipTemplate schema；api模式只读绑定 /api/bom/process-requirement-templates，模板增改停待B期 |
+| 基础资料 | 工艺要求模板 | `/foundation/workmanshipTemplate` | `/api/bom/process-requirement-templates` | FoundationTemplateItem, FoundationTemplateNodeItem, FoundationTemplateCreateRequest, FoundationTemplateUpdateRequest, FoundationTemplateDeactivateRequest |
+| 基础资料 | 尺寸表模板 | `/foundation/sizeSpecTemplate` | `/api/bom/size-chart-templates` | FoundationTemplateItem, FoundationTemplateNodeItem, FoundationTemplateCreateRequest, FoundationTemplateUpdateRequest, FoundationTemplateDeactivateRequest |
 | 物料开发 | 面料 | `/material/materialFabric` | `/api/master-data/materials` | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomFabricItem；MaterialFabricVisualOnly: 物料主数据增改停走 FastAPI MasterDataItem payload；部位/幅宽/克重后端无字段，列位保留并显示 — |
 | 物料开发 | 辅料/包材 | `/material/materialAccessory` | `/api/master-data/materials` | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomAccessoriesPackagingItem；MaterialAccessoryVisualOnly: 物料主数据增改停走 FastAPI MasterDataItem payload；部位/幅宽/克重后端无字段，列位保留并显示 — |
 | 物料开发 | 物料图库 | `/material/materialGalleryList` | `/api/master-data/materials` | MasterDataItem, MasterDataCreateRequest, MasterDataUpdateRequest, MasterDataDeactivateRequest, BomMaterialGalleryItem；MaterialGalleryVisualOnly: 物料图库增改停走 FastAPI MasterDataItem payload；无真实图像文件时只展示 thumbnail_url 字段和静态缩略图入口 |
@@ -76,10 +77,9 @@
 | 基础资料 | 尺码排序 | `/foundation/sizeSort` | SizeSort: 候选 /api/bom/size-sortings 为 temporary_dev_only；A期不接桩，待B期补 SizeSort 真实字典表与接口 |
 | 基础资料 | 销售渠道 | `/foundation/distributionChannel` | DistributionChannel: 候选 /api/sales-inventory/sales-channels 为 temporary_dev_only；A期不接桩，待B期补 DistributionChannel 真实字典表与接口 |
 | 基础资料 | 出纳账户 | `/foundation/bankAccount` | BankAccount: 候选 /api/factory-statements/cashier-accounts 为 temporary_dev_only；A期不接桩，待B期补 BankAccount 真实财务账户表与接口 |
-| 基础资料 | 尺寸表模板 | `/foundation/sizeSpecTemplate` | SizeSpecTemplate: 候选 /api/bom/size-chart-templates 为 temporary_dev_only；A期不接桩，待B期补 SizeSpecTemplate 真实模板表与接口 |
 
 ## 闭环说明
 
 - A 期按现有页面推进：页面可点、接口真落库、失败显式报错。
-- B 期再补仍缺的专属页面或专属契约，例如部分字典、送货地址、结算方式、发票类型、销售渠道、出纳账户、尺寸表模板等。
+- B 期再补仍缺的专属页面或专属契约，例如部分字典、送货地址、结算方式、发票类型、销售渠道、出纳账户等。
 - 已接页面里的 field gap 只表示字段口径部分缺失，不代表 apiPath 不可用。

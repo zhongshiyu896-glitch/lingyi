@@ -677,7 +677,7 @@
       "class": "A",
       "method": "GET",
       "path": "/api/bom/process-requirement-templates",
-      "name": "list_bom_processing_types",
+      "name": "list_process_requirement_templates",
       "tags": [
         "bom"
       ],
@@ -685,11 +685,8 @@
       "request_params": {
         "path": [],
         "query": [
-          "item_code",
-          "process_type_name",
-          "process_name",
-          "subcontract_mode",
-          "pricing_mode",
+          "company",
+          "keyword",
           "status",
           "page",
           "page_size"
@@ -697,21 +694,21 @@
         "body": []
       },
       "response_fields": [
-        "process_type_code",
-        "process_type_name",
-        "process_name",
-        "sequence_no",
-        "subcontract_mode",
-        "pricing_mode",
-        "unit_rate",
+        "id",
+        "company",
+        "template_type",
+        "template_code",
+        "name",
+        "scene",
         "status",
-        "is_default"
+        "version",
+        "nodes"
       ],
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "candidate",
-      "risk_note": "真实业务只读接口候选",
+      "frontend_connect_status": "real_backend_route",
+      "risk_note": "真实基础资料模板接口；写操作已落库、审计、幂等",
       "duplicate_method_path_count": 1,
       "registered_order": 63
     },
@@ -937,35 +934,41 @@
       "registered_order": 16
     },
     {
-      "class": "B",
+      "class": "A",
       "method": "GET",
       "path": "/api/bom/size-chart-templates",
-      "name": "frontend_readiness_size_chart_templates",
+      "name": "list_size_chart_templates",
       "tags": [
-        "frontend_readiness"
+        "bom"
       ],
-      "endpoint_module": "app.routers.frontend_readiness",
+      "endpoint_module": "app.routers.bom",
       "request_params": {
         "path": [],
         "query": [
+          "company",
+          "keyword",
+          "status",
           "page",
           "page_size"
         ],
         "body": []
       },
       "response_fields": [
-        "dict_type",
-        "dict_code",
-        "dict_name",
+        "id",
+        "company",
+        "template_type",
+        "template_code",
+        "name",
+        "scene",
         "status",
-        "source",
-        "updated_at"
+        "version",
+        "nodes"
       ],
       "is_paginated": true,
       "requires_login": true,
       "is_real_write_db": false,
-      "frontend_connect_status": "temporary_dev_only",
-      "risk_note": "dev/test only; 生产环境必须关闭",
+      "frontend_connect_status": "real_backend_route",
+      "risk_note": "真实基础资料模板接口；写操作已落库、审计、幂等",
       "duplicate_method_path_count": 1,
       "registered_order": 20
     },

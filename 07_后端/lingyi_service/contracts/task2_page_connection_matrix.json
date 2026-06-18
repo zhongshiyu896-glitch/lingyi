@@ -8,20 +8,20 @@
     "contracts/backend_interface_asset_catalog.json"
   ],
   "backend_catalog_counts": {
-    "A": 185,
-    "B": 19,
+    "A": 186,
+    "B": 18,
     "C": 7,
     "D": 11
   },
   "page_matrix_counts": {
     "total_pages": 57,
-    "real_backend_route": 48,
+    "real_backend_route": 49,
     "dev_readiness_only": 0,
     "api_path_miss": 0,
-    "missing_api_path": 9,
-    "p1_existing_page_real_backend": 27,
-    "p1_existing_page_real_backend_partial": 21,
-    "p3_needs_product_contract_or_b_phase": 9
+    "missing_api_path": 8,
+    "p1_existing_page_real_backend": 29,
+    "p1_existing_page_real_backend_partial": 20,
+    "p3_needs_product_contract_or_b_phase": 8
   },
   "direct_connect_pages": [
     {
@@ -93,11 +93,27 @@
       "route": "/foundation/workmanshipTemplate",
       "api": "/api/bom/process-requirement-templates",
       "schemas": [
-        "BomProcessingTypeItem"
+        "FoundationTemplateItem",
+        "FoundationTemplateNodeItem",
+        "FoundationTemplateCreateRequest",
+        "FoundationTemplateUpdateRequest",
+        "FoundationTemplateDeactivateRequest"
       ],
-      "partial_gap": [
-        "WorkmanshipTemplate: 契约无 WorkmanshipTemplate schema；api模式只读绑定 /api/bom/process-requirement-templates，模板增改停待B期"
-      ]
+      "partial_gap": []
+    },
+    {
+      "module": "基础资料",
+      "page": "尺寸表模板",
+      "route": "/foundation/sizeSpecTemplate",
+      "api": "/api/bom/size-chart-templates",
+      "schemas": [
+        "FoundationTemplateItem",
+        "FoundationTemplateNodeItem",
+        "FoundationTemplateCreateRequest",
+        "FoundationTemplateUpdateRequest",
+        "FoundationTemplateDeactivateRequest"
+      ],
+      "partial_gap": []
     },
     {
       "module": "物料开发",
@@ -654,12 +670,6 @@
       "page": "出纳账户",
       "route": "/foundation/bankAccount",
       "gap": "BankAccount: 候选 /api/factory-statements/cashier-accounts 为 temporary_dev_only；A期不接桩，待B期补 BankAccount 真实财务账户表与接口"
-    },
-    {
-      "module": "基础资料",
-      "page": "尺寸表模板",
-      "route": "/foundation/sizeSpecTemplate",
-      "gap": "SizeSpecTemplate: 候选 /api/bom/size-chart-templates 为 temporary_dev_only；A期不接桩，待B期补 SizeSpecTemplate 真实模板表与接口"
     }
   ],
   "architecture_decisions": [

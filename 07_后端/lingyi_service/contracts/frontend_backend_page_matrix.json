@@ -4,18 +4,18 @@
   "frontend_readonly": true,
   "route_validation": {
     "method": "FastAPI app route introspection",
-    "api_path_count": 48,
+    "api_path_count": 49,
     "api_path_miss": 0
   },
   "counts": {
     "total_pages": 57,
-    "real_backend_route": 48,
+    "real_backend_route": 49,
     "dev_readiness_only": 0,
     "api_path_miss": 0,
-    "missing_api_path": 9,
-    "p1_existing_page_real_backend": 27,
-    "p1_existing_page_real_backend_partial": 21,
-    "p3_needs_product_contract_or_b_phase": 9
+    "missing_api_path": 8,
+    "p1_existing_page_real_backend": 29,
+    "p1_existing_page_real_backend_partial": 20,
+    "p3_needs_product_contract_or_b_phase": 8
   },
   "pages": [
     {
@@ -250,12 +250,14 @@
       "backend_status": "real_backend_route",
       "backend_class": "A",
       "contract_schemas": [
-        "BomProcessingTypeItem"
+        "FoundationTemplateItem",
+        "FoundationTemplateNodeItem",
+        "FoundationTemplateCreateRequest",
+        "FoundationTemplateUpdateRequest",
+        "FoundationTemplateDeactivateRequest"
       ],
-      "field_gaps": [
-        "WorkmanshipTemplate: 契约无 WorkmanshipTemplate schema；api模式只读绑定 /api/bom/process-requirement-templates，模板增改停待B期"
-      ],
-      "priority": "P1_existing_page_real_backend_partial"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 15,
@@ -263,15 +265,19 @@
       "page": "尺寸表模板",
       "page_route": "/foundation/sizeSpecTemplate",
       "template": "config_list",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
-      "contract_schemas": [],
-      "field_gaps": [
-        "SizeSpecTemplate: 候选 /api/bom/size-chart-templates 为 temporary_dev_only；A期不接桩，待B期补 SizeSpecTemplate 真实模板表与接口"
+      "data_kind": "bom",
+      "api_path": "/api/bom/size-chart-templates",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "FoundationTemplateItem",
+        "FoundationTemplateNodeItem",
+        "FoundationTemplateCreateRequest",
+        "FoundationTemplateUpdateRequest",
+        "FoundationTemplateDeactivateRequest"
       ],
-      "priority": "P3_needs_product_contract_or_B_phase"
+      "field_gaps": [],
+      "priority": "P1_existing_page_real_backend"
     },
     {
       "index": 37,

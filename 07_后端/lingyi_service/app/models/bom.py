@@ -130,3 +130,91 @@ class LyApparelBomWriteOperation(Base):
     response_json = Column(Text, nullable=False)
     created_by = Column(String(140), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class LyFoundationTemplate(Base):
+    """Foundation template header for workmanship and size spec templates."""
+
+    __tablename__ = "ly_foundation_template"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_foundation_template"),
+        Index("uk_ly_foundation_template_company_type_code", "company", "template_type", "template_code", unique=True),
+        Index("idx_ly_foundation_template_type_status", "template_type", "status"),
+        CheckConstraint("template_type IN ('workmanship','size_spec')", name="ck_ly_foundation_template_type"),
+        CheckConstraint("status IN ('active','inactive')", name="ck_ly_foundation_template_status"),
+        {"schema": "ly_schema", "comment": "基础资料模板主表"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    company = Column(String(140), nullable=False, default="默认公司", server_default="默认公司")
+    template_type = Column(String(32), nullable=False)
+    template_code = Column(String(140), nullable=False)
+    name = Column(String(255), nullable=False)
+    scene = Column(String(140), nullable=False, default="业务配置", server_default="业务配置")
+    status = Column(String(16), nullable=False, default="active", server_default="active")
+    version = Column(Integer, nullable=False, default=1, server_default="1")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    deactivated_by = Column(String(140), nullable=True)
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
+    deactivate_reason = Column(Text, nullable=True)
+
+    nodes = relationship("LyFoundationTemplateNode", back_populates="template", cascade="all, delete-orphan")
+
+
+class LyFoundationTemplateNode(Base):
+    """Foundation template node rows."""
+
+    __tablename__ = "ly_foundation_template_node"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_foundation_template_node"),
+        Index("uk_ly_foundation_template_node_code", "template_id", "code", unique=True),
+        Index("idx_ly_foundation_template_node_template_sort", "template_id", "sort_no"),
+        CheckConstraint("status IN ('active','inactive')", name="ck_ly_foundation_template_node_status"),
+        {"schema": "ly_schema", "comment": "基础资料模板节点"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    template_id = Column(BigInteger, ForeignKey("ly_schema.ly_foundation_template.id"), nullable=False)
+    code = Column(String(140), nullable=False)
+    name = Column(String(255), nullable=False)
+    node_type = Column(String(100), nullable=False)
+    required = Column(Boolean, nullable=False, default=False, server_default="false")
+    status = Column(String(16), nullable=False, default="active", server_default="active")
+    sort_no = Column(Integer, nullable=False, default=10, server_default="10")
+    owner = Column(String(140), nullable=False, default="业务", server_default="业务")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    template = relationship("LyFoundationTemplate", back_populates="nodes")
+
+
+class LyFoundationTemplateIdempotency(Base):
+    """Idempotency ledger for foundation template mutations."""
+
+    __tablename__ = "ly_foundation_template_idempotency"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_foundation_template_idempotency"),
+        Index("uk_ly_foundation_template_idem_key", "entity_type", "company", "template_type", "idempotency_key", unique=True),
+        CheckConstraint("entity_type IN ('template','node')", name="ck_ly_foundation_template_idem_entity"),
+        CheckConstraint(
+            "operation IN ('create','update','deactivate','create_node','update_node','deactivate_node')",
+            name="ck_ly_foundation_template_idem_operation",
+        ),
+        {"schema": "ly_schema", "comment": "基础资料模板写操作幂等账本"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    entity_type = Column(String(32), nullable=False)
+    company = Column(String(140), nullable=False)
+    template_type = Column(String(32), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    operation = Column(String(32), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    record_id = Column(BigInteger, nullable=False)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

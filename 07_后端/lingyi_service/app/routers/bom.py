@@ -75,9 +75,18 @@ from app.schemas.bom import BomListQuery
 from app.schemas.bom import BomSetDefaultData
 from app.schemas.bom import BomUpdateData
 from app.schemas.bom import BomUpdateRequest
+from app.schemas.bom import FoundationTemplateCreateRequest
+from app.schemas.bom import FoundationTemplateDeactivateRequest
+from app.schemas.bom import FoundationTemplateListData
+from app.schemas.bom import FoundationTemplateNodeCreateRequest
+from app.schemas.bom import FoundationTemplateNodeDeactivateRequest
+from app.schemas.bom import FoundationTemplateNodeUpdateRequest
+from app.schemas.bom import FoundationTemplateUpdateRequest
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
 from app.services.bom_service import BomService
+from app.services.foundation_template_service import FoundationTemplateMutationResult
+from app.services.foundation_template_service import FoundationTemplateService
 from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/bom", tags=["bom"])
@@ -85,6 +94,12 @@ logger = logging.getLogger(__name__)
 
 BOM_ACTIVATE_ACTION = "bom:activate"
 BOM_EXPLODE_ACTION = "bom:explode"
+BOM_TEMPLATE_CREATE_ACTION = "bom:template_create"
+BOM_TEMPLATE_UPDATE_ACTION = "bom:template_update"
+BOM_TEMPLATE_DEACTIVATE_ACTION = "bom:template_deactivate"
+BOM_TEMPLATE_NODE_CREATE_ACTION = "bom:template_node_create"
+BOM_TEMPLATE_NODE_UPDATE_ACTION = "bom:template_node_update"
+BOM_TEMPLATE_NODE_DEACTIVATE_ACTION = "bom:template_node_deactivate"
 BOM_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 BOM_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-BOM-\d{8}-\d{3})")
 BOM_LOCAL_REQUEST_PATTERN = re.compile(
@@ -810,8 +825,769 @@ def list_bom_purchase_orders(
         return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
 
 
-@router.get("/style-bom-process")
+def _template_resource_type(template_type: str) -> str:
+    return "workmanship_template" if template_type == "workmanship" else "size_spec_template"
+
+
+def _commit_template_success(
+    *,
+    session: Session,
+    request: Request,
+    current_user: CurrentUser,
+    action: str,
+    template_type: str,
+    result: FoundationTemplateMutationResult,
+) -> None:
+    audit = AuditService(session=session)
+    audit.record_success(
+        module="bom",
+        action=action,
+        operator=current_user.username,
+        operator_roles=current_user.roles,
+        resource_type=_template_resource_type(template_type),
+        resource_id=int(result.item.id),
+        resource_no=getattr(result.item, "template_code", None) or getattr(result.item, "code", None),
+        before_data=result.before,
+        after_data=result.after,
+        context=AuditContext.from_request(request),
+    )
+    _commit_or_raise_write_error(session=session, request=request, action=action)
+
+
+def _record_template_failure(
+    *,
+    session: Session,
+    request: Request,
+    current_user: CurrentUser,
+    action: str,
+    template_type: str,
+    resource_id: int | None,
+    resource_no: str | None,
+    error_code: str,
+) -> None:
+    try:
+        session.rollback()
+    except Exception:
+        pass
+    audit = AuditService(session=session)
+    audit.record_failure(
+        module="bom",
+        action=action,
+        operator=current_user.username,
+        operator_roles=current_user.roles,
+        resource_type=_template_resource_type(template_type),
+        resource_id=resource_id,
+        resource_no=resource_no,
+        before_data=None,
+        after_data=None,
+        error_code=error_code,
+        context=AuditContext.from_request(request),
+    )
+    _commit_or_raise_write_error(session=session, request=request, action=action)
+
+
+def _require_template_action(
+    *,
+    session: Session,
+    request: Request,
+    current_user: CurrentUser,
+    action: str,
+    template_type: str,
+    resource_id: int | None = None,
+) -> None:
+    PermissionService(session=session).require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="bom",
+        resource_type=_template_resource_type(template_type),
+        resource_id=resource_id,
+    )
+
+
+def _list_foundation_templates(
+    *,
+    request: Request,
+    template_type: str,
+    company: str | None,
+    keyword: str | None,
+    status: str | None,
+    page: int,
+    page_size: int,
+    current_user: CurrentUser,
+    session: Session,
+):
+    _require_template_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=BOM_READ,
+        template_type=template_type,
+    )
+    try:
+        data: FoundationTemplateListData = FoundationTemplateService(session).list_templates(
+            template_type=template_type,
+            company=company,
+            keyword=keyword,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+def _create_foundation_template(
+    *,
+    request: Request,
+    template_type: str,
+    payload: FoundationTemplateCreateRequest,
+    current_user: CurrentUser,
+    session: Session,
+):
+    action = BOM_TEMPLATE_CREATE_ACTION
+    _require_template_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=BOM_UPDATE,
+        template_type=template_type,
+    )
+    try:
+        result = FoundationTemplateService(session).create_template(
+            template_type=template_type,
+            payload=payload,
+            actor=current_user.username,
+        )
+        _commit_template_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            result=result,
+        )
+        return JSONResponse(status_code=201, content=_ok(result.item.model_dump()))
+    except AuditWriteFailed as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+    except AppException as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=None,
+            resource_no=payload.template_code,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=None,
+            resource_no=payload.template_code,
+            error_code=BOM_INTERNAL_ERROR,
+        )
+        return _app_err(_unknown_to_internal_error(request, action, exc))
+
+
+def _update_foundation_template(
+    *,
+    request: Request,
+    template_type: str,
+    template_id: int,
+    payload: FoundationTemplateUpdateRequest,
+    current_user: CurrentUser,
+    session: Session,
+):
+    action = BOM_TEMPLATE_UPDATE_ACTION
+    _require_template_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=BOM_UPDATE,
+        template_type=template_type,
+        resource_id=template_id,
+    )
+    try:
+        result = FoundationTemplateService(session).update_template(
+            template_type=template_type,
+            template_id=template_id,
+            payload=payload,
+            actor=current_user.username,
+        )
+        _commit_template_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            result=result,
+        )
+        return _ok(result.item.model_dump())
+    except AuditWriteFailed as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+    except AppException as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=template_id,
+            resource_no=payload.template_code,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=template_id,
+            resource_no=payload.template_code,
+            error_code=BOM_INTERNAL_ERROR,
+        )
+        return _app_err(_unknown_to_internal_error(request, action, exc))
+
+
+def _deactivate_foundation_template(
+    *,
+    request: Request,
+    template_type: str,
+    template_id: int,
+    payload: FoundationTemplateDeactivateRequest,
+    current_user: CurrentUser,
+    session: Session,
+):
+    action = BOM_TEMPLATE_DEACTIVATE_ACTION
+    _require_template_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=BOM_DEACTIVATE,
+        template_type=template_type,
+        resource_id=template_id,
+    )
+    try:
+        result = FoundationTemplateService(session).deactivate_template(
+            template_type=template_type,
+            template_id=template_id,
+            payload=payload,
+            actor=current_user.username,
+        )
+        _commit_template_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            result=result,
+        )
+        return _ok(result.item.model_dump())
+    except AuditWriteFailed as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+    except AppException as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=template_id,
+            resource_no=None,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=template_id,
+            resource_no=None,
+            error_code=BOM_INTERNAL_ERROR,
+        )
+        return _app_err(_unknown_to_internal_error(request, action, exc))
+
+
+def _create_foundation_template_node(
+    *,
+    request: Request,
+    template_type: str,
+    template_id: int,
+    payload: FoundationTemplateNodeCreateRequest,
+    current_user: CurrentUser,
+    session: Session,
+):
+    action = BOM_TEMPLATE_NODE_CREATE_ACTION
+    _require_template_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=BOM_UPDATE,
+        template_type=template_type,
+        resource_id=template_id,
+    )
+    try:
+        result = FoundationTemplateService(session).create_node(
+            template_type=template_type,
+            template_id=template_id,
+            payload=payload,
+            actor=current_user.username,
+        )
+        _commit_template_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            result=result,
+        )
+        return JSONResponse(status_code=201, content=_ok(result.item.model_dump()))
+    except AuditWriteFailed as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+    except AppException as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=template_id,
+            resource_no=payload.code,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=template_id,
+            resource_no=payload.code,
+            error_code=BOM_INTERNAL_ERROR,
+        )
+        return _app_err(_unknown_to_internal_error(request, action, exc))
+
+
+def _update_foundation_template_node(
+    *,
+    request: Request,
+    template_type: str,
+    template_id: int,
+    node_id: int,
+    payload: FoundationTemplateNodeUpdateRequest,
+    current_user: CurrentUser,
+    session: Session,
+):
+    action = BOM_TEMPLATE_NODE_UPDATE_ACTION
+    _require_template_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=BOM_UPDATE,
+        template_type=template_type,
+        resource_id=template_id,
+    )
+    try:
+        result = FoundationTemplateService(session).update_node(
+            template_type=template_type,
+            template_id=template_id,
+            node_id=node_id,
+            payload=payload,
+            actor=current_user.username,
+        )
+        _commit_template_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            result=result,
+        )
+        return _ok(result.item.model_dump())
+    except AuditWriteFailed as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+    except AppException as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=node_id,
+            resource_no=payload.code,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=node_id,
+            resource_no=payload.code,
+            error_code=BOM_INTERNAL_ERROR,
+        )
+        return _app_err(_unknown_to_internal_error(request, action, exc))
+
+
+def _deactivate_foundation_template_node(
+    *,
+    request: Request,
+    template_type: str,
+    template_id: int,
+    node_id: int,
+    payload: FoundationTemplateNodeDeactivateRequest,
+    current_user: CurrentUser,
+    session: Session,
+):
+    action = BOM_TEMPLATE_NODE_DEACTIVATE_ACTION
+    _require_template_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=BOM_DEACTIVATE,
+        template_type=template_type,
+        resource_id=template_id,
+    )
+    try:
+        result = FoundationTemplateService(session).deactivate_node(
+            template_type=template_type,
+            template_id=template_id,
+            node_id=node_id,
+            payload=payload,
+            actor=current_user.username,
+        )
+        _commit_template_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            result=result,
+        )
+        return _ok(result.item.model_dump())
+    except AuditWriteFailed as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+    except AppException as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=node_id,
+            resource_no=None,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _record_template_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            template_type=template_type,
+            resource_id=node_id,
+            resource_no=None,
+            error_code=BOM_INTERNAL_ERROR,
+        )
+        return _app_err(_unknown_to_internal_error(request, action, exc))
+
+
 @router.get("/process-requirement-templates")
+def list_process_requirement_templates(
+    request: Request,
+    company: str | None = None,
+    keyword: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _list_foundation_templates(
+        request=request,
+        template_type="workmanship",
+        company=company,
+        keyword=keyword,
+        status=status,
+        page=page,
+        page_size=page_size,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.post("/process-requirement-templates")
+def create_process_requirement_template(
+    payload: FoundationTemplateCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _create_foundation_template(
+        request=request,
+        template_type="workmanship",
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.patch("/process-requirement-templates/{template_id}")
+def update_process_requirement_template(
+    template_id: int,
+    payload: FoundationTemplateUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _update_foundation_template(
+        request=request,
+        template_type="workmanship",
+        template_id=template_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.post("/process-requirement-templates/{template_id}/deactivate")
+def deactivate_process_requirement_template(
+    template_id: int,
+    payload: FoundationTemplateDeactivateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _deactivate_foundation_template(
+        request=request,
+        template_type="workmanship",
+        template_id=template_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.post("/process-requirement-templates/{template_id}/nodes")
+def create_process_requirement_template_node(
+    template_id: int,
+    payload: FoundationTemplateNodeCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _create_foundation_template_node(
+        request=request,
+        template_type="workmanship",
+        template_id=template_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.patch("/process-requirement-templates/{template_id}/nodes/{node_id}")
+def update_process_requirement_template_node(
+    template_id: int,
+    node_id: int,
+    payload: FoundationTemplateNodeUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _update_foundation_template_node(
+        request=request,
+        template_type="workmanship",
+        template_id=template_id,
+        node_id=node_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.post("/process-requirement-templates/{template_id}/nodes/{node_id}/deactivate")
+def deactivate_process_requirement_template_node(
+    template_id: int,
+    node_id: int,
+    payload: FoundationTemplateNodeDeactivateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _deactivate_foundation_template_node(
+        request=request,
+        template_type="workmanship",
+        template_id=template_id,
+        node_id=node_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.get("/size-chart-templates")
+def list_size_chart_templates(
+    request: Request,
+    company: str | None = None,
+    keyword: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _list_foundation_templates(
+        request=request,
+        template_type="size_spec",
+        company=company,
+        keyword=keyword,
+        status=status,
+        page=page,
+        page_size=page_size,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.post("/size-chart-templates")
+def create_size_chart_template(
+    payload: FoundationTemplateCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _create_foundation_template(
+        request=request,
+        template_type="size_spec",
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.patch("/size-chart-templates/{template_id}")
+def update_size_chart_template(
+    template_id: int,
+    payload: FoundationTemplateUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _update_foundation_template(
+        request=request,
+        template_type="size_spec",
+        template_id=template_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.post("/size-chart-templates/{template_id}/deactivate")
+def deactivate_size_chart_template(
+    template_id: int,
+    payload: FoundationTemplateDeactivateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _deactivate_foundation_template(
+        request=request,
+        template_type="size_spec",
+        template_id=template_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.post("/size-chart-templates/{template_id}/nodes")
+def create_size_chart_template_node(
+    template_id: int,
+    payload: FoundationTemplateNodeCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _create_foundation_template_node(
+        request=request,
+        template_type="size_spec",
+        template_id=template_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.patch("/size-chart-templates/{template_id}/nodes/{node_id}")
+def update_size_chart_template_node(
+    template_id: int,
+    node_id: int,
+    payload: FoundationTemplateNodeUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _update_foundation_template_node(
+        request=request,
+        template_type="size_spec",
+        template_id=template_id,
+        node_id=node_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.post("/size-chart-templates/{template_id}/nodes/{node_id}/deactivate")
+def deactivate_size_chart_template_node(
+    template_id: int,
+    node_id: int,
+    payload: FoundationTemplateNodeDeactivateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _deactivate_foundation_template_node(
+        request=request,
+        template_type="size_spec",
+        template_id=template_id,
+        node_id=node_id,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+    )
+
+
+@router.get("/style-bom-process")
 @router.get("/processing-types")
 def list_bom_processing_types(
     request: Request,

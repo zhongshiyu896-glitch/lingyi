@@ -32,6 +32,9 @@ from app.data.frontend_readiness_seed import WORK_ORDER_TRAIL_SEED  # noqa: E402
 from app.models.audit import Base as AuditBase  # noqa: E402
 from app.models.audit import LyOperationAuditLog  # noqa: E402
 from app.models.audit import LySecurityAuditLog  # noqa: E402
+from app.models.bom import Base as BomBase  # noqa: E402
+from app.models.bom import LyFoundationTemplate  # noqa: E402
+from app.models.bom import LyFoundationTemplateNode  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.factory_statement import LyFactoryStatement  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
@@ -126,7 +129,6 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/bom/size-sortings",
         "/api/sales-inventory/sales-channels",
         "/api/factory-statements/cashier-accounts",
-        "/api/bom/size-chart-templates",
         "/api/bom/sample-orders",
     ]
     write_flow_paths = [
@@ -150,12 +152,22 @@ class FrontendReadinessTest(unittest.TestCase):
         "/api/bom/styles": {"bom_no", "item_code", "version_no", "is_default", "status"},
         "/api/bom/style-bom-process": {"bom_no", "item_code", "process_name", "sequence_no", "unit_rate"},
         "/api/bom/process-requirement-templates": {
-            "process_type_code",
-            "process_type_name",
-            "process_name",
-            "sequence_no",
-            "unit_rate",
+            "id",
+            "company",
+            "template_type",
+            "template_code",
+            "name",
             "status",
+            "nodes",
+        },
+        "/api/bom/size-chart-templates": {
+            "id",
+            "company",
+            "template_type",
+            "template_code",
+            "name",
+            "status",
+            "nodes",
         },
         "/api/bom/purchase-orders": {"purchase_no", "supplier_name", "material_item_code", "total_amount"},
         "/api/production/plans": {"plan_no", "sales_order", "item_code", "planned_qty"},
@@ -242,6 +254,7 @@ class FrontendReadinessTest(unittest.TestCase):
             execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
+        BomBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
         FactoryStatementBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
@@ -313,6 +326,8 @@ class FrontendReadinessTest(unittest.TestCase):
             session.query(LyMaterialPurchaseOrder).delete()
             session.query(LyStyleProfitSnapshot).delete()
             session.query(LyQualityInspection).delete()
+            session.query(LyFoundationTemplateNode).delete()
+            session.query(LyFoundationTemplate).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.add(
@@ -804,6 +819,64 @@ class FrontendReadinessTest(unittest.TestCase):
                     created_by=style_seed["created_by"],
                     created_at=style_seed["created_at"],
                 )
+            )
+            session.add_all(
+                [
+                    LyFoundationTemplate(
+                        id=1,
+                        company=DEFAULT_COMPANY,
+                        template_type="workmanship",
+                        template_code="FR-WORKMANSHIP-001",
+                        name="Frontend Readiness Workmanship",
+                        scene="款式资料",
+                        status="active",
+                        version=1,
+                        created_by="frontend.readiness",
+                        updated_by="frontend.readiness",
+                    ),
+                    LyFoundationTemplate(
+                        id=2,
+                        company=DEFAULT_COMPANY,
+                        template_type="size_spec",
+                        template_code="FR-SIZE-SPEC-001",
+                        name="Frontend Readiness Size Spec",
+                        scene="款式资料",
+                        status="active",
+                        version=1,
+                        created_by="frontend.readiness",
+                        updated_by="frontend.readiness",
+                    ),
+                ]
+            )
+            session.add_all(
+                [
+                    LyFoundationTemplateNode(
+                        id=1,
+                        template_id=1,
+                        code="FR-WORKMANSHIP-NODE-001",
+                        name="缝制要求",
+                        node_type="工艺节点",
+                        required=True,
+                        status="active",
+                        sort_no=10,
+                        owner="工艺",
+                        created_by="frontend.readiness",
+                        updated_by="frontend.readiness",
+                    ),
+                    LyFoundationTemplateNode(
+                        id=2,
+                        template_id=2,
+                        code="FR-SIZE-SPEC-NODE-001",
+                        name="胸围",
+                        node_type="尺寸点",
+                        required=True,
+                        status="active",
+                        sort_no=10,
+                        owner="版房",
+                        created_by="frontend.readiness",
+                        updated_by="frontend.readiness",
+                    ),
+                ]
             )
             session.commit()
 

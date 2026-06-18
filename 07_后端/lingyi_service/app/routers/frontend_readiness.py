@@ -41,7 +41,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
     "/api/factory-statements/expense-types": "expense_types",
     "/api/bom/size-sortings": "size_sortings",
     "/api/factory-statements/cashier-accounts": "cashier_accounts",
-    "/api/bom/size-chart-templates": "size_chart_templates",
     "/api/bom/sample-orders": "sample_orders",
 }
 
