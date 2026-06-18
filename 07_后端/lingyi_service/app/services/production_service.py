@@ -2524,11 +2524,18 @@ class ProductionService:
             uom = str(getattr(row, "uom", None) or "米").strip() or "米"
             availability_key = (str(plan.company), warehouse, material_item_code)
             if availability_key not in available_budget:
-                available_budget[availability_key] = self._local_material_stock_balance(
+                stock_balance = self._local_material_stock_balance(
                     company=str(plan.company),
                     item_code=material_item_code,
                     warehouse=warehouse,
                 )
+                reserved_qty = self._reserved_material_stock_for_open_plans(
+                    company=str(plan.company),
+                    item_code=material_item_code,
+                    warehouse=warehouse,
+                    exclude_plan_id=int(plan.id),
+                )
+                available_budget[availability_key] = max(stock_balance - reserved_qty, Decimal("0"))
             available_qty = min(required_qty, max(available_budget[availability_key], Decimal("0")))
             available_budget[availability_key] -= available_qty
             shortage_qty = max(Decimal("0"), required_qty - available_qty)
@@ -3323,6 +3330,38 @@ class ProductionService:
             if str(row.company) == company and str(row.warehouse) == warehouse and str(row.item_code) == item_code:
                 return Decimal(str(row.actual_qty or 0))
         return Decimal("0")
+
+    def _reserved_material_stock_for_open_plans(
+        self,
+        *,
+        company: str,
+        item_code: str,
+        warehouse: str,
+        exclude_plan_id: int,
+    ) -> Decimal:
+        if not self._has_sqlite_tables({LyProductionPlan.__tablename__, LyProductionPlanMaterial.__tablename__}):
+            return Decimal("0")
+        try:
+            reserved_qty = (
+                self.session.query(func.coalesce(func.sum(LyProductionPlanMaterial.available_qty), 0))
+                .join(LyProductionPlan, LyProductionPlan.id == LyProductionPlanMaterial.plan_id)
+                .filter(
+                    LyProductionPlan.company == company,
+                    LyProductionPlan.id != int(exclude_plan_id),
+                    LyProductionPlan.status.notin_(("cancelled", "material_issued")),
+                    LyProductionPlanMaterial.material_item_code == item_code,
+                    LyProductionPlanMaterial.warehouse == warehouse,
+                )
+                .scalar()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_missing_table_error(exc, LyProductionPlanMaterial.__tablename__) or self._is_missing_table_error(
+                exc,
+                LyProductionPlan.__tablename__,
+            ):
+                return Decimal("0")
+            raise DatabaseReadFailed() from exc
+        return Decimal(str(reserved_qty or 0)).quantize(Decimal("0.000001"))
 
     def _bom_uom_for_snapshot(self, *, snapshot: LyProductionPlanMaterial) -> str:
         snapshot_uom = str(getattr(snapshot, "uom", None) or "").strip()
