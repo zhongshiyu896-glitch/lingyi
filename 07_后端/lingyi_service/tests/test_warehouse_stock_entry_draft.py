@@ -169,6 +169,14 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         }
 
     @classmethod
+    def _material_issue_payload(cls, *, qty: str = "5") -> dict:
+        payload = cls._payload(qty=qty)
+        payload["purpose"] = "Material Issue"
+        payload["target_warehouse"] = None
+        payload["items"][0]["target_warehouse"] = None
+        return payload
+
+    @classmethod
     def _request_id_from_payload(cls, payload: dict, *, operation: str | None = None, status_action: str | None = None) -> str:
         return cls._request_id(
             operation=operation or str(payload["operation"]),
@@ -252,6 +260,86 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
                 .one()
             )
             self.assertEqual(str(outbox.status), "in_pending")
+
+    def test_create_material_issue_persists_item_outbox_payload_and_audit(self) -> None:
+        payload = self._material_issue_payload(qty="7")
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        body = response.json()["data"]
+        draft_id = int(body["id"])
+        self.assertEqual(body["purpose"], "Material Issue")
+        self.assertEqual(body["source_warehouse"], self.WAREHOUSE)
+        self.assertIsNone(body["target_warehouse"])
+        self.assertEqual(body["items"][0]["item_code"], self.ITEM_CODE)
+        self.assertEqual(Decimal(str(body["items"][0]["qty"])), Decimal("7"))
+        self.assertEqual(body["items"][0]["source_warehouse"], self.WAREHOUSE)
+        self.assertIsNone(body["items"][0]["target_warehouse"])
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 1)
+            self.assertEqual(session.query(LyWarehouseStockEntryDraftItem).count(), 1)
+            item = session.query(LyWarehouseStockEntryDraftItem).one()
+            self.assertEqual(int(item.draft_id), draft_id)
+            self.assertEqual(str(item.item_code), self.ITEM_CODE)
+            self.assertEqual(Decimal(str(item.qty)), Decimal("7"))
+            self.assertEqual(str(item.source_warehouse), self.WAREHOUSE)
+            self.assertIsNone(item.target_warehouse)
+
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).filter_by(draft_id=draft_id).one()
+            self.assertEqual(outbox.payload["purpose"], "Material Issue")
+            self.assertEqual(outbox.payload["source_warehouse"], self.WAREHOUSE)
+            self.assertIsNone(outbox.payload["target_warehouse"])
+            self.assertEqual(outbox.payload["items"][0]["item_code"], self.ITEM_CODE)
+            self.assertEqual(Decimal(str(outbox.payload["items"][0]["qty"])), Decimal("7"))
+            self.assertEqual(outbox.payload["items"][0]["source_warehouse"], self.WAREHOUSE)
+            self.assertIsNone(outbox.payload["items"][0]["target_warehouse"])
+
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:stock_entry_draft",
+                    LyOperationAuditLog.result == "success",
+                )
+                .one()
+            )
+            self.assertEqual(int(audit.resource_id), draft_id)
+            self.assertEqual(audit.after_data["purpose"], "Material Issue")
+            self.assertEqual(audit.after_data["source_warehouse"], self.WAREHOUSE)
+            self.assertIsNone(audit.after_data["target_warehouse"])
+
+    def test_create_material_issue_idempotent_replay_same_payload_no_duplicate_rows(self) -> None:
+        payload = self._material_issue_payload()
+        headers = self._headers(
+            "warehouse:stock_entry_draft,warehouse:read",
+            request_id=self._request_id_from_payload(payload),
+        )
+        first = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=headers,
+            json=payload,
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+
+        second = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=headers,
+            json=payload,
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+        self.assertEqual(second.json()["data"]["id"], first.json()["data"]["id"])
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 1)
+            self.assertEqual(session.query(LyWarehouseStockEntryDraftItem).count(), 1)
+            self.assertEqual(session.query(LyWarehouseStockEntryOutboxEvent).count(), 1)
 
     def test_replay_with_different_payload_returns_409(self) -> None:
         first_payload = self._payload(qty="5")
