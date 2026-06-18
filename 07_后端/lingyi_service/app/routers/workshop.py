@@ -26,6 +26,7 @@ from app.core.auth import get_current_user
 from app.core.auth import is_internal_worker_api_enabled
 from app.core.config import workshop_dry_run_audit_required
 from app.core.config import workshop_enable_forbidden_diagnostics
+from app.core.config import workshop_enable_job_card_worker_sync
 from app.core.config import workshop_enable_worker_dry_run
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import DATABASE_WRITE_FAILED
@@ -1740,6 +1741,22 @@ def run_job_card_sync_once(
                 WORKSHOP_DRY_RUN_DISABLED,
                 "生产环境未开启内部 Worker dry-run",
                 status_code=status_of(WORKSHOP_DRY_RUN_DISABLED),
+            )
+        if not dry_run and not workshop_enable_job_card_worker_sync():
+            permission_service.record_security_denial(
+                request_obj=request,
+                current_user=current_user,
+                action=action,
+                resource_type="JobCardSyncWorker",
+                resource_no=None,
+                deny_reason="车间 Job Card ERP 同步未启用",
+                event_type=INTERNAL_API_DISABLED,
+                module="workshop",
+            )
+            return _err(
+                INTERNAL_API_DISABLED,
+                "车间 Job Card ERP 同步未启用",
+                status_code=status_of(INTERNAL_API_DISABLED),
             )
         try:
             worker_policy = policy_service.get_worker_policy(current_user=current_user)

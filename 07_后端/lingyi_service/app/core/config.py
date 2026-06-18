@@ -50,6 +50,30 @@ def workshop_enable_worker_dry_run() -> bool:
     return _env_flag("WORKSHOP_ENABLE_WORKER_DRY_RUN", default=True)
 
 
+def production_enable_work_order_worker_sync() -> bool:
+    """Whether production Work Order worker may execute non-dry-run ERP sync."""
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if app_env == "production":
+        return _env_flag("PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC", default=False)
+    return _env_flag("PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC", default=True)
+
+
+def warehouse_enable_stock_entry_worker_sync() -> bool:
+    """Whether warehouse Stock Entry worker may execute non-dry-run ERP sync."""
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if app_env == "production":
+        return _env_flag("WAREHOUSE_ENABLE_STOCK_ENTRY_WORKER_SYNC", default=False)
+    return _env_flag("WAREHOUSE_ENABLE_STOCK_ENTRY_WORKER_SYNC", default=True)
+
+
+def workshop_enable_job_card_worker_sync() -> bool:
+    """Whether workshop Job Card worker may execute non-dry-run ERP sync."""
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if app_env == "production":
+        return _env_flag("WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC", default=False)
+    return _env_flag("WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC", default=True)
+
+
 def workshop_dry_run_audit_required() -> bool:
     """Whether dry-run path must write operation audit.
 

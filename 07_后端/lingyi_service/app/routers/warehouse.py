@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
 from app.core.auth import is_internal_worker_api_enabled
+from app.core.config import warehouse_enable_stock_entry_worker_sync
 from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import RESOURCE_ACCESS_DENIED
@@ -3168,6 +3169,21 @@ def run_warehouse_stock_entry_sync_once(
         module="warehouse",
         resource_type="WAREHOUSESTOCKENTRYWORKER",
     )
+    if not payload.dry_run and not warehouse_enable_stock_entry_worker_sync():
+        permission_service.record_security_denial(
+            request_obj=request,
+            current_user=current_user,
+            action=action,
+            resource_type="warehouse_stock_entry_worker",
+            resource_no="run-once",
+            deny_reason="仓库 Stock Entry ERP 同步未启用",
+            event_type=INTERNAL_API_DISABLED,
+            module="warehouse",
+        )
+        raise HTTPException(
+            status_code=status_of(INTERNAL_API_DISABLED),
+            detail={"code": INTERNAL_API_DISABLED, "message": "仓库 Stock Entry ERP 同步未启用", "data": None},
+        )
 
     try:
         data = _write_service(session).run_stock_entry_outbox_once(

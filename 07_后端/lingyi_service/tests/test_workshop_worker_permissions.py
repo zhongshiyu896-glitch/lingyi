@@ -94,10 +94,12 @@ class WorkshopWorkerPermissionTest(unittest.TestCase):
 
     def setUp(self) -> None:
         os.environ["APP_ENV"] = "test"
+        os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["ENABLE_INTERNAL_WORKER_API"] = "true"
         os.environ["WORKSHOP_ENABLE_WORKER_DRY_RUN"] = "true"
         os.environ["WORKSHOP_DRY_RUN_AUDIT_REQUIRED"] = "true"
+        os.environ.pop("WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC", None)
         os.environ["LINGYI_SERVICE_ACCOUNT_USERS"] = ""
         with self.SessionLocal() as session:
             session.query(LySecurityAuditLog).delete()
@@ -227,6 +229,40 @@ class WorkshopWorkerPermissionTest(unittest.TestCase):
         row = self._latest_security_audit()
         self.assertEqual(row.event_type, "INTERNAL_API_DISABLED")
 
+    def test_worker_non_dry_run_disabled_in_production_without_sync_flag(self) -> None:
+        old_env = {
+            "APP_ENV": os.environ.get("APP_ENV"),
+            "ENABLE_INTERNAL_WORKER_API": os.environ.get("ENABLE_INTERNAL_WORKER_API"),
+            "WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC": os.environ.get("WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC"),
+        }
+        os.environ["APP_ENV"] = "production"
+        os.environ["ENABLE_INTERNAL_WORKER_API"] = "true"
+        os.environ["WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC"] = "false"
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="prod.worker",
+            roles=["System Manager"],
+            is_service_account=True,
+            source="test_override",
+        )
+        try:
+            with patch.object(ServiceAccountPolicyService, "get_worker_policy") as policy_mock:
+                response = self.client.post("/api/workshop/internal/job-card-sync/run-once?dry_run=false")
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+            for key, value in old_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "INTERNAL_API_DISABLED")
+        self.assertEqual(response.json()["message"], "车间 Job Card ERP 同步未启用")
+        self.assertEqual(policy_mock.call_count, 0)
+        row = self._latest_security_audit()
+        self.assertEqual(row.event_type, "INTERNAL_API_DISABLED")
+        self.assertEqual(row.action, "workshop:job_card_sync_worker")
+
     def test_internal_worker_service_account_can_process_outbox(self) -> None:
         self._seed_pending_outbox(job_card="JC-WORKER-SVC-001")
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
@@ -294,14 +330,23 @@ class WorkshopWorkerPermissionTest(unittest.TestCase):
         self.assertEqual(sync_log_count, 0)
 
     def test_internal_worker_denied_writes_security_audit_without_secrets(self) -> None:
-        response = self.client.post(
-            "/api/workshop/internal/job-card-sync/run-once",
-            headers={
-                **self._headers(role="Workshop Manager"),
-                "Authorization": "Bearer very-secret-token-123",
-                "Cookie": "sid=super-secret-cookie",
-            },
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="worker.user",
+            roles=["Workshop Manager"],
+            is_service_account=False,
+            source="test_override",
         )
+        try:
+            response = self.client.post(
+                "/api/workshop/internal/job-card-sync/run-once",
+                headers={
+                    **self._headers(role="Workshop Manager"),
+                    "Authorization": "Bearer very-secret-token-123",
+                    "Cookie": "sid=super-secret-cookie",
+                },
+            )
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
         row = self._latest_security_audit()

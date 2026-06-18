@@ -164,8 +164,12 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expi
 def _validate_permission_source_config() -> None:
     app_env = os.getenv("APP_ENV", "development").strip().lower()
     permission_source = get_permission_source()
-    if app_env == "production" and permission_source != "fastapi":
+    if app_env != "production":
+        return
+    if permission_source != "fastapi":
         raise RuntimeError("APP_ENV=production 时 LINGYI_PERMISSION_SOURCE 必须为 fastapi")
+    if os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip():
+        raise RuntimeError("APP_ENV=production 时不得配置 LINGYI_ERPNEXT_BASE_URL")
 
 
 def get_db_session() -> Generator[Session, None, None]:

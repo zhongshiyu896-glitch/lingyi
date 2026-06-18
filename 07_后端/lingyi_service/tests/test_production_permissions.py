@@ -14,6 +14,8 @@ from sqlalchemy.pool import StaticPool
 
 import app.main as main_module
 from app.main import app
+from app.core.auth import CurrentUser
+from app.core.auth import get_current_user
 from app.core.exceptions import PermissionSourceUnavailable
 from app.models.audit import Base as AuditBase
 from app.models.audit import LySecurityAuditLog
@@ -361,6 +363,79 @@ class ProductionPermissionTest(unittest.TestCase):
             self.assertEqual(row.module, "production")
             self.assertEqual(row.event_type, "AUTH_FORBIDDEN")
             self.assertEqual(row.resource_type, "production_work_order_worker")
+
+    def test_internal_worker_disabled_in_production_without_flag(self) -> None:
+        old_env = {
+            "APP_ENV": os.environ.get("APP_ENV"),
+            "ENABLE_INTERNAL_WORKER_API": os.environ.get("ENABLE_INTERNAL_WORKER_API"),
+            "PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC": os.environ.get("PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC"),
+        }
+        os.environ["APP_ENV"] = "production"
+        os.environ["ENABLE_INTERNAL_WORKER_API"] = "false"
+        os.environ["PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC"] = "false"
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="prod.worker",
+            roles=["System Manager"],
+            is_service_account=False,
+            source="test_override",
+        )
+        try:
+            with patch("app.routers.production._worker") as worker_mock:
+                response = self.client.post(
+                    "/api/production/internal/work-order-sync/run-once",
+                    json={"batch_size": 5, "dry_run": False},
+                )
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+            for key, value in old_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "INTERNAL_API_DISABLED")
+        self.assertEqual(worker_mock.call_count, 0)
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(row)
+            self.assertEqual(row.module, "production")
+            self.assertEqual(row.event_type, "INTERNAL_API_DISABLED")
+            self.assertEqual(row.resource_type, "production_work_order_worker")
+
+    def test_internal_worker_non_dry_run_disabled_in_production_without_sync_flag(self) -> None:
+        old_env = {
+            "APP_ENV": os.environ.get("APP_ENV"),
+            "ENABLE_INTERNAL_WORKER_API": os.environ.get("ENABLE_INTERNAL_WORKER_API"),
+            "PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC": os.environ.get("PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC"),
+        }
+        os.environ["APP_ENV"] = "production"
+        os.environ["ENABLE_INTERNAL_WORKER_API"] = "true"
+        os.environ["PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC"] = "false"
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="prod.worker",
+            roles=["System Manager"],
+            is_service_account=True,
+            source="test_override",
+        )
+        try:
+            with patch("app.routers.production._worker") as worker_mock:
+                response = self.client.post(
+                    "/api/production/internal/work-order-sync/run-once",
+                    json={"batch_size": 5, "dry_run": False},
+                )
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+            for key, value in old_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "INTERNAL_API_DISABLED")
+        self.assertEqual(response.json()["message"], "生产工单 ERP 同步未启用")
+        self.assertEqual(worker_mock.call_count, 0)
 
 
 if __name__ == "__main__":

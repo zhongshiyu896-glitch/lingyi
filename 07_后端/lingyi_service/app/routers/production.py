@@ -22,9 +22,12 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.auth import is_internal_worker_api_enabled
 from app.core.auth import is_internal_worker_principal
+from app.core.config import production_enable_work_order_worker_sync
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import DATABASE_WRITE_FAILED
+from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_INTERNAL_ERROR
 from app.core.error_codes import status_of
@@ -1661,6 +1664,30 @@ def run_work_order_sync_once(
     context = AuditContext.from_request(request)
 
     try:
+        if not is_internal_worker_api_enabled():
+            permission_service.record_security_denial(
+                request_obj=request,
+                current_user=current_user,
+                action=action,
+                module="production",
+                resource_type="production_work_order_worker",
+                resource_no=current_user.username,
+                deny_reason="生产工单同步内部接口未启用",
+                event_type=INTERNAL_API_DISABLED,
+            )
+            return _err(INTERNAL_API_DISABLED, "内部接口未启用", status_code=status_of(INTERNAL_API_DISABLED))
+        if not payload.dry_run and not production_enable_work_order_worker_sync():
+            permission_service.record_security_denial(
+                request_obj=request,
+                current_user=current_user,
+                action=action,
+                module="production",
+                resource_type="production_work_order_worker",
+                resource_no=current_user.username,
+                deny_reason="生产工单 ERP 同步未启用",
+                event_type=INTERNAL_API_DISABLED,
+            )
+            return _err(INTERNAL_API_DISABLED, "生产工单 ERP 同步未启用", status_code=status_of(INTERNAL_API_DISABLED))
         permission_service.require_action(
             current_user=current_user,
             request_obj=request,
