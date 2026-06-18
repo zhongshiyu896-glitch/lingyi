@@ -264,8 +264,11 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["profit"])), Decimal("860"))
         self.assertEqual(Decimal(str(row["grossMargin"])), Decimal("43.00"))
         self.assertEqual(row["risk"], "低风险")
+        basis_text = "；".join(payload["data_basis"])
         pending_text = "；".join(payload["pending_b_phase_fields"])
-        self.assertIn("已建页面的成品入库、发货开票、回款", pending_text)
+        self.assertIn("成品入库、发货开票、回款已接本地 FastAPI 闭环", basis_text)
+        self.assertNotIn("已建页面的成品入库、发货开票、回款", pending_text)
+        self.assertIn("实际工票工资归集", pending_text)
         self.assertNotIn("成品入库/发货开票未建页面", pending_text)
         self.assertIn("成品入库、发货开票、回款已接本地闭环", row["remark"])
 
