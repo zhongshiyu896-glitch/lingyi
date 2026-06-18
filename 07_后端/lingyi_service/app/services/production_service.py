@@ -52,6 +52,8 @@ from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionTrackingReconcile
 from app.models.production import LyProductionTrackingReconcileBatch
 from app.models.production import LyProductionWorkOrderLink
+from app.models.sample import LySampleMaterialBom
+from app.models.sample import LySampleMaterialBomItem
 from app.models.sample import LySampleOrder
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
@@ -417,9 +419,9 @@ class ProductionService:
     def _filter_bom_rows_for_sales_order_item(
         cls,
         *,
-        bom_rows: list[LyApparelBomItem],
+        bom_rows: list[Any],
         sales_order_item: LySalesOrderItem,
-    ) -> list[LyApparelBomItem]:
+    ) -> list[Any]:
         order_color = cls._normalized_dimension(getattr(sales_order_item, "color", None))
         order_size = cls._normalized_dimension(getattr(sales_order_item, "size", None))
         return [
@@ -439,6 +441,76 @@ class ProductionService:
         if not order_value:
             return True
         return not normalized_bom_value or normalized_bom_value == order_value
+
+    def _material_bom_rows_for_plan(self, *, plan: LyProductionPlan) -> list[Any]:
+        sample_rows = self._sample_material_bom_rows_for_plan(plan=plan)
+        if sample_rows:
+            return sample_rows
+        try:
+            return (
+                self.session.query(LyApparelBomItem)
+                .filter(LyApparelBomItem.bom_id == int(plan.bom_id))
+                .order_by(LyApparelBomItem.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    def _sample_material_bom_rows_for_plan(self, *, plan: LyProductionPlan) -> list[LySampleMaterialBomItem]:
+        try:
+            sales_order = (
+                self.session.query(LySalesOrder)
+                .filter(
+                    LySalesOrder.company == str(plan.company),
+                    LySalesOrder.sales_order_no == str(plan.sales_order),
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_missing_native_sales_order_table(exc):
+                return []
+            raise DatabaseReadFailed() from exc
+        if sales_order is None:
+            return []
+        source_ref = str(sales_order.source_order_ref or "").strip()
+        if not source_ref.startswith("SAMPLE-"):
+            return []
+        sample_no = source_ref.removeprefix("SAMPLE-").strip()
+        if not sample_no:
+            return []
+        try:
+            sample = (
+                self.session.query(LySampleOrder)
+                .filter(
+                    LySampleOrder.company == str(plan.company),
+                    LySampleOrder.sample_no == sample_no,
+                )
+                .first()
+            )
+            if sample is None:
+                return []
+            if sample.bulk_handoff_no and str(sample.bulk_handoff_no) != str(plan.sales_order):
+                return []
+            bom = (
+                self.session.query(LySampleMaterialBom)
+                .filter(
+                    LySampleMaterialBom.company == str(plan.company),
+                    LySampleMaterialBom.sample_order_id == int(sample.id),
+                    LySampleMaterialBom.status.in_(("draft", "active")),
+                )
+                .order_by(LySampleMaterialBom.id.desc())
+                .first()
+            )
+            if bom is None:
+                return []
+            return (
+                self.session.query(LySampleMaterialBomItem)
+                .filter(LySampleMaterialBomItem.bom_id == int(bom.id))
+                .order_by(LySampleMaterialBomItem.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
 
     @staticmethod
     def _empty_material_readiness_summary(*, include_private: bool = False) -> dict[str, Any]:
@@ -2365,15 +2437,7 @@ class ProductionService:
 
         self._ensure_material_check_status_allowed(plan=plan)
 
-        try:
-            bom_rows = (
-                self.session.query(LyApparelBomItem)
-                .filter(LyApparelBomItem.bom_id == int(plan.bom_id))
-                .order_by(LyApparelBomItem.id.asc())
-                .all()
-            )
-        except SQLAlchemyError as exc:
-            raise DatabaseReadFailed() from exc
+        bom_rows = self._material_bom_rows_for_plan(plan=plan)
         if not bom_rows:
             raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护用料 BOM 明细，无法算料")
         bom_rows = self._filter_bom_rows_for_sales_order_item(bom_rows=bom_rows, sales_order_item=native_item)
@@ -2408,7 +2472,7 @@ class ProductionService:
             self.session.add(
                 LyProductionPlanMaterial(
                     plan_id=int(plan.id),
-                    bom_item_id=int(row.id),
+                    bom_item_id=(int(row.id) if isinstance(row, LyApparelBomItem) else None),
                     material_item_code=material_item_code,
                     warehouse=warehouse,
                     qty_per_piece=qty_per_piece,
@@ -2421,7 +2485,7 @@ class ProductionService:
             )
             snapshot_items.append(
                 ProductionPlanMaterialSnapshotItem(
-                    bom_item_id=int(row.id),
+                    bom_item_id=(int(row.id) if isinstance(row, LyApparelBomItem) else None),
                     material_item_code=material_item_code,
                     warehouse=warehouse,
                     qty_per_piece=qty_per_piece,

@@ -31,6 +31,8 @@ from app.models.production import LyProductionPlanMaterial
 from app.models.quality import Base as QualityBase
 from app.models.sample import Base as SampleBase
 from app.models.sample import LySampleIdempotency
+from app.models.sample import LySampleMaterialBom
+from app.models.sample import LySampleMaterialBomItem
 from app.models.sample import LySampleOrder
 from app.models.sample import LySampleTrackingEvent
 from app.models.sample import LySampleTrackingNode
@@ -133,6 +135,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             session.query(LySampleTrackingEvent).delete()
             session.query(LySampleTrackingNode).delete()
             session.query(LySampleTrackingTemplate).delete()
+            session.query(LySampleMaterialBomItem).delete()
+            session.query(LySampleMaterialBom).delete()
             session.query(LySampleOrder).delete()
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrderItem).delete()
@@ -857,6 +861,145 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(sales_line.style_master_id, sample.style_master_id)
             self.assertEqual(requirement_row.sales_order, bulk_no)
             self.assertEqual(requirement_row.material_item_code, self.MATERIAL)
+
+    def test_sample_edited_bom_feeds_bulk_procurement_requirement(self) -> None:
+        sample_no = "SMP-A6-BOM-EDIT-001"
+        sample_material = "FAB-A6-SAMPLE-EDIT"
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers("req-a6-sample-edit-create"),
+            json=self._sample_payload(sample_no=sample_no, idempotency_key="idem-a6-sample-edit-create"),
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        order_id = int(created.json()["data"]["id"])
+
+        with self.SessionLocal() as session:
+            order = session.query(LySampleOrder).filter_by(id=order_id).one()
+            session.add(
+                LySampleMaterialBom(
+                    id=701,
+                    company=self.COMPANY,
+                    sample_order_id=order_id,
+                    style_master_id=int(order.style_master_id),
+                    item_code=self.STYLE,
+                    source_bom_id=601,
+                    version_no="S2",
+                    status="draft",
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.add(
+                LySampleMaterialBomItem(
+                    id=7011,
+                    bom_id=701,
+                    source_bom_item_id=None,
+                    material_item_code=sample_material,
+                    color=None,
+                    part="样板改料",
+                    qty_per_piece=Decimal("3"),
+                    loss_rate=Decimal("0.10"),
+                    uom="米",
+                    is_alternative=1,
+                    replace_group="FAB-A6",
+                    remark="样板替代料",
+                )
+            )
+            session.commit()
+
+        submitted = self.client.post(
+            f"/api/sample/orders/{order_id}/submit",
+            headers=self._headers("req-a6-sample-edit-submit"),
+            json={
+                "company": self.COMPANY,
+                "idempotency_key": "idem-a6-sample-edit-submit",
+            },
+        )
+        sealed = self.client.post(
+            f"/api/sample/orders/{order_id}/seal",
+            headers=self._headers("req-a6-sample-edit-seal"),
+            json={
+                "company": self.COMPANY,
+                "idempotency_key": "idem-a6-sample-edit-seal",
+            },
+        )
+        converted = self.client.post(
+            f"/api/sample/orders/{order_id}/convert-to-bulk",
+            headers=self._headers("req-a6-sample-edit-convert"),
+            json={
+                "operation": "convert",
+                "company": self.COMPANY,
+                "idempotency_key": "idem-a6-sample-edit-convert",
+            },
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        self.assertEqual(sealed.status_code, 200, sealed.text)
+        self.assertEqual(converted.status_code, 200, converted.text)
+        bulk_no = converted.json()["data"]["bulk_handoff_no"]
+
+        detail = self.client.get(f"/api/sales-inventory/sales-orders/{bulk_no}", headers=self._headers("req-a6-sample-edit-bulk-detail"))
+        self.assertEqual(detail.status_code, 200, detail.text)
+        sales_item = detail.json()["data"]["items"][0]
+        sales_order_item = sales_item["name"]
+
+        plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers("req-a6-sample-edit-plan"),
+            json={
+                "sales_order": bulk_no,
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "planned_qty": 1,
+                "planned_start_date": "2026-06-18",
+                "operation": "create_plan",
+                "idempotency_key": "idem-a6-sample-edit-plan",
+                "company": self.COMPANY,
+            },
+        )
+        self.assertEqual(plan.status_code, 200, plan.text)
+        plan_id = int(plan.json()["data"]["plan_id"])
+
+        material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260618-402"
+        request_id = f"req-{material_check_scenario}"
+        material_check = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers={**self._headers(request_id), "X-Request-ID": request_id},
+            json={
+                "warehouse": self.WAREHOUSE,
+                "operation": "material_check",
+                "idempotency_key": f"{material_check_scenario}:idem-a6-sample-edit-material-check",
+                "scenario_tag": material_check_scenario,
+                "plan_id": plan_id,
+                "sales_order": bulk_no,
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "request_id": request_id,
+            },
+        )
+        self.assertEqual(material_check.status_code, 200, material_check.text)
+        material_row = material_check.json()["data"]["items"][0]
+        self.assertEqual(material_row["material_item_code"], sample_material)
+        self.assertIsNone(material_row["bom_item_id"])
+        self.assertEqual(Decimal(str(material_row["required_qty"])), Decimal("3.300000"))
+        self.assertEqual(Decimal(str(material_row["shortage_qty"])), Decimal("3.300000"))
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword={bulk_no}",
+            headers=self._headers("req-a6-sample-edit-requirements"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_rows = requirements.json()["data"]["items"]
+        self.assertEqual(len(requirement_rows), 1)
+        requirement = requirement_rows[0]
+        self.assertEqual(requirement["material_item_code"], sample_material)
+        self.assertEqual(Decimal(str(requirement["net_required_qty"])), Decimal("3.300000"))
+
+        with self.SessionLocal() as session:
+            requirement_row = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertIsNone(requirement_row.bom_item_id)
+            self.assertEqual(requirement_row.material_item_code, sample_material)
 
     def test_material_check_creates_requirement_and_receipt_closes_shortage(self) -> None:
         self._create_stock_receipt(
