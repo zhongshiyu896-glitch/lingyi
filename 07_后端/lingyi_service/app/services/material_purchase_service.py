@@ -1420,8 +1420,18 @@ class MaterialPurchaseService:
                     "requirements": [],
                 },
             )
-            if Decimal(str(bucket["unit_price"])) == Decimal("0") and Decimal(str(requirement.unit_price or 0)) > Decimal("0"):
-                bucket["unit_price"] = Decimal(str(requirement.unit_price or 0))
+            bucket_unit_price = Decimal(str(bucket["unit_price"]))
+            requirement_unit_price = Decimal(str(requirement.unit_price or 0))
+            if (
+                group_by_material
+                and bucket["requirements"]
+                and bucket_unit_price > Decimal("0")
+                and requirement_unit_price > Decimal("0")
+                and bucket_unit_price != requirement_unit_price
+            ):
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"{requirement.material_item_code} 合并采购单价不一致")
+            if bucket_unit_price == Decimal("0") and requirement_unit_price > Decimal("0"):
+                bucket["unit_price"] = requirement_unit_price
             bucket["qty"] = Decimal(str(bucket["qty"])) + Decimal(str(requirement.net_required_qty or 0))
             bucket["requirements"].append(requirement)
         return list(grouped.values())

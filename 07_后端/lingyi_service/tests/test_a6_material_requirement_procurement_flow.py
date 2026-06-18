@@ -230,6 +230,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         sales_order: str = "SO-A6-SEED",
         sales_order_item: str = "SO-A6-SEED-ITEM",
         supplier_name: str = "SUP-A6",
+        unit_price: str = "12.5",
     ) -> int:
         with self.SessionLocal() as session:
             row = LyMaterialPurchaseRequirement(
@@ -253,7 +254,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 purchased_qty=Decimal("0"),
                 received_qty=Decimal("0"),
                 uom="米",
-                unit_price=Decimal("12.5"),
+                unit_price=Decimal(unit_price),
                 status=status,
                 created_by="seed",
                 updated_by="seed",
@@ -1903,6 +1904,40 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(len(completed_rows), 2)
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
+
+    def test_from_requirements_rejects_mixed_unit_prices_when_grouping_by_material(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-GROUP-PRICE-A",
+            net_required_qty="5",
+            sales_order="SO-A6-GROUP-PRICE-001",
+            sales_order_item="SO-A6-GROUP-PRICE-001-ITEM",
+            unit_price="12.5",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-GROUP-PRICE-B",
+            net_required_qty="10",
+            sales_order="SO-A6-GROUP-PRICE-002",
+            sales_order_item="SO-A6-GROUP-PRICE-002-ITEM",
+            unit_price="13.0",
+        )
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-mixed-unit-price"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_a, requirement_b],
+                idempotency_key="idem-a6-mixed-unit-price",
+            ),
+        )
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("单价不一致", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            requirement_rows = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.requirement_no.asc()).all()
+            self.assertEqual(len(requirement_rows), 2)
+            self.assertTrue(all(str(row.status) == "pending" for row in requirement_rows))
+            self.assertTrue(all(row.purchase_order_id is None for row in requirement_rows))
 
     def test_from_requirements_accepts_camel_group_by_material_false(self) -> None:
         requirement_a = self._seed_requirement(
