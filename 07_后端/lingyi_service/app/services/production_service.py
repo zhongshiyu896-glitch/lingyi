@@ -364,6 +364,13 @@ class ProductionService:
                 .group_by(LyProductionPlanMaterial.plan_id)
                 .all()
             )
+        except SQLAlchemyError as exc:
+            if self._is_missing_table_error(exc, LyProductionPlanMaterial.__tablename__):
+                material_rows = []
+            else:
+                raise DatabaseReadFailed() from exc
+
+        try:
             requirement_rows = (
                 self.session.query(
                     LyMaterialPurchaseRequirement.plan_id.label("plan_id"),
@@ -378,7 +385,10 @@ class ProductionService:
                 .all()
             )
         except SQLAlchemyError as exc:
-            raise DatabaseReadFailed() from exc
+            if self._is_missing_table_error(exc, LyMaterialPurchaseRequirement.__tablename__):
+                requirement_rows = []
+            else:
+                raise DatabaseReadFailed() from exc
 
         for row in material_rows:
             plan_id = int(row.plan_id)
@@ -450,6 +460,12 @@ class ProductionService:
             "pending_requirement_count": active_requirement_count,
             "purchase_status": purchase_status,
         }
+
+    @staticmethod
+    def _is_missing_table_error(exc: BaseException, table_name: str) -> bool:
+        message = str(exc).lower()
+        normalized_table = table_name.lower()
+        return normalized_table in message and ("no such table" in message or "does not exist" in message)
 
     def list_tracking_reconciliations(
         self,
