@@ -90,10 +90,17 @@ def _iter_routes(app) -> Iterable[APIRoute]:
 
 
 def first_route_for(app, *, method: str, path: str) -> APIRoute | None:
-    """Return the first exact route registered for a method/path pair."""
+    """Return the first route registered for a method/path pair, including path templates."""
     normalized_method = method.upper()
     for route in _iter_routes(app):
         if route.path == path and normalized_method in (route.methods or set()):
+            return route
+    normalized_path = path.rstrip("/") or "/"
+    for route in _iter_routes(app):
+        if normalized_method not in (route.methods or set()):
+            continue
+        path_regex = getattr(route, "path_regex", None)
+        if path_regex is not None and path_regex.match(normalized_path):
             return route
     return None
 
@@ -329,12 +336,44 @@ def _normalize_api_path(api_path: str | None) -> str | None:
     return normalized.split("?", 1)[0].rstrip("/") or "/"
 
 
+def _route_template_to_regex(path: str) -> re.Pattern[str]:
+    pattern = re.sub(r"\\{[^}/]+\\}", "[^/]+", re.escape(path.rstrip("/") or "/"))
+    return re.compile(f"^{pattern}$")
+
+
+def _route_row_for(
+    *,
+    method: str,
+    normalized_path: str | None,
+    catalog_paths: dict[tuple[str, str], dict[str, Any]],
+    route_catalog: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if not normalized_path:
+        return None
+    exact = catalog_paths.get((method, normalized_path))
+    if exact is not None:
+        return exact
+    for row in route_catalog:
+        if row["method"] != method:
+            continue
+        if "{" not in row["path"]:
+            continue
+        if _route_template_to_regex(row["path"]).match(normalized_path):
+            return row
+    return None
+
+
 def build_page_matrix(pages: list[PageDefinitionSnapshot], route_catalog: list[dict[str, Any]]) -> list[dict[str, Any]]:
     catalog_paths = {(row["method"], row["path"].rstrip("/") or "/"): row for row in route_catalog}
     rows: list[dict[str, Any]] = []
     for page in pages:
         normalized_path = _normalize_api_path(page.api_path)
-        route_row = catalog_paths.get(("GET", normalized_path)) if normalized_path else None
+        route_row = _route_row_for(
+            method="GET",
+            normalized_path=normalized_path,
+            catalog_paths=catalog_paths,
+            route_catalog=route_catalog,
+        )
         if route_row is None and page.api_path:
             status = "api_path_not_found_in_backend"
             backend_class = None
