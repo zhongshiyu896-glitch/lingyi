@@ -362,6 +362,7 @@ class MaterialPurchaseService:
                         bom_item_id=(int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None),
                         material_item_code=material_code,
                         warehouse=warehouse,
+                        status="pending",
                         created_by=actor,
                     )
                     self.session.add(row)
@@ -383,13 +384,14 @@ class MaterialPurchaseService:
                 }
                 row.updated_by = actor
                 row.updated_at = now
+                current_status = str(row.status or "pending")
                 has_completed_purchase = (
-                    str(row.status) == "completed"
+                    current_status == "completed"
                     and row.purchase_no is not None
                     and Decimal(str(row.purchased_qty or 0)) > Decimal("0")
                     and Decimal(str(row.received_qty or 0)) >= Decimal(str(row.purchased_qty or 0))
                 )
-                if str(row.status) in {"pending", "completed"}:
+                if current_status in {"pending", "completed"}:
                     if has_completed_purchase and net_required_qty == Decimal("0"):
                         row.status = "completed"
                         synced.append(row)
@@ -400,7 +402,7 @@ class MaterialPurchaseService:
                     row.purchase_order_item_id = None
                     row.purchase_no = None
                     row.status = "completed" if net_required_qty == Decimal("0") else "pending"
-                elif str(row.status) == "purchased":
+                elif current_status == "purchased":
                     purchased_qty = Decimal(str(row.purchased_qty or 0))
                     received_qty = Decimal(str(row.received_qty or 0))
                     row.status = "completed" if purchased_qty > Decimal("0") and received_qty >= purchased_qty else "purchased"

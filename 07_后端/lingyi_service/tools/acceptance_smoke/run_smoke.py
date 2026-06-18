@@ -65,6 +65,7 @@ from app.models.subcontract import LySubcontractOrder  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.production import LyProductionPlan  # noqa: E402
 from app.models.production import LyProductionPlanMaterial  # noqa: E402
+from app.models.production import LyProductionWorkOrderLink  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCount  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCountItem  # noqa: E402
 from app.models.warehouse import LyWarehouseStockEntryDraft  # noqa: E402
@@ -129,6 +130,54 @@ class _DumpablePage:
 def _page_payload(seed_key: str, *, page: int = 1, page_size: int = 20) -> dict[str, object]:
     rows = GAP_LIST_ROWS[seed_key]
     return {"items": rows, "total": len(rows), "page": page, "page_size": page_size}
+
+
+def _seed_production_material_issue_read_rows(session) -> None:  # noqa: ANN001
+    """Seed real production rows for the material-issue read endpoint smoke."""
+    seed = GAP_LIST_ROWS["production_material_issues"][0]
+    session.add(
+        LyProductionPlan(
+            id=int(seed["plan_id"]),
+            plan_no=str(seed["plan_no"]),
+            company=str(seed["company"]),
+            sales_order="SO-FR-001",
+            sales_order_item="SO-FR-001-ITEM-1",
+            customer="Frontend Readiness Customer",
+            item_code=str(seed["item_code"]),
+            bom_id=1,
+            bom_version="V1",
+            planned_qty=Decimal("160"),
+            planned_start_date=date(2026, 6, 18),
+            status="material_checked",
+            idempotency_key="FR-PROD-MATERIAL-ISSUE-PLAN",
+            request_hash="fr-prod-material-issue-plan-hash",
+            created_by="frontend.readiness.smoke",
+        )
+    )
+    session.add(
+        LyProductionPlanMaterial(
+            plan_id=int(seed["plan_id"]),
+            bom_item_id=1,
+            material_item_code=str(seed["material_item_code"]),
+            warehouse=str(seed["warehouse"]),
+            qty_per_piece=Decimal("1.125"),
+            loss_rate=Decimal("0"),
+            required_qty=Decimal(str(seed["required_qty"])),
+            available_qty=Decimal(str(seed["available_qty"])),
+            shortage_qty=Decimal(str(seed["shortage_qty"])),
+            checked_at=datetime(2026, 6, 18, tzinfo=timezone.utc),
+        )
+    )
+    session.add(
+        LyProductionWorkOrderLink(
+            plan_id=int(seed["plan_id"]),
+            work_order=str(seed["work_order"]),
+            erpnext_docstatus=1,
+            erpnext_status="In Process",
+            sync_status="succeeded",
+            created_by="frontend.readiness.smoke",
+        )
+    )
 
 GAP_PATHS = [
     "/api/subcontract/factories",
@@ -748,6 +797,7 @@ def _exercise_sales_order_to_material_issue_smoke(client: TestClient, session_lo
             LyApparelBom(
                 id=1101,
                 bom_no="BOM-A4-SMOKE-001",
+                company=company,
                 item_code=item_code,
                 version_no="v1",
                 is_default=True,
@@ -1349,6 +1399,18 @@ def _exercise_inventory_count_smoke(client: TestClient) -> None:
     _assert(reviewed.status_code == 200, reviewed.text)
     _assert(reviewed.json()["data"]["variance_stats"]["pending_review_items"] == 0, "inventory review pending mismatch")
 
+    reconciliation_before_confirm = client.get(
+        f"/api/warehouse/inventory-balance-reconciliation?company={company}&warehouse={warehouse}&item_code={item_code}",
+        headers=_headers(),
+    )
+    _assert(reconciliation_before_confirm.status_code == 200, reconciliation_before_confirm.text)
+    before_confirm_rows = reconciliation_before_confirm.json()["data"]["items"]
+    _assert(before_confirm_rows, "inventory reconciliation before confirm missing")
+    _assert(Decimal(str(before_confirm_rows[0]["book_qty"])) == Decimal("7.000000"), "inventory pre-confirm book_qty mismatch")
+    _assert(Decimal(str(before_confirm_rows[0]["actual_qty"])) == Decimal("6.000000"), "inventory pre-confirm actual_qty mismatch")
+    _assert(Decimal(str(before_confirm_rows[0]["diff_qty"])) == Decimal("-1.000000"), "inventory pre-confirm diff_qty mismatch")
+    _assert(before_confirm_rows[0]["status"] == "variance_accepted", "inventory pre-confirm reconciliation status mismatch")
+
     with patch.dict("os.environ", count_env):
         confirmed = client.post(
             f"/api/warehouse/inventory-counts/{count_id}/confirm",
@@ -1371,10 +1433,10 @@ def _exercise_inventory_count_smoke(client: TestClient) -> None:
     _assert(reconciliation.status_code == 200, reconciliation.text)
     reconciliation_rows = reconciliation.json()["data"]["items"]
     _assert(reconciliation_rows, "inventory reconciliation readback missing")
-    _assert(Decimal(str(reconciliation_rows[0]["book_qty"])) == Decimal("7.000000"), "inventory book_qty mismatch")
+    _assert(Decimal(str(reconciliation_rows[0]["book_qty"])) == Decimal("6.000000"), "inventory book_qty mismatch")
     _assert(Decimal(str(reconciliation_rows[0]["actual_qty"])) == Decimal("6.000000"), "inventory actual_qty mismatch")
-    _assert(Decimal(str(reconciliation_rows[0]["diff_qty"])) == Decimal("-1.000000"), "inventory diff_qty mismatch")
-    _assert(reconciliation_rows[0]["status"] == "variance_accepted", "inventory reconciliation status mismatch")
+    _assert(Decimal(str(reconciliation_rows[0]["diff_qty"])) == Decimal("0.000000"), "inventory diff_qty mismatch")
+    _assert(reconciliation_rows[0]["status"] == "balanced", "inventory reconciliation status mismatch")
 
 
 def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None:  # noqa: ANN001
@@ -1752,6 +1814,7 @@ def _exercise_subcontract_return_material_smoke(client: TestClient, session_loca
             LyApparelBom(
                 id=bom_id,
                 bom_no="BOM-SUB-SMOKE-001",
+                company=company,
                 item_code=item_code,
                 version_no="v1",
                 is_default=True,
@@ -1874,9 +1937,9 @@ def _exercise_subcontract_return_material_smoke(client: TestClient, session_loca
             f"/api/subcontract/{order_id}/issue-material",
             headers=_headers(request_id=issue_request_id),
             json=issue_payload,
-        )
+    )
     _assert(issued.status_code == 200, issued.text)
-    _assert(issued.json()["data"]["sync_status"] == "pending", "subcontract issue sync_status mismatch")
+    _assert(issued.json()["data"]["sync_status"] == "succeeded", "subcontract issue sync_status mismatch")
 
     receive_idem = f"{scenario}:receive:001"
     receive_source_ref = f"{scenario}:receive:{order_id}:001"
@@ -2008,6 +2071,7 @@ def _exercise_profit_report_smoke(client: TestClient, session_local) -> None:  #
         bom = LyApparelBom(
             id=bom_id,
             bom_no="BOM-PROFIT-SMOKE-001",
+            company=company,
             item_code=item_code,
             version_no="V1",
             is_default=True,
@@ -2349,6 +2413,7 @@ def _exercise_factory_statement_payment_smoke(client: TestClient, session_local)
             LyApparelBom(
                 id=601,
                 bom_no="BOM-FS-SMOKE-001",
+                company=company,
                 item_code=item_code,
                 version_no="v1",
                 is_default=True,
@@ -2523,6 +2588,10 @@ def main() -> int:
     app.dependency_overrides[workshop_db_dep] = _override_db
 
     try:
+        with session_local() as session:
+            _seed_production_material_issue_read_rows(session)
+            session.commit()
+
         client = TestClient(app)
 
         unauthorized = client.get("/api/bom/sample-types")

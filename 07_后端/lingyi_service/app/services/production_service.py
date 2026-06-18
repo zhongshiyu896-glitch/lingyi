@@ -413,6 +413,33 @@ class ProductionService:
 
         return {plan_id: self._finalize_material_readiness_summary(summary) for plan_id, summary in summaries.items()}
 
+    @classmethod
+    def _filter_bom_rows_for_sales_order_item(
+        cls,
+        *,
+        bom_rows: list[LyApparelBomItem],
+        sales_order_item: LySalesOrderItem,
+    ) -> list[LyApparelBomItem]:
+        order_color = cls._normalized_dimension(getattr(sales_order_item, "color", None))
+        order_size = cls._normalized_dimension(getattr(sales_order_item, "size", None))
+        return [
+            row
+            for row in bom_rows
+            if cls._dimension_matches(getattr(row, "color", None), order_color)
+            and cls._dimension_matches(getattr(row, "size", None), order_size)
+        ]
+
+    @staticmethod
+    def _normalized_dimension(value: Any) -> str:
+        return str(value or "").strip().lower()
+
+    @classmethod
+    def _dimension_matches(cls, bom_value: Any, order_value: str) -> bool:
+        normalized_bom_value = cls._normalized_dimension(bom_value)
+        if not order_value:
+            return True
+        return not normalized_bom_value or normalized_bom_value == order_value
+
     @staticmethod
     def _empty_material_readiness_summary(*, include_private: bool = False) -> dict[str, Any]:
         summary: dict[str, Any] = {
@@ -2349,6 +2376,9 @@ class ProductionService:
             raise DatabaseReadFailed() from exc
         if not bom_rows:
             raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护用料 BOM 明细，无法算料")
+        bom_rows = self._filter_bom_rows_for_sales_order_item(bom_rows=bom_rows, sales_order_item=native_item)
+        if not bom_rows:
+            raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护匹配当前色码的用料 BOM 明细，无法算料")
 
         try:
             self.session.query(LyProductionPlanMaterial).filter(LyProductionPlanMaterial.plan_id == int(plan.id)).delete()
