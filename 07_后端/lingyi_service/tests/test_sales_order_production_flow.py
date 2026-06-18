@@ -28,6 +28,7 @@ from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanOperation
+from app.models.production import LyProductionPlanMaterial
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
@@ -230,6 +231,120 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                 )
             )
             session.commit()
+
+    def test_sales_order_update_resets_material_calc_before_purchase_or_issue(self) -> None:
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-RESET-001",
+            "source_order_ref": "SO-A4-RESET-001",
+            "idempotency_key": "idem-so-a4-reset-001",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Ignored Name",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 100,
+                    "rate": 80,
+                    "uom": "件",
+                }
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+        detail = self.client.get("/api/sales-inventory/sales-orders/SO-A4-RESET-001", headers=self._headers())
+        self.assertEqual(detail.status_code, 200, detail.text)
+        sales_order_item = detail.json()["data"]["items"][0]["name"]
+
+        create_plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers(),
+            json={
+                "sales_order": "SO-A4-RESET-001",
+                "sales_order_item": sales_order_item,
+                "item_code": "DEMO-TEE",
+                "bom_id": 1,
+                "planned_qty": 40,
+                "planned_start_date": "2026-06-18",
+                "operation": "create_plan",
+                "idempotency_key": "idem-plan-a4-reset-001",
+                "company": "COMP-A",
+            },
+        )
+        self.assertEqual(create_plan.status_code, 200, create_plan.text)
+        plan_id = int(create_plan.json()["data"]["plan_id"])
+
+        material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260617-903"
+        material_check_request_id = f"req-{material_check_scenario}"
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            material_check = self.client.post(
+                f"/api/production/plans/{plan_id}/material-check",
+                headers={**self._headers(), "X-Request-ID": material_check_request_id},
+                json={
+                    "warehouse": "WH-RESET",
+                    "operation": "material_check",
+                    "idempotency_key": f"{material_check_scenario}-idem-material-check-a4-reset-001",
+                    "scenario_tag": material_check_scenario,
+                    "plan_id": plan_id,
+                    "sales_order": "SO-A4-RESET-001",
+                    "sales_order_item": sales_order_item,
+                    "item_code": "DEMO-TEE",
+                    "bom_id": 1,
+                    "request_id": material_check_request_id,
+                },
+            )
+        self.assertEqual(material_check.status_code, 200, material_check.text)
+        self.assertEqual(material_check.json()["data"]["snapshot_count"], 1)
+        self.assertEqual(Decimal(str(material_check.json()["data"]["items"][0]["shortage_qty"])), Decimal("84.000000"))
+
+        with self.SessionLocal() as session:
+            requirement = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertEqual(str(requirement.status), "pending")
+            self.assertEqual(str(requirement.sales_order), "SO-A4-RESET-001")
+
+        update_payload = {
+            **order_payload,
+            "operation": "update_draft",
+            "idempotency_key": "idem-so-a4-reset-001-update",
+            "delivery_date": "2026-07-05",
+            "items": [{**order_payload["items"][0], "qty": 150}],
+        }
+        update_order = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json=update_payload,
+        )
+        self.assertEqual(update_order.status_code, 200, update_order.text)
+        self.assertEqual(update_order.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
+        self.assertEqual(Decimal(str(update_order.json()["data"]["items"][0]["qty"])), Decimal("150.000000"))
+
+        listed = self.client.get("/api/sales-inventory/sales-orders?keyword=SO-A4-RESET-001", headers=self._headers())
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(listed.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
+
+        with self.SessionLocal() as session:
+            item = session.query(LySalesOrderItem).one()
+            plan = session.query(LyProductionPlan).one()
+            self.assertEqual(item.ys_material_calc_state, "待算料")
+            self.assertEqual(str(plan.status), "planned")
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
+            self.assertEqual(
+                session.query(LyProductionPlanOperation)
+                .filter(LyProductionPlanOperation.operation == "material_check")
+                .count(),
+                0,
+            )
 
     def test_sales_order_draft_can_create_plan_and_blocks_overplanning(self) -> None:
         order_payload = {

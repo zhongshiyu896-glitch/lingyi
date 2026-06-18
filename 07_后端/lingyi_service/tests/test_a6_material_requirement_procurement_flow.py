@@ -1176,9 +1176,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(requirement["net_required_qty"])), Decimal("54.000000"))
         self.assertFalse(requirement["has_completed"])
 
-        locked_update = self.client.patch(
+        reset_update = self.client.patch(
             f"/api/sales-inventory/sales-orders/drafts/{order.json()['data']['id']}",
-            headers=self._headers("req-a6-locked-after-material-check"),
+            headers=self._headers("req-a6-reset-after-material-check"),
             json={
                 "company": self.COMPANY,
                 "customer": "CUST-A6",
@@ -1200,18 +1200,42 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 ],
             },
         )
-        self.assertEqual(locked_update.status_code, 409, locked_update.text)
-        self.assertEqual(locked_update.json()["code"], "SALES_ORDER_MATERIAL_CALCULATED_LOCKED")
-        requirements_after_locked_update = self.client.get(
+        self.assertEqual(reset_update.status_code, 200, reset_update.text)
+        self.assertEqual(reset_update.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
+        requirements_after_reset_update = self.client.get(
             f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending",
-            headers=self._headers("req-a6-requirements-after-locked-update"),
+            headers=self._headers("req-a6-requirements-after-reset-update"),
         )
-        self.assertEqual(requirements_after_locked_update.status_code, 200, requirements_after_locked_update.text)
-        self.assertEqual(requirements_after_locked_update.json()["data"]["total"], 1)
-        self.assertEqual(
-            Decimal(str(requirements_after_locked_update.json()["data"]["items"][0]["net_required_qty"])),
-            Decimal("54.000000"),
+        self.assertEqual(requirements_after_reset_update.status_code, 200, requirements_after_reset_update.text)
+        self.assertEqual(requirements_after_reset_update.json()["data"]["total"], 0)
+
+        material_check_after_update = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers={**self._headers(), "X-Request-ID": f"{request_id}-after-edit"},
+            json={
+                "warehouse": self.WAREHOUSE,
+                "operation": "material_check",
+                "idempotency_key": f"{self.MATERIAL_CHECK_SCENARIO}:idem-material-check-after-edit",
+                "scenario_tag": self.MATERIAL_CHECK_SCENARIO,
+                "plan_id": plan_id,
+                "sales_order": "SO-A6-001",
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "request_id": f"{request_id}-after-edit",
+            },
         )
+        self.assertEqual(material_check_after_update.status_code, 200, material_check_after_update.text)
+        self.assertEqual(Decimal(str(material_check_after_update.json()["data"]["items"][0]["shortage_qty"])), Decimal("54.000000"))
+
+        requirements_after_recheck = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending",
+            headers=self._headers("req-a6-requirements-after-recheck"),
+        )
+        self.assertEqual(requirements_after_recheck.status_code, 200, requirements_after_recheck.text)
+        self.assertEqual(requirements_after_recheck.json()["data"]["total"], 1)
+        requirement = requirements_after_recheck.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(requirement["net_required_qty"])), Decimal("54.000000"))
 
         create_po_payload = {
             "operation": "create_order_from_requirements",
@@ -1713,6 +1737,41 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(len(completed_rows), 2)
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
+
+    def test_from_requirements_accepts_camel_group_by_material_false(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-CAMEL-A",
+            net_required_qty="5",
+            sales_order="SO-A6-CAMEL-001",
+            sales_order_item="SO-A6-CAMEL-001-ITEM",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-CAMEL-B",
+            net_required_qty="10",
+            sales_order="SO-A6-CAMEL-002",
+            sales_order_item="SO-A6-CAMEL-002-ITEM",
+        )
+
+        payload = self._from_requirements_payload(
+            requirement_ids=[requirement_a, requirement_b],
+            idempotency_key="idem-a6-camel-group-material-false",
+        )
+        payload.pop("group_by_material")
+        payload["groupByMaterial"] = False
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-camel-group-material-false"),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+
+        purchase_order = response.json()["data"]["purchase_order"]
+        self.assertEqual(len(purchase_order["items"]), 2)
+        self.assertEqual([Decimal(str(row["qty"])) for row in purchase_order["items"]], [Decimal("5.000000"), Decimal("10.000000")])
+
+        with self.SessionLocal() as session:
+            requirement_rows = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.requirement_no.asc()).all()
+            self.assertEqual(len({int(row.purchase_order_item_id) for row in requirement_rows}), 2)
 
     def test_cancel_purchase_order_reverts_requirement_pool_and_is_idempotent(self) -> None:
         requirement_a = self._seed_requirement(

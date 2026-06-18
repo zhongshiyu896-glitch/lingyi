@@ -17,6 +17,7 @@ from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
+from app.models.production import LyProductionPlanOperation
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.sales_order import LySalesOrder
@@ -440,7 +441,7 @@ class SalesInventoryService:
             return self._build_native_sales_order_draft_data(order)
 
         self._ensure_sales_order_not_material_issued(order=order)
-        self._ensure_sales_order_not_material_calculated(order=order)
+        self._reset_sales_order_material_calculation_for_edit(order=order)
 
         existing_items = {int(item.line_no): item for item in self._native_sales_order_items(order_id=int(order.id))}
         for index, row in enumerate(line_rows, start=1):
@@ -4456,6 +4457,78 @@ class SalesInventoryService:
                 "SALES_ORDER_MATERIAL_CALCULATED_LOCKED",
                 "订单已算料或已进入待采购池，不允许编辑或取消",
             )
+
+    def _reset_sales_order_material_calculation_for_edit(self, *, order: LySalesOrder) -> None:
+        session = self._require_session()
+        company = str(order.company)
+        sales_order_refs = {
+            ref
+            for ref in (
+                self._text(order.sales_order_no),
+                self._text(order.source_order_ref),
+            )
+            if ref
+        }
+        if not sales_order_refs:
+            return
+
+        plans = (
+            session.query(LyProductionPlan)
+            .filter(
+                LyProductionPlan.company == company,
+                LyProductionPlan.sales_order.in_(sorted(sales_order_refs)),
+                LyProductionPlan.status != "cancelled",
+            )
+            .all()
+        )
+        plan_ids = [int(plan.id) for plan in plans]
+        locked_statuses = {"work_order_pending", "work_order_created", "job_cards_synced", "material_issued"}
+        if any(str(plan.status or "") in locked_statuses for plan in plans):
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_ORDER_MATERIAL_CALCULATED_LOCKED",
+                "订单已进入生产执行环节，不允许编辑",
+            )
+
+        requirements = (
+            session.query(LyMaterialPurchaseRequirement)
+            .filter(
+                LyMaterialPurchaseRequirement.company == company,
+                LyMaterialPurchaseRequirement.sales_order.in_(sorted(sales_order_refs)),
+                LyMaterialPurchaseRequirement.status.in_(("pending", "purchased", "completed")),
+            )
+            .all()
+        )
+        for requirement in requirements:
+            if (
+                str(requirement.status or "") in {"purchased", "completed"}
+                or requirement.purchase_order_id is not None
+                or requirement.purchase_order_item_id is not None
+                or self._text(requirement.purchase_no)
+                or Decimal(str(requirement.purchased_qty or 0)) > Decimal("0")
+                or Decimal(str(requirement.received_qty or 0)) > Decimal("0")
+            ):
+                raise SalesInventoryServiceError(
+                    409,
+                    "SALES_ORDER_MATERIAL_CALCULATED_LOCKED",
+                    "订单已进入待采购池采购或收料，不允许编辑",
+                )
+
+        if plan_ids:
+            session.query(LyProductionPlanMaterial).filter(LyProductionPlanMaterial.plan_id.in_(plan_ids)).delete(
+                synchronize_session=False
+            )
+            session.query(LyProductionPlanOperation).filter(
+                LyProductionPlanOperation.plan_id.in_(plan_ids),
+                LyProductionPlanOperation.operation == "material_check",
+            ).delete(synchronize_session=False)
+            for plan in plans:
+                if str(plan.status or "") == "material_checked":
+                    plan.status = "planned"
+                    plan.updated_at = datetime.now(timezone.utc)
+
+        for requirement in requirements:
+            session.delete(requirement)
 
     @classmethod
     def _positive_decimal(cls, value: Any, field_name: str) -> Decimal:
