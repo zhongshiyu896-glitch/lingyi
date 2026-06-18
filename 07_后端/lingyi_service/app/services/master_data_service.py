@@ -38,6 +38,13 @@ ENTITY_PATH_TO_TYPE = {
     "warehouses": "warehouse",
     "materials": "material",
     "sample-types": "sample_type",
+    "common-addresses": "common_address",
+    "trade-terms": "trade_term",
+    "invoice-types": "invoice_type",
+    "cost-types": "cost_type",
+    "size-sorts": "size_sort",
+    "distribution-channels": "distribution_channel",
+    "bank-accounts": "bank_account",
 }
 ENTITY_TYPES = set(ENTITY_PATH_TO_TYPE.values())
 

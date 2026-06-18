@@ -349,6 +349,72 @@ class MasterDataApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "sample_type").count(), 1)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "master_data").count(), 3)
 
+    def test_foundation_config_dictionaries_crud_use_master_data(self) -> None:
+        cases = [
+            ("common-addresses", "common_address", "ADDR-A2-001", {"receiver": "王收货", "phone": "13800000000"}),
+            ("trade-terms", "trade_term", "TERM-A2-001", {"usage": "采购/销售"}),
+            ("invoice-types", "invoice_type", "INV-A2-001", {"tax_rate": "13%"}),
+            ("cost-types", "cost_type", "COST-A2-001", {"usage": "成本归集"}),
+            ("size-sorts", "size_sort", "SIZE-A2-001", {"sizeGroup": "成人", "sort": 10}),
+            ("distribution-channels", "distribution_channel", "CH-A2-001", {"usage": "销售订单"}),
+            ("bank-accounts", "bank_account", "BANK-A2-001", {"bankName": "招商银行", "accountNo": "0001"}),
+        ]
+        for index, (path, entity_type, code, payload) in enumerate(cases, start=1):
+            with self.subTest(path=path):
+                created = self.client.post(
+                    f"/api/master-data/{path}",
+                    headers=self._headers(request_id=f"MASTER-DATA-CONFIG-{index}-C"),
+                    json={
+                        "operation": "create",
+                        "company": "COMP-A",
+                        "code": code,
+                        "name": f"{code}-名称",
+                        "idempotency_key": f"IDEMP-{code}-C",
+                        "payload": {"displayName": f"{code}-显示", **payload},
+                    },
+                )
+                self.assertEqual(created.status_code, 201)
+                record_id = int(created.json()["data"]["id"])
+                self.assertEqual(created.json()["data"]["entity_type"], entity_type)
+
+                listed = self.client.get(
+                    f"/api/master-data/{path}?company=COMP-A&keyword={code}",
+                    headers=self._headers(request_id=f"MASTER-DATA-CONFIG-{index}-L"),
+                )
+                self.assertEqual(listed.status_code, 200)
+                self.assertEqual(listed.json()["data"]["total"], 1)
+
+                updated = self.client.patch(
+                    f"/api/master-data/{path}/{record_id}",
+                    headers=self._headers(request_id=f"MASTER-DATA-CONFIG-{index}-U"),
+                    json={
+                        "operation": "update",
+                        "company": "COMP-A",
+                        "name": f"{code}-名称-改",
+                        "idempotency_key": f"IDEMP-{code}-U",
+                        "payload": {"displayName": f"{code}-显示-改", **payload},
+                    },
+                )
+                self.assertEqual(updated.status_code, 200)
+                self.assertEqual(updated.json()["data"]["name"], f"{code}-名称-改")
+
+                deactivated = self.client.post(
+                    f"/api/master-data/{path}/{record_id}/deactivate",
+                    headers=self._headers(request_id=f"MASTER-DATA-CONFIG-{index}-D"),
+                    json={
+                        "operation": "deactivate",
+                        "company": "COMP-A",
+                        "reason": "基础配置停用测试",
+                        "idempotency_key": f"IDEMP-{code}-D",
+                    },
+                )
+                self.assertEqual(deactivated.status_code, 200)
+                self.assertTrue(deactivated.json()["data"]["disabled"])
+
+        with self.SessionLocal() as session:
+            for _, entity_type, _, _ in cases:
+                self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == entity_type).count(), 1)
+
     def test_manage_permission_fails_closed(self) -> None:
         response = self.client.post(
             "/api/master-data/customers",

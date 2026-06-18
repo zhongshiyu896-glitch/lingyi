@@ -88,7 +88,7 @@ def _create_local_tables() -> None:
     if "ly_schema.ly_apparel_bom" not in SubcontractBase.metadata.tables:
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
     SubcontractBase.metadata.create_all(bind=main_module.engine)
-    _ensure_local_master_data_sample_type_entity()
+    _ensure_local_master_data_config_entities()
     _ensure_local_sample_idempotency_supports_seal()
     _ensure_local_sales_order_item_calc_columns()
     _ensure_local_sales_order_idempotency_supports_update()
@@ -100,16 +100,26 @@ def _create_local_tables() -> None:
     _ensure_local_bom_company_style_columns()
 
 
-def _ensure_local_master_data_sample_type_entity() -> None:
+def _ensure_local_master_data_config_entities() -> None:
     database_path = main_module.engine.url.database
     if not database_path or database_path == ":memory:":
         return
+    required_fragments = [
+        "'sample_type'",
+        "'common_address'",
+        "'trade_term'",
+        "'invoice_type'",
+        "'cost_type'",
+        "'size_sort'",
+        "'distribution_channel'",
+        "'bank_account'",
+    ]
     with sqlite3.connect(database_path) as conn:
         row = conn.execute(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_master_data_record'"
         ).fetchone()
         existing_sql = str(row[0]) if row else ""
-        if not row or "'sample_type'" in existing_sql:
+        if not row or all(fragment in existing_sql for fragment in required_fragments):
             return
         conn.executescript(
             """
@@ -134,7 +144,7 @@ def _ensure_local_master_data_sample_type_entity() -> None:
                 deactivated_at DATETIME,
                 deactivate_reason TEXT,
                 PRIMARY KEY (id),
-                CONSTRAINT ck_ly_master_data_entity_type CHECK (entity_type IN ('customer','supplier','factory','warehouse','material','sample_type')),
+                CONSTRAINT ck_ly_master_data_entity_type CHECK (entity_type IN ('customer','supplier','factory','warehouse','material','sample_type','common_address','trade_term','invoice_type','cost_type','size_sort','distribution_channel','bank_account')),
                 CONSTRAINT ck_ly_master_data_status CHECK (status IN ('active','inactive'))
             );
             INSERT INTO ly_master_data_record_new (
