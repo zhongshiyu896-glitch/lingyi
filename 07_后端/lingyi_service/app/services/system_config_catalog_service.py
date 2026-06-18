@@ -500,18 +500,18 @@ class SystemConfigCatalogService:
 
     _INTEGRATION_PLATFORM_CATALOG: tuple[SystemIntegrationPlatformItemData, ...] = (
         SystemIntegrationPlatformItemData(
-            platform_code="INT-ERP-001",
-            platform_name="ERPNext 主数据桥",
-            platform_type="ERP",
+            platform_code="INT-LY-001",
+            platform_name="FastAPI 自建主数据服务",
+            platform_type="native",
             endpoint_mode="webhook",
-            connector="ERPNext",
-            webhook_url_masked="https://erpnext.example.com/***/events",
-            sync_direction="双向",
+            connector="LingyiFastAPI",
+            webhook_url_masked="https://lingyi-api.example.com/***/events",
+            sync_direction="站内",
             status="运行中",
             last_sync_at="2026-05-07T10:42:00Z",
             retry_policy="指数退避 x3",
             updated_at="2026-05-07T10:45:00Z",
-            remark="同步款式、订单与库存摘要。",
+            remark="汇总款式、订单与库存摘要。",
             actions=[
                 SystemIntegrationPlatformActionData(
                     action_key="view",
@@ -864,7 +864,7 @@ class SystemConfigCatalogService:
             module="integration_platform",
             operation_type="同步检查",
             operation_name="对接平台状态诊断",
-            info="对接平台 connector=ERPNextBridge 触发只读连通性检查。",
+            info="对接平台 connector=LingyiFastAPIBridge 触发只读连通性检查。",
             operator="平台运维",
             result_status="部分成功",
             operated_at="2026-05-08T08:46:09Z",
