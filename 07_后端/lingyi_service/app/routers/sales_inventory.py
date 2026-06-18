@@ -6,7 +6,6 @@ from collections.abc import Generator
 from datetime import UTC
 from datetime import date
 from datetime import datetime
-from decimal import Decimal
 import os
 import re
 from typing import Any
@@ -50,13 +49,12 @@ from app.schemas.sales_inventory import StockLedgerData
 from app.schemas.sales_inventory import StockLedgerItem
 from app.schemas.sales_inventory import StockSummaryData
 from app.schemas.sales_inventory import StockSummaryItem
-from app.models.warehouse import LyWarehouseStockEntryDraft
-from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
 from app.services.permission_service import PermissionService
+from app.services.warehouse_service import WarehouseService
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
 from app.services.sales_inventory_service import SalesInventoryService
@@ -602,52 +600,26 @@ def _build_local_stock_summary_fallback(
 ) -> StockSummaryData:
     normalized_company = _scope_text(company)
     normalized_warehouse = _scope_text(warehouse)
-    query = (
-        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
-        .join(
-            LyWarehouseStockEntryDraftItem,
-            LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
-        )
-        .filter(
-            LyWarehouseStockEntryDraft.status != "cancelled",
-            LyWarehouseStockEntryDraftItem.item_code == item_code,
-        )
+    summary = WarehouseService(session=session).get_local_stock_summary(
+        company=normalized_company,
+        warehouse=normalized_warehouse,
+        item_code=item_code,
     )
-    if normalized_company is not None:
-        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
-    if normalized_warehouse is not None:
-        query = query.filter(LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
-
-    grouped: dict[tuple[str, str], Decimal] = {}
-    latest_posting: dict[tuple[str, str], datetime | None] = {}
-    for draft_row, item_row in query.all():
-        company_key = str(draft_row.company)
-        warehouse_key = str(item_row.target_warehouse or draft_row.target_warehouse or "")
-        key = (company_key, warehouse_key)
-        grouped[key] = grouped.get(key, Decimal("0")) + Decimal(str(item_row.qty))
-        current_latest = latest_posting.get(key)
-        if current_latest is None or ((draft_row.created_at or datetime.min.replace(tzinfo=UTC)) > current_latest):
-            latest_posting[key] = draft_row.created_at
-
-    items: list[StockSummaryItem] = []
-    for (company_key, warehouse_key), qty in sorted(grouped.items()):
-        latest = latest_posting.get((company_key, warehouse_key))
-        items.append(
-            StockSummaryItem(
-                company=company_key,
-                item_code=item_code,
-                warehouse=warehouse_key,
-                balance_qty=qty,
-                latest_posting_date=(latest.date() if latest else None),
-                latest_posting_time=(latest.time().isoformat(timespec="seconds") if latest else None),
-            )
-        )
-
     return StockSummaryData(
         item_code=item_code,
         company=normalized_company,
         warehouse=normalized_warehouse,
-        items=items,
+        items=[
+            StockSummaryItem(
+                company=row.company,
+                item_code=item_code,
+                warehouse=row.warehouse,
+                balance_qty=row.actual_qty,
+                latest_posting_date=None,
+                latest_posting_time=None,
+            )
+            for row in summary.items
+        ],
         dropped_count=0,
     )
 
@@ -658,53 +630,43 @@ def _build_local_stock_ledger_fallback(
     item_code: str,
     company: str | None,
     warehouse: str | None,
+    from_date: date | None,
+    to_date: date | None,
     page: int,
     page_size: int,
 ) -> StockLedgerData:
     normalized_company = _scope_text(company)
     normalized_warehouse = _scope_text(warehouse)
-    query = (
-        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
-        .join(
-            LyWarehouseStockEntryDraftItem,
-            LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
-        )
-        .filter(
-            LyWarehouseStockEntryDraft.status != "cancelled",
-            LyWarehouseStockEntryDraftItem.item_code == item_code,
-        )
-        .order_by(LyWarehouseStockEntryDraft.created_at.asc(), LyWarehouseStockEntryDraft.id.asc())
+    ledger = WarehouseService(session=session).list_local_stock_ledger(
+        company=normalized_company,
+        warehouse=normalized_warehouse,
+        item_code=item_code,
+        from_date=from_date,
+        to_date=to_date,
+        page=page,
+        page_size=page_size,
     )
-    if normalized_company is not None:
-        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
-    if normalized_warehouse is not None:
-        query = query.filter(LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
-
-    running_qty = Decimal("0")
-    ledger_items: list[StockLedgerItem] = []
-    for draft_row, item_row in query.all():
-        qty = Decimal(str(item_row.qty))
-        running_qty += qty
-        created_at = draft_row.created_at or datetime.now(UTC)
-        ledger_items.append(
+    return StockLedgerData(
+        items=[
             StockLedgerItem(
-                name=f"DRAFT-{draft_row.id}-{item_row.id}",
-                company=str(draft_row.company),
-                item_code=item_code,
-                warehouse=str(item_row.target_warehouse or draft_row.target_warehouse or ""),
-                posting_date=created_at.date(),
-                posting_time=created_at.time().isoformat(timespec="seconds"),
-                actual_qty=qty,
-                qty_after_transaction=running_qty,
-                voucher_type="Stock Entry Draft",
-                voucher_no=f"DRAFT-{draft_row.id}",
+                name=None,
+                company=row.company,
+                item_code=row.item_code,
+                warehouse=row.warehouse,
+                posting_date=row.posting_date,
+                posting_time=None,
+                actual_qty=row.actual_qty,
+                qty_after_transaction=row.qty_after_transaction,
+                voucher_type=row.voucher_type,
+                voucher_no=row.voucher_no,
             )
-        )
-
-    total = len(ledger_items)
-    start = max((page - 1) * page_size, 0)
-    end = start + page_size
-    return StockLedgerData(items=ledger_items[start:end], total=total, page=page, page_size=page_size, dropped_count=0)
+            for row in ledger.items
+        ],
+        total=ledger.total,
+        page=ledger.page,
+        page_size=ledger.page_size,
+        dropped_count=0,
+    )
 
 
 def _build_local_list_fallback(*, page: int, page_size: int) -> dict[str, Any]:
@@ -3035,6 +2997,8 @@ def list_stock_ledger(
                 item_code=item_code,
                 company=company,
                 warehouse=warehouse,
+                from_date=parsed_from_date,
+                to_date=parsed_to_date,
                 page=page,
                 page_size=page_size,
             )

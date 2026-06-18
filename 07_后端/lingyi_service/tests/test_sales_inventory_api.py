@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
 import os
 import unittest
@@ -17,6 +19,10 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.quality import Base as QualityBase
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.schemas.sales_inventory import SalesOrderFulfillmentData
@@ -40,6 +46,7 @@ class SalesInventoryApiBase(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        QualityBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -67,6 +74,9 @@ class SalesInventoryApiBase(unittest.TestCase):
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
+            session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.commit()
@@ -74,6 +84,59 @@ class SalesInventoryApiBase(unittest.TestCase):
     @staticmethod
     def _headers(role: str = "Sales Manager") -> dict[str, str]:
         return {"X-LY-Dev-User": "sales.inventory.user", "X-LY-Dev-Roles": role}
+
+    def _seed_stock_entry(
+        self,
+        *,
+        company: str = "COMP-A",
+        item_code: str = "ITEM-A",
+        warehouse: str = "WH-A",
+        qty: str = "10",
+        purpose: str = "Material Receipt",
+        source_warehouse: str | None = None,
+        target_warehouse: str | None = None,
+        event_key: str = "EVT-SALES-INV-STOCK-001",
+        created_at: datetime | None = None,
+    ) -> None:
+        posting_at = created_at or datetime(2026, 4, 1, tzinfo=timezone.utc)
+        source_wh = (
+            source_warehouse
+            if source_warehouse is not None
+            else (warehouse if purpose in {"Material Issue", "Material Transfer"} else None)
+        )
+        target_wh = (
+            target_warehouse
+            if target_warehouse is not None
+            else (warehouse if purpose != "Material Issue" else None)
+        )
+        with self.SessionLocal() as session:
+            draft = LyWarehouseStockEntryDraft(
+                company=company,
+                purpose=purpose,
+                source_type="test",
+                source_id=event_key,
+                source_warehouse=source_wh,
+                target_warehouse=target_wh,
+                status="pending_outbox",
+                created_by="seed",
+                created_at=posting_at,
+                idempotency_key=f"{event_key}:idem",
+                event_key=event_key,
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company=company,
+                    item_code=item_code,
+                    qty=Decimal(qty),
+                    uom="PCS",
+                    source_warehouse=source_wh,
+                    target_warehouse=target_wh,
+                )
+            )
+            session.commit()
 
 
 class SalesInventoryApiTest(SalesInventoryApiBase):
@@ -167,6 +230,72 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "INVALID_QUERY_PARAMETER")
+
+    def test_stock_ledger_local_fallback_uses_warehouse_movement_balances(self) -> None:
+        self._seed_stock_entry(
+            qty="10",
+            purpose="Material Receipt",
+            event_key="EVT-SALES-INV-STOCK-001",
+            created_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        )
+        self._seed_stock_entry(
+            qty="4",
+            purpose="Material Issue",
+            event_key="EVT-SALES-INV-STOCK-002",
+            created_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+        )
+        self._seed_stock_entry(
+            qty="2",
+            purpose="Material Transfer",
+            source_warehouse="WH-A",
+            target_warehouse="WH-B",
+            event_key="EVT-SALES-INV-STOCK-003",
+            created_at=datetime(2026, 6, 3, tzinfo=timezone.utc),
+        )
+        external_down = ERPNextAdapterException(error_code="EXTERNAL_SERVICE_UNAVAILABLE", safe_message="down")
+        with patch.object(ERPNextSalesInventoryAdapter, "list_stock_ledger", side_effect=external_down):
+            ledger = self.client.get(
+                "/api/sales-inventory/items/ITEM-A/stock-ledger?company=COMP-A&page=1&page_size=20",
+                headers=self._headers(),
+            )
+        with patch.object(ERPNextSalesInventoryAdapter, "get_stock_summary", side_effect=external_down):
+            summary = self.client.get(
+                "/api/sales-inventory/items/ITEM-A/stock-summary?company=COMP-A",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        ledger_payload = ledger.json()["data"]
+        self.assertEqual(ledger_payload["dropped_count"], 0)
+        self.assertEqual(ledger_payload["total"], 4)
+        movement_rows = [
+            (
+                row["warehouse"],
+                Decimal(str(row["actual_qty"])),
+                Decimal(str(row["qty_after_transaction"])),
+                row["voucher_type"],
+            )
+            for row in ledger_payload["items"]
+        ]
+        self.assertEqual(
+            movement_rows,
+            [
+                ("WH-A", Decimal("10.000000"), Decimal("10.000000"), "Stock Entry Draft/Material Receipt"),
+                ("WH-A", Decimal("-4.000000"), Decimal("6.000000"), "Stock Entry Draft/Material Issue"),
+                ("WH-A", Decimal("-2.000000"), Decimal("4.000000"), "Stock Entry Draft/Material Transfer"),
+                ("WH-B", Decimal("2.000000"), Decimal("2.000000"), "Stock Entry Draft/Material Transfer"),
+            ],
+        )
+        self.assertNotIn("valuation_rate", ledger_payload["items"][0])
+        self.assertIsNone(ledger_payload["items"][0]["name"])
+        self.assertIsNone(ledger_payload["items"][0]["posting_time"])
+
+        self.assertEqual(summary.status_code, 200, summary.text)
+        summary_rows = {
+            row["warehouse"]: Decimal(str(row["balance_qty"]))
+            for row in summary.json()["data"]["items"]
+        }
+        self.assertEqual(summary_rows, {"WH-A": Decimal("4.000000"), "WH-B": Decimal("2.000000")})
 
     def test_detail_denied_before_erpnext_read_to_hide_existence(self) -> None:
         with patch.object(ERPNextSalesInventoryAdapter, "get_sales_order") as mocked_detail:
