@@ -305,6 +305,7 @@ class StyleMasterService:
             bom = existing
             if bom is None:
                 bom = LyApparelBom(
+                    id=self._next_id(LyApparelBom),
                     bom_no=self._next_material_bom_no(item_code=str(style.ys_style_no), version_no=payload.version_no),
                     company=company,
                     style_master_id=int(style.id),
@@ -330,9 +331,11 @@ class StyleMasterService:
                 bom.updated_at = now
 
             self.session.query(LyApparelBomItem).filter(LyApparelBomItem.bom_id == int(bom.id)).delete()
+            next_item_id = self._next_id(LyApparelBomItem)
             for item in payload.items:
                 self.session.add(
                     LyApparelBomItem(
+                        id=next_item_id,
                         bom_id=int(bom.id),
                         material_item_code=item.material_item_code.strip(),
                         color=self._optional_text(item.color),
@@ -343,6 +346,7 @@ class StyleMasterService:
                         remark=self._optional_text(item.remark),
                     )
                 )
+                next_item_id += 1
             self.session.flush()
             data = self._style_material_bom_data(style=style, bom=bom)
             self.session.add(
@@ -946,6 +950,10 @@ class StyleMasterService:
     def _request_hash(self, **payload: Any) -> str:
         dumped = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str, separators=(",", ":"))
         return hashlib.sha256(dumped.encode("utf-8")).hexdigest()
+
+    def _next_id(self, model: type[Any]) -> int:
+        current = self.session.query(func.max(model.id)).scalar()
+        return int(current or 0) + 1
 
     @staticmethod
     def _optional_text(value: Any) -> str | None:

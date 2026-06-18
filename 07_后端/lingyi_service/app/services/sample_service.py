@@ -467,9 +467,11 @@ class SampleService:
                 existing=bom,
             )
             self.session.query(LySampleMaterialBomItem).filter(LySampleMaterialBomItem.bom_id == int(bom.id)).delete()
+            next_item_id = self._next_id(LySampleMaterialBomItem)
             for item in payload.items:
                 self.session.add(
                     LySampleMaterialBomItem(
+                        id=next_item_id,
                         bom_id=int(bom.id),
                         source_bom_item_id=None,
                         material_item_code=item.material_item_code.strip(),
@@ -483,6 +485,7 @@ class SampleService:
                         remark=self._optional_text(item.remark),
                     )
                 )
+                next_item_id += 1
             self.session.flush()
             data = self._sample_material_bom_data(order=order, bom=bom)
             self._insert_material_bom_operation(
@@ -565,9 +568,11 @@ class SampleService:
                 existing=bom,
             )
             self.session.query(LySampleMaterialBomItem).filter(LySampleMaterialBomItem.bom_id == int(bom.id)).delete()
+            next_item_id = self._next_id(LySampleMaterialBomItem)
             for item in source_items:
                 self.session.add(
                     LySampleMaterialBomItem(
+                        id=next_item_id,
                         bom_id=int(bom.id),
                         source_bom_item_id=int(item.id),
                         material_item_code=str(item.material_item_code),
@@ -581,6 +586,7 @@ class SampleService:
                         remark=item.remark,
                     )
                 )
+                next_item_id += 1
             self.session.flush()
             data = self._sample_material_bom_data(order=order, bom=bom)
             self._insert_material_bom_operation(
@@ -1065,6 +1071,10 @@ class SampleService:
         raw = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
+    def _next_id(self, model: type[Any]) -> int:
+        current = self.session.query(func.max(model.id)).scalar()
+        return int(current or 0) + 1
+
     @staticmethod
     def _next_sample_no() -> str:
         return f"SMP-{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')}"
@@ -1197,6 +1207,7 @@ class SampleService:
             return existing
 
         row = LySampleMaterialBom(
+            id=self._next_id(LySampleMaterialBom),
             company=str(order.company),
             sample_order_id=int(order.id),
             style_master_id=int(order.style_master_id) if order.style_master_id is not None else None,
