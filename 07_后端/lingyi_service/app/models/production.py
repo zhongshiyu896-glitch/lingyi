@@ -420,7 +420,7 @@ class LyProductionQuoteOperation(Base):
         PrimaryKeyConstraint("id", name="pk_ly_production_quote_operation"),
         Index("uk_ly_production_quote_operation_idem", "company", "operation", "idempotency_key", unique=True),
         Index("idx_ly_production_quote_operation_quote", "quote_id", "operation"),
-        CheckConstraint("operation IN ('create','convert')", name="ck_ly_production_quote_operation"),
+        CheckConstraint("operation IN ('create','convert','copy','void')", name="ck_ly_production_quote_operation"),
         {"schema": "ly_schema", "comment": "报价单写操作幂等账本"},
     )
 

@@ -80,10 +80,12 @@ from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanQuery
 from app.schemas.production import ProductionQuoteConvertData
 from app.schemas.production import ProductionQuoteConvertRequest
+from app.schemas.production import ProductionQuoteCopyRequest
 from app.schemas.production import ProductionQuoteCreateRequest
 from app.schemas.production import ProductionQuoteListData
 from app.schemas.production import ProductionQuoteListItem
 from app.schemas.production import ProductionQuoteQuery
+from app.schemas.production import ProductionQuoteVoidRequest
 from app.schemas.production import ProductionReportSuiteData
 from app.schemas.production import ProductionReportSuiteQuery
 from app.schemas.production import ProductionSalesForecastListData
@@ -1046,6 +1048,168 @@ def convert_production_quote_to_order(
             resource_no=resource_no,
             before_data=None,
             after_data={"quote_id": quote_id, "sales_order_no": payload.sales_order_no},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.post("/quotes/{quote_id}/copy", response_model=ApiResponse[ProductionQuoteListItem])
+def copy_production_quote(
+    quote_id: int,
+    payload: ProductionQuoteCopyRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_QUOTE_WRITE
+    audit_action = "copy"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    resource_no = str(quote_id)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_quote",
+            resource_id=quote_id,
+        )
+        data = _service(session=session, request=request).copy_quote(
+            quote_id=quote_id,
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_quote",
+            resource_id=int(data.quote_id or 0),
+            resource_no=str(data.quote_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=quote_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"quote_id": quote_id, "quote_no": payload.quote_no},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=quote_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"quote_id": quote_id, "quote_no": payload.quote_no},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.post("/quotes/{quote_id}/void", response_model=ApiResponse[ProductionQuoteListItem])
+def void_production_quote(
+    quote_id: int,
+    payload: ProductionQuoteVoidRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_QUOTE_WRITE
+    audit_action = "void"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    resource_no = str(quote_id)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_quote",
+            resource_id=quote_id,
+        )
+        data = _service(session=session, request=request).void_quote(
+            quote_id=quote_id,
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_quote",
+            resource_id=int(data.quote_id or quote_id),
+            resource_no=str(data.quote_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=quote_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"quote_id": quote_id, "reason": payload.reason},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=quote_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"quote_id": quote_id, "reason": payload.reason},
             error_code=app_exc.code,
         )
         return _app_err(app_exc)

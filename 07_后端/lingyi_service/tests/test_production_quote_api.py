@@ -308,6 +308,150 @@ class ProductionQuoteApiTest(unittest.TestCase):
                 1,
             )
 
+    def test_copy_quote_persists_independent_snapshot_idempotently(self) -> None:
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-COPY-CREATE"),
+            json=self._payload("IDEM-PROD-QUOTE-COPY-CREATE"),
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        source = created.json()["data"]
+        quote_id = int(source["quote_id"])
+
+        payload = {
+            "company": "COMP-Q",
+            "quote_no": "QT-SAVED-COPY-001",
+            "status": "draft",
+            "remark": "复制报价",
+            "idempotency_key": "IDEM-PROD-QUOTE-COPY",
+        }
+        copied = self.client.post(
+            f"/api/production/quotes/{quote_id}/copy",
+            headers=self._headers(request_id="PROD-QUOTE-COPY"),
+            json=payload,
+        )
+        self.assertEqual(copied.status_code, 200, copied.text)
+        copy_data = copied.json()["data"]
+        self.assertEqual(copy_data["quote_no"], "QT-SAVED-COPY-001")
+        self.assertEqual(copy_data["status"], "draft")
+        self.assertNotEqual(copy_data["quote_id"], source["quote_id"])
+        self.assertEqual(Decimal(str(copy_data["quote_amount"])), Decimal(str(source["quote_amount"])))
+        self.assertEqual(Decimal(str(copy_data["material_cost"])), Decimal(str(source["material_cost"])))
+
+        replay = self.client.post(
+            f"/api/production/quotes/{quote_id}/copy",
+            headers=self._headers(request_id="PROD-QUOTE-COPY-REPLAY"),
+            json=payload,
+        )
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["data"]["quote_id"], copy_data["quote_id"])
+
+        conflicting = dict(payload)
+        conflicting["quote_no"] = "QT-SAVED-COPY-002"
+        conflict = self.client.post(
+            f"/api/production/quotes/{quote_id}/copy",
+            headers=self._headers(request_id="PROD-QUOTE-COPY-CONFLICT"),
+            json=conflicting,
+        )
+        self.assertEqual(conflict.status_code, 409, conflict.text)
+        self.assertEqual(conflict.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
+
+        listed = self.client.get(
+            "/api/production/quotes?status=draft&keyword=QT-SAVED-COPY-001&page=1&page_size=10",
+            headers=self._headers(request_id="PROD-QUOTE-COPY-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(listed.json()["data"]["items"][0]["quote_no"], "QT-SAVED-COPY-001")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionQuote).count(), 2)
+            self.assertEqual(session.query(LyProductionQuoteOperation).filter_by(operation="copy").count(), 1)
+            self.assertGreaterEqual(
+                session.query(LyOperationAuditLog).filter_by(resource_type="production_quote", action="copy").count(),
+                1,
+            )
+
+    def test_void_quote_marks_quote_void_and_blocks_convert(self) -> None:
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-VOID-CREATE"),
+            json=self._payload("IDEM-PROD-QUOTE-VOID-CREATE"),
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        quote_id = int(created.json()["data"]["quote_id"])
+
+        payload = {
+            "company": "COMP-Q",
+            "reason": "客户取消报价",
+            "idempotency_key": "IDEM-PROD-QUOTE-VOID",
+        }
+        voided = self.client.post(
+            f"/api/production/quotes/{quote_id}/void",
+            headers=self._headers(request_id="PROD-QUOTE-VOID"),
+            json=payload,
+        )
+        self.assertEqual(voided.status_code, 200, voided.text)
+        self.assertEqual(voided.json()["data"]["status"], "void")
+
+        replay = self.client.post(
+            f"/api/production/quotes/{quote_id}/void",
+            headers=self._headers(request_id="PROD-QUOTE-VOID-REPLAY"),
+            json=payload,
+        )
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["data"]["quote_id"], quote_id)
+
+        convert = self.client.post(
+            f"/api/production/quotes/{quote_id}/convert-to-order",
+            headers=self._headers(request_id="PROD-QUOTE-VOID-CONVERT"),
+            json={"company": "COMP-Q", "idempotency_key": "IDEM-PROD-QUOTE-VOID-CONVERT"},
+        )
+        self.assertEqual(convert.status_code, 400, convert.text)
+        self.assertEqual(convert.json()["code"], "PRODUCTION_TRACKING_EXCEPTION_INVALID")
+
+        listed = self.client.get(
+            "/api/production/quotes?status=void&page=1&page_size=10",
+            headers=self._headers(request_id="PROD-QUOTE-VOID-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(listed.json()["data"]["items"][0]["quote_no"], "QT-SAVED-001")
+
+        with self.SessionLocal() as session:
+            quote = session.query(LyProductionQuote).filter_by(id=quote_id).one()
+            self.assertEqual(quote.status, "void")
+            self.assertEqual(session.query(LyProductionQuoteOperation).filter_by(operation="void").count(), 1)
+            self.assertGreaterEqual(
+                session.query(LyOperationAuditLog).filter_by(resource_type="production_quote", action="void").count(),
+                1,
+            )
+
+    def test_quote_copy_void_permission_fail_closed(self) -> None:
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-CV-F-CREATE"),
+            json={**self._payload("IDEM-PROD-QUOTE-CV-F-CREATE"), "quote_no": "QT-SAVED-CVF"},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        quote_id = int(created.json()["data"]["quote_id"])
+
+        copy_forbidden = self.client.post(
+            f"/api/production/quotes/{quote_id}/copy",
+            headers=self._headers(role="Production Viewer", request_id="PROD-QUOTE-COPY-FORBIDDEN"),
+            json={"company": "COMP-Q", "idempotency_key": "IDEM-PROD-QUOTE-COPY-F"},
+        )
+        void_forbidden = self.client.post(
+            f"/api/production/quotes/{quote_id}/void",
+            headers=self._headers(role="Production Viewer", request_id="PROD-QUOTE-VOID-FORBIDDEN"),
+            json={"company": "COMP-Q", "idempotency_key": "IDEM-PROD-QUOTE-VOID-F"},
+        )
+        self.assertEqual(copy_forbidden.status_code, 403, copy_forbidden.text)
+        self.assertEqual(void_forbidden.status_code, 403, void_forbidden.text)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionQuote).count(), 1)
+            quote = session.query(LyProductionQuote).filter_by(id=quote_id).one()
+            self.assertEqual(quote.status, "quoted")
+            self.assertEqual(session.query(LyProductionQuoteOperation).filter(LyProductionQuoteOperation.operation.in_(["copy", "void"])).count(), 0)
+
     def test_quote_convert_permission_fail_closed(self) -> None:
         created = self.client.post(
             "/api/production/quotes",

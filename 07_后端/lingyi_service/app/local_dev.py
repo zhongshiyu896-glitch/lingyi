@@ -100,7 +100,7 @@ def _create_local_tables() -> None:
     _ensure_local_inventory_count_idempotency_columns()
     _ensure_local_bom_company_style_columns()
     _ensure_local_production_material_uom_column()
-    _ensure_local_production_quote_operation_supports_convert()
+    _ensure_local_production_quote_operation_supports_quote_actions()
     _ensure_local_production_followup_node_operation_supports_edit()
 
 
@@ -617,7 +617,7 @@ def _ensure_local_production_material_uom_column() -> None:
             )
 
 
-def _ensure_local_production_quote_operation_supports_convert() -> None:
+def _ensure_local_production_quote_operation_supports_quote_actions() -> None:
     database_path = main_module.engine.url.database
     if not database_path or database_path == ":memory:":
         return
@@ -626,7 +626,7 @@ def _ensure_local_production_quote_operation_supports_convert() -> None:
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_production_quote_operation'"
         ).fetchone()
         existing_sql = str(row[0]) if row else ""
-        if not row or "'convert'" in existing_sql:
+        if not row or ("'copy'" in existing_sql and "'void'" in existing_sql):
             return
         conn.executescript(
             """
@@ -644,7 +644,7 @@ def _ensure_local_production_quote_operation_supports_convert() -> None:
                 created_by VARCHAR(140) NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 PRIMARY KEY (id),
-                CONSTRAINT ck_ly_production_quote_operation CHECK (operation IN ('create','convert')),
+                CONSTRAINT ck_ly_production_quote_operation CHECK (operation IN ('create','convert','copy','void')),
                 FOREIGN KEY(quote_id) REFERENCES ly_production_quote (id)
             );
             INSERT INTO ly_production_quote_operation_new (

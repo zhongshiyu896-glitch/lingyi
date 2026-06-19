@@ -113,10 +113,12 @@ from app.schemas.production import ProductionPlanMaterialSnapshotItem
 from app.schemas.production import ProductionPlanQuery
 from app.schemas.production import ProductionQuoteConvertData
 from app.schemas.production import ProductionQuoteConvertRequest
+from app.schemas.production import ProductionQuoteCopyRequest
 from app.schemas.production import ProductionQuoteListData
 from app.schemas.production import ProductionQuoteListItem
 from app.schemas.production import ProductionQuoteCreateRequest
 from app.schemas.production import ProductionQuoteQuery
+from app.schemas.production import ProductionQuoteVoidRequest
 from app.schemas.production import ProductionReportSuiteCompositionItem
 from app.schemas.production import ProductionReportSuiteData
 from app.schemas.production import ProductionReportSuiteQuery
@@ -1662,6 +1664,150 @@ class ProductionService:
         except (SQLAlchemyError, ValueError) as exc:
             raise DatabaseWriteFailed() from exc
         return data
+
+    def copy_quote(
+        self,
+        *,
+        quote_id: int,
+        payload: ProductionQuoteCopyRequest,
+        operator: str,
+    ) -> ProductionQuoteListItem:
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        operation = (payload.operation or "copy").strip().lower()
+        if operation != "copy":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="operation 必须为 copy")
+
+        company_input = self._text(payload.company)
+        source, plan = self._get_quote_for_update(quote_id=quote_id, company=company_input)
+        company = str(source.company)
+        status = self._normalize_quote_status(payload.status)
+        if status in {"converted", "void"}:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="复制报价的新状态只能是草稿、待核价或已报价")
+        quote_no_input = self._text(payload.quote_no)
+        remark = self._text(payload.remark)
+        request_hash = self._build_request_hash(
+            {
+                "operation": "copy",
+                "company": company,
+                "source_quote_id": int(source.id),
+                "source_quote_no": str(source.quote_no),
+                "quote_no": quote_no_input,
+                "valid_until": payload.valid_until.isoformat() if payload.valid_until else None,
+                "status": status,
+                "remark": remark,
+            }
+        )
+        existing_operation = self._get_quote_operation(company=company, operation="copy", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_quote_operation_same(existing_operation, request_hash=request_hash)
+            return self._quote_item_from_operation(existing_operation)
+
+        quote_no = quote_no_input or self._copy_quote_no(company=company, source_quote_no=str(source.quote_no))
+        if self._get_quote_by_no(company=company, quote_no=quote_no) is not None:
+            raise BusinessException(code=PRODUCTION_QUOTE_CONFLICT, message=f"{quote_no} 已存在")
+
+        try:
+            row = LyProductionQuote(
+                quote_no=quote_no,
+                company=company,
+                plan_id=int(source.plan_id),
+                plan_no=str(source.plan_no),
+                sales_order=str(source.sales_order),
+                sales_order_item=str(source.sales_order_item),
+                customer=str(source.customer) if source.customer else None,
+                item_code=str(source.item_code),
+                quote_qty=Decimal(str(source.quote_qty or 0)),
+                material_cost=Decimal(str(source.material_cost or 0)),
+                labor_cost=Decimal(str(source.labor_cost or 0)),
+                management_fee=Decimal(str(source.management_fee or 0)),
+                quote_amount=Decimal(str(source.quote_amount or 0)),
+                currency=str(source.currency or "CNY"),
+                valid_until=payload.valid_until if payload.valid_until is not None else source.valid_until,
+                status=status,
+                remark=remark if remark is not None else f"复制自 {source.quote_no}",
+                created_by=operator,
+                updated_by=operator,
+            )
+            self.session.add(row)
+            self.session.flush()
+            item = self._quote_item(row, plan=plan)
+            self._insert_quote_operation(
+                quote_id=int(row.id),
+                company=company,
+                operation="copy",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return item
+
+    def void_quote(
+        self,
+        *,
+        quote_id: int,
+        payload: ProductionQuoteVoidRequest,
+        operator: str,
+    ) -> ProductionQuoteListItem:
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        operation = (payload.operation or "void").strip().lower()
+        if operation != "void":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="operation 必须为 void")
+
+        company_input = self._text(payload.company)
+        row, plan = self._get_quote_for_update(quote_id=quote_id, company=company_input)
+        company = str(row.company)
+        reason = self._text(payload.reason) or "报价作废"
+        request_hash = self._build_request_hash(
+            {
+                "operation": "void",
+                "company": company,
+                "quote_id": int(row.id),
+                "quote_no": str(row.quote_no),
+                "reason": reason,
+            }
+        )
+        existing_operation = self._get_quote_operation(company=company, operation="void", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_quote_operation_same(existing_operation, request_hash=request_hash)
+            return self._quote_item_from_operation(existing_operation)
+
+        status = str(row.status or "")
+        if status == "converted":
+            raise BusinessException(code=PRODUCTION_QUOTE_CONFLICT, message="已转订单报价不能作废")
+        if status == "void":
+            raise BusinessException(code=PRODUCTION_QUOTE_CONFLICT, message="报价已作废")
+
+        try:
+            row.status = "void"
+            row.remark = reason
+            row.updated_by = operator
+            self.session.flush()
+            item = self._quote_item(row, plan=plan)
+            self._insert_quote_operation(
+                quote_id=int(row.id),
+                company=company,
+                operation="void",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return item
 
     def list_followup_templates(
         self,
@@ -5816,6 +5962,22 @@ class ProductionService:
             raise BusinessException(code=PRODUCTION_QUOTE_NOT_FOUND, message="报价单不存在，不能转订单")
         return row
 
+    def _get_quote_for_update(self, *, quote_id: int, company: str | None) -> tuple[LyProductionQuote, LyProductionPlan]:
+        try:
+            sql = self.session.query(LyProductionQuote, LyProductionPlan).join(
+                LyProductionPlan,
+                LyProductionPlan.id == LyProductionQuote.plan_id,
+            )
+            sql = sql.filter(LyProductionQuote.id == int(quote_id))
+            if company:
+                sql = sql.filter(LyProductionQuote.company == company)
+            row = sql.first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=PRODUCTION_QUOTE_NOT_FOUND, message="报价单不存在")
+        return row
+
     def _get_quote_by_no(self, *, company: str, quote_no: str) -> LyProductionQuote | None:
         try:
             return (
@@ -5913,6 +6075,16 @@ class ProductionService:
     @staticmethod
     def _next_quote_no() -> str:
         return f"QT-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
+
+    def _copy_quote_no(self, *, company: str, source_quote_no: str) -> str:
+        base = re.sub(r"\s+", "-", source_quote_no.strip()) or "QUOTE"
+        base = base[:128]
+        for index in range(1, 1000):
+            suffix = "COPY" if index == 1 else f"COPY{index}"
+            candidate = f"{base}-{suffix}"[:140]
+            if self._get_quote_by_no(company=company, quote_no=candidate) is None:
+                return candidate
+        return self._next_quote_no()
 
     def _followup_template_item(self, row: LyProductionFollowupTemplate) -> ProductionFollowupTemplateListItem:
         return ProductionFollowupTemplateListItem(

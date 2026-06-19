@@ -409,6 +409,27 @@ class ProductionQuoteConvertRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=128)
 
 
+class ProductionQuoteCopyRequest(BaseModel):
+    """Copy a saved production quote into an independent draft snapshot."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    quote_no: Optional[str] = Field(default=None, max_length=140)
+    valid_until: Optional[date] = None
+    status: Optional[str] = Field(default="draft", max_length=32)
+    remark: Optional[str] = Field(default=None, max_length=500)
+    operation: Optional[str] = Field(default="copy", max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionQuoteVoidRequest(BaseModel):
+    """Void a saved production quote that has not been converted."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    reason: Optional[str] = Field(default=None, max_length=500)
+    operation: Optional[str] = Field(default="void", max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
 class ProductionQuoteListItem(BaseModel):
     """Production quote list row."""
 
