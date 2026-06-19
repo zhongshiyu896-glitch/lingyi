@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import datetime
 from decimal import Decimal
 import os
 from pathlib import Path
@@ -22,6 +23,11 @@ from app.core.permissions import DASHBOARD_READ
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionPlan
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.dashboard import get_db_session as dashboard_db_dep
 from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
@@ -41,6 +47,8 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
+        ProductionBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -70,6 +78,9 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyProductionPlan).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrder).delete()
             session.commit()
 
     @staticmethod
@@ -127,6 +138,98 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertGreaterEqual(len(payload["home_overview"]["metric_cards"]), 4)
         self.assertGreaterEqual(len(payload["home_overview"]["todo_items"]), 3)
         self.assertIn("查看动态", payload["home_overview"]["primary_actions"])
+
+    def test_dashboard_kanban_messages_are_built_from_local_orders_and_plans(self) -> None:
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no="SO-DASH-001",
+                source_order_ref="SRC-DASH-001",
+                company="COMP-A",
+                customer="DASH-CUST",
+                status="planned",
+                docstatus=0,
+                transaction_date=date(2026, 4, 1),
+                delivery_date=date(2026, 4, 20),
+                currency="CNY",
+                grand_total=Decimal("100"),
+                idempotency_key="idem-dash-so",
+                request_hash="hash-dash-so",
+                scenario_tag="DASH",
+                payload={},
+                created_by="dash.seed",
+                created_at=datetime(2026, 4, 1, 8, 0, 0),
+                updated_by="dash.seed",
+                updated_at=datetime(2026, 4, 2, 8, 0, 0),
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-DASH-001-001",
+                    item_code="DASH-STYLE-001",
+                    item_name="Dashboard Style",
+                    qty=Decimal("12"),
+                    planned_qty=Decimal("12"),
+                    delivered_qty=Decimal("0"),
+                    ys_material_calc_state="待算料",
+                    uom="件",
+                    warehouse="FG-DASH",
+                    delivery_date=date(2026, 4, 20),
+                )
+            )
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-DASH-001",
+                    company="COMP-A",
+                    sales_order="SO-DASH-001",
+                    sales_order_item="SO-DASH-001-001",
+                    customer="DASH-CUST",
+                    item_code="DASH-STYLE-001",
+                    bom_id=1,
+                    bom_version="V1",
+                    planned_qty=Decimal("12"),
+                    planned_start_date=date(2026, 4, 3),
+                    status="planned",
+                    idempotency_key="idem-dash-plan",
+                    request_hash="hash-dash-plan",
+                    created_by="dash.seed",
+                    created_at=datetime(2026, 4, 3, 9, 0, 0),
+                    updated_at=datetime(2026, 4, 3, 10, 0, 0),
+                )
+            )
+            session.commit()
+
+        with patch(
+            "app.services.quality_service.QualityService.statistics",
+            return_value=SimpleNamespace(
+                total_count=0,
+                total_inspected_qty=Decimal("0"),
+                total_accepted_qty=Decimal("0"),
+                total_rejected_qty=Decimal("0"),
+                total_defect_qty=Decimal("0"),
+            ),
+        ), patch(
+            "app.services.sales_inventory_service.SalesInventoryService.get_inventory_aggregation",
+            return_value=SimpleNamespace(items=[]),
+        ), patch(
+            "app.services.warehouse_service.WarehouseService.get_alerts",
+            return_value=SimpleNamespace(items=[]),
+        ):
+            response = self.client.get(
+                "/api/dashboard/overview?company=COMP-A",
+                headers=self._headers_with_roles("dashboard:read"),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        messages = response.json()["data"]["kanban"]["messages"]
+        joined = " ".join(f"{row['order_no']} {row['style_no']} {row['title']}" for row in messages)
+        self.assertIn("SO-DASH-001", joined)
+        self.assertIn("PP-DASH-001", joined)
+        self.assertIn("DASH-STYLE-001", joined)
+        self.assertNotIn("SO-240601-001", joined)
 
     def test_module_read_actions_cannot_replace_dashboard_read(self) -> None:
         for role in ("quality:read", "sales_inventory:read", "warehouse:read", "inventory:read"):
