@@ -2438,6 +2438,22 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(data["total"], 1)
         self.assertEqual([int(row["id"]) for row in data["items"]], [allowed_id])
 
+    def test_requirements_list_filters_by_supplier_name(self) -> None:
+        self._seed_requirement(requirement_no="REQ-A6-SUP-FILTER-KEEP", supplier_name="SUP-A6-KEEP")
+        self._seed_requirement(requirement_no="REQ-A6-SUP-FILTER-BLOCK", supplier_name="SUP-A6-BLOCK")
+
+        response = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&supplier_name=KEEP&page_size=100",
+            headers=self._headers("req-a6-list-supplier-filter"),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["code"], "0")
+        data = response.json()["data"]
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(data["items"][0]["requirement_no"], "REQ-A6-SUP-FILTER-KEEP")
+        self.assertEqual(data["items"][0]["supplier_name"], "SUP-A6-KEEP")
+
     def test_from_requirements_fastapi_scope_denied_does_not_mutate(self) -> None:
         requirement_id = self._seed_requirement(
             requirement_no="REQ-A6-SCOPE-DENY",

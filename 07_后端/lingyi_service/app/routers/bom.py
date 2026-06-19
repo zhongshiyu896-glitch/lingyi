@@ -853,6 +853,7 @@ def list_bom_material_requests(
             company=company,
             keyword=keyword,
             material_item_code=material_item_code,
+            supplier_name=None,
             status=status,
             page=page,
             page_size=page_size,

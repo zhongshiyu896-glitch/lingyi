@@ -800,6 +800,8 @@ def list_sales_orders(
         filtered_items = [item for item in native_items if _scope_allowed(item, permissions)]
         paged_items, total = _paginate_list_items(filtered_items, page=page, page_size=page_size)
         return _ok({"items": paged_items, "total": total, "page": page, "page_size": page_size})
+    if get_permission_source() == "fastapi":
+        return _ok({"items": [], "total": 0, "page": page, "page_size": page_size})
     if _is_local_sales_inventory_read_enabled():
         local_items = _write_service(session).list_local_sales_orders(
             order_no=_scope_text(order_no),
@@ -885,6 +887,8 @@ def get_sales_order_detail(
     local_first = _write_service(session).get_local_sales_order(name=name)
     if local_first is not None:
         data = local_first
+    elif get_permission_source() == "fastapi":
+        _raise_hidden_sales_order_not_found()
     elif _is_local_sales_inventory_read_enabled():
         data = _write_service(session).get_local_sales_order(name=name)
         if data is None:

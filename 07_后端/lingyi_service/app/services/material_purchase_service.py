@@ -292,6 +292,7 @@ class MaterialPurchaseService:
         company: str | None,
         keyword: str | None,
         material_item_code: str | None,
+        supplier_name: str | None,
         status: str | None,
         page: int,
         page_size: int,
@@ -328,6 +329,9 @@ class MaterialPurchaseService:
             normalized_material = self._optional_text(material_item_code)
             if normalized_material:
                 query = query.filter(LyMaterialPurchaseRequirement.material_item_code == normalized_material)
+            normalized_supplier = self._optional_text(supplier_name)
+            if normalized_supplier:
+                query = query.filter(func.lower(LyMaterialPurchaseRequirement.supplier_name).like(f"%{normalized_supplier.lower()}%"))
             normalized_status = self._optional_text(status)
             if normalized_status and normalized_status != "all":
                 query = query.filter(LyMaterialPurchaseRequirement.status == normalized_status)

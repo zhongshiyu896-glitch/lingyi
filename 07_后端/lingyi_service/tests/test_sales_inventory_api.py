@@ -21,6 +21,9 @@ from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.quality import Base as QualityBase
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
@@ -48,6 +51,7 @@ class SalesInventoryApiBase(unittest.TestCase):
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -79,6 +83,8 @@ class SalesInventoryApiBase(unittest.TestCase):
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrder).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.commit()
@@ -136,6 +142,50 @@ class SalesInventoryApiBase(unittest.TestCase):
                     uom="PCS",
                     source_warehouse=source_wh,
                     target_warehouse=target_wh,
+                )
+            )
+            session.commit()
+
+    def _seed_sales_order(
+        self,
+        *,
+        sales_order_no: str,
+        company: str = "COMP-A",
+        customer: str = "CUST-A",
+        item_code: str = "ITEM-A",
+    ) -> None:
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no=sales_order_no,
+                source_order_ref=sales_order_no,
+                company=company,
+                customer=customer,
+                status="draft",
+                docstatus=0,
+                transaction_date=datetime(2026, 4, 1).date(),
+                delivery_date=datetime(2026, 4, 10).date(),
+                currency="CNY",
+                grand_total=Decimal("120.50"),
+                idempotency_key=f"{sales_order_no}:idem",
+                request_hash=f"{sales_order_no}:hash",
+                payload={},
+                created_by="seed",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company=company,
+                    line_no=1,
+                    sales_order_item=f"{sales_order_no}-001",
+                    item_code=item_code,
+                    item_name=item_code,
+                    qty=Decimal("1"),
+                    rate=Decimal("120.50"),
+                    amount=Decimal("120.50"),
+                    uom="PCS",
+                    ys_material_calc_state="待算料",
                 )
             )
             session.commit()
@@ -378,43 +428,29 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
                 }
             }
         )
+        self._seed_sales_order(sales_order_no="SO-FASTAPI-A", company="COMP-A", customer="CUST-A")
+        self._seed_sales_order(sales_order_no="SO-FASTAPI-B", company="COMP-B", customer="CUST-B")
         with patch.object(
             ERPNextSalesInventoryAdapter,
             "list_sales_orders",
-            return_value=(
-                [
-                    {
-                        "name": "SO-FASTAPI-A",
-                        "company": "COMP-A",
-                        "customer": "CUST-A",
-                        "transaction_date": "2026-04-01",
-                        "delivery_date": "2026-04-10",
-                        "status": "To Deliver",
-                        "docstatus": 1,
-                        "grand_total": "120.50",
-                        "currency": "CNY",
-                    },
-                    {
-                        "name": "SO-FASTAPI-B",
-                        "company": "COMP-B",
-                        "customer": "CUST-B",
-                        "transaction_date": "2026-04-02",
-                        "delivery_date": "2026-04-11",
-                        "status": "To Deliver",
-                        "docstatus": 1,
-                        "grand_total": "99.00",
-                        "currency": "CNY",
-                    },
-                ],
-                2,
-            ),
-        ):
+        ) as mocked_list:
             response = self.client.get("/api/sales-inventory/sales-orders", headers=self._headers())
 
         self.assertEqual(response.status_code, 200, response.text)
         payload = response.json()["data"]
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["items"][0]["name"], "SO-FASTAPI-A")
+        mocked_list.assert_not_called()
+
+    def test_sales_orders_fastapi_empty_local_does_not_call_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        with patch.object(ERPNextSalesInventoryAdapter, "list_sales_orders") as mocked_list:
+            response = self.client.get("/api/sales-inventory/sales-orders", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["data"]["items"], [])
+        self.assertEqual(response.json()["data"]["total"], 0)
+        mocked_list.assert_not_called()
 
     def test_customers_empty_customer_permissions_filter_all(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
