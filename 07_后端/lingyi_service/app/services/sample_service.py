@@ -29,6 +29,8 @@ from app.core.error_codes import SAMPLE_NOT_FOUND
 from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
 from app.core.exceptions import BusinessException
 from app.models.sample import LySampleIdempotency
+from app.models.sample import LySampleCostLine
+from app.models.sample import LySampleCostOperation
 from app.models.sample import LySampleMaterialBom
 from app.models.sample import LySampleMaterialBomItem
 from app.models.sample import LySampleMaterialBomOperation
@@ -46,6 +48,9 @@ from app.schemas.sample import SampleOrderItem
 from app.schemas.sample import SampleOrderListData
 from app.schemas.sample import SampleOrderStatusRequest
 from app.schemas.sample import SampleOrderUpdateRequest
+from app.schemas.sample import SampleCostData
+from app.schemas.sample import SampleCostLineItem
+from app.schemas.sample import SampleCostUpsertRequest
 from app.schemas.sample import SampleMaterialBomCopyRequest
 from app.schemas.sample import SampleMaterialBomData
 from app.schemas.sample import SampleMaterialBomExplodeData
@@ -650,6 +655,91 @@ class SampleService:
             order_qty=Decimal(str(order_qty)),
             items=items,
             total_required_qty=total.quantize(Decimal("0.000001")),
+        )
+
+    def get_costs(self, *, order_id: int, company: str | None) -> SampleCostData:
+        company = self._require_text(company, "company")
+        order = self._get_order_for_read(order_id=order_id, company=company)
+        return self._sample_cost_data(order=order)
+
+    def upsert_costs(self, *, order_id: int, payload: SampleCostUpsertRequest, actor: str) -> SampleMutationResult:
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        order = self._get_order_for_mutation(order_id=order_id, company=company)
+        normalized_items = [self._normalize_cost_payload(item) for item in payload.items]
+        request_hash = self._request_hash(
+            operation="sample_cost_upsert",
+            company=company,
+            order_id=order_id,
+            items=normalized_items,
+        )
+        existing_operation = self._get_cost_operation(
+            company=company,
+            operation="upsert",
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if existing_operation.request_hash != request_hash:
+                raise BusinessException(code=SAMPLE_IDEMPOTENCY_CONFLICT, message="幂等键冲突，且请求内容不一致")
+            data = self._sample_cost_data(order=order)
+            return SampleMutationResult(
+                item=data,
+                before=data.model_dump(mode="json"),
+                after=data.model_dump(mode="json"),
+                resource_type="SAMPLE_COST",
+                resource_id=int(order.id),
+                resource_no=str(order.sample_no),
+                idempotent=True,
+            )
+
+        before = self._sample_cost_data(order=order).model_dump(mode="json")
+        try:
+            self.session.query(LySampleCostLine).filter(
+                LySampleCostLine.company == company,
+                LySampleCostLine.sample_order_id == int(order.id),
+            ).delete()
+            next_id = self._next_id(LySampleCostLine)
+            now = datetime.now(UTC)
+            for item in normalized_items:
+                self.session.add(
+                    LySampleCostLine(
+                        id=next_id,
+                        company=company,
+                        sample_order_id=int(order.id),
+                        cost_type=item["cost_type"],
+                        description=item["description"],
+                        qty=item["qty"],
+                        unit_price=item["unit_price"],
+                        amount=item["amount"],
+                        occurred_date=item["occurred_date"],
+                        remark=item["remark"],
+                        created_by=actor,
+                        updated_by=actor,
+                        updated_at=now,
+                    )
+                )
+                next_id += 1
+            self.session.flush()
+            data = self._sample_cost_data(order=order)
+            self._insert_cost_operation(
+                sample_order_id=int(order.id),
+                company=company,
+                operation="upsert",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=data,
+                actor=actor,
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        return SampleMutationResult(
+            item=data,
+            before=before,
+            after=data.model_dump(mode="json"),
+            resource_type="SAMPLE_COST",
+            resource_id=int(order.id),
+            resource_no=str(order.sample_no),
         )
 
     def convert_order(self, *, order_id: int, payload: SampleOrderConvertRequest, actor: str) -> SampleMutationResult:
@@ -1334,6 +1424,93 @@ class SampleService:
                 idempotency_key=idempotency_key,
                 request_hash=request_hash,
                 response_json=json.dumps(response.model_dump(mode="json"), ensure_ascii=False, default=str),
+                created_by=actor,
+            )
+        )
+
+    def _sample_cost_data(self, *, order: LySampleOrder) -> SampleCostData:
+        rows = (
+            self.session.query(LySampleCostLine)
+            .filter(
+                LySampleCostLine.company == order.company,
+                LySampleCostLine.sample_order_id == int(order.id),
+            )
+            .order_by(LySampleCostLine.id.asc())
+            .all()
+        )
+        items = [
+            SampleCostLineItem(
+                id=int(row.id),
+                cost_type=str(row.cost_type),
+                description=str(row.description or ""),
+                qty=Decimal(str(row.qty or 0)),
+                unit_price=Decimal(str(row.unit_price or 0)),
+                amount=Decimal(str(row.amount or 0)),
+                occurred_date=row.occurred_date,
+                remark=row.remark,
+                updated_at=row.updated_at,
+            )
+            for row in rows
+        ]
+        total = sum((item.amount for item in items), Decimal("0")).quantize(Decimal("0.000001"))
+        return SampleCostData(
+            sample_order_id=int(order.id),
+            sample_no=str(order.sample_no),
+            company=str(order.company),
+            total_amount=total,
+            items=items,
+        )
+
+    def _normalize_cost_payload(self, item: Any) -> dict[str, Any]:
+        qty = Decimal(str(item.qty or 0))
+        unit_price = Decimal(str(item.unit_price or 0))
+        amount = Decimal(str(item.amount)) if item.amount is not None else (qty * unit_price)
+        return {
+            "cost_type": self._require_text(item.cost_type, "cost_type"),
+            "description": self._optional_text(item.description) or "",
+            "qty": qty.quantize(Decimal("0.000001")),
+            "unit_price": unit_price.quantize(Decimal("0.000001")),
+            "amount": amount.quantize(Decimal("0.000001")),
+            "occurred_date": item.occurred_date,
+            "remark": self._optional_text(item.remark),
+        }
+
+    def _get_cost_operation(
+        self,
+        *,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+    ) -> LySampleCostOperation | None:
+        return (
+            self.session.query(LySampleCostOperation)
+            .filter(
+                LySampleCostOperation.company == company,
+                LySampleCostOperation.operation == operation,
+                LySampleCostOperation.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+
+    def _insert_cost_operation(
+        self,
+        *,
+        sample_order_id: int,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+        request_hash: str,
+        response: SampleCostData,
+        actor: str,
+    ) -> None:
+        self.session.add(
+            LySampleCostOperation(
+                sample_order_id=sample_order_id,
+                company=company,
+                operation=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response_json=json.dumps(response.model_dump(mode="json"), ensure_ascii=False, sort_keys=True, default=str),
                 created_by=actor,
             )
         )

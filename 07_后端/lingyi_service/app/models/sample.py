@@ -248,6 +248,57 @@ class LySampleMaterialBomOperation(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class LySampleCostLine(Base):
+    """Actual sample cost lines captured on a sample order."""
+
+    __tablename__ = "ly_sample_cost_line"
+    __table_args__ = (
+        Index("idx_ly_sample_cost_line_order", "company", "sample_order_id"),
+        Index("idx_ly_sample_cost_line_type", "company", "cost_type"),
+        CheckConstraint("qty >= 0", name="ck_ly_sample_cost_line_qty"),
+        CheckConstraint("unit_price >= 0", name="ck_ly_sample_cost_line_unit_price"),
+        CheckConstraint("amount >= 0", name="ck_ly_sample_cost_line_amount"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生样衣成本归集明细"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    sample_order_id = Column(IDType, ForeignKey("ly_schema.ly_sample_order.id"), nullable=False)
+    cost_type = Column(String(64), nullable=False)
+    description = Column(String(255), nullable=False, default="")
+    qty = Column(Numeric(18, 6), nullable=False, default=0)
+    unit_price = Column(Numeric(18, 6), nullable=False, default=0)
+    amount = Column(Numeric(18, 6), nullable=False, default=0)
+    occurred_date = Column(Date, nullable=True)
+    remark = Column(Text, nullable=True)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class LySampleCostOperation(Base):
+    """Idempotency ledger for sample cost writes."""
+
+    __tablename__ = "ly_sample_cost_operation"
+    __table_args__ = (
+        Index("uk_ly_sample_cost_operation_idem", "company", "operation", "idempotency_key", unique=True),
+        Index("idx_ly_sample_cost_operation_order", "sample_order_id", "operation"),
+        CheckConstraint("operation IN ('upsert')", name="ck_ly_sample_cost_operation"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生样衣成本写操作幂等账本"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    sample_order_id = Column(IDType, nullable=False)
+    company = Column(String(140), nullable=False)
+    operation = Column(String(32), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    response_json = Column(Text, nullable=False)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LySampleIdempotency(Base):
     """Idempotency ledger for sample workflow writes."""
 

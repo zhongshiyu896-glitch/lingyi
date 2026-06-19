@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 import os
 import unittest
 
@@ -16,6 +17,8 @@ from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.sample import Base as SampleBase
+from app.models.sample import LySampleCostLine
+from app.models.sample import LySampleCostOperation
 from app.models.sample import LySampleIdempotency
 from app.models.sample import LySampleOrder
 from app.models.sample import LySampleTrackingEvent
@@ -80,6 +83,8 @@ class SampleApiTest(unittest.TestCase):
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
+            session.query(LySampleCostOperation).delete()
+            session.query(LySampleCostLine).delete()
             session.query(LySampleIdempotency).delete()
             session.query(LySampleTrackingEvent).delete()
             session.query(LySampleTrackingNode).delete()
@@ -323,6 +328,93 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(denied.status_code, 403)
         self.assertEqual(denied.json()["code"], "AUTH_FORBIDDEN")
+
+    def test_sample_cost_upsert_list_idempotency_conflict_and_audit(self) -> None:
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-COST-ORDER"),
+            json=self._order_payload(sample_no="SMP-A3-COST", idempotency_key="IDEMP-SMP-A3-COST-C"),
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        order_id = int(created.json()["data"]["id"])
+        payload = {
+            "operation": "upsert",
+            "company": "COMP-A",
+            "idempotency_key": "IDEMP-SMP-A3-COST-U",
+            "items": [
+                {
+                    "cost_type": "面辅料",
+                    "description": "打样面料",
+                    "qty": "2.5",
+                    "unit_price": "12.3",
+                    "occurred_date": "2026-06-18",
+                    "remark": "样板单实际用料",
+                },
+                {
+                    "cost_type": "工费",
+                    "description": "样衣车缝",
+                    "qty": "1",
+                    "unit_price": "45",
+                    "amount": "50",
+                    "occurred_date": "2026-06-19",
+                },
+            ],
+        }
+
+        saved = self.client.put(
+            f"/api/sample/orders/{order_id}/costs",
+            headers=self._headers(request_id="SAMPLE-COST-UPsert-001"),
+            json=payload,
+        )
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.assertEqual(saved.json()["code"], "0")
+        self.assertEqual(Decimal(str(saved.json()["data"]["total_amount"])), Decimal("80.750000"))
+        self.assertEqual(len(saved.json()["data"]["items"]), 2)
+
+        replay = self.client.put(
+            f"/api/sample/orders/{order_id}/costs",
+            headers=self._headers(request_id="SAMPLE-COST-UPsert-002"),
+            json=payload,
+        )
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["data"]["total_amount"], saved.json()["data"]["total_amount"])
+
+        listed = self.client.get(
+            f"/api/sample/orders/{order_id}/costs?company=COMP-A",
+            headers=self._headers(request_id="SAMPLE-COST-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(Decimal(str(listed.json()["data"]["total_amount"])), Decimal("80.750000"))
+
+        changed = dict(payload)
+        changed["items"] = [dict(payload["items"][0], unit_price="13")]
+        conflict = self.client.put(
+            f"/api/sample/orders/{order_id}/costs",
+            headers=self._headers(request_id="SAMPLE-COST-UPsert-003"),
+            json=changed,
+        )
+        self.assertEqual(conflict.status_code, 409, conflict.text)
+        self.assertEqual(conflict.json()["code"], "SAMPLE_IDEMPOTENCY_CONFLICT")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleCostLine).count(), 2)
+            self.assertEqual(session.query(LySampleCostOperation).count(), 1)
+            success = (
+                session.query(LyOperationAuditLog)
+                .filter(LyOperationAuditLog.module == "sample")
+                .filter(LyOperationAuditLog.action == "upsert_costs")
+                .filter(LyOperationAuditLog.result == "success")
+                .count()
+            )
+            failed = (
+                session.query(LyOperationAuditLog)
+                .filter(LyOperationAuditLog.module == "sample")
+                .filter(LyOperationAuditLog.action == "upsert_costs")
+                .filter(LyOperationAuditLog.result == "failed")
+                .count()
+            )
+            self.assertEqual(success, 2)
+            self.assertEqual(failed, 1)
 
     def test_sample_order_requires_enabled_style_master(self) -> None:
         with self.SessionLocal() as session:

@@ -28,6 +28,7 @@ from app.schemas.sample import SampleOrderConvertRequest
 from app.schemas.sample import SampleOrderCreateRequest
 from app.schemas.sample import SampleOrderStatusRequest
 from app.schemas.sample import SampleOrderUpdateRequest
+from app.schemas.sample import SampleCostUpsertRequest
 from app.schemas.sample import SampleMaterialBomCopyRequest
 from app.schemas.sample import SampleMaterialBomExplodeRequest
 from app.schemas.sample import SampleMaterialBomUpsertRequest
@@ -422,6 +423,52 @@ def explode_sample_material_bom(
     return _ok(data)
 
 
+@router.get("/orders/{order_id}/costs")
+def get_sample_costs(
+    order_id: int,
+    request: Request,
+    company: str = Query(default="默认公司"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=SAMPLE_READ,
+        resource_type="SAMPLE_COST",
+        resource_id=order_id,
+    )
+    try:
+        data = SampleService(session).get_costs(order_id=order_id, company=company)
+    except AppException as exc:
+        return _err(exc)
+    return _ok(data)
+
+
+@router.put("/orders/{order_id}/costs")
+def upsert_sample_costs(
+    order_id: int,
+    payload: SampleCostUpsertRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    result = _mutate_sample_costs(
+        order_id=order_id,
+        request=request,
+        current_user=current_user,
+        session=session,
+        action="upsert_costs",
+        mutate=lambda service: service.upsert_costs(
+            order_id=order_id,
+            payload=payload,
+            actor=current_user.username,
+        ),
+    )
+    return _ok(result.item)
+
+
 @router.patch("/orders/{order_id}")
 def update_sample_order(
     order_id: int,
@@ -652,6 +699,54 @@ def _mutate_material_bom(
             current_user=current_user,
             action=action,
             resource_type="SAMPLE_MATERIAL_BOM",
+            resource_id=order_id,
+            resource_no=None,
+            exc=exc,
+        )
+    return result
+
+
+def _mutate_sample_costs(
+    *,
+    order_id: int,
+    request: Request,
+    current_user: CurrentUser,
+    session: Session,
+    action: str,
+    mutate: Any,
+) -> SampleMutationResult:
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=SAMPLE_MANAGE,
+        resource_type="SAMPLE_COST",
+        resource_id=order_id,
+    )
+    try:
+        result = mutate(SampleService(session))
+        _commit_success(session=session, request=request, current_user=current_user, action=action, result=result)
+    except AuditWriteFailed as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
+    except AppException as exc:
+        _record_failure_and_commit(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="SAMPLE_COST",
+            resource_id=order_id,
+            resource_no=None,
+            error_code=exc.code,
+        )
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
+    except Exception as exc:
+        _handle_internal_error(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="SAMPLE_COST",
             resource_id=order_id,
             resource_no=None,
             exc=exc,

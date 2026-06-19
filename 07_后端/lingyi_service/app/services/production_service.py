@@ -67,6 +67,7 @@ from app.models.production import LyProductionTrackingReconcileBatch
 from app.models.production import LyProductionWorkOrderLink
 from app.models.sample import LySampleMaterialBom
 from app.models.sample import LySampleMaterialBomItem
+from app.models.sample import LySampleCostLine
 from app.models.sample import LySampleOrder
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
@@ -2889,12 +2890,12 @@ class ProductionService:
                 "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
                 "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
                 "订单利润报表可生成款式利润快照：后端从销售、BOM、库存、工票与外发真实来源收集，已生成快照的行纳入实际工票工资",
+                "样衣对比报表读取样板单成本归集；已转大货样板按 bulk_handoff_no 关联销售单并纳入样衣成本偏差",
                 "报表行通过 sourceLabel/sourceStatus/hasSnapshot 显式标识实际快照、部分估算或纯估算口径",
                 "B期报表继续披露经营测算/快照：成品入库、发货开票、回款页已接 FastAPI 执行数据，但尚未在本报表合并为财务总账毛利闭环",
             ],
             pending_b_phase_fields=[
                 "未生成利润快照的行仍按工序工价预测；加工厂对账、财务总账仍按 B 期补齐口径披露",
-                "样衣成本与样衣偏差等待 B 期样衣成本口径合并后补齐",
             ],
         )
 
@@ -3019,6 +3020,21 @@ class ProductionService:
                     .order_by(LyStyleProfitSnapshot.created_at.desc(), LyStyleProfitSnapshot.id.desc())
                     .all()
                 )
+
+            sample_cost_rows = []
+            if (
+                sales_orders
+                and item_codes
+                and self._has_sqlite_tables({LySampleOrder.__tablename__, LySampleCostLine.__tablename__})
+            ):
+                sample_cost_rows = (
+                    self.session.query(LySampleOrder, LySampleCostLine)
+                    .join(LySampleCostLine, LySampleCostLine.sample_order_id == LySampleOrder.id)
+                    .filter(LySampleOrder.company.in_(companies))
+                    .filter(LySampleOrder.bulk_handoff_no.in_(sales_orders))
+                    .filter(LySampleOrder.style_no.in_(item_codes))
+                    .all()
+                )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -3055,6 +3071,13 @@ class ProductionService:
             key = (str(row.company), str(row.sales_order or ""), str(row.item_code))
             snapshot_map.setdefault(key, row)
 
+        sample_cost_map: dict[tuple[str, str, str], Decimal] = {}
+        sample_cost_count_map: dict[tuple[str, str, str], int] = {}
+        for order, cost in sample_cost_rows:
+            key = (str(order.company), str(order.bulk_handoff_no or ""), str(order.style_no))
+            sample_cost_map[key] = sample_cost_map.get(key, Decimal("0")) + self._dec(cost.amount)
+            sample_cost_count_map[key] = sample_cost_count_map.get(key, 0) + 1
+
         return {
             "sales_map": sales_map,
             "sales_header_map": sales_header_map,
@@ -3066,6 +3089,8 @@ class ProductionService:
             "work_order_map": work_order_map,
             "snapshot_map": snapshot_map,
             "purchase_unit_price_map": purchase_unit_price_map,
+            "sample_cost_map": sample_cost_map,
+            "sample_cost_count_map": sample_cost_count_map,
         }
 
     def _build_report_suite_rows(
@@ -3109,14 +3134,17 @@ class ProductionService:
         total_cost = self._dec(base["totalCost"])
         bulk_unit_price = self._divide(amount, qty)
         bulk_unit_cost = self._divide(total_cost, qty)
+        sample_cost = self._dec(context.get("sample_cost_map", {}).get((str(plan.company), str(plan.sales_order), str(plan.item_code))))
+        cost_delta = bulk_unit_cost - sample_cost if sample_cost > Decimal("0") else Decimal("0")
+        sample_gap = self._sample_cost_gap(sample_cost=sample_cost, bulk_unit_cost=bulk_unit_cost)
         return {
             **base,
             "id": f"SC-{int(plan.id)}",
-            "sampleCost": Decimal("0"),
+            "sampleCost": sample_cost,
             "bulkUnitPrice": bulk_unit_price,
             "bulkUnitCost": bulk_unit_cost,
-            "costDelta": bulk_unit_price - bulk_unit_cost,
-            "sampleGap": "待B期样衣成本",
+            "costDelta": cost_delta,
+            "sampleGap": sample_gap,
             "status": self._profit_status(self._dec(base["grossMargin"])),
         }
 
@@ -3491,6 +3519,17 @@ class ProductionService:
         if gross_margin < Decimal("30"):
             return "利润关注"
         return "利润稳定"
+
+    @staticmethod
+    def _sample_cost_gap(*, sample_cost: Decimal, bulk_unit_cost: Decimal) -> str:
+        if sample_cost <= Decimal("0"):
+            return "未归集样衣成本"
+        delta = bulk_unit_cost - sample_cost
+        if delta > Decimal("0"):
+            return "大货高于样衣"
+        if delta < Decimal("0"):
+            return "大货低于样衣"
+        return "成本持平"
 
     @staticmethod
     def _report_suite_trend(report_key: str, rows: list[dict[str, Any]]) -> list[ProductionReportSuiteTrendPoint]:

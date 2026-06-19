@@ -520,7 +520,9 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
     if path.startswith("/api/sample"):
         if re.match(r"^/api/sample/orders/\d+/tracking-events/?$", path):
             return "sample", SAMPLE_READ if method == "GET" else SAMPLE_MANAGE, "SampleOrder", _extract_sample_order_id(path)
-        if method in {"POST", "PATCH"}:
+        if re.match(r"^/api/sample/orders/\d+/costs/?$", path):
+            return "sample", SAMPLE_READ if method == "GET" else SAMPLE_MANAGE, "SampleCost", _extract_sample_order_id(path)
+        if method in {"POST", "PATCH", "PUT"}:
             if "/tracking-templates" in path:
                 return "sample", SAMPLE_MANAGE, "SampleTrackingTemplate", None
             return "sample", SAMPLE_MANAGE, "SampleOrder", None

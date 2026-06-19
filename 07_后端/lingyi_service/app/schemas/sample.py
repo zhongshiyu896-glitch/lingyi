@@ -377,3 +377,48 @@ class SampleMaterialBomExplodeData(BaseModel):
     order_qty: Decimal
     items: list[SampleMaterialBomRequirementItem]
     total_required_qty: Decimal
+
+
+class SampleCostLinePayload(BaseModel):
+    """Sample cost line payload."""
+
+    cost_type: str = Field(..., min_length=1, max_length=64)
+    description: str = Field(default="", max_length=255)
+    qty: Decimal = Field(default=Decimal("1"), ge=0)
+    unit_price: Decimal = Field(default=Decimal("0"), ge=0)
+    amount: Decimal | None = Field(default=None, ge=0)
+    occurred_date: date | None = None
+    remark: str | None = Field(default=None, max_length=500)
+
+
+class SampleCostUpsertRequest(BaseModel):
+    """Replace sample cost lines with an idempotent snapshot."""
+
+    operation: Literal["upsert"] = "upsert"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    items: list[SampleCostLinePayload] = Field(default_factory=list)
+
+
+class SampleCostLineItem(BaseModel):
+    """Sample cost line row."""
+
+    id: int
+    cost_type: str
+    description: str
+    qty: Decimal
+    unit_price: Decimal
+    amount: Decimal
+    occurred_date: date | None = None
+    remark: str | None = None
+    updated_at: datetime | None = None
+
+
+class SampleCostData(BaseModel):
+    """Sample cost list and total."""
+
+    sample_order_id: int
+    sample_no: str
+    company: str
+    total_amount: Decimal
+    items: list[SampleCostLineItem] = Field(default_factory=list)

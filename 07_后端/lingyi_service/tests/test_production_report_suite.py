@@ -27,6 +27,9 @@ from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionWorkOrderLink
+from app.models.sample import Base as SampleBase
+from app.models.sample import LySampleCostLine
+from app.models.sample import LySampleOrder
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
@@ -49,7 +52,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
             execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
-        for base in (AuditBase, BomBase, SalesOrderBase, ProductionBase, StyleProfitBase, MaterialPurchaseBase):
+        for base in (AuditBase, BomBase, SalesOrderBase, ProductionBase, StyleProfitBase, MaterialPurchaseBase, SampleBase):
             base.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -85,6 +88,8 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
                 LyProductionWorkOrderLink,
                 LyProductionPlanMaterial,
                 LyProductionPlan,
+                LySampleCostLine,
+                LySampleOrder,
                 LyBomOperation,
                 LyApparelBomItem,
                 LyApparelBom,
@@ -362,6 +367,74 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["pendingAmount"])), Decimal("5460.000000"))
         self.assertEqual(row["performanceStatus"], "attention")
         self.assertEqual(row["status"], "关注")
+
+    def test_sample_compare_report_uses_converted_sample_costs(self) -> None:
+        with self.SessionLocal() as session:
+            sample = LySampleOrder(
+                company="COMP-A",
+                sample_no="SMP-RPT-COST",
+                style_no="STYLE-A",
+                style_name="通勤西装",
+                style_master_id=None,
+                customer="杭州云澜服饰",
+                factory="样衣室",
+                sample_type="初样",
+                stage="已转大货",
+                progress=100,
+                pattern_maker="版师",
+                sample_maker="样衣工",
+                status="converted",
+                image_tone="blue",
+                owner_note="",
+                bulk_handoff_no="SO-RPT-001",
+                bulk_handoff_status="已生成 A4 销售订单草稿",
+                created_by="sample.user",
+                updated_by="sample.user",
+            )
+            session.add(sample)
+            session.flush()
+            session.add_all(
+                [
+                    LySampleCostLine(
+                        company="COMP-A",
+                        sample_order_id=int(sample.id),
+                        cost_type="面辅料",
+                        description="样衣面料",
+                        qty=Decimal("1"),
+                        unit_price=Decimal("80"),
+                        amount=Decimal("80"),
+                        created_by="sample.user",
+                        updated_by="sample.user",
+                    ),
+                    LySampleCostLine(
+                        company="COMP-A",
+                        sample_order_id=int(sample.id),
+                        cost_type="工费",
+                        description="样衣工费",
+                        qty=Decimal("1"),
+                        unit_price=Decimal("30"),
+                        amount=Decimal("30"),
+                        created_by="sample.user",
+                        updated_by="sample.user",
+                    ),
+                ]
+            )
+            session.commit()
+
+        response = self.client.get(
+            "/api/production/report-suite?report_key=productOrderSampleCompare&company=COMP-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        basis_text = "；".join(payload["data_basis"])
+        pending_text = "；".join(payload["pending_b_phase_fields"])
+        self.assertIn("样板单成本归集", basis_text)
+        self.assertNotIn("样衣成本与样衣偏差等待", pending_text)
+        row = payload["items"][0]
+        self.assertEqual(Decimal(str(row["sampleCost"])), Decimal("110.000000"))
+        self.assertEqual(row["sampleGap"], "大货低于样衣")
+        self.assertEqual(Decimal(str(row["bulkUnitCost"])), Decimal("11.400000"))
 
     def test_missing_bom_price_uses_latest_purchase_unit_price_for_profit(self) -> None:
         with self.SessionLocal() as session:
