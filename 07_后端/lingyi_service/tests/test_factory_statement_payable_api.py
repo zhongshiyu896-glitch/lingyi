@@ -74,6 +74,8 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         *,
         statement_id: int,
         idempotency_key: str,
+        payable_account: str = "2202 - AP - C",
+        cost_center: str = "Main - C",
         posting_date: str = "2026-04-15",
         remark: str = "",
     ) -> dict[str, str]:
@@ -87,8 +89,8 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
             "source_type": chain["source_type"],
             "status_action": "payable_draft",
             "source_ref": chain["statement_no"],
-            "payable_account": "2202 - AP - C",
-            "cost_center": "Main - C",
+            "payable_account": payable_account,
+            "cost_center": cost_center,
             "posting_date": posting_date,
             "remark": remark,
         }
@@ -564,14 +566,17 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_INVALID_STATUS")
 
-    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=False)
-    def test_invalid_payable_account_fail_closed(self, _mock_account) -> None:
+    def test_invalid_payable_account_fail_closed(self) -> None:
         statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-account-invalid")
 
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-account-invalid-op"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-payable-account-invalid-op",
+                payable_account="1101 - CASH - C",
+            ),
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_PAYABLE_ACCOUNT_INVALID")
@@ -580,15 +585,17 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
             total = session.query(LyFactoryStatementPayableOutbox).count()
         self.assertEqual(total, 0)
 
-    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=False)
-    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
-    def test_invalid_cost_center_fail_closed(self, _mock_account, _mock_center) -> None:
+    def test_invalid_cost_center_fail_closed(self) -> None:
         statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-cost-invalid")
 
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-cost-invalid-op"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-payable-cost-invalid-op",
+                cost_center="Main",
+            ),
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_COST_CENTER_INVALID")
@@ -607,7 +614,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         "validate_payable_account",
         side_effect=ERPNextServiceUnavailableError("erp unavailable"),
     )
-    def test_erpnext_unavailable_fail_closed(self, _mock_account, _mock_non_local) -> None:
+    def test_payable_draft_request_path_does_not_depend_on_erpnext(self, _mock_account, _mock_non_local) -> None:
         statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-erp-down")
 
         response = self.client.post(
@@ -615,12 +622,12 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
             headers=self._headers(),
             json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-erp-down-op"),
         )
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
 
         with self.SessionLocal() as session:
             total = session.query(LyFactoryStatementPayableOutbox).count()
-        self.assertEqual(total, 0)
+        self.assertEqual(total, 1)
 
     @patch.object(ERPNextPurchaseInvoiceAdapter, "create_purchase_invoice_draft", side_effect=AssertionError("must not call"))
     @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)

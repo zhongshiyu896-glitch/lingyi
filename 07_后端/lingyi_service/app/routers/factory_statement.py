@@ -847,7 +847,7 @@ def create_factory_statement_payable_draft(
             payload=payload,
             operator=current_user.username,
             request_id=get_request_id_from_request(request),
-            erp_adapter=ERPNextPurchaseInvoiceAdapter(request_obj=request),
+            erp_adapter=None,
         )
 
         audit.record_success(

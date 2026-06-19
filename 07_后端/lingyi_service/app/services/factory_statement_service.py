@@ -3508,7 +3508,7 @@ class FactoryStatementService:
         payload: FactoryStatementPayableDraftRequest,
         operator: str,
         request_id: str,
-        erp_adapter: ERPNextPurchaseInvoiceAdapter,
+        erp_adapter: ERPNextPurchaseInvoiceAdapter | None,
     ) -> FactoryStatementPayableDraftData:
         """Create local payable outbox only. No ERPNext PI write in request path."""
         statement = self._find_statement_by_id(statement_id=statement_id)
@@ -3566,28 +3566,34 @@ class FactoryStatementService:
             posting_date=payload.posting_date,
         )
 
-        try:
-            account_ok = erp_adapter.validate_payable_account(
-                company=str(statement.company),
-                payable_account=payable_account or "",
+        if erp_adapter is None:
+            self._validate_fastapi_payable_draft_fields(
+                payable_account=payable_account,
+                cost_center=cost_center,
             )
-            if not account_ok:
-                raise BusinessException(code=FACTORY_STATEMENT_PAYABLE_ACCOUNT_INVALID)
+        else:
+            try:
+                account_ok = erp_adapter.validate_payable_account(
+                    company=str(statement.company),
+                    payable_account=payable_account or "",
+                )
+                if not account_ok:
+                    raise BusinessException(code=FACTORY_STATEMENT_PAYABLE_ACCOUNT_INVALID)
 
-            center_ok = erp_adapter.validate_cost_center(
-                company=str(statement.company),
-                cost_center=cost_center or "",
-            )
-            if not center_ok:
-                raise BusinessException(code=FACTORY_STATEMENT_COST_CENTER_INVALID)
-        except BusinessException:
-            raise
-        except (ERPNextServiceUnavailableError, ERPNextServiceAccountForbiddenError) as exc:
-            if not self._is_local_dev_sqlite_mode():
-                raise BusinessException(code=FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE, message=str(exc.message)) from exc
-        except Exception as exc:
-            if not self._is_local_dev_sqlite_mode():
-                raise BusinessException(code=FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE) from exc
+                center_ok = erp_adapter.validate_cost_center(
+                    company=str(statement.company),
+                    cost_center=cost_center or "",
+                )
+                if not center_ok:
+                    raise BusinessException(code=FACTORY_STATEMENT_COST_CENTER_INVALID)
+            except BusinessException:
+                raise
+            except (ERPNextServiceUnavailableError, ERPNextServiceAccountForbiddenError) as exc:
+                if not self._is_local_dev_sqlite_mode():
+                    raise BusinessException(code=FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE, message=str(exc.message)) from exc
+            except Exception as exc:
+                if not self._is_local_dev_sqlite_mode():
+                    raise BusinessException(code=FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE) from exc
 
         payload_json = {
             "doctype": "Purchase Invoice",
@@ -3666,6 +3672,23 @@ class FactoryStatementService:
             row=row,
             idempotent_replay=False,
         )
+
+    @classmethod
+    def _validate_fastapi_payable_draft_fields(
+        cls,
+        *,
+        payable_account: str | None,
+        cost_center: str | None,
+    ) -> None:
+        account = (payable_account or "").strip()
+        account_upper = account.upper()
+        if not account or not (account.startswith("2202") or "AP" in account_upper or "应付" in account):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYABLE_ACCOUNT_INVALID)
+
+        center = (cost_center or "").strip()
+        center_upper = center.upper()
+        if not center or ("-" not in center and not center_upper.startswith("CC")):
+            raise BusinessException(code=FACTORY_STATEMENT_COST_CENTER_INVALID)
 
     def create_payment_entry(
         self,
