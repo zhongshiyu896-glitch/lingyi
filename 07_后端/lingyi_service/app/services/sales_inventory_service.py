@@ -20,6 +20,7 @@ from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
 from app.models.sales_order import LyDeliveryInvoice
+from app.models.sales_order import LyDeliveryInvoiceOperation
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.sales_order import LySalesPaymentEntryOperation
 from app.models.sales_order import LySalesOrder
@@ -35,6 +36,7 @@ from app.schemas.sales_inventory import CustomerReturnApplicationItem
 from app.schemas.sales_inventory import CustomerReturnInboundData
 from app.schemas.sales_inventory import CustomerReturnInboundItem
 from app.schemas.sales_inventory import DeliveryInvoiceCreateRequest
+from app.schemas.sales_inventory import DeliveryInvoiceCancelRequest
 from app.schemas.sales_inventory import DeliveryInvoiceData
 from app.schemas.sales_inventory import DeliveryInvoiceListData
 from app.schemas.sales_inventory import DeliveryNoteItem
@@ -1137,6 +1139,128 @@ class SalesInventoryService:
         )
         session.add(row)
         session.flush()
+        return self._build_delivery_invoice_data(row)
+
+    def cancel_delivery_invoice(
+        self,
+        *,
+        invoice_id: int,
+        payload: DeliveryInvoiceCancelRequest,
+        current_user: str,
+        scenario_tag: str | None,
+    ) -> DeliveryInvoiceData:
+        session = self._require_session()
+        company = self._text(payload.company)
+        delivery_note = self._text(payload.delivery_note)
+        sales_invoice = self._text(payload.sales_invoice)
+        idempotency_key = self._text(payload.idempotency_key)
+        operation = self._text(payload.operation) or "cancel_delivery_invoice"
+        reason = self._text(payload.reason)
+        if company is None:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "company 不能为空")
+        if delivery_note is None:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "delivery_note 不能为空")
+        if sales_invoice is None:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "sales_invoice 不能为空")
+        if idempotency_key is None:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "idempotency_key 不能为空")
+        if operation != "cancel_delivery_invoice":
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "operation 非法")
+
+        row = self._find_delivery_invoice_by_id_for_update(company=company, invoice_id=invoice_id)
+        if row is None:
+            raise SalesInventoryServiceError(404, "SALES_DELIVERY_INVOICE_NOT_FOUND", "发货开票单不存在")
+        if self._text(row.delivery_note) != delivery_note:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "delivery_note 与单据不一致")
+        if self._text(row.sales_invoice) != sales_invoice:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "sales_invoice 与单据不一致")
+
+        request_hash = self._delivery_invoice_request_hash(
+            {
+                "operation": operation,
+                "company": company,
+                "delivery_invoice_id": int(row.id),
+                "delivery_note": delivery_note,
+                "sales_invoice": sales_invoice,
+                "reason": reason,
+                "scenario_tag": self._text(scenario_tag) or self._text(payload.scenario_tag),
+            }
+        )
+        existing_operation = self._find_delivery_invoice_operation_by_idempotency(
+            company=company,
+            operation_type=operation,
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash or "") != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "幂等键冲突且请求内容不一致")
+            replay_row = self._find_delivery_invoice_by_id(
+                company=company,
+                invoice_id=int(existing_operation.delivery_invoice_id),
+            )
+            if replay_row is None:
+                raise SalesInventoryServiceError(404, "SALES_DELIVERY_INVOICE_NOT_FOUND", "发货开票单不存在")
+            return self._build_delivery_invoice_data(replay_row)
+
+        if str(row.status) == "cancelled":
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "发货开票单已取消")
+        paid_amount = Decimal(str(row.paid_amount or 0))
+        if paid_amount > Decimal("0"):
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_HAS_PAYMENT", "已回款发票不可取消，请先作废回款")
+        self._assert_delivery_stock_draft_cancelable(row)
+
+        now = datetime.now(timezone.utc)
+        try:
+            self._decrease_native_sales_order_delivered_qty(
+                company=company,
+                sales_order=str(row.sales_order),
+                item_code=str(row.item_code),
+                warehouse=str(row.warehouse),
+                delivered_qty=Decimal(str(row.delivered_qty or 0)),
+            )
+            self._cancel_delivery_stock_draft(row, reason=reason or "cancel_delivery_invoice", cancelled_by=current_user, cancelled_at=now)
+            row.status = "cancelled"
+            row.docstatus = 2
+            row.paid_amount = Decimal("0")
+            row.outstanding_amount = Decimal("0")
+            row.cancelled_by = current_user
+            row.cancelled_at = now
+            row.cancel_reason = reason
+            row.updated_by = current_user
+            row.updated_at = now
+
+            session.add(
+                LyDeliveryInvoiceOperation(
+                    company=company,
+                    delivery_invoice_id=int(row.id),
+                    delivery_note=delivery_note,
+                    sales_invoice=sales_invoice,
+                    operation_type=operation,
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                    result_status="cancelled",
+                    result_user=current_user,
+                    result_at=now,
+                    reason=reason,
+                )
+            )
+            replay_operation = self._flush_delivery_invoice_operation_or_resolve_replay(
+                company=company,
+                operation_type=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+            )
+        except SalesInventoryServiceError:
+            raise
+
+        if replay_operation is not None:
+            replay_row = self._find_delivery_invoice_by_id(
+                company=company,
+                invoice_id=int(replay_operation.delivery_invoice_id),
+            )
+            if replay_row is None:
+                raise SalesInventoryServiceError(404, "SALES_DELIVERY_INVOICE_NOT_FOUND", "发货开票单不存在")
+            return self._build_delivery_invoice_data(replay_row)
         return self._build_delivery_invoice_data(row)
 
     def list_local_delivery_invoices(
@@ -5101,6 +5225,141 @@ class SalesInventoryService:
             ]
         return rows
 
+    def _find_delivery_invoice_by_id(
+        self,
+        *,
+        company: str,
+        invoice_id: int,
+    ) -> LyDeliveryInvoice | None:
+        return (
+            self._require_session()
+            .query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.id == int(invoice_id),
+            )
+            .first()
+        )
+
+    def _find_delivery_invoice_by_id_for_update(
+        self,
+        *,
+        company: str,
+        invoice_id: int,
+    ) -> LyDeliveryInvoice | None:
+        return (
+            self._require_session()
+            .query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.id == int(invoice_id),
+            )
+            .with_for_update()
+            .first()
+        )
+
+    def _find_delivery_invoice_operation_by_idempotency(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str,
+    ) -> LyDeliveryInvoiceOperation | None:
+        return (
+            self._require_session()
+            .query(LyDeliveryInvoiceOperation)
+            .filter(
+                LyDeliveryInvoiceOperation.company == company,
+                LyDeliveryInvoiceOperation.operation_type == operation_type,
+                LyDeliveryInvoiceOperation.idempotency_key == idempotency_key,
+            )
+            .one_or_none()
+        )
+
+    def _flush_delivery_invoice_operation_or_resolve_replay(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> LyDeliveryInvoiceOperation | None:
+        session = self._require_session()
+        try:
+            session.flush()
+            return None
+        except IntegrityError as exc:
+            session.rollback()
+            existing = self._find_delivery_invoice_operation_by_idempotency(
+                company=company,
+                operation_type=operation_type,
+                idempotency_key=idempotency_key,
+            )
+            if existing is None:
+                raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "发货开票取消操作冲突") from exc
+            if str(existing.request_hash or "") != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "幂等键冲突且请求内容不一致") from exc
+            return existing
+
+    def _assert_delivery_stock_draft_cancelable(self, row: LyDeliveryInvoice) -> None:
+        draft_id = row.warehouse_draft_id
+        if draft_id is None:
+            return
+        session = self._require_session()
+        draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(LyWarehouseStockEntryDraft.id == int(draft_id))
+            .with_for_update()
+            .first()
+        )
+        if draft is None:
+            raise SalesInventoryServiceError(404, "SALES_DELIVERY_STOCK_DRAFT_NOT_FOUND", "发货出库草稿不存在")
+        if str(draft.source_type) != "sales_delivery_invoice":
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "发货出库草稿来源不一致")
+        if str(draft.status) not in {"draft", "pending_outbox", "cancelled"}:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_STOCK_DRAFT_SYNCED", "发货出库草稿状态不允许取消")
+        events = (
+            session.query(LyWarehouseStockEntryOutboxEvent)
+            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(draft_id))
+            .all()
+        )
+        if any(str(event.status) == "succeeded" for event in events):
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_STOCK_DRAFT_SYNCED", "已同步成功的发货出库不可直接取消")
+
+    def _cancel_delivery_stock_draft(
+        self,
+        row: LyDeliveryInvoice,
+        *,
+        reason: str,
+        cancelled_by: str,
+        cancelled_at: datetime,
+    ) -> None:
+        draft_id = row.warehouse_draft_id
+        if draft_id is None:
+            return
+        session = self._require_session()
+        draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(LyWarehouseStockEntryDraft.id == int(draft_id))
+            .with_for_update()
+            .first()
+        )
+        if draft is None or str(draft.status) == "cancelled":
+            return
+        draft.status = "cancelled"
+        draft.cancelled_by = cancelled_by
+        draft.cancelled_at = cancelled_at
+        draft.cancel_reason = reason
+        events = (
+            session.query(LyWarehouseStockEntryOutboxEvent)
+            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(draft_id))
+            .all()
+        )
+        for event in events:
+            if str(event.status) in {"in_pending", "processing", "failed"}:
+                event.status = "cancelled"
+                event.processed_at = cancelled_at
+
     def _find_sales_payment_entry_by_id(
         self,
         *,
@@ -5316,6 +5575,40 @@ class SalesInventoryService:
         if next_delivered > ordered_qty:
             raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_QTY_EXCEEDED", "发货数量超过销售订单未发数量")
         line.delivered_qty = next_delivered
+        order.updated_at = datetime.now(timezone.utc)
+
+    def _decrease_native_sales_order_delivered_qty(
+        self,
+        *,
+        company: str,
+        sales_order: str,
+        item_code: str,
+        warehouse: str,
+        delivered_qty: Decimal,
+    ) -> None:
+        order = (
+            self._require_session()
+            .query(LySalesOrder)
+            .filter(
+                LySalesOrder.company == company,
+                (LySalesOrder.sales_order_no == sales_order) | (LySalesOrder.source_order_ref == sales_order),
+            )
+            .order_by(LySalesOrder.id.desc())
+            .first()
+        )
+        if order is None:
+            raise SalesInventoryServiceError(404, "SALES_DELIVERY_ORDER_NOT_FOUND", "销售订单不存在")
+        candidates = [
+            item
+            for item in self._native_sales_order_items(order_id=int(order.id))
+            if str(item.item_code) == item_code and (self._text(item.warehouse) in {None, warehouse})
+        ]
+        if not candidates:
+            raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "销售订单未包含该发货物料")
+        line = candidates[0]
+        current_delivered = Decimal(str(line.delivered_qty or 0))
+        next_delivered = current_delivered - delivered_qty
+        line.delivered_qty = next_delivered if next_delivered > Decimal("0") else Decimal("0")
         order.updated_at = datetime.now(timezone.utc)
 
     def _create_delivery_stock_issue(

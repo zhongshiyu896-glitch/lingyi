@@ -19,7 +19,9 @@ from app.models.audit import LySecurityAuditLog
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LyDeliveryInvoice
+from app.models.sales_order import LyDeliveryInvoiceOperation
 from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.style_master import Base as StyleMasterBase
@@ -92,7 +94,9 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.query(LySalesPaymentEntry).delete()
+            session.query(LyDeliveryInvoiceOperation).delete()
             session.query(LyDeliveryInvoice).delete()
+            session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
             session.query(LyStyleMaster).delete()
@@ -253,6 +257,19 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             "operation": "create_payment_entry",
         }
 
+    @classmethod
+    def _delivery_cancel_payload(cls, **overrides) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "company": cls.COMPANY,
+            "delivery_note": cls.DELIVERY_NOTE,
+            "sales_invoice": cls.SALES_INVOICE,
+            "reason": "cancel delivery invoice",
+            "idempotency_key": "idem-b1-delivery-invoice-cancel",
+            "operation": "cancel_delivery_invoice",
+        }
+        payload.update(overrides)
+        return payload
+
     def test_finished_goods_delivery_invoice_payment_public_api_flow(self) -> None:
         order = self.client.post(
             "/api/sales-inventory/sales-orders/drafts",
@@ -320,6 +337,117 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             self.assertEqual([str(row.purpose) for row in drafts], ["Material Receipt", "Material Issue"])
             self.assertEqual([str(row.source_type) for row in drafts], ["finished_goods_inbound", "sales_delivery_invoice"])
             self.assertEqual({row.action for row in session.query(LyOperationAuditLog).all()}, {"sales_inventory:write", "warehouse:stock_entry_draft"})
+
+    def test_cancel_delivery_invoice_reverses_stock_and_sales_order_delivery(self) -> None:
+        order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=self._sales_order_payload(),
+        )
+        self.assertEqual(order.status_code, 201, order.text)
+        inbound_payload = self._finished_goods_payload()
+        inbound = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(self._stock_request_id(inbound_payload)),
+            json=inbound_payload,
+        )
+        self.assertEqual(inbound.status_code, 201, inbound.text)
+        delivery = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._delivery_payload(),
+        )
+        self.assertEqual(delivery.status_code, 201, delivery.text)
+        invoice_id = delivery.json()["data"]["id"]
+
+        cancelled = self.client.post(
+            f"/api/sales-inventory/delivery-invoices/{invoice_id}/cancel",
+            headers=self._headers(),
+            json=self._delivery_cancel_payload(),
+        )
+        replay = self.client.post(
+            f"/api/sales-inventory/delivery-invoices/{invoice_id}/cancel",
+            headers=self._headers(),
+            json=self._delivery_cancel_payload(),
+        )
+        conflict = self.client.post(
+            f"/api/sales-inventory/delivery-invoices/{invoice_id}/cancel",
+            headers=self._headers(),
+            json=self._delivery_cancel_payload(reason="changed reason"),
+        )
+        ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.ITEM_CODE}",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(cancelled.status_code, 200, cancelled.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(cancelled.json()["data"]["id"], replay.json()["data"]["id"])
+        self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancelled.json()["data"]["docstatus"], 2)
+        self.assertEqual(Decimal(str(cancelled.json()["data"]["outstanding_amount"])), Decimal("0.000000"))
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "SALES_DELIVERY_INVOICE_CONFLICT")
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        ledger_rows = ledger.json()["data"]["items"]
+        self.assertEqual([Decimal(str(row["actual_qty"])) for row in ledger_rows], [Decimal("10.000000")])
+        self.assertEqual(Decimal(str(ledger_rows[-1]["qty_after_transaction"])), Decimal("10.000000"))
+
+        with self.SessionLocal() as session:
+            invoice = session.query(LyDeliveryInvoice).one()
+            self.assertEqual(str(invoice.status), "cancelled")
+            self.assertEqual(int(invoice.docstatus), 2)
+            self.assertEqual(Decimal(str(invoice.outstanding_amount)), Decimal("0.000000"))
+            self.assertEqual(session.query(LyDeliveryInvoiceOperation).count(), 1)
+            sales_item = session.query(LySalesOrderItem).one()
+            self.assertEqual(Decimal(str(sales_item.delivered_qty)), Decimal("0.000000"))
+            issue_draft = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "sales_delivery_invoice")
+                .one()
+            )
+            self.assertEqual(str(issue_draft.status), "cancelled")
+            issue_event = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(issue_draft.id))
+                .one()
+            )
+            self.assertEqual(str(issue_event.status), "cancelled")
+
+    def test_paid_delivery_invoice_cannot_cancel_before_payment_reversal(self) -> None:
+        order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=self._sales_order_payload(),
+        )
+        self.assertEqual(order.status_code, 201, order.text)
+        inbound_payload = self._finished_goods_payload()
+        inbound = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(self._stock_request_id(inbound_payload)),
+            json=inbound_payload,
+        )
+        self.assertEqual(inbound.status_code, 201, inbound.text)
+        delivery = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._delivery_payload(),
+        )
+        self.assertEqual(delivery.status_code, 201, delivery.text)
+        payment = self.client.post(
+            "/api/sales-inventory/payment-entries",
+            headers=self._headers(),
+            json=self._payment_payload(amount=120, suffix="LOCK"),
+        )
+        self.assertEqual(payment.status_code, 201, payment.text)
+
+        blocked = self.client.post(
+            f"/api/sales-inventory/delivery-invoices/{delivery.json()['data']['id']}/cancel",
+            headers=self._headers(),
+            json=self._delivery_cancel_payload(idempotency_key="idem-b1-delivery-invoice-cancel-paid"),
+        )
+        self.assertEqual(blocked.status_code, 409)
+        self.assertEqual(blocked.json()["code"], "SALES_DELIVERY_INVOICE_HAS_PAYMENT")
 
 
 if __name__ == "__main__":

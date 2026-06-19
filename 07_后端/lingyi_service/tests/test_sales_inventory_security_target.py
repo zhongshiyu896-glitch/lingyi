@@ -38,6 +38,15 @@ class SalesInventorySecurityTargetTest(unittest.TestCase):
         self.assertEqual(resource_type, "DeliveryInvoice")
         self.assertIsNone(resource_id)
 
+    def test_delivery_invoice_cancel_infers_write_action(self) -> None:
+        module, action, resource_type, resource_id = main_module._infer_security_target(
+            _request("POST", "/api/sales-inventory/delivery-invoices/123/cancel")
+        )
+        self.assertEqual(module, "sales_inventory")
+        self.assertEqual(action, SALES_INVENTORY_WRITE)
+        self.assertEqual(resource_type, "DeliveryInvoice")
+        self.assertEqual(resource_id, "123")
+
     def test_payment_entry_create_infers_write_action(self) -> None:
         module, action, resource_type, resource_id = main_module._infer_security_target(
             _request("POST", "/api/sales-inventory/payment-entries")

@@ -173,6 +173,53 @@ class LyDeliveryInvoice(Base):
     cancel_reason = Column(String(255), nullable=True)
 
 
+class LyDeliveryInvoiceOperation(Base):
+    """FastAPI-native delivery invoice operation idempotency ledger."""
+
+    __tablename__ = "ly_delivery_invoice_operation"
+    __table_args__ = (
+        Index(
+            "uk_ly_delivery_invoice_op_idem",
+            "company",
+            "operation_type",
+            "idempotency_key",
+            unique=True,
+        ),
+        Index(
+            "idx_ly_delivery_invoice_op_invoice",
+            "delivery_invoice_id",
+            "operation_type",
+            "created_at",
+        ),
+        Index(
+            "idx_ly_delivery_invoice_op_sales_invoice",
+            "company",
+            "sales_invoice",
+            "operation_type",
+            "created_at",
+        ),
+        CheckConstraint(
+            "operation_type IN ('cancel_delivery_invoice')",
+            name="ck_ly_delivery_invoice_op_type",
+        ),
+        {"schema": "ly_schema", "comment": "FastAPI 原生发货开票操作幂等记录"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    delivery_invoice_id = Column(IDType, ForeignKey("ly_schema.ly_delivery_invoice.id"), nullable=False)
+    delivery_note = Column(String(140), nullable=False)
+    sales_invoice = Column(String(140), nullable=False)
+    operation_type = Column(String(64), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    result_status = Column(String(32), nullable=False)
+    result_user = Column(String(140), nullable=False)
+    result_at = Column(DateTime(timezone=True), nullable=False)
+    reason = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LySalesPaymentEntry(Base):
     """FastAPI-native customer payment entry allocated to one sales invoice."""
 

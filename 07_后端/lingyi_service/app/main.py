@@ -503,6 +503,9 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             if method == "POST":
                 return "sales_inventory", SALES_INVENTORY_WRITE, "DeliveryInvoice", None
             return "sales_inventory", SALES_INVENTORY_READ, "DeliveryInvoice", None
+        delivery_cancel_match = re.match(r"^/api/sales-inventory/delivery-invoices/(\d+)/cancel/?$", path)
+        if delivery_cancel_match:
+            return "sales_inventory", SALES_INVENTORY_WRITE, "DeliveryInvoice", delivery_cancel_match.group(1)
         if path in {"/api/sales-inventory/payment-entries", "/api/sales-inventory/payment-entries/"}:
             if method == "POST":
                 return "sales_inventory", SALES_INVENTORY_WRITE, "SalesPaymentEntry", None

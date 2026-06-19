@@ -101,6 +101,18 @@ class DeliveryInvoiceCreateRequest(BaseModel):
     operation: str | None = "create_delivery_invoice"
 
 
+class DeliveryInvoiceCancelRequest(BaseModel):
+    """Cancel FastAPI-native delivery note + sales invoice payload."""
+
+    operation: Literal["cancel_delivery_invoice"] = "cancel_delivery_invoice"
+    company: str
+    delivery_note: str
+    sales_invoice: str
+    reason: str | None = None
+    idempotency_key: str
+    scenario_tag: str | None = None
+
+
 class DeliveryInvoiceData(BaseModel):
     """FastAPI-native delivery note + sales invoice response."""
 
