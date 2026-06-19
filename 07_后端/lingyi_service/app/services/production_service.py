@@ -3314,10 +3314,11 @@ class ProductionService:
             work_order = str(job_cards[0].work_order or "")
         primary_job_card = str(job_cards[0].job_card or "") if job_cards else ""
         qty = self._dec(getattr(sales_item, "qty", None)) or self._dec(plan.planned_qty)
-        amount = self._dec(getattr(sales_item, "amount", None))
-        if amount == Decimal("0"):
+        if snapshot is not None:
             amount = self._dec(getattr(snapshot, "revenue_amount", None))
-        if amount == Decimal("0") and sales_item is not None:
+        else:
+            amount = self._dec(getattr(sales_item, "amount", None))
+        if snapshot is None and amount == Decimal("0") and sales_item is not None:
             amount = self._dec(getattr(sales_item, "qty", None)) * self._dec(getattr(sales_item, "rate", None))
 
         material_cost, labor_cost, outsource_cost = self._estimated_costs(plan=plan, context=context)

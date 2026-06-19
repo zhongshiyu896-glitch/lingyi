@@ -325,6 +325,34 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertNotIn("成品入库/发货开票未建页面", pending_text)
         self.assertIn("生成利润快照后纳入实际工票工资", row["remark"])
 
+    def test_profit_report_uses_snapshot_revenue_when_invoice_differs_from_order_amount(self) -> None:
+        with self.SessionLocal() as session:
+            snapshot = session.query(LyStyleProfitSnapshot).filter_by(snapshot_no="SP-RPT-001").one()
+            snapshot.revenue_status = "actual"
+            snapshot.actual_revenue_amount = Decimal("1800")
+            snapshot.estimated_revenue_amount = Decimal("0")
+            snapshot.revenue_amount = Decimal("1800")
+            snapshot.profit_amount = Decimal("660")
+            snapshot.profit_rate = Decimal("0.366667")
+            session.commit()
+
+        response = self.client.get(
+            "/api/production/report-suite?report_key=productOrderProfitReport&company=COMP-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        row = response.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(row["amount"])), Decimal("1800"))
+        self.assertEqual(Decimal(str(row["totalCost"])), Decimal("1140"))
+        self.assertEqual(Decimal(str(row["profit"])), Decimal("660"))
+        self.assertEqual(Decimal(str(row["grossMargin"])), Decimal("36.67"))
+        self.assertEqual(row["sourceType"], "style_profit_snapshot")
+        self.assertEqual(row["sourceLabel"], "利润快照")
+        self.assertEqual(row["sourceStatus"], "actual")
+        self.assertFalse(row["isEstimated"])
+        self.assertEqual(row["revenueSourceStatus"], "actual")
+        self.assertEqual(row["costSourceStatus"], "actual")
+
     def test_material_detail_report_uses_material_check_snapshot(self) -> None:
         response = self.client.get(
             "/api/production/report-suite?report_key=orderTrackingReport&company=COMP-A",
