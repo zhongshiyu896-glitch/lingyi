@@ -14,6 +14,8 @@ from typing import TypeVar
 from pydantic import BaseModel
 from pydantic import Field
 
+from app.schemas.sales_inventory import SalesOrderDraftData
+
 T = TypeVar("T")
 
 
@@ -396,6 +398,17 @@ class ProductionQuoteCreateRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=128)
 
 
+class ProductionQuoteConvertRequest(BaseModel):
+    """Convert a saved production quote into a FastAPI-native sales-order draft."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    sales_order_no: Optional[str] = Field(default=None, max_length=140)
+    transaction_date: Optional[date] = None
+    delivery_date: Optional[date] = None
+    operation: Optional[str] = Field(default="convert", max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
 class ProductionQuoteListItem(BaseModel):
     """Production quote list row."""
 
@@ -430,6 +443,13 @@ class ProductionQuoteListData(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ProductionQuoteConvertData(BaseModel):
+    """Quote conversion result."""
+
+    quote: ProductionQuoteListItem
+    sales_order: SalesOrderDraftData
 
 
 class ProductionFollowupTemplateQuery(BaseModel):

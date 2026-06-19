@@ -108,6 +108,8 @@ from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanListItem
 from app.schemas.production import ProductionPlanMaterialSnapshotItem
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionQuoteConvertData
+from app.schemas.production import ProductionQuoteConvertRequest
 from app.schemas.production import ProductionQuoteListData
 from app.schemas.production import ProductionQuoteListItem
 from app.schemas.production import ProductionQuoteCreateRequest
@@ -138,6 +140,10 @@ from app.schemas.production import ProductionWorkOrderListItem
 from app.schemas.production import ProductionWorkOrderQuery
 from app.schemas.production import ProductionWorkOrderOutboxSummary
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
+from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
+from app.schemas.sales_inventory import SalesOrderDraftLineItemCreateRequest
+from app.services.sales_inventory_service import SalesInventoryService
+from app.services.sales_inventory_service import SalesInventoryServiceError
 from app.services.erpnext_production_adapter import ERPNextSalesOrder
 from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 from app.services.production_work_order_outbox_service import ProductionWorkOrderOutboxService
@@ -1552,6 +1558,107 @@ class ProductionService:
         except (SQLAlchemyError, ValueError) as exc:
             raise DatabaseWriteFailed() from exc
         return item
+
+    def convert_quote_to_order(
+        self,
+        *,
+        quote_id: int,
+        payload: ProductionQuoteConvertRequest,
+        operator: str,
+    ) -> ProductionQuoteConvertData:
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        operation = (payload.operation or "convert").strip().lower()
+        if operation != "convert":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="operation 必须为 convert")
+
+        company_input = self._text(payload.company)
+        row, plan = self._get_quote_for_convert(quote_id=quote_id, company=company_input)
+        company = str(row.company)
+        target_sales_order_no = self._text(payload.sales_order_no) or self._quote_sales_order_no(row)
+        transaction_date = payload.transaction_date or date.today()
+        delivery_date = payload.delivery_date or plan.planned_start_date or row.valid_until
+
+        quote_qty = Decimal(str(row.quote_qty or 0))
+        quote_amount = Decimal(str(row.quote_amount or 0))
+        rate = (quote_amount / quote_qty).quantize(Decimal("0.000001")) if quote_qty > 0 else Decimal("0")
+        request_hash = self._build_request_hash(
+            {
+                "operation": "convert",
+                "company": company,
+                "quote_id": int(row.id),
+                "quote_no": str(row.quote_no),
+                "sales_order_no": target_sales_order_no,
+                "transaction_date": transaction_date.isoformat() if transaction_date else None,
+                "delivery_date": delivery_date.isoformat() if delivery_date else None,
+            }
+        )
+        existing_operation = self._get_quote_operation(company=company, operation="convert", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_quote_operation_same(existing_operation, request_hash=request_hash)
+            return self._quote_convert_from_operation(existing_operation)
+
+        status = str(row.status or "")
+        if status == "converted":
+            raise BusinessException(code=PRODUCTION_QUOTE_CONFLICT, message="报价已转订单")
+        if status == "void":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="作废报价不能转订单")
+
+        try:
+            sales_order = SalesInventoryService(session=self.session).create_sales_order_draft(
+                payload=SalesOrderDraftCreateRequest(
+                    company=company,
+                    customer=str(row.customer) if row.customer else None,
+                    operation="create_draft",
+                    scenario_tag="production_quote_convert",
+                    sales_order_no=target_sales_order_no,
+                    source_order_ref=f"QUOTE-{row.quote_no}",
+                    idempotency_key=self._quote_sales_draft_idempotency_key(
+                        company=company,
+                        quote_no=str(row.quote_no),
+                        quote_id=int(row.id),
+                        quote_idempotency_key=idempotency_key,
+                    ),
+                    transaction_date=transaction_date,
+                    delivery_date=delivery_date,
+                    currency=str(row.currency or "CNY"),
+                    items=[
+                        SalesOrderDraftLineItemCreateRequest(
+                            item_code=str(row.item_code),
+                            item_name=str(row.item_code),
+                            qty=quote_qty,
+                            rate=rate,
+                            uom="件",
+                            delivery_date=delivery_date,
+                        )
+                    ],
+                ),
+                current_user=operator,
+                scenario_tag="production_quote_convert",
+            )
+            row.status = "converted"
+            row.updated_by = operator
+            self.session.flush()
+            quote_item = self._quote_item(row, plan=plan)
+            data = ProductionQuoteConvertData(quote=quote_item, sales_order=sales_order)
+            self._insert_quote_operation(
+                quote_id=int(row.id),
+                company=company,
+                operation="convert",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=data,
+                operator=operator,
+            )
+            self.session.flush()
+        except SalesInventoryServiceError as exc:
+            raise BusinessException(code=exc.code, message=exc.message, status_code=exc.status_code) from exc
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return data
 
     def list_followup_templates(
         self,
@@ -5550,6 +5657,12 @@ class ProductionService:
             return ProductionQuoteListItem.model_validate(payload)
         return ProductionQuoteListItem.parse_obj(payload)
 
+    def _quote_convert_from_operation(self, row: LyProductionQuoteOperation) -> ProductionQuoteConvertData:
+        payload = row.response_json or {}
+        if hasattr(ProductionQuoteConvertData, "model_validate"):
+            return ProductionQuoteConvertData.model_validate(payload)
+        return ProductionQuoteConvertData.parse_obj(payload)
+
     def _get_plan_for_quote(self, *, plan_id: int, company: str | None) -> LyProductionPlan:
         try:
             sql = self.session.query(LyProductionPlan).filter(LyProductionPlan.id == int(plan_id))
@@ -5560,6 +5673,22 @@ class ProductionService:
             raise DatabaseReadFailed() from exc
         if row is None:
             raise BusinessException(code=PRODUCTION_QUOTE_NOT_FOUND, message="生产计划不存在，不能创建报价")
+        return row
+
+    def _get_quote_for_convert(self, *, quote_id: int, company: str | None) -> tuple[LyProductionQuote, LyProductionPlan]:
+        try:
+            sql = self.session.query(LyProductionQuote, LyProductionPlan).join(
+                LyProductionPlan,
+                LyProductionPlan.id == LyProductionQuote.plan_id,
+            )
+            sql = sql.filter(LyProductionQuote.id == int(quote_id))
+            if company:
+                sql = sql.filter(LyProductionQuote.company == company)
+            row = sql.first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=PRODUCTION_QUOTE_NOT_FOUND, message="报价单不存在，不能转订单")
         return row
 
     def _get_quote_by_no(self, *, company: str, quote_no: str) -> LyProductionQuote | None:
@@ -5602,7 +5731,7 @@ class ProductionService:
         operation: str,
         idempotency_key: str,
         request_hash: str,
-        response: ProductionQuoteListItem,
+        response: ProductionQuoteListItem | ProductionQuoteConvertData,
         operator: str,
     ) -> None:
         self.session.add(
@@ -5616,6 +5745,31 @@ class ProductionService:
                 created_by=operator,
             )
         )
+
+    @staticmethod
+    def _quote_sales_order_no(row: LyProductionQuote) -> str:
+        raw = re.sub(r"[^0-9A-Za-z_\-]+", "-", str(row.quote_no)).strip("-")
+        quote_part = raw or str(row.id)
+        return f"SO-{quote_part}"[:140]
+
+    def _quote_sales_draft_idempotency_key(
+        self,
+        *,
+        company: str,
+        quote_no: str,
+        quote_id: int,
+        quote_idempotency_key: str,
+    ) -> str:
+        digest = self._build_request_hash(
+            {
+                "operation": "production_quote_convert_sales_order_draft",
+                "company": company,
+                "quote_no": quote_no,
+                "quote_id": quote_id,
+                "idempotency_key": quote_idempotency_key,
+            }
+        )
+        return f"quote-convert-{digest[:32]}"
 
     @staticmethod
     def _normalize_quote_status(value: str | None) -> str:

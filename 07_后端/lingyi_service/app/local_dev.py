@@ -100,6 +100,7 @@ def _create_local_tables() -> None:
     _ensure_local_inventory_count_idempotency_columns()
     _ensure_local_bom_company_style_columns()
     _ensure_local_production_material_uom_column()
+    _ensure_local_production_quote_operation_supports_convert()
 
 
 def _ensure_local_master_data_config_entities() -> None:
@@ -613,6 +614,52 @@ def _ensure_local_production_material_uom_column() -> None:
             conn.execute(
                 "ALTER TABLE ly_production_plan_material ADD COLUMN uom VARCHAR(32) NOT NULL DEFAULT '米'"
             )
+
+
+def _ensure_local_production_quote_operation_supports_convert() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_production_quote_operation'"
+        ).fetchone()
+        existing_sql = str(row[0]) if row else ""
+        if not row or "'convert'" in existing_sql:
+            return
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            DROP INDEX IF EXISTS uk_ly_production_quote_operation_idem;
+            DROP INDEX IF EXISTS idx_ly_production_quote_operation_quote;
+            CREATE TABLE ly_production_quote_operation_new (
+                id INTEGER NOT NULL,
+                quote_id INTEGER,
+                company VARCHAR(140) NOT NULL,
+                operation VARCHAR(64) NOT NULL,
+                idempotency_key VARCHAR(128) NOT NULL,
+                request_hash VARCHAR(64) NOT NULL,
+                response_json JSON NOT NULL,
+                created_by VARCHAR(140) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ck_ly_production_quote_operation CHECK (operation IN ('create','convert')),
+                FOREIGN KEY(quote_id) REFERENCES ly_production_quote (id)
+            );
+            INSERT INTO ly_production_quote_operation_new (
+                id, quote_id, company, operation, idempotency_key, request_hash, response_json, created_by, created_at
+            )
+            SELECT id, quote_id, company, operation, idempotency_key, request_hash, response_json, created_by, created_at
+            FROM ly_production_quote_operation;
+            DROP TABLE ly_production_quote_operation;
+            ALTER TABLE ly_production_quote_operation_new RENAME TO ly_production_quote_operation;
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_production_quote_operation_idem
+                ON ly_production_quote_operation (company, operation, idempotency_key);
+            CREATE INDEX IF NOT EXISTS idx_ly_production_quote_operation_quote
+                ON ly_production_quote_operation (quote_id, operation);
+            PRAGMA foreign_keys=on;
+            """
+        )
 
 
 def _seed_local_bom() -> None:

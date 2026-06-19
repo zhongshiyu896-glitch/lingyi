@@ -23,6 +23,12 @@ from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionQuote
 from app.models.production import LyProductionQuoteOperation
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderIdempotency
+from app.models.sales_order import LySalesOrderItem
+from app.models.style_master import Base as StyleMasterBase
+from app.models.style_master import LyStyleMaster
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
 
@@ -41,6 +47,8 @@ class ProductionQuoteApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         BomBase.metadata.create_all(bind=cls.engine)
+        StyleMasterBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
@@ -74,8 +82,12 @@ class ProductionQuoteApiTest(unittest.TestCase):
             session.query(LyProductionQuoteOperation).delete()
             session.query(LyProductionQuote).delete()
             session.query(LyProductionPlan).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrderIdempotency).delete()
+            session.query(LySalesOrder).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
+            session.query(LyStyleMaster).delete()
             session.commit()
         self.plan_id = self._seed_plan()
 
@@ -89,6 +101,22 @@ class ProductionQuoteApiTest(unittest.TestCase):
 
     def _seed_plan(self) -> int:
         with self.SessionLocal() as session:
+            session.add(
+                LyStyleMaster(
+                    id=900,
+                    company="COMP-Q",
+                    ys_style_no="STYLE-QUOTE-001",
+                    ys_style_name_cn="报价款",
+                    ys_season="夏",
+                    ys_year="2026",
+                    ys_brand="LY",
+                    ys_style_status="enabled",
+                    colors=[],
+                    sizes=[],
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
             bom = LyApparelBom(
                 id=901,
                 bom_no="BOM-QUOTE-001",
@@ -210,3 +238,92 @@ class ProductionQuoteApiTest(unittest.TestCase):
             json={**self._payload("IDEM-PROD-QUOTE-F"), "quote_no": "QT-SAVED-F"},
         )
         self.assertEqual(forbidden.status_code, 403, forbidden.text)
+
+    def test_convert_quote_creates_sales_order_draft_and_marks_converted_idempotently(self) -> None:
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-CONVERT-CREATE"),
+            json=self._payload("IDEM-PROD-QUOTE-CONVERT-CREATE"),
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        quote_id = int(created.json()["data"]["quote_id"])
+
+        payload = {
+            "company": "COMP-Q",
+            "sales_order_no": "SO-FROM-QT-001",
+            "transaction_date": "2026-06-30",
+            "delivery_date": "2026-07-10",
+            "idempotency_key": "IDEM-PROD-QUOTE-CONVERT",
+        }
+        converted = self.client.post(
+            f"/api/production/quotes/{quote_id}/convert-to-order",
+            headers=self._headers(request_id="PROD-QUOTE-CONVERT"),
+            json=payload,
+        )
+        self.assertEqual(converted.status_code, 200, converted.text)
+        body = converted.json()
+        self.assertEqual(body["code"], "0")
+        data = body["data"]
+        self.assertEqual(data["quote"]["status"], "converted")
+        self.assertEqual(data["sales_order"]["sales_order_no"], "SO-FROM-QT-001")
+        self.assertEqual(data["sales_order"]["source_order_ref"], "QUOTE-QT-SAVED-001")
+        self.assertEqual(data["sales_order"]["items"][0]["item_code"], "STYLE-QUOTE-001")
+        self.assertEqual(Decimal(str(data["sales_order"]["items"][0]["qty"])), Decimal("20.000000"))
+        self.assertEqual(Decimal(str(data["sales_order"]["items"][0]["rate"])), Decimal("16.125000"))
+
+        retry = self.client.post(
+            f"/api/production/quotes/{quote_id}/convert-to-order",
+            headers=self._headers(request_id="PROD-QUOTE-CONVERT-RETRY"),
+            json=payload,
+        )
+        self.assertEqual(retry.status_code, 200, retry.text)
+        self.assertEqual(retry.json()["data"]["sales_order"]["id"], data["sales_order"]["id"])
+
+        conflict_payload = dict(payload)
+        conflict_payload["sales_order_no"] = "SO-FROM-QT-002"
+        conflict = self.client.post(
+            f"/api/production/quotes/{quote_id}/convert-to-order",
+            headers=self._headers(request_id="PROD-QUOTE-CONVERT-CONFLICT"),
+            json=conflict_payload,
+        )
+        self.assertEqual(conflict.status_code, 409, conflict.text)
+        self.assertEqual(conflict.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
+
+        listed = self.client.get(
+            "/api/production/quotes?status=converted&page=1&page_size=10",
+            headers=self._headers(request_id="PROD-QUOTE-CONVERT-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(listed.json()["data"]["items"][0]["quote_no"], "QT-SAVED-001")
+
+        with self.SessionLocal() as session:
+            quote = session.query(LyProductionQuote).filter_by(id=quote_id).one()
+            self.assertEqual(quote.status, "converted")
+            self.assertEqual(session.query(LySalesOrder).count(), 1)
+            self.assertEqual(session.query(LySalesOrderItem).count(), 1)
+            self.assertEqual(session.query(LySalesOrderIdempotency).count(), 1)
+            self.assertEqual(session.query(LyProductionQuoteOperation).count(), 2)
+            self.assertGreaterEqual(
+                session.query(LyOperationAuditLog).filter_by(resource_type="production_quote", action="convert").count(),
+                1,
+            )
+
+    def test_quote_convert_permission_fail_closed(self) -> None:
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-CONVERT-F-CREATE"),
+            json={**self._payload("IDEM-PROD-QUOTE-CONVERT-F-CREATE"), "quote_no": "QT-SAVED-FC"},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        quote_id = int(created.json()["data"]["quote_id"])
+
+        forbidden = self.client.post(
+            f"/api/production/quotes/{quote_id}/convert-to-order",
+            headers=self._headers(role="Production Viewer", request_id="PROD-QUOTE-CONVERT-FORBIDDEN"),
+            json={"company": "COMP-Q", "idempotency_key": "IDEM-PROD-QUOTE-CONVERT-F"},
+        )
+        self.assertEqual(forbidden.status_code, 403, forbidden.text)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySalesOrder).count(), 0)
+            quote = session.query(LyProductionQuote).filter_by(id=quote_id).one()
+            self.assertEqual(quote.status, "quoted")
