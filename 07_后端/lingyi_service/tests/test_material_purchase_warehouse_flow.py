@@ -227,6 +227,43 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             ]
         )
 
+    def _stock_entry_payload(
+        self,
+        *,
+        source_ref: str,
+        idempotency_key: str,
+        item_code: str | None = None,
+        warehouse: str | None = None,
+        qty: str = "5",
+        company: str = "COMP-A",
+    ) -> dict:
+        material_code = item_code or self.ITEM_CODE
+        target_warehouse = warehouse or self.WAREHOUSE
+        return {
+            "operation": "create_stock_entry_draft",
+            "company": company,
+            "purpose": "Material Receipt",
+            "source_type": "material_other_inbound",
+            "source_id": source_ref,
+            "source_ref": source_ref,
+            "warehouse": target_warehouse,
+            "item_code": material_code,
+            "quantity": qty,
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "create",
+            "scenario_tag": self.SCENARIO_TAG,
+            "target_warehouse": target_warehouse,
+            "idempotency_key": idempotency_key,
+            "items": [
+                {
+                    "item_code": material_code,
+                    "qty": qty,
+                    "uom": "米",
+                    "target_warehouse": target_warehouse,
+                }
+            ],
+        }
+
     def test_create_purchase_order_rejects_inactive_material_master(self) -> None:
         inactive_material = "FAB-A-INACTIVE"
         with self.SessionLocal() as session:
@@ -312,6 +349,120 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
         self.assertIn("仓库不存在或已停用", response.json()["message"])
+
+    def test_stock_entry_draft_rejects_inactive_material_master(self) -> None:
+        inactive_material = "FAB-STOCK-INACTIVE"
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code=inactive_material,
+                    name="停用库存物料",
+                    status="inactive",
+                    payload={"material_kind": "fabric", "material_item_code": inactive_material, "uom": "米"},
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        idempotency_key = f"{self.SCENARIO_TAG}:stock-inactive-material"
+        source_ref = f"{self.SCENARIO_TAG}:stock-inactive-material-src"
+        payload = self._stock_entry_payload(
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            item_code=inactive_material,
+        )
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_ref,
+                    item_code=inactive_material,
+                    quantity="5",
+                )
+            ),
+            json=payload,
+        )
+
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["code"], "WAREHOUSE_INVALID_PAYLOAD")
+        self.assertIn("物料主数据不存在或已停用", response.json()["message"])
+
+    def test_stock_entry_draft_rejects_inactive_warehouse_master(self) -> None:
+        inactive_warehouse = "WH-STOCK-OFFLINE"
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="warehouse",
+                    company="COMP-A",
+                    code=inactive_warehouse,
+                    name=inactive_warehouse,
+                    status="inactive",
+                    payload={},
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        idempotency_key = f"{self.SCENARIO_TAG}:stock-inactive-warehouse"
+        source_ref = f"{self.SCENARIO_TAG}:stock-inactive-warehouse-src"
+        payload = self._stock_entry_payload(
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            warehouse=inactive_warehouse,
+        )
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_ref,
+                    warehouse=inactive_warehouse,
+                    quantity="5",
+                )
+            ),
+            json=payload,
+        )
+
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["code"], "WAREHOUSE_INVALID_PAYLOAD")
+        self.assertIn("仓库主数据不存在或已停用", response.json()["message"])
+
+    def test_stock_entry_draft_idempotent_replay_ignores_later_master_deactivation(self) -> None:
+        idempotency_key = f"{self.SCENARIO_TAG}:stock-replay-after-master-off"
+        source_ref = f"{self.SCENARIO_TAG}:stock-replay-after-master-off-src"
+        payload = self._stock_entry_payload(source_ref=source_ref, idempotency_key=idempotency_key)
+        headers = self._headers(
+            request_id=self._warehouse_request_id(
+                idempotency_key=idempotency_key,
+                source_ref=source_ref,
+                quantity="5",
+            )
+        )
+        created = self.client.post("/api/warehouse/stock-entry-drafts", headers=headers, json=payload)
+        self.assertEqual(created.status_code, 201, created.text)
+        draft_id = created.json()["data"]["id"]
+
+        with self.SessionLocal() as session:
+            for record in (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.company == "COMP-A",
+                    LyMasterDataRecord.code.in_([self.ITEM_CODE, self.WAREHOUSE]),
+                )
+                .all()
+            ):
+                record.status = "inactive"
+            session.commit()
+
+        replayed = self.client.post("/api/warehouse/stock-entry-drafts", headers=headers, json=payload)
+
+        self.assertEqual(replayed.status_code, 201, replayed.text)
+        self.assertEqual(replayed.json()["data"]["id"], draft_id)
 
     def test_purchase_order_receipt_draft_updates_received_qty_and_audits(self) -> None:
         purchase_payload = {
@@ -656,6 +807,18 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                     stock_entry_name="LOCAL-ISSUE-B5-FRR-001",
                     request_id="req-b5-frr-001",
                     created_by="seed",
+                )
+            )
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code="FAB-B5-FRR",
+                    name="应退料物料",
+                    status="active",
+                    payload={"material_kind": "fabric", "material_item_code": "FAB-B5-FRR", "uom": "米"},
+                    created_by="seed",
+                    updated_by="seed",
                 )
             )
             session.add(

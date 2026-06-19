@@ -25,6 +25,7 @@ from app.core.error_codes import INTERNAL_ERROR
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.exceptions import AppException
 from app.core.exceptions import BusinessException
+from app.models.master_data import LyMasterDataRecord
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.quality_outbox import LyQualityOutbox
@@ -1056,6 +1057,14 @@ class WarehouseService:
             return True
         table_names = set(inspect(bind).get_table_names())
         return LyQualityOutbox.__tablename__ in table_names
+
+    def _has_sqlite_master_data_table(self) -> bool:
+        session = self._require_session()
+        bind = session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        table_names = set(inspect(bind).get_table_names())
+        return LyMasterDataRecord.__tablename__ in table_names
 
     def _is_succeeded_subcontract_stock_fact(self, *, fact_row: Any, outbox: LySubcontractStockOutbox | None) -> bool:
         if outbox is None:
@@ -2357,6 +2366,14 @@ class WarehouseService:
         if source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt":
             self._validate_material_purchase_receipt(company=company, source_id=source_id, items=item_rows)
 
+        self._validate_stock_entry_master_data(
+            company=company,
+            source_warehouse=source_warehouse,
+            target_warehouse=target_warehouse,
+            item_rows=item_rows,
+            validate_material=finished_goods_source_id is None,
+        )
+
         now = datetime.now(timezone.utc)
         event_key = self._build_event_key(
             company=company,
@@ -3182,6 +3199,102 @@ class WarehouseService:
         replay_payload.pop("draft_id", None)
         if replay_payload != expected_payload:
             raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", message)
+
+    def _validate_stock_entry_master_data(
+        self,
+        *,
+        company: str,
+        source_warehouse: str | None,
+        target_warehouse: str | None,
+        item_rows: list[dict[str, Any]],
+        validate_material: bool,
+    ) -> None:
+        if validate_material:
+            material_codes = [str(row["item_code"]).strip() for row in item_rows if self._text(row.get("item_code"))]
+            self._ensure_active_master_records(
+                company=company,
+                entity_type="material",
+                values=material_codes,
+                label="物料主数据",
+                match_name=False,
+            )
+
+        warehouses: list[str] = []
+        for value in [source_warehouse, target_warehouse]:
+            normalized = self._text(value)
+            if normalized and normalized not in warehouses:
+                warehouses.append(normalized)
+        for row in item_rows:
+            for value in [row.get("source_warehouse"), row.get("target_warehouse")]:
+                normalized = self._text(value)
+                if normalized and normalized not in warehouses:
+                    warehouses.append(normalized)
+
+        self._ensure_active_master_records(
+            company=company,
+            entity_type="warehouse",
+            values=warehouses,
+            label="仓库主数据",
+            match_name=True,
+        )
+
+    def _ensure_active_master_records(
+        self,
+        *,
+        company: str,
+        entity_type: str,
+        values: list[str],
+        label: str,
+        match_name: bool,
+    ) -> None:
+        normalized_values: list[str] = []
+        for value in values:
+            normalized = self._text(value)
+            if normalized and normalized not in normalized_values:
+                normalized_values.append(normalized)
+        if not normalized_values:
+            return
+        if not self._has_sqlite_master_data_table():
+            return
+
+        session = self._require_session()
+        try:
+            master_count = (
+                session.query(func.count(LyMasterDataRecord.id))
+                .filter(
+                    LyMasterDataRecord.entity_type == entity_type,
+                    LyMasterDataRecord.company == company,
+                )
+                .scalar()
+            )
+            if int(master_count or 0) == 0:
+                return
+
+            query = session.query(LyMasterDataRecord.code, LyMasterDataRecord.name).filter(
+                LyMasterDataRecord.entity_type == entity_type,
+                LyMasterDataRecord.company == company,
+                LyMasterDataRecord.status == "active",
+            )
+            if match_name:
+                query = query.filter(
+                    or_(LyMasterDataRecord.code.in_(normalized_values), LyMasterDataRecord.name.in_(normalized_values))
+                )
+            else:
+                query = query.filter(LyMasterDataRecord.code.in_(normalized_values))
+            rows = query.all()
+        except SQLAlchemyError as exc:
+            raise WarehouseServiceError(500, DATABASE_READ_FAILED, "数据库读取失败") from exc
+
+        active_values = {str(row.code) for row in rows}
+        if match_name:
+            active_values.update(str(row.name) for row in rows)
+        invalid_values = [value for value in normalized_values if value not in active_values]
+        if invalid_values:
+            raise WarehouseServiceError(
+                400,
+                "WAREHOUSE_INVALID_PAYLOAD",
+                f"{label}不存在或已停用: {', '.join(invalid_values)}",
+            )
 
     def _build_stock_entry_replay_payload(
         self,
