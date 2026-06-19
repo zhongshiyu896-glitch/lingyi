@@ -21,6 +21,7 @@ from app.core.error_codes import MATERIAL_PURCHASE_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import MATERIAL_PURCHASE_NOT_FOUND
 from app.core.exceptions import BusinessException
 from app.models.bom import LyApparelBomItem
+from app.models.master_data import LyMasterDataRecord
 from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchaseOrder
@@ -188,13 +189,30 @@ class MaterialPurchaseService:
         if self._get_order_by_no(company=company, purchase_no=purchase_no) is not None:
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"{purchase_no} 已存在")
 
+        supplier_name = self._require_text(payload.supplier_name, "supplier_name")
+        material_codes = [self._require_text(line.material_item_code, "material_item_code") for line in payload.items]
+        self._ensure_active_master_records(
+            company=company,
+            entity_type="supplier",
+            values=[supplier_name],
+            label="供应商",
+            match_name=True,
+        )
+        self._ensure_active_master_records(
+            company=company,
+            entity_type="material",
+            values=material_codes,
+            label="物料",
+            match_name=False,
+        )
+
         total_qty = Decimal("0")
         total_amount = Decimal("0")
         try:
             row = LyMaterialPurchaseOrder(
                 company=company,
                 purchase_no=purchase_no,
-                supplier_name=self._require_text(payload.supplier_name, "supplier_name"),
+                supplier_name=supplier_name,
                 transaction_date=payload.transaction_date,
                 expected_delivery_date=payload.expected_delivery_date,
                 status="draft",
@@ -1590,6 +1608,49 @@ class MaterialPurchaseService:
         if len(lines) != 1:
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="多物料采购单必须指定 material_item_code")
         return lines[0]
+
+    def _ensure_active_master_records(
+        self,
+        *,
+        company: str,
+        entity_type: str,
+        values: list[str],
+        label: str,
+        match_name: bool,
+    ) -> None:
+        normalized_values: list[str] = []
+        for value in values:
+            normalized = self._require_text(value, label)
+            if normalized not in normalized_values:
+                normalized_values.append(normalized)
+        if not normalized_values:
+            return
+        try:
+            query = self.session.query(LyMasterDataRecord.code, LyMasterDataRecord.name).filter(
+                LyMasterDataRecord.entity_type == entity_type,
+                LyMasterDataRecord.company == company,
+                LyMasterDataRecord.status == "active",
+            )
+            if match_name:
+                query = query.filter(
+                    (LyMasterDataRecord.code.in_(normalized_values))
+                    | (LyMasterDataRecord.name.in_(normalized_values))
+                )
+            else:
+                query = query.filter(LyMasterDataRecord.code.in_(normalized_values))
+            rows = query.all()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+
+        active_values = {str(row.code) for row in rows}
+        if match_name:
+            active_values.update(str(row.name) for row in rows)
+        invalid_values = [value for value in normalized_values if value not in active_values]
+        if invalid_values:
+            raise BusinessException(
+                code=MATERIAL_PURCHASE_CONFLICT,
+                message=f"{label}不存在或已停用: {', '.join(invalid_values)}",
+            )
 
     def _invoiced_qty(self, *, company: str, purchase_no: str, material_item_code: str) -> Decimal:
         value = (

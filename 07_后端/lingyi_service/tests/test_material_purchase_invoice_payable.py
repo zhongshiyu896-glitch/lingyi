@@ -17,6 +17,8 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseInvoice
@@ -52,6 +54,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
 
@@ -94,6 +97,8 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             session.query(LyMaterialPurchaseIdempotency).delete()
             session.query(LyMaterialPurchaseOrderItem).delete()
             session.query(LyMaterialPurchaseOrder).delete()
+            session.query(LyMasterDataRecord).delete()
+            self._seed_purchase_master_data(session=session)
             session.commit()
 
     @staticmethod
@@ -112,6 +117,33 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             hash_value ^= byte
             hash_value = (hash_value * 16777619) & 0xFFFFFFFF
         return f"{hash_value:08X}"[-length:]
+
+    @classmethod
+    def _seed_purchase_master_data(cls, *, session) -> None:
+        session.add(
+            LyMasterDataRecord(
+                entity_type="supplier",
+                company=cls.COMPANY,
+                code="SUP-B2",
+                name="SUP-B2",
+                status="active",
+                payload={},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
+        session.add(
+            LyMasterDataRecord(
+                entity_type="material",
+                company=cls.COMPANY,
+                code=cls.ITEM_CODE,
+                name="B2棉布",
+                status="active",
+                payload={"material_kind": "fabric", "material_item_code": cls.ITEM_CODE, "uom": "米"},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
 
     @staticmethod
     def _decimal_text(value: object) -> str:

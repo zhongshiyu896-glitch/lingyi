@@ -20,6 +20,8 @@ from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseOrder
@@ -56,6 +58,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
         BomBase.metadata.create_all(bind=cls.engine)
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
         SubcontractBase.metadata.create_all(bind=cls.engine)
@@ -113,9 +116,38 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             session.query(LyMaterialPurchaseIdempotency).delete()
             session.query(LyMaterialPurchaseOrderItem).delete()
             session.query(LyMaterialPurchaseOrder).delete()
+            session.query(LyMasterDataRecord).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            self._seed_purchase_master_data(session=session, company="COMP-A", supplier_name="SUP-A", material_code=self.ITEM_CODE)
             session.commit()
+
+    @staticmethod
+    def _seed_purchase_master_data(*, session, company: str, supplier_name: str, material_code: str, material_status: str = "active") -> None:
+        session.add(
+            LyMasterDataRecord(
+                entity_type="supplier",
+                company=company,
+                code=supplier_name,
+                name=supplier_name,
+                status="active",
+                payload={},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
+        session.add(
+            LyMasterDataRecord(
+                entity_type="material",
+                company=company,
+                code=material_code,
+                name=f"{material_code}物料",
+                status=material_status,
+                payload={"material_kind": "fabric", "material_item_code": material_code, "uom": "米"},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
 
     @staticmethod
     def _headers(*, request_id: str = "req-a5-material-purchase") -> dict[str, str]:
@@ -166,6 +198,49 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 cls._carrier_code("C"),
             ]
         )
+
+    def test_create_purchase_order_rejects_inactive_material_master(self) -> None:
+        inactive_material = "FAB-A-INACTIVE"
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code=inactive_material,
+                    name="停用面料",
+                    status="inactive",
+                    payload={"material_kind": "fabric", "material_item_code": inactive_material, "uom": "米"},
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        purchase_payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "purchase_no": "PO-A5-INACTIVE-MAT",
+            "supplier_name": "SUP-A",
+            "transaction_date": "2026-06-16",
+            "currency": "CNY",
+            "idempotency_key": "idem-po-a5-inactive-mat",
+            "items": [
+                {
+                    "material_item_code": inactive_material,
+                    "material_name": "停用面料",
+                    "qty": "10",
+                    "uom": "米",
+                    "unit_price": "12.5",
+                    "warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+
+        response = self.client.post("/api/material-purchase/orders", headers=self._headers(), json=purchase_payload)
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("物料不存在或已停用", response.json()["message"])
 
     def test_purchase_order_receipt_draft_updates_received_qty_and_audits(self) -> None:
         purchase_payload = {
