@@ -541,28 +541,55 @@ def _get_read_permissions(
 
 
 def _scope_allowed(row: Any, permissions: UserPermissionResult | None) -> bool:
-    if get_permission_source() != "erpnext" or permissions is None or permissions.unrestricted:
+    source = get_permission_source()
+    if source == "static" or permissions is None or permissions.unrestricted:
         return True
+    strict_empty_scope = source == "fastapi"
     company = _scope_text(getattr(row, "company", None))
     item_code = _scope_text(getattr(row, "item_code", None))
     if item_code is None:
         item_code = _scope_text(getattr(row, "material_code", None))
     warehouse = _scope_text(getattr(row, "warehouse", None))
     customer = _scope_text(getattr(row, "customer", None))
+    supplier = _scope_text(getattr(row, "supplier", None))
+    if supplier is None:
+        supplier = _scope_text(getattr(row, "supplier_name", None))
     if warehouse is None and row.__class__.__name__ == "WarehouseItem":
         warehouse = _scope_text(getattr(row, "name", None))
     if customer is None and row.__class__.__name__ == "CustomerItem":
         customer = _scope_text(getattr(row, "name", None))
-    if company and not ERPNextPermissionAdapter.is_company_permitted(company=company, user_permissions=permissions):
-        return False
-    if item_code and item_code not in permissions.allowed_items and permissions.allowed_items:
-        return False
-    if item_code and not permissions.allowed_items and (permissions.allowed_companies or permissions.allowed_warehouses or permissions.allowed_customers):
-        return False
-    if warehouse and not ERPNextPermissionAdapter.is_warehouse_permitted(warehouse=warehouse, user_permissions=permissions):
-        return False
-    if customer and not ERPNextPermissionAdapter.is_customer_permitted(customer=customer, user_permissions=permissions):
-        return False
+    if supplier is None and row.__class__.__name__ == "SupplierItem":
+        supplier = _scope_text(getattr(row, "name", None))
+    if company:
+        if permissions.allowed_companies:
+            if company not in permissions.allowed_companies:
+                return False
+        elif strict_empty_scope:
+            return False
+    if item_code:
+        if permissions.allowed_items:
+            if item_code not in permissions.allowed_items:
+                return False
+        elif strict_empty_scope or permissions.allowed_companies or permissions.allowed_warehouses or permissions.allowed_customers:
+            return False
+    if warehouse:
+        if permissions.allowed_warehouses:
+            if warehouse not in permissions.allowed_warehouses:
+                return False
+        elif strict_empty_scope:
+            return False
+    if supplier:
+        if permissions.allowed_suppliers:
+            if supplier not in permissions.allowed_suppliers:
+                return False
+        elif strict_empty_scope:
+            return False
+    if customer:
+        if permissions.allowed_customers:
+            if customer not in permissions.allowed_customers:
+                return False
+        else:
+            return False
     return True
 
 

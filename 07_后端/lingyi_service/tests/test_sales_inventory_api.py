@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from datetime import timezone
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -73,6 +74,7 @@ class SalesInventoryApiBase(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
@@ -364,6 +366,56 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["code"], "ERPNEXT_RESOURCE_NOT_FOUND")
 
+    def test_sales_orders_fastapi_scope_filters_rows(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "sales.inventory.user": {
+                        "companies": ["COMP-A"],
+                        "customers": ["CUST-A"],
+                    }
+                }
+            }
+        )
+        with patch.object(
+            ERPNextSalesInventoryAdapter,
+            "list_sales_orders",
+            return_value=(
+                [
+                    {
+                        "name": "SO-FASTAPI-A",
+                        "company": "COMP-A",
+                        "customer": "CUST-A",
+                        "transaction_date": "2026-04-01",
+                        "delivery_date": "2026-04-10",
+                        "status": "To Deliver",
+                        "docstatus": 1,
+                        "grand_total": "120.50",
+                        "currency": "CNY",
+                    },
+                    {
+                        "name": "SO-FASTAPI-B",
+                        "company": "COMP-B",
+                        "customer": "CUST-B",
+                        "transaction_date": "2026-04-02",
+                        "delivery_date": "2026-04-11",
+                        "status": "To Deliver",
+                        "docstatus": 1,
+                        "grand_total": "99.00",
+                        "currency": "CNY",
+                    },
+                ],
+                2,
+            ),
+        ):
+            response = self.client.get("/api/sales-inventory/sales-orders", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["items"][0]["name"], "SO-FASTAPI-A")
+
     def test_customers_empty_customer_permissions_filter_all(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
         with patch.object(
@@ -466,6 +518,36 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["items"][0]["name"], "WH-A")
 
+    def test_warehouses_fastapi_scope_filters_allowed_warehouses(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "sales.inventory.user": {
+                        "companies": ["COMP-A"],
+                        "warehouses": ["WH-A"],
+                    }
+                }
+            }
+        )
+        with patch.object(
+            ERPNextSalesInventoryAdapter,
+            "list_warehouses",
+            return_value=(
+                [
+                    {"name": "WH-A", "company": "COMP-A", "warehouse_name": "仓A", "disabled": 0},
+                    {"name": "WH-B", "company": "COMP-A", "warehouse_name": "仓B", "disabled": 0},
+                ],
+                2,
+            ),
+        ):
+            response = self.client.get("/api/sales-inventory/warehouses?company=COMP-A", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["items"][0]["name"], "WH-A")
+
     def test_aggregation_filter_by_allowed_warehouses(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
         with patch.object(
@@ -529,6 +611,32 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
                 allowed_warehouses={"WH-A"},
             ),
         ), patch(
+            "app.routers.sales_inventory.SalesInventoryService.get_sales_order_fulfillment",
+            return_value=SalesOrderFulfillmentData(company="COMP-A", items=[]),
+        ) as mocked_fulfillment:
+            response = self.client.get(
+                "/api/sales-inventory/sales-order-fulfillment?company=COMP-A&warehouse=WH-B",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        mocked_fulfillment.assert_not_called()
+
+    def test_fulfillment_denies_out_of_scope_warehouse_query_fastapi(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "sales.inventory.user": {
+                        "companies": ["COMP-A"],
+                        "item_codes": ["ITEM-A"],
+                        "warehouses": ["WH-A"],
+                    }
+                }
+            }
+        )
+        with patch(
             "app.routers.sales_inventory.SalesInventoryService.get_sales_order_fulfillment",
             return_value=SalesOrderFulfillmentData(company="COMP-A", items=[]),
         ) as mocked_fulfillment:
