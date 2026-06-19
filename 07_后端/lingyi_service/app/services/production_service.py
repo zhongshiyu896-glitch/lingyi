@@ -4119,7 +4119,7 @@ class ProductionService:
             raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护用料 BOM 明细，无法算料")
         bom_rows = self._filter_bom_rows_for_sales_order_item(bom_rows=bom_rows, sales_order_item=native_item)
         if not bom_rows:
-            raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护匹配当前色码的用料 BOM 明细，无法算料")
+            raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护匹配当前颜色/尺码的用料 BOM 明细，无法算料")
         self._ensure_material_bom_rows_active(company=str(plan.company), bom_rows=bom_rows)
 
         try:

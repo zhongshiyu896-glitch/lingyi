@@ -214,6 +214,7 @@ class LySampleMaterialBomItem(Base):
     source_bom_item_id = Column(IDType, nullable=True)
     material_item_code = Column(String(140), nullable=False)
     color = Column(String(64), nullable=True)
+    size = Column(String(64), nullable=True)
     part = Column(String(100), nullable=True)
     qty_per_piece = Column(Numeric(18, 6), nullable=False)
     loss_rate = Column(Numeric(12, 6), nullable=False, default=0)

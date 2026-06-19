@@ -694,6 +694,7 @@ class StyleMasterService:
                         bom_id=int(bom.id),
                         material_item_code=item.material_item_code.strip(),
                         color=self._optional_text(item.color),
+                        size=self._optional_text(item.size),
                         part=self._optional_text(item.part),
                         qty_per_piece=item.qty_per_piece,
                         loss_rate=item.loss_rate,
@@ -747,6 +748,7 @@ class StyleMasterService:
                 StyleMaterialBomRequirementItem(
                     material_item_code=item.material_item_code,
                     color=item.color,
+                    size=item.size,
                     part=item.part,
                     uom=item.uom,
                     qty_per_piece=item.qty_per_piece,
@@ -1241,6 +1243,7 @@ class StyleMasterService:
                     id=int(item.id),
                     material_item_code=str(item.material_item_code),
                     color=item.color,
+                    size=getattr(item, "size", None),
                     part=getattr(item, "part", None),
                     qty_per_piece=Decimal(str(item.qty_per_piece)),
                     loss_rate=Decimal(str(item.loss_rate or 0)),

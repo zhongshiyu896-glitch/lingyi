@@ -307,6 +307,7 @@ class StyleMaterialBomItemPayload(BaseModel):
 
     material_item_code: str = Field(..., min_length=1, max_length=140)
     color: str | None = Field(default=None, max_length=64)
+    size: str | None = Field(default=None, max_length=64)
     part: str | None = Field(default=None, max_length=100)
     qty_per_piece: Decimal = Field(..., gt=0)
     loss_rate: Decimal = Field(default=Decimal("0"), ge=0)
@@ -350,6 +351,7 @@ class StyleMaterialBomItem(BaseModel):
     id: int
     material_item_code: str
     color: str | None = None
+    size: str | None = None
     part: str | None = None
     qty_per_piece: Decimal
     loss_rate: Decimal
@@ -369,6 +371,7 @@ class StyleMaterialBomRequirementItem(BaseModel):
 
     material_item_code: str
     color: str | None = None
+    size: str | None = None
     part: str | None = None
     uom: str
     qty_per_piece: Decimal

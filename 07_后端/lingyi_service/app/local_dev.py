@@ -96,6 +96,7 @@ def _create_local_tables() -> None:
     _ensure_local_style_dictionary_color_size_types()
     _ensure_local_style_master_idempotency_supports_gallery()
     _ensure_local_sample_style_master_link()
+    _ensure_local_material_bom_size_columns()
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
     _ensure_local_bom_company_style_columns()
@@ -458,6 +459,25 @@ def _ensure_local_sample_style_master_link() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ly_sample_order_style_master ON ly_sample_order(company, style_master_id)"
         )
+
+
+def _ensure_local_material_bom_size_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        for table_name in ("ly_apparel_bom_item", "ly_sample_material_bom_item"):
+            table_exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                (table_name,),
+            ).fetchone()
+            if not table_exists:
+                continue
+            existing_columns = {
+                str(row[1]) for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+            }
+            if "size" not in existing_columns:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN size VARCHAR(64)")
 
 
 def _ensure_local_subcontract_create_idempotency_columns() -> None:

@@ -173,6 +173,7 @@ class MaterialBomApiTest(unittest.TestCase):
             [
                 ("FAB-BLK-001", "黑色主面料", "active"),
                 ("FAB-ALT-001", "可替代面料", "active"),
+                ("FAB-ALT-XL", "可替代 XL 面料", "active"),
                 ("FAB-OFF-001", "停用面料", "inactive"),
             ],
             start=1,
@@ -261,6 +262,7 @@ class MaterialBomApiTest(unittest.TestCase):
                 {
                     "material_item_code": "FAB-BLK-001",
                     "color": "黑",
+                    "size": "M",
                     "part": "前片",
                     "qty_per_piece": "2",
                     "loss_rate": "0.05",
@@ -308,6 +310,7 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(upserted.status_code, 200, upserted.text)
         self.assertEqual(upserted.json()["data"]["bom"]["item_code"], "ST-MB-001")
         self.assertEqual(upserted.json()["data"]["items"][0]["part"], "前片")
+        self.assertEqual(upserted.json()["data"]["items"][0]["size"], "M")
 
         exploded = self.client.post(
             f"/api/style-master/styles/{style_id}/material-bom/explode?company=COMP-MB",
@@ -316,6 +319,7 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(exploded.status_code, 200, exploded.text)
         self.assertEqual(exploded.json()["data"]["items"][0]["required_qty"], "21.000000")
+        self.assertEqual(exploded.json()["data"]["items"][0]["size"], "M")
 
         updated_style = self.client.patch(
             f"/api/style-master/styles/{style_id}",
@@ -401,6 +405,7 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(copied.status_code, 200, copied.text)
         self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+        self.assertEqual(copied.json()["data"]["items"][0]["size"], "M")
         copied_source_item_id = copied.json()["data"]["items"][0]["source_bom_item_id"]
         self.assertIsNotNone(copied_source_item_id)
 
@@ -417,6 +422,7 @@ class MaterialBomApiTest(unittest.TestCase):
                         "source_bom_item_id": copied_source_item_id,
                         "material_item_code": "FAB-ALT-001",
                         "color": "黑",
+                        "size": "M",
                         "part": "袖口",
                         "qty_per_piece": "1.5",
                         "loss_rate": "0.10",
@@ -430,6 +436,7 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(edited.status_code, 200, edited.text)
         self.assertTrue(edited.json()["data"]["items"][0]["is_alternative"])
+        self.assertEqual(edited.json()["data"]["items"][0]["size"], "M")
         self.assertEqual(edited.json()["data"]["items"][0]["source_bom_item_id"], copied_source_item_id)
 
         invalid_source = self.client.put(
@@ -569,6 +576,7 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(copied.status_code, 200, copied.text)
         self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+        self.assertEqual(copied.json()["data"]["items"][0]["size"], "M")
 
         updated = self.client.patch(
             f"/api/sample/orders/{order_id}",
@@ -664,6 +672,7 @@ class MaterialBomApiTest(unittest.TestCase):
                     {
                         "material_item_code": "FAB-ALT-001",
                         "color": "黑",
+                        "size": "M",
                         "part": "样板改料",
                         "qty_per_piece": "3",
                         "loss_rate": "0.10",
@@ -671,12 +680,26 @@ class MaterialBomApiTest(unittest.TestCase):
                         "is_alternative": True,
                         "replace_group": "FAB-01",
                         "remark": "样板替代料",
+                    },
+                    {
+                        "material_item_code": "FAB-ALT-XL",
+                        "color": "黑",
+                        "size": "XL",
+                        "part": "样板改料",
+                        "qty_per_piece": "99",
+                        "loss_rate": "0",
+                        "uom": "码",
+                        "is_alternative": True,
+                        "replace_group": "FAB-01",
+                        "remark": "尺码不匹配时不可进入大货算料",
                     }
                 ],
             },
         )
         self.assertEqual(edited.status_code, 200, edited.text)
         self.assertEqual(edited.json()["data"]["items"][0]["material_item_code"], "FAB-ALT-001")
+        self.assertEqual(edited.json()["data"]["items"][0]["size"], "M")
+        self.assertEqual(edited.json()["data"]["items"][1]["size"], "XL")
 
         submitted = self.client.post(
             f"/api/sample/orders/{order_id}/submit",
@@ -708,6 +731,10 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(detail.status_code, 200, detail.text)
         sales_order_item = detail.json()["data"]["items"][0]["name"]
+        with self.SessionLocal() as session:
+            line = session.query(LySalesOrderItem).filter_by(sales_order_item=sales_order_item).one()
+            line.size = "M"
+            session.commit()
 
         created_plan = self.client.post(
             "/api/production/plans",
@@ -749,6 +776,7 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(material_row["bom_item_id"], None)
         self.assertEqual(material_row["uom"], "码")
         self.assertEqual(material_row["required_qty"], "3.300000")
+        self.assertEqual(len(checked.json()["data"]["items"]), 1)
 
         with self.SessionLocal() as session:
             snapshot = session.query(LyProductionPlanMaterial).one()
