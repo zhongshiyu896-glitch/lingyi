@@ -711,6 +711,49 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(snapshot.available_qty)), Decimal("4.000000"))
             self.assertEqual(Decimal(str(snapshot.shortage_qty)), Decimal("6.000000"))
 
+    def test_purchase_receipt_source_id_with_item_code_updates_requirement(self) -> None:
+        purchase_no = "PO-A6-SRC-ITEM-001"
+        source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}:{self.MATERIAL}"
+        idempotency_key = f"{self.WAREHOUSE_SCENARIO}:receipt:{purchase_no}:source-item"
+        self._seed_receipt_backed_purchase_chain(
+            plan_id=9805,
+            order_id=9806,
+            line_id=98061,
+            purchase_no=purchase_no,
+            qty="7",
+        )
+
+        draft = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=source_id,
+            idempotency_key=idempotency_key,
+            qty="7",
+        )
+        self.assertEqual(draft["source_id"], source_id)
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed&keyword={purchase_no}",
+            headers=self._headers("req-a6-source-item-requirement"),
+        )
+        receipts = self.client.get(
+            f"/api/warehouse/purchase-receipts?company={self.COMPANY}&purchase_no={purchase_no}",
+            headers=self._headers("req-a6-source-item-receipt"),
+        )
+        plan_detail = self.client.get("/api/production/plans/9805", headers=self._headers("req-a6-source-item-plan"))
+
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        self.assertEqual(requirements.json()["data"]["total"], 1)
+        requirement_data = requirements.json()["data"]["items"][0]
+        self.assertTrue(requirement_data["has_completed"])
+        self.assertEqual(requirement_data["purchase_no"], purchase_no)
+        self.assertEqual(Decimal(str(requirement_data["received_qty"])), Decimal("7.000000"))
+        self.assertEqual(receipts.status_code, 200, receipts.text)
+        self.assertEqual(receipts.json()["data"]["total"], 1)
+        self.assertEqual(receipts.json()["data"]["items"][0]["purchase_no"], purchase_no)
+        self.assertEqual(plan_detail.status_code, 200, plan_detail.text)
+        self.assertTrue(plan_detail.json()["data"]["material_ready"])
+        self.assertEqual(Decimal(str(plan_detail.json()["data"]["shortage_qty_total"])), Decimal("0.000000"))
+
     def test_purchase_receipt_rejects_wrong_purchase_line_warehouse(self) -> None:
         purchase_no = "PO-A6-WH-GUARD-001"
         source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}"
