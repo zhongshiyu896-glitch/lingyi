@@ -1152,7 +1152,11 @@ class WarehouseService:
         item_code: str | None,
         status: str | None,
     ) -> WarehouseOtherInboundData:
-        summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        summary = (
+            self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+            if self.adapter is None
+            else self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        )
         status_filter = (status or "").strip().lower() or None
         rows: list[WarehouseOtherInboundItem] = []
         for index, row in enumerate(summary.items, start=1):
@@ -1197,7 +1201,11 @@ class WarehouseService:
         item_code: str | None,
         status: str | None,
     ) -> WarehousePurchaseReturnOutboundData:
-        summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        summary = (
+            self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+            if self.adapter is None
+            else self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        )
         status_filter = (status or "").strip().lower() or None
         rows: list[WarehousePurchaseReturnOutboundItem] = []
         for index, row in enumerate(summary.items, start=1):
@@ -1752,7 +1760,11 @@ class WarehouseService:
         item_code: str | None,
         status: str | None,
     ) -> WarehouseSemiFinishedOutboundData:
-        summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        summary = (
+            self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+            if self.adapter is None
+            else self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        )
         status_filter = (status or "").strip().lower() or None
         rows: list[WarehouseSemiFinishedOutboundItem] = []
         for index, row in enumerate(summary.items, start=1):
@@ -2260,6 +2272,20 @@ class WarehouseService:
             disabled_entry_reason=self._FINISHED_GOODS_DISABLED_ENTRY_REASON,
             allocation_contract=self._ALLOCATION_CONTRACT,
             items=items,
+        )
+
+    def list_local_finished_goods_inbound_candidates(
+        self,
+        *,
+        company: str | None,
+    ) -> WarehouseFinishedGoodsInboundCandidatesData:
+        return WarehouseFinishedGoodsInboundCandidatesData(
+            company=company,
+            show_completed_forced=True,
+            disabled_entry_label=self._FINISHED_GOODS_DISABLED_ENTRY_LABEL,
+            disabled_entry_reason=self._FINISHED_GOODS_DISABLED_ENTRY_REASON,
+            allocation_contract=self._ALLOCATION_CONTRACT,
+            items=[],
         )
 
     def create_stock_entry_draft(

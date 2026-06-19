@@ -1659,22 +1659,30 @@ def list_other_inbound(
             detail={"code": "INVALID_QUERY_PARAMETER", "message": "status 参数非法", "data": None},
         )
 
-    try:
-        data: WarehouseOtherInboundData = _read_service(request).list_other_inbound(
+    if get_permission_source() == "fastapi":
+        data: WarehouseOtherInboundData = _write_service(session).list_other_inbound(
             company=_scope_text(company),
             warehouse=_scope_text(warehouse),
             item_code=_scope_text(item_code),
             status=normalized_status,
         )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="WarehouseOtherInbound",
-        )
+    else:
+        try:
+            data = _read_service(request).list_other_inbound(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+                status=normalized_status,
+            )
+        except ERPNextAdapterException as exc:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="WarehouseOtherInbound",
+            )
 
     data.items = [
         row
@@ -1737,22 +1745,30 @@ def list_purchase_return_outbound(
             detail={"code": "INVALID_QUERY_PARAMETER", "message": "status 参数非法", "data": None},
         )
 
-    try:
-        data: WarehousePurchaseReturnOutboundData = _read_service(request).list_purchase_return_outbound(
+    if get_permission_source() == "fastapi":
+        data: WarehousePurchaseReturnOutboundData = _write_service(session).list_purchase_return_outbound(
             company=_scope_text(company),
             warehouse=_scope_text(warehouse),
             item_code=_scope_text(item_code),
             status=normalized_status,
         )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="WarehousePurchaseReturnOutbound",
-        )
+    else:
+        try:
+            data = _read_service(request).list_purchase_return_outbound(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+                status=normalized_status,
+            )
+        except ERPNextAdapterException as exc:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="WarehousePurchaseReturnOutbound",
+            )
 
     data.items = [
         row
@@ -2052,22 +2068,30 @@ def list_semi_finished_outbound(
             detail={"code": "INVALID_QUERY_PARAMETER", "message": "status 参数非法", "data": None},
         )
 
-    try:
-        data: WarehouseSemiFinishedOutboundData = _read_service(request).list_semi_finished_outbound(
+    if get_permission_source() == "fastapi":
+        data: WarehouseSemiFinishedOutboundData = _write_service(session).list_semi_finished_outbound(
             company=_scope_text(company),
             warehouse=_scope_text(warehouse),
             item_code=_scope_text(item_code),
             status=normalized_status,
         )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="WarehouseSemiFinishedOutbound",
-        )
+    else:
+        try:
+            data = _read_service(request).list_semi_finished_outbound(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+                status=normalized_status,
+            )
+        except ERPNextAdapterException as exc:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="WarehouseSemiFinishedOutbound",
+            )
 
     data.items = [
         row
@@ -2122,19 +2146,24 @@ def list_finished_goods_inbound_candidates(
 
     normalized_company = _scope_text(company)
     normalized_item_code = _scope_text(item_code)
-    try:
-        data: WarehouseFinishedGoodsInboundCandidatesData = _read_service(request).list_finished_goods_inbound_candidates(
-            company=normalized_company
+    if get_permission_source() == "fastapi":
+        data: WarehouseFinishedGoodsInboundCandidatesData = _write_service(
+            session
+        ).list_local_finished_goods_inbound_candidates(
+            company=normalized_company,
         )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="ProductInWarehouseOption",
-        )
+    else:
+        try:
+            data = _read_service(request).list_finished_goods_inbound_candidates(company=normalized_company)
+        except ERPNextAdapterException as exc:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="ProductInWarehouseOption",
+            )
 
     data.items = [
         row

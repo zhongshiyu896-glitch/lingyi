@@ -324,6 +324,34 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         self.assertEqual(batch_detail.status_code, 404, batch_detail.text)
         self.assertEqual(batch_detail.json()["code"], "WAREHOUSE_BATCH_NOT_FOUND")
 
+    def test_fastapi_consumed_projection_reads_do_not_construct_erpnext_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "warehouse.user": {
+                        "company": ["COMP-A"],
+                        "warehouse": ["WH-A"],
+                        "item_code": ["ITEM-A"],
+                    }
+                }
+            }
+        )
+
+        paths = [
+            "/api/warehouse/other-inbound?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            "/api/warehouse/purchase-return-outbound?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            "/api/warehouse/semi-finished-outbound?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            "/api/warehouse/finished-goods-inbound-candidates?company=COMP-A&item_code=ITEM-A",
+        ]
+        with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("erpnext adapter")):
+            responses = [self.client.get(path, headers=self._headers()) for path in paths]
+
+        for response in responses:
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["code"], "0")
+            self.assertEqual(response.json()["data"]["items"], [])
+
     def test_invalid_date_range_returns_400(self) -> None:
         response = self.client.get(
             "/api/warehouse/stock-ledger?from_date=2026-05-01&to_date=2026-04-01",
