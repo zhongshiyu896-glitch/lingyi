@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import json
 import os
 import unittest
 
@@ -124,6 +125,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
@@ -201,6 +203,14 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         return {
             "X-LY-Dev-User": "a6.procurement.user",
             "X-LY-Dev-Roles": "System Manager",
+            "X-Request-ID": request_id,
+        }
+
+    @staticmethod
+    def _scope_headers(request_id: str = "req-a6-scope") -> dict[str, str]:
+        return {
+            "X-LY-Dev-User": "a6.scope.user",
+            "X-LY-Dev-Roles": "Purchasing Manager",
             "X-Request-ID": request_id,
         }
 
@@ -2388,6 +2398,148 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(row.resource_type, "MATERIAL_PURCHASE_REQUIREMENT")
             self.assertEqual(row.request_path, "/api/material-purchase/orders/from-requirements")
             self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+
+    def test_requirements_list_filters_fastapi_resource_scope(self) -> None:
+        allowed_id = self._seed_requirement(requirement_no="REQ-A6-SCOPE-ALLOW")
+        self._seed_requirement(
+            requirement_no="REQ-A6-SCOPE-BLOCK-MAT",
+            material_item_code="FAB-A6-BLOCK",
+            supplier_name="SUP-A6",
+            warehouse=self.WAREHOUSE,
+        )
+        self._seed_requirement(
+            requirement_no="REQ-A6-SCOPE-BLOCK-WH",
+            material_item_code=self.MATERIAL,
+            supplier_name="SUP-A6",
+            warehouse="WH-A6-BLOCK",
+        )
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "a6.scope.user": {
+                        "companies": [self.COMPANY],
+                        "item_codes": [self.MATERIAL],
+                        "suppliers": ["SUP-A6"],
+                        "warehouses": [self.WAREHOUSE],
+                    }
+                }
+            }
+        )
+
+        response = self.client.get(
+            "/api/material-purchase/requirements?status=pending&page_size=100",
+            headers=self._scope_headers("req-a6-list-scope"),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["code"], "0")
+        data = response.json()["data"]
+        self.assertEqual(data["total"], 1)
+        self.assertEqual([int(row["id"]) for row in data["items"]], [allowed_id])
+
+    def test_from_requirements_fastapi_scope_denied_does_not_mutate(self) -> None:
+        requirement_id = self._seed_requirement(
+            requirement_no="REQ-A6-SCOPE-DENY",
+            material_item_code="FAB-A6-DENY",
+            supplier_name="SUP-A6",
+            warehouse=self.WAREHOUSE,
+        )
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "a6.scope.user": {
+                        "companies": [self.COMPANY],
+                        "item_codes": [self.MATERIAL],
+                        "suppliers": ["SUP-A6"],
+                        "warehouses": [self.WAREHOUSE],
+                    }
+                }
+            }
+        )
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._scope_headers("req-a6-from-req-scope-deny"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-scope-deny",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            self.assertEqual(session.query(LyMaterialPurchaseIdempotency).count(), 0)
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_id).one()
+            self.assertEqual(str(requirement.status), "pending")
+            audit = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(audit)
+            self.assertEqual(audit.event_type, "RESOURCE_ACCESS_DENIED")
+            self.assertEqual(audit.resource_type, "MATERIAL_PURCHASE_REQUIREMENT")
+            self.assertEqual(audit.resource_no, "REQ-A6-SCOPE-DENY")
+
+    def test_from_requirements_fastapi_permission_source_unavailable_does_not_mutate(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-SCOPE-SOURCE-DOWN")
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = "[]"
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._scope_headers("req-a6-from-req-source-down"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-source-down",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            self.assertEqual(session.query(LyMaterialPurchaseIdempotency).count(), 0)
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_id).one()
+            self.assertEqual(str(requirement.status), "pending")
+            audit = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(audit)
+            self.assertEqual(audit.event_type, "PERMISSION_SOURCE_UNAVAILABLE")
+            self.assertEqual(audit.resource_type, "MATERIAL_PURCHASE_REQUIREMENT")
+
+    def test_from_requirements_fastapi_scope_allowed_creates_order(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-SCOPE-ALLOW-CREATE")
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "a6.scope.user": {
+                        "companies": [self.COMPANY],
+                        "item_codes": [self.MATERIAL],
+                        "suppliers": ["SUP-A6"],
+                        "warehouses": [self.WAREHOUSE],
+                    }
+                }
+            }
+        )
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._scope_headers("req-a6-from-req-scope-allow"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-scope-allow",
+                purchase_no="PO-A6-SCOPE-ALLOW",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 201, response.text)
+        self.assertEqual(response.json()["code"], "0")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 1)
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_id).one()
+            self.assertEqual(str(requirement.status), "purchased")
+            self.assertEqual(str(requirement.purchase_no), "PO-A6-SCOPE-ALLOW")
 
     def test_from_requirements_rejects_idempotency_payload_mismatch(self) -> None:
         requirement_id = self._seed_requirement(requirement_no="REQ-A6-IDEM")

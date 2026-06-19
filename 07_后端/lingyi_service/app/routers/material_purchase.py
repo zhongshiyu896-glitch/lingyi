@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter
 from fastapi import Depends
+from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Request
 from fastapi.encoders import jsonable_encoder
@@ -71,6 +72,63 @@ def _require_action(
     )
 
 
+def _requirement_scope_filters(permissions) -> dict[str, set[str] | None]:
+    if permissions is None or permissions.unrestricted:
+        return {
+            "allowed_companies": None,
+            "allowed_materials": None,
+            "allowed_suppliers": None,
+            "allowed_warehouses": None,
+        }
+    return {
+        "allowed_companies": set(permissions.allowed_companies),
+        "allowed_materials": set(permissions.allowed_items),
+        "allowed_suppliers": set(permissions.allowed_suppliers),
+        "allowed_warehouses": set(permissions.allowed_warehouses),
+    }
+
+
+def _ensure_requirement_resource_scope(
+    *,
+    service: MaterialPurchaseService,
+    permission_service: PermissionService,
+    request: Request,
+    current_user: CurrentUser,
+    payload: MaterialPurchaseRequirementToOrderRequest,
+) -> None:
+    requirements = service.get_requirements_for_permission(
+        company=payload.company,
+        requirement_ids=[int(row_id) for row_id in payload.requirement_ids],
+    )
+    user_permissions = permission_service.get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=MATERIAL_PURCHASE_WRITE,
+        resource_type="MATERIAL_PURCHASE_REQUIREMENT",
+    )
+    for requirement in requirements:
+        supplier_name = payload.supplier_name or requirement.supplier_name
+        permission_service.ensure_resource_scope_permission(
+            current_user=current_user,
+            request_obj=request,
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            resource_scope={
+                "company": requirement.company,
+                "item_code": requirement.material_item_code,
+                "supplier": supplier_name,
+                "warehouse": requirement.warehouse,
+            },
+            required_fields=("company", "item_code", "warehouse"),
+            resource_type="MATERIAL_PURCHASE_REQUIREMENT",
+            resource_id=int(requirement.id),
+            resource_no=str(requirement.requirement_no),
+            enforce_action=False,
+            user_permissions=user_permissions,
+        )
+
+
 @router.get("/orders")
 def list_material_purchase_orders(
     request: Request,
@@ -123,6 +181,14 @@ def list_material_purchase_requirements(
         action=MATERIAL_PURCHASE_READ,
         resource_type="MATERIAL_PURCHASE_REQUIREMENT",
     )
+    permission_service = PermissionService(session=session)
+    permissions = permission_service.get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_REQUIREMENT",
+    )
     try:
         data = MaterialPurchaseService(session).list_requirements(
             company=company,
@@ -131,6 +197,7 @@ def list_material_purchase_requirements(
             status=status,
             page=page,
             page_size=page_size,
+            **_requirement_scope_filters(permissions),
         )
     except AppException as exc:
         return _err(exc)
@@ -205,8 +272,16 @@ def create_material_purchase_order_from_requirements(
         resource_type="MATERIAL_PURCHASE_REQUIREMENT",
     )
     audit = AuditService(session)
+    service = MaterialPurchaseService(session)
     try:
-        result: PurchaseRequirementOrderMutationResult = MaterialPurchaseService(session).create_order_from_requirements(
+        _ensure_requirement_resource_scope(
+            service=service,
+            permission_service=PermissionService(session=session),
+            request=request,
+            current_user=current_user,
+            payload=payload,
+        )
+        result: PurchaseRequirementOrderMutationResult = service.create_order_from_requirements(
             payload=payload,
             actor=current_user.username,
         )
@@ -226,6 +301,9 @@ def create_material_purchase_order_from_requirements(
     except AuditWriteFailed as exc:
         session.rollback()
         return _err(exc)
+    except HTTPException:
+        session.rollback()
+        raise
     except AppException as exc:
         session.rollback()
         audit.record_failure(

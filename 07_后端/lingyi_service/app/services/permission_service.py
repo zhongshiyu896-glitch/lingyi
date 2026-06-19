@@ -1960,6 +1960,47 @@ class PermissionService:
             request_obj=request_obj,
         )
 
+    def get_resource_scope_permissions(
+        self,
+        *,
+        current_user: CurrentUser,
+        request_obj: Request,
+        module: str,
+        action: str,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        resource_no: str | None = None,
+    ) -> UserPermissionResult | None:
+        """Return resource-scope permissions for list filtering and batch guards."""
+        source = get_permission_source()
+        if source == "fastapi":
+            return self._fastapi_user_permissions(
+                current_user=current_user,
+                request_obj=request_obj,
+                module=module,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+        if source != "erpnext":
+            return None
+
+        adapter = ERPNextPermissionAdapter(request_obj=request_obj)
+        try:
+            return adapter.get_user_permissions(username=current_user.username)
+        except PermissionSourceUnavailable as exc:
+            self._raise_permission_source_unavailable(
+                exc=exc,
+                request_obj=request_obj,
+                current_user=current_user,
+                module=module,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+
     def get_readable_item_codes(
         self,
         *,

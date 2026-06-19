@@ -10,6 +10,7 @@ import hashlib
 import json
 from typing import Any
 
+from sqlalchemy import false
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -294,9 +295,33 @@ class MaterialPurchaseService:
         status: str | None,
         page: int,
         page_size: int,
+        allowed_companies: set[str] | None = None,
+        allowed_materials: set[str] | None = None,
+        allowed_suppliers: set[str] | None = None,
+        allowed_warehouses: set[str] | None = None,
     ) -> MaterialPurchaseRequirementListData:
         try:
             query = self.session.query(LyMaterialPurchaseRequirement)
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseRequirement.company,
+                allowed_values=allowed_companies,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseRequirement.material_item_code,
+                allowed_values=allowed_materials,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseRequirement.warehouse,
+                allowed_values=allowed_warehouses,
+            )
+            query = self._apply_optional_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseRequirement.supplier_name,
+                allowed_values=allowed_suppliers,
+            )
             normalized_company = self._optional_text(company)
             if normalized_company:
                 query = query.filter(LyMaterialPurchaseRequirement.company == normalized_company)
@@ -337,6 +362,22 @@ class MaterialPurchaseService:
             page=page,
             page_size=page_size,
         )
+
+    def get_requirements_for_permission(
+        self,
+        *,
+        company: str,
+        requirement_ids: list[int],
+    ) -> list[LyMaterialPurchaseRequirement]:
+        """Fetch requirement rows for read-only resource-scope checks before mutation."""
+        normalized_company = self._require_text(company, "company")
+        normalized_ids = sorted({int(row_id) for row_id in requirement_ids})
+        if not normalized_ids:
+            return []
+        try:
+            return self._requirements_by_ids(company=normalized_company, requirement_ids=normalized_ids)
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
 
     def sync_requirements_from_production_plan(self, *, plan: Any, actor: str) -> list[MaterialPurchaseRequirementListItem]:
         """Upsert material requirement pool rows from a production material check."""
@@ -1815,6 +1856,29 @@ class MaterialPurchaseService:
         if amount <= Decimal("0"):
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"{field_name} 必须大于 0")
         return amount
+
+    @staticmethod
+    def _normalize_scope_values(values: set[str] | None) -> set[str] | None:
+        if values is None:
+            return None
+        return {str(value).strip() for value in values if str(value).strip()}
+
+    def _apply_required_scope_filter(self, *, query, column, allowed_values: set[str] | None):
+        normalized_values = self._normalize_scope_values(allowed_values)
+        if normalized_values is None:
+            return query
+        if not normalized_values:
+            return query.filter(false())
+        return query.filter(column.in_(normalized_values))
+
+    def _apply_optional_scope_filter(self, *, query, column, allowed_values: set[str] | None):
+        normalized_values = self._normalize_scope_values(allowed_values)
+        if normalized_values is None:
+            return query
+        empty_scope = column.is_(None) | (column == "")
+        if not normalized_values:
+            return query.filter(empty_scope)
+        return query.filter(empty_scope | column.in_(normalized_values))
 
     @staticmethod
     def _optional_text(value: Any) -> str | None:
