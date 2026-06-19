@@ -237,6 +237,7 @@ class SampleService:
         if row.status not in self.EDITABLE_ORDER_STATUSES:
             raise BusinessException(code=SAMPLE_INVALID_STATUS, message="当前样板单状态不允许编辑")
         next_values = self._order_next_values(row=row, payload=payload)
+        style_changed = False
         if self._style_change_requested(row=row, values=next_values):
             target_style_master_id = next_values.get("style_master_id")
             if "style_master_id" not in next_values and "style_no" not in next_values:
@@ -249,6 +250,7 @@ class SampleService:
                 style_no=requested_style_no,
                 style_master_id=target_style_master_id,
             )
+            style_changed = int(style.id) != int(row.style_master_id or 0) or str(style.ys_style_no) != str(row.style_no or "")
             next_values["style_master_id"] = int(style.id)
             next_values["style_no"] = str(style.ys_style_no)
             next_values["style_name"] = str(style.ys_style_name_cn)
@@ -264,6 +266,8 @@ class SampleService:
         try:
             for key, value in next_values.items():
                 setattr(row, key, value)
+            if style_changed:
+                self._reset_sample_material_bom_for_style_change(order=row, actor=actor)
             row.updated_by = actor
             row.version = int(row.version or 0) + 1
             self._insert_idempotency(
@@ -1150,6 +1154,19 @@ class SampleService:
         if row is None:
             raise BusinessException(code=BOM_NOT_FOUND, message="样板用料 BOM 不存在")
         return row
+
+    def _reset_sample_material_bom_for_style_change(self, *, order: LySampleOrder, actor: str) -> None:
+        bom = self._find_sample_material_bom(order=order)
+        if bom is None:
+            return
+        self.session.query(LySampleMaterialBomItem).filter(LySampleMaterialBomItem.bom_id == int(bom.id)).delete()
+        bom.style_master_id = int(order.style_master_id) if order.style_master_id is not None else None
+        bom.item_code = str(order.style_no)
+        bom.source_bom_id = None
+        bom.version_no = "S1"
+        bom.status = "draft"
+        bom.updated_by = actor
+        bom.updated_at = datetime.now(UTC)
 
     def _sample_material_bom_data(self, *, order: LySampleOrder, bom: LySampleMaterialBom) -> SampleMaterialBomData:
         items = (

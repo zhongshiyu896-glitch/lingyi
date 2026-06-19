@@ -499,6 +499,88 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LySampleMaterialBomItem).count(), 0)
             self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 0)
 
+    def test_sample_style_change_resets_existing_sample_material_bom_snapshot(self) -> None:
+        style_id = self._seed_style()
+        seeded = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-SEED"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-STYLE-CHANGE-SEED"),
+        )
+        self.assertEqual(seeded.status_code, 200, seeded.text)
+        next_style_id = self._seed_style(style_no="ST-MB-002")
+
+        with self.SessionLocal() as session:
+            order = LySampleOrder(
+                company="COMP-MB",
+                sample_no="SMP-MB-STYLE-CHANGE",
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="建档",
+                progress=0,
+                status="draft",
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.commit()
+            order_id = int(order.id)
+
+        copied = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/copy-from-style",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-COPY"),
+            json={
+                "operation": "copy_from_style",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-STYLE-CHANGE-COPY",
+            },
+        )
+        self.assertEqual(copied.status_code, 200, copied.text)
+        self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+
+        updated = self.client.patch(
+            f"/api/sample/orders/{order_id}",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-UPDATE"),
+            json={
+                "operation": "update",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-STYLE-CHANGE-UPDATE",
+                "style_master_id": next_style_id,
+            },
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["data"]["style_master_id"], next_style_id)
+        self.assertEqual(updated.json()["data"]["style_no"], "ST-MB-002")
+
+        bom_after = self.client.get(
+            f"/api/sample/orders/{order_id}/material-bom?company=COMP-MB",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-GET"),
+        )
+        self.assertEqual(bom_after.status_code, 200, bom_after.text)
+        self.assertEqual(bom_after.json()["data"]["items"], [])
+        self.assertEqual(bom_after.json()["data"]["bom"]["style_master_id"], next_style_id)
+        self.assertEqual(bom_after.json()["data"]["bom"]["item_code"], "ST-MB-002")
+        self.assertIsNone(bom_after.json()["data"]["bom"]["source_bom_id"])
+
+        exploded = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/explode?company=COMP-MB",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-EXPLODE"),
+            json={"order_qty": "5"},
+        )
+        self.assertEqual(exploded.status_code, 404, exploded.text)
+        self.assertEqual(exploded.json()["code"], "BOM_NOT_FOUND")
+        self.assertIn("明细为空", exploded.json()["message"])
+        with self.SessionLocal() as session:
+            bom = session.query(LySampleMaterialBom).one()
+            self.assertEqual(bom.style_master_id, next_style_id)
+            self.assertEqual(bom.item_code, "ST-MB-002")
+            self.assertEqual(session.query(LySampleMaterialBomItem).count(), 0)
+
     def test_sample_material_bom_copy_edit_feeds_converted_bulk_material_check(self) -> None:
         style_id = self._seed_style()
         seeded = self.client.put(
