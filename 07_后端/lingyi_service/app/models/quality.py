@@ -156,6 +156,31 @@ class LyQualityOperationLog(Base):
     operated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class LyQualityWriteIdempotency(Base):
+    """质量写操作幂等账。"""
+
+    __tablename__ = "ly_quality_write_idempotency"
+    __table_args__ = (
+        Index("uk_ly_quality_write_idem_key", "company", "operation", "idempotency_key", unique=True),
+        Index("idx_ly_quality_write_idem_resource", "resource_id", "operation"),
+        CheckConstraint(
+            "operation IN ('create','update','confirm','cancel','defects')",
+            name="ck_ly_quality_write_idem_operation",
+        ),
+        {"schema": "ly_schema", "comment": "质量写操作幂等账"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    operation = Column(String(32), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    resource_id = Column(IDType, ForeignKey("ly_schema.ly_quality_inspection.id"), nullable=False)
+    result_json = Column(JSON, nullable=False)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LyQualityDisposition(Base):
     """质量检验后处置记录：放行或返工。"""
 

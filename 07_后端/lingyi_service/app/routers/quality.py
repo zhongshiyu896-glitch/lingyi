@@ -932,6 +932,33 @@ def _write_existing(
         )
         service = _quality_service(session, request)
         if operation == "update":
+            replay_data = service.replay_write_idempotency(
+                company=str(row.company),
+                operation="update",
+                idempotency_key=payload.idempotency_key,
+                request_hash=service.build_write_request_hash(
+                    operation="update",
+                    inspection_id=inspection_id,
+                    payload=payload.model_dump(mode="json"),
+                ),
+            )
+            if replay_data is not None:
+                after_data = {
+                    "inspection_id": replay_data.get("id"),
+                    "inspection_no": replay_data.get("inspection_no"),
+                    "status": replay_data.get("status"),
+                }
+                _record_success(
+                    session=session,
+                    audit=audit,
+                    context=context,
+                    action=action,
+                    current_user=current_user,
+                    resource_id=inspection_id,
+                    resource_no=resource_no,
+                    after_data=after_data,
+                )
+                return _ok(replay_data)
             if row.status == "confirmed":
                 return _err(QUALITY_INVALID_STATUS, "已确认状态不可修改", status_code=403)
             if row.status == "cancelled":
@@ -957,6 +984,33 @@ def _write_existing(
             )
             return _ok(data.model_dump(mode="json"))
         if operation == "defects":
+            replay_data = service.replay_write_idempotency(
+                company=str(row.company),
+                operation="defects",
+                idempotency_key=payload.idempotency_key,
+                request_hash=service.build_write_request_hash(
+                    operation="defects",
+                    inspection_id=inspection_id,
+                    payload=payload.model_dump(mode="json"),
+                ),
+            )
+            if replay_data is not None:
+                after_data = {
+                    "inspection_id": replay_data.get("id"),
+                    "inspection_no": replay_data.get("inspection_no"),
+                    "status": replay_data.get("status"),
+                }
+                _record_success(
+                    session=session,
+                    audit=audit,
+                    context=context,
+                    action=action,
+                    current_user=current_user,
+                    resource_id=inspection_id,
+                    resource_no=resource_no,
+                    after_data=after_data,
+                )
+                return _created(replay_data)
             if row.status == "confirmed":
                 return _err(QUALITY_INVALID_STATUS, "已确认状态不可录入缺陷", status_code=403)
             if row.status == "cancelled":
@@ -986,6 +1040,8 @@ def _write_existing(
                 inspection_id=inspection_id,
                 operator=current_user.username,
                 request_id=payload.request_id,
+                idempotency_key=payload.idempotency_key,
+                request_payload=payload.model_dump(mode="json"),
                 remark=getattr(payload, "remark", None),
             )
             data = service.get_detail_data(inspection_id)
@@ -1033,6 +1089,8 @@ def _write_existing(
                 inspection_id=inspection_id,
                 operator=current_user.username,
                 request_id=payload.request_id,
+                idempotency_key=payload.idempotency_key,
+                request_payload=payload.model_dump(mode="json"),
                 reason=getattr(payload, "reason", None),
             )
             data = service.get_detail_data(inspection_id)

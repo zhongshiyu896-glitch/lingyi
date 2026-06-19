@@ -24,6 +24,7 @@ from app.models.quality import LyQualityDisposition
 from app.models.quality import LyQualityInspection
 from app.models.quality import LyQualityInspectionItem
 from app.models.quality import LyQualityOperationLog
+from app.models.quality import LyQualityWriteIdempotency
 from app.models.quality_outbox import LyQualityOutbox
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.quality import get_db_session as quality_db_dep
@@ -90,6 +91,7 @@ class QualityApiBase(unittest.TestCase):
             session.query(LySecurityAuditLog).delete()
             session.query(LyQualityOutbox).delete()
             session.query(LyQualityDisposition).delete()
+            session.query(LyQualityWriteIdempotency).delete()
             session.query(LyQualityOperationLog).delete()
             session.query(LyQualityDefect).delete()
             session.query(LyQualityInspectionItem).delete()

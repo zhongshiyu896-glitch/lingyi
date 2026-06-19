@@ -8,6 +8,8 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from decimal import ROUND_HALF_UP
+import hashlib
+import json
 import os
 from typing import Any
 
@@ -30,6 +32,7 @@ from app.models.quality import LyQualityDisposition
 from app.models.quality import LyQualityInspection
 from app.models.quality import LyQualityInspectionItem
 from app.models.quality import LyQualityOperationLog
+from app.models.quality import LyQualityWriteIdempotency
 from app.models.subcontract import LySubcontractInspection
 from app.schemas.quality import QualityDefectInput
 from app.schemas.quality import QualityDefectData
@@ -190,6 +193,21 @@ class QualityService:
         request_id: str | None,
     ) -> QualityInspectionDetailData:
         normalized = _normalize_create_payload(payload)
+        idempotency_key = _clean_required(payload.idempotency_key, QUALITY_IDEMPOTENCY_CONFLICT)
+        request_hash = self._write_request_hash(
+            operation="create",
+            company=normalized["company"],
+            payload=payload.model_dump(mode="json"),
+        )
+        existing_idempotency = self._find_write_idempotency(
+            company=normalized["company"],
+            operation="create",
+            idempotency_key=idempotency_key,
+        )
+        if existing_idempotency is not None:
+            self._ensure_same_write_idempotency(existing_idempotency, request_hash=request_hash)
+            return QualityInspectionDetailData.model_validate(existing_idempotency.result_json)
+
         snapshot = self._validate_sources(normalized)
         inspection = LyQualityInspection(
             inspection_no=self._next_inspection_no(),
@@ -220,7 +238,18 @@ class QualityService:
         self._replace_items_and_defects(inspection=inspection, items=normalized["items"], defects=normalized["defects"])
         self._add_log(inspection=inspection, action="create", from_status=None, to_status="draft", operator=operator, request_id=request_id, remark=None)
         self.session.flush()
-        return self.get_detail_data(inspection.id)
+        data = self.get_detail_data(inspection.id)
+        self._record_write_idempotency(
+            company=normalized["company"],
+            operation="create",
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            resource_id=int(inspection.id),
+            result=data.model_dump(mode="json"),
+            operator=operator,
+        )
+        self.session.flush()
+        return data
 
     def update_inspection(
         self,
@@ -231,6 +260,21 @@ class QualityService:
         request_id: str | None,
     ) -> QualityInspectionDetailData:
         inspection = self._get_or_raise(inspection_id)
+        idempotency_key = _clean_required(payload.idempotency_key, QUALITY_IDEMPOTENCY_CONFLICT)
+        request_hash = self._write_request_hash(
+            operation="update",
+            inspection_id=inspection_id,
+            payload=payload.model_dump(mode="json"),
+        )
+        existing_idempotency = self._find_write_idempotency(
+            company=str(inspection.company),
+            operation="update",
+            idempotency_key=idempotency_key,
+        )
+        if existing_idempotency is not None:
+            self._ensure_same_write_idempotency(existing_idempotency, request_hash=request_hash)
+            return QualityInspectionDetailData.model_validate(existing_idempotency.result_json)
+
         if inspection.status != "draft":
             raise BusinessException(code=QUALITY_INVALID_STATUS)
         before_status = str(inspection.status)
@@ -263,7 +307,18 @@ class QualityService:
             remark=None,
         )
         self.session.flush()
-        return self.get_detail_data(inspection.id)
+        data = self.get_detail_data(inspection.id)
+        self._record_write_idempotency(
+            company=str(inspection.company),
+            operation="update",
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            resource_id=int(inspection.id),
+            result=data.model_dump(mode="json"),
+            operator=operator,
+        )
+        self.session.flush()
+        return data
 
     def confirm_inspection(
         self,
@@ -271,9 +326,26 @@ class QualityService:
         inspection_id: int,
         operator: str,
         request_id: str | None,
+        idempotency_key: str,
+        request_payload: dict[str, Any],
         remark: str | None = None,
     ) -> QualityInspectionActionData:
         inspection = self._get_or_raise(inspection_id)
+        normalized_idempotency_key = _clean_required(idempotency_key, QUALITY_IDEMPOTENCY_CONFLICT)
+        request_hash = self._write_request_hash(
+            operation="confirm",
+            inspection_id=inspection_id,
+            payload=request_payload,
+        )
+        existing_idempotency = self._find_write_idempotency(
+            company=str(inspection.company),
+            operation="confirm",
+            idempotency_key=normalized_idempotency_key,
+        )
+        if existing_idempotency is not None:
+            self._ensure_same_write_idempotency(existing_idempotency, request_hash=request_hash)
+            return QualityInspectionActionData.model_validate(existing_idempotency.result_json)
+
         if inspection.status != "draft":
             raise BusinessException(code=QUALITY_INVALID_STATUS)
         self._validate_sources(_payload_from_inspection(inspection, self._item_inputs(inspection), self._defect_inputs(inspection)))
@@ -299,13 +371,24 @@ class QualityService:
             max_attempts=3,
         )
         self.session.flush()
-        return QualityInspectionActionData(
+        data = QualityInspectionActionData(
             id=int(inspection.id),
             inspection_no=str(inspection.inspection_no),
             status="confirmed",
             operator=operator,
             operated_at=now,
         )
+        self._record_write_idempotency(
+            company=str(inspection.company),
+            operation="confirm",
+            idempotency_key=normalized_idempotency_key,
+            request_hash=request_hash,
+            resource_id=int(inspection.id),
+            result=data.model_dump(mode="json"),
+            operator=operator,
+        )
+        self.session.flush()
+        return data
 
     def dispose_inspection(
         self,
@@ -428,9 +511,26 @@ class QualityService:
         inspection_id: int,
         operator: str,
         request_id: str | None,
+        idempotency_key: str,
+        request_payload: dict[str, Any],
         reason: str | None = None,
     ) -> QualityInspectionActionData:
         inspection = self._get_or_raise(inspection_id)
+        normalized_idempotency_key = _clean_required(idempotency_key, QUALITY_IDEMPOTENCY_CONFLICT)
+        request_hash = self._write_request_hash(
+            operation="cancel",
+            inspection_id=inspection_id,
+            payload=request_payload,
+        )
+        existing_idempotency = self._find_write_idempotency(
+            company=str(inspection.company),
+            operation="cancel",
+            idempotency_key=normalized_idempotency_key,
+        )
+        if existing_idempotency is not None:
+            self._ensure_same_write_idempotency(existing_idempotency, request_hash=request_hash)
+            return QualityInspectionActionData.model_validate(existing_idempotency.result_json)
+
         if inspection.status != "confirmed":
             raise BusinessException(code=QUALITY_INVALID_STATUS)
         now = _now()
@@ -449,13 +549,24 @@ class QualityService:
             remark=reason,
         )
         self.session.flush()
-        return QualityInspectionActionData(
+        data = QualityInspectionActionData(
             id=int(inspection.id),
             inspection_no=str(inspection.inspection_no),
             status="cancelled",
             operator=operator,
             operated_at=now,
         )
+        self._record_write_idempotency(
+            company=str(inspection.company),
+            operation="cancel",
+            idempotency_key=normalized_idempotency_key,
+            request_hash=request_hash,
+            resource_id=int(inspection.id),
+            result=data.model_dump(mode="json"),
+            operator=operator,
+        )
+        self.session.flush()
+        return data
 
     def add_defects(
         self,
@@ -466,6 +577,21 @@ class QualityService:
         request_id: str | None,
     ) -> QualityInspectionDetailData:
         inspection = self._get_or_raise(inspection_id)
+        idempotency_key = _clean_required(payload.idempotency_key, QUALITY_IDEMPOTENCY_CONFLICT)
+        request_hash = self._write_request_hash(
+            operation="defects",
+            inspection_id=inspection_id,
+            payload=payload.model_dump(mode="json"),
+        )
+        existing_idempotency = self._find_write_idempotency(
+            company=str(inspection.company),
+            operation="defects",
+            idempotency_key=idempotency_key,
+        )
+        if existing_idempotency is not None:
+            self._ensure_same_write_idempotency(existing_idempotency, request_hash=request_hash)
+            return QualityInspectionDetailData.model_validate(existing_idempotency.result_json)
+
         if inspection.status != "draft":
             raise BusinessException(code=QUALITY_INVALID_STATUS)
 
@@ -521,7 +647,18 @@ class QualityService:
             remark="add_defect",
         )
         self.session.flush()
-        return self.get_detail_data(inspection.id)
+        data = self.get_detail_data(inspection.id)
+        self._record_write_idempotency(
+            company=str(inspection.company),
+            operation="defects",
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            resource_id=int(inspection.id),
+            result=data.model_dump(mode="json"),
+            operator=operator,
+        )
+        self.session.flush()
+        return data
 
     def list_inspections(
         self,
@@ -1026,6 +1163,83 @@ class QualityService:
                 operator=operator,
                 request_id=request_id,
                 remark=_text(remark),
+            )
+        )
+
+    @classmethod
+    def build_write_request_hash(cls, **payload: Any) -> str:
+        return cls._write_request_hash(**payload)
+
+    @classmethod
+    def _write_request_hash(cls, **payload: Any) -> str:
+        canonical = cls._canonical_json(payload)
+        raw = json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _canonical_json(payload: Any) -> Any:
+        return json.loads(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str))
+
+    def _find_write_idempotency(
+        self,
+        *,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+    ) -> LyQualityWriteIdempotency | None:
+        return (
+            self.session.query(LyQualityWriteIdempotency)
+            .filter(
+                LyQualityWriteIdempotency.company == str(company),
+                LyQualityWriteIdempotency.operation == str(operation),
+                LyQualityWriteIdempotency.idempotency_key == str(idempotency_key),
+            )
+            .one_or_none()
+        )
+
+    def replay_write_idempotency(
+        self,
+        *,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> dict[str, Any] | None:
+        row = self._find_write_idempotency(
+            company=company,
+            operation=operation,
+            idempotency_key=idempotency_key,
+        )
+        if row is None:
+            return None
+        self._ensure_same_write_idempotency(row, request_hash=request_hash)
+        return self._canonical_json(row.result_json)
+
+    @staticmethod
+    def _ensure_same_write_idempotency(row: LyQualityWriteIdempotency, *, request_hash: str) -> None:
+        if str(row.request_hash) != str(request_hash):
+            raise BusinessException(code=QUALITY_IDEMPOTENCY_CONFLICT)
+
+    def _record_write_idempotency(
+        self,
+        *,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+        request_hash: str,
+        resource_id: int,
+        result: dict[str, Any],
+        operator: str,
+    ) -> None:
+        self.session.add(
+            LyQualityWriteIdempotency(
+                company=str(company),
+                operation=str(operation),
+                idempotency_key=str(idempotency_key),
+                request_hash=str(request_hash),
+                resource_id=int(resource_id),
+                result_json=self._canonical_json(result),
+                created_by=str(operator),
             )
         )
 

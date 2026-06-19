@@ -208,6 +208,92 @@ class QualityDispositionTest(QualityApiBase):
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "QUALITY_IDEMPOTENCY_CONFLICT")
 
+    def test_rework_same_idempotency_replays_same_disposition(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-REWORK-REPLAY",
+            status="draft",
+            result="fail",
+            inspected_qty=Decimal("8"),
+            accepted_qty=Decimal("0"),
+            rejected_qty=Decimal("8"),
+            defect_qty=Decimal("2"),
+        )
+        payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260617-206",
+            operation="rework",
+            idempotency_key="quality-rework-replay",
+            result="fail",
+            remark="返工",
+        )
+
+        with (
+            patch.dict("os.environ", self._local_gate_env()),
+            patch(
+                "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+                return_value=self._snapshot(),
+            ),
+        ):
+            first = self.client.post(
+                f"/api/quality/inspections/{int(seeded['id'])}/rework",
+                headers=self._headers_for_payload(payload),
+                json=payload,
+            )
+            second = self.client.post(
+                f"/api/quality/inspections/{int(seeded['id'])}/rework",
+                headers=self._headers_for_payload(payload),
+                json=payload,
+            )
+
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual(first.json()["data"]["idempotency_key"], second.json()["data"]["idempotency_key"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyQualityDisposition).filter(LyQualityDisposition.inspection_id == int(seeded["id"])).count(), 1)
+
+    def test_rework_same_idempotency_changed_payload_conflicts(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-REWORK-CONFLICT",
+            status="draft",
+            result="fail",
+            inspected_qty=Decimal("8"),
+            accepted_qty=Decimal("0"),
+            rejected_qty=Decimal("8"),
+            defect_qty=Decimal("2"),
+        )
+        payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260617-207",
+            operation="rework",
+            idempotency_key="quality-rework-conflict",
+            result="fail",
+            remark="返工A",
+        )
+        conflict_payload = dict(payload)
+        conflict_payload["remark"] = "返工B"
+
+        with (
+            patch.dict("os.environ", self._local_gate_env()),
+            patch(
+                "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+                return_value=self._snapshot(),
+            ),
+        ):
+            first = self.client.post(
+                f"/api/quality/inspections/{int(seeded['id'])}/rework",
+                headers=self._headers_for_payload(payload),
+                json=payload,
+            )
+            second = self.client.post(
+                f"/api/quality/inspections/{int(seeded['id'])}/rework",
+                headers=self._headers_for_payload(conflict_payload),
+                json=conflict_payload,
+            )
+
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 409)
+        self.assertEqual(second.json()["code"], "QUALITY_IDEMPOTENCY_CONFLICT")
+
     def test_quality_viewer_cannot_release_or_rework(self) -> None:
         seeded = self._insert_inspection(
             inspection_no="QI-RELEASE-FORBIDDEN",

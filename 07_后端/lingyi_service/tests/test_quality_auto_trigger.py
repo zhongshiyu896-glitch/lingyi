@@ -12,7 +12,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.exceptions import BusinessException
 from app.models.quality import Base as QualityBase
-from app.models.quality import LyQualityInspection
+from app.models.quality import LyQualityInspection, LyQualityWriteIdempotency
 from app.models.quality_outbox import LyQualityOutbox
 from app.services.quality_purchase_receipt_listener import handle_purchase_receipt_event
 from app.services.quality_service import QualitySourceValidationSnapshot
@@ -55,6 +55,7 @@ class QualityAutoTriggerTest(unittest.TestCase):
     def setUp(self) -> None:
         with self.SessionLocal() as session:
             session.query(LyQualityOutbox).delete()
+            session.query(LyQualityWriteIdempotency).delete()
             session.query(LyQualityInspection).delete()
             session.commit()
 
