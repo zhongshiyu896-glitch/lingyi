@@ -612,6 +612,8 @@ class StyleMasterService:
         if bom is None:
             raise BusinessException(code=BOM_NOT_FOUND, message="该款式未维护用料 BOM")
         data = self._style_material_bom_data(style=style, bom=bom)
+        if not data.items:
+            raise BusinessException(code=BOM_NOT_FOUND, message="该款式用料 BOM 未维护明细")
         items: list[StyleMaterialBomRequirementItem] = []
         total = Decimal("0")
         for item in data.items:

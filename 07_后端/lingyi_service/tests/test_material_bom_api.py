@@ -334,6 +334,33 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(bom.item_code, "ST-MB-001-R")
             self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 1)
 
+    def test_empty_style_material_bom_explode_returns_explicit_error(self) -> None:
+        style_id = self._seed_style()
+        with self.SessionLocal() as session:
+            session.add(
+                LyApparelBom(
+                    company="COMP-MB",
+                    style_master_id=style_id,
+                    bom_no="BOM-STYLE-EMPTY",
+                    item_code="ST-MB-001",
+                    version_no="V1",
+                    is_default=True,
+                    status="active",
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        exploded = self.client.post(
+            f"/api/style-master/styles/{style_id}/material-bom/explode?company=COMP-MB",
+            headers=self._headers(request_id="STYLE-MB-EMPTY-EXPLODE"),
+            json={"order_qty": "10"},
+        )
+        self.assertEqual(exploded.status_code, 404, exploded.text)
+        self.assertEqual(exploded.json()["code"], "BOM_NOT_FOUND")
+        self.assertIn("未维护明细", exploded.json()["message"])
+
     def test_sample_material_bom_copies_style_snapshot_and_can_be_edited(self) -> None:
         style_id = self._seed_style()
         self.client.put(
