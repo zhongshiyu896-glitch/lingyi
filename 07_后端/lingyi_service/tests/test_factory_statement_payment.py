@@ -293,6 +293,110 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("factory_statement:payment_cancel", audit_actions)
 
+    def test_cancel_second_payment_reopens_paid_statement_to_partly_paid(self) -> None:
+        statement_data = self._create_confirmed_statement()
+        statement_id = int(statement_data["statement_id"])
+        first_payment = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments",
+            headers=self._headers(),
+            json=self._payment_payload(
+                statement_data,
+                paid_amount=1200,
+                payment_entry="FSP-B6-CLOSE-A",
+                source_ref="SRC-B6-FSP-CLOSE-A",
+                idempotency_key="idem-b6-fsp-close-a",
+                reference_no="BANK-B6-CLOSE-A",
+            ),
+        )
+        second_payment = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments",
+            headers=self._headers(),
+            json=self._payment_payload(
+                statement_data,
+                paid_amount=3500,
+                payment_entry="FSP-B6-CLOSE-B",
+                source_ref="SRC-B6-FSP-CLOSE-B",
+                idempotency_key="idem-b6-fsp-close-b",
+                reference_no="BANK-B6-CLOSE-B",
+            ),
+        )
+        closed_detail = self.client.get(
+            f"/api/factory-statements/{statement_id}",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(first_payment.status_code, 201, first_payment.text)
+        self.assertEqual(second_payment.status_code, 201, second_payment.text)
+        self.assertEqual(Decimal(str(second_payment.json()["data"]["outstanding_before"])), Decimal("3500.000000"))
+        self.assertEqual(Decimal(str(second_payment.json()["data"]["outstanding_after"])), Decimal("0.000000"))
+        self.assertEqual(closed_detail.status_code, 200, closed_detail.text)
+        self.assertEqual(closed_detail.json()["data"]["payment_status"], "paid")
+        self.assertEqual(Decimal(str(closed_detail.json()["data"]["paid_amount"])), Decimal("4700.000000"))
+        self.assertEqual(Decimal(str(closed_detail.json()["data"]["outstanding_amount"])), Decimal("0.000000"))
+
+        second_payment_id = int(second_payment.json()["data"]["id"])
+        cancel_payload = self._payment_cancel_payload(
+            statement_data,
+            idempotency_key="idem-b6-fsp-close-b-cancel",
+            reason="operator voids close payment",
+        )
+        cancelled = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments/{second_payment_id}/cancel",
+            headers=self._headers(),
+            json=cancel_payload,
+        )
+        replay = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments/{second_payment_id}/cancel",
+            headers=self._headers(),
+            json=cancel_payload,
+        )
+        reopened_detail = self.client.get(
+            f"/api/factory-statements/{statement_id}",
+            headers=self._headers(),
+        )
+        statement_list = self.client.get(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            params={"company": "COMP-A", "supplier": "SUP-A"},
+        )
+        submitted_payments = self.client.get(
+            "/api/factory-statements/payments",
+            headers=self._headers(),
+            params={"statement_no": statement_data["statement_no"], "status": "submitted"},
+        )
+        cancelled_payments = self.client.get(
+            "/api/factory-statements/payments",
+            headers=self._headers(),
+            params={"statement_no": statement_data["statement_no"], "status": "cancelled"},
+        )
+
+        self.assertEqual(cancelled.status_code, 200, cancelled.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(cancelled.json()["data"]["id"], replay.json()["data"]["id"])
+        self.assertEqual(cancelled.json()["data"]["payment_entry"], "FSP-B6-CLOSE-B")
+        self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(reopened_detail.status_code, 200, reopened_detail.text)
+        self.assertEqual(reopened_detail.json()["data"]["payment_status"], "partly_paid")
+        self.assertEqual(Decimal(str(reopened_detail.json()["data"]["paid_amount"])), Decimal("1200.000000"))
+        self.assertEqual(Decimal(str(reopened_detail.json()["data"]["outstanding_amount"])), Decimal("3500.000000"))
+        list_row = statement_list.json()["data"]["items"][0]
+        self.assertEqual(list_row["payment_status"], "partly_paid")
+        self.assertEqual(Decimal(str(list_row["paid_amount"])), Decimal("1200.000000"))
+        self.assertEqual(Decimal(str(list_row["outstanding_amount"])), Decimal("3500.000000"))
+        self.assertEqual(submitted_payments.json()["data"]["total"], 1)
+        self.assertEqual(submitted_payments.json()["data"]["items"][0]["payment_entry"], "FSP-B6-CLOSE-A")
+        self.assertEqual(cancelled_payments.json()["data"]["total"], 1)
+        self.assertEqual(cancelled_payments.json()["data"]["items"][0]["payment_entry"], "FSP-B6-CLOSE-B")
+
+        with self.SessionLocal() as session:
+            payments = {
+                row.payment_entry: row
+                for row in session.query(LyFactoryStatementPayment).order_by(LyFactoryStatementPayment.payment_entry).all()
+            }
+            self.assertEqual(str(payments["FSP-B6-CLOSE-A"].status), "submitted")
+            self.assertEqual(str(payments["FSP-B6-CLOSE-B"].status), "cancelled")
+            self.assertEqual(session.query(LyFactoryStatementPaymentOperation).count(), 1)
+
     def test_payment_cancel_requires_permission_and_does_not_mutate(self) -> None:
         statement_data = self._create_confirmed_statement()
         statement_id = int(statement_data["statement_id"])
