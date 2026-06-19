@@ -211,19 +211,31 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         warehouse: str | None = None,
         item_code: str | None = None,
         business_date: str | None = None,
+        operation: str = "create_stock_entry_draft",
+        status_action: str = "create",
     ) -> str:
+        operation_code = {
+            "create_stock_entry_draft": "C",
+            "audit_stock_entry_draft": "A",
+            "cancel_stock_entry_draft": "X",
+        }.get(operation, "X")
+        status_action_code = {
+            "create": "C",
+            "audit": "A",
+            "cancel": "X",
+        }.get(status_action, "X")
         return "-".join(
             [
                 cls.SCENARIO_TAG,
                 "RW",
-                "C",
+                operation_code,
                 cls._carrier_code(idempotency_key),
                 cls._carrier_code(source_ref),
                 cls._carrier_code(warehouse or cls.WAREHOUSE),
                 cls._carrier_code(item_code or cls.ITEM_CODE),
                 cls._carrier_code(cls._decimal_text(quantity)),
                 cls._carrier_code(business_date or cls.BUSINESS_DATE),
-                cls._carrier_code("C"),
+                cls._carrier_code(status_action_code),
             ]
         )
 
@@ -464,7 +476,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(replayed.status_code, 201, replayed.text)
         self.assertEqual(replayed.json()["data"]["id"], draft_id)
 
-    def test_purchase_order_receipt_draft_updates_received_qty_and_audits(self) -> None:
+    def test_purchase_order_receipt_audit_updates_received_qty_and_audits(self) -> None:
         purchase_payload = {
             "operation": "create",
             "company": "COMP-A",
@@ -532,6 +544,54 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             ),
             json=receipt_payload,
         )
+        self.assertEqual(receipt.status_code, 201, receipt.text)
+        self.assertEqual(receipt.json()["data"]["status"], "draft")
+        draft_id = int(receipt.json()["data"]["id"])
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).one()
+            line = session.query(LyMaterialPurchaseOrderItem).one()
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).one()
+            self.assertEqual(str(order.status), "draft")
+            self.assertEqual(Decimal(str(order.received_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("0.000000"))
+            self.assertEqual(str(outbox.status), "in_pending")
+
+        pre_audit_worker = self.client.post(
+            "/api/warehouse/internal/stock-entry-sync/run-once?dry_run=true",
+            headers=self._headers(request_id="req-purchase-receipt-draft-worker"),
+        )
+        self.assertEqual(pre_audit_worker.status_code, 200, pre_audit_worker.text)
+        self.assertEqual(pre_audit_worker.json()["data"]["processed_count"], 0)
+
+        audit_payload = {
+            "reason": "采购入库审核后回写",
+            "idempotency_key": receipt_idem,
+            "source_ref": receipt_source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "audit_stock_entry_draft",
+            "quantity": "20",
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "audit",
+            "scenario_tag": self.SCENARIO_TAG,
+        }
+        audit_request_id = self._warehouse_request_id(
+            idempotency_key=receipt_idem,
+            source_ref=receipt_source_ref,
+            quantity="20",
+            operation="audit_stock_entry_draft",
+            status_action="audit",
+        )
+        audit_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+            headers=self._headers(request_id=audit_request_id),
+            json=audit_payload,
+        )
+        replay_audit_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+            headers=self._headers(request_id=audit_request_id),
+            json=audit_payload,
+        )
         list_drafts = self.client.get(
             "/api/warehouse/stock-entry-drafts?purpose=Material%20Receipt&keyword=PO-A5-001",
             headers=self._headers(),
@@ -561,8 +621,10 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             headers=self._headers(),
         )
 
-        self.assertEqual(receipt.status_code, 201, receipt.text)
-        self.assertEqual(receipt.json()["data"]["status"], "pending_outbox")
+        self.assertEqual(audit_response.status_code, 200, audit_response.text)
+        self.assertEqual(replay_audit_response.status_code, 200, replay_audit_response.text)
+        self.assertEqual(audit_response.json()["data"]["status"], "pending_outbox")
+        self.assertEqual(replay_audit_response.json()["data"]["id"], draft_id)
         self.assertEqual(list_drafts.status_code, 200, list_drafts.text)
         self.assertEqual(list_drafts.json()["data"]["total"], 1)
         self.assertEqual(stock_ledger.status_code, 200, stock_ledger.text)
@@ -605,6 +667,18 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("material_purchase:write", audit_actions)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
+            audit_count = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:stock_entry_draft",
+                    LyOperationAuditLog.resource_id == draft_id,
+                    LyOperationAuditLog.request_id == audit_request_id,
+                    LyOperationAuditLog.result == "success",
+                )
+                .count()
+            )
+            self.assertEqual(audit_count, 1)
 
     def test_factory_return_material_report_does_not_estimate_without_subcontract_issue_fact(self) -> None:
         receipt_idem = f"{self.SCENARIO_TAG}:receipt:FRR-LOCAL-IDEM"

@@ -173,19 +173,21 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         idempotency_key: str,
         source_ref: str,
         quantity: object,
+        operation_code: str = "C",
+        status_action_code: str = "C",
     ) -> str:
         return "-".join(
             [
                 cls.SCENARIO_TAG,
                 "RW",
-                "C",
+                operation_code,
                 cls._carrier_code(idempotency_key),
                 cls._carrier_code(source_ref),
                 cls._carrier_code(cls.WAREHOUSE),
                 cls._carrier_code(cls.ITEM_CODE),
                 cls._carrier_code(cls._decimal_text(quantity)),
                 cls._carrier_code(cls.BUSINESS_DATE),
-                cls._carrier_code("C"),
+                cls._carrier_code(status_action_code),
             ]
         )
 
@@ -252,6 +254,33 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             json=receipt_payload,
         )
         assert receipt.status_code == 201, receipt.text
+        draft_id = int(receipt.json()["data"]["id"])
+        audit_payload = {
+            "reason": "采购入库审核",
+            "idempotency_key": receipt_idem,
+            "source_ref": receipt_source_ref,
+            "warehouse": cls.WAREHOUSE,
+            "item_code": cls.ITEM_CODE,
+            "operation": "audit_stock_entry_draft",
+            "quantity": "20",
+            "business_date": cls.BUSINESS_DATE,
+            "status_action": "audit",
+            "scenario_tag": cls.SCENARIO_TAG,
+        }
+        audited = cls.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+            headers=cls._headers(
+                request_id=cls._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                    operation_code="A",
+                    status_action_code="A",
+                )
+            ),
+            json=audit_payload,
+        )
+        assert audited.status_code == 200, audited.text
 
     @staticmethod
     def _invoice_payload(**overrides) -> dict[str, object]:

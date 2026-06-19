@@ -561,7 +561,37 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 201, response.text)
-        return response.json()["data"]
+        if source_type != "material_purchase_order":
+            return response.json()["data"]
+
+        draft = response.json()["data"]
+        audit_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{int(draft['id'])}/audit",
+            headers=self._headers(
+                self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_id,
+                    item_code=receipt_item_code,
+                    quantity=qty,
+                    operation_code="A",
+                    status_action_code="A",
+                )
+            ),
+            json={
+                "reason": "采购入库审核",
+                "idempotency_key": idempotency_key,
+                "source_ref": source_id,
+                "warehouse": self.WAREHOUSE,
+                "item_code": receipt_item_code,
+                "operation": "audit_stock_entry_draft",
+                "quantity": qty,
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "audit",
+                "scenario_tag": self.WAREHOUSE_SCENARIO,
+            },
+        )
+        self.assertEqual(audit_response.status_code, 200, audit_response.text)
+        return audit_response.json()["data"]
 
     def _create_finished_goods_inbound(
         self,

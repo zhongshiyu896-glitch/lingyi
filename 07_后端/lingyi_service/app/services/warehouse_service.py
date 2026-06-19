@@ -2389,7 +2389,8 @@ class WarehouseService:
             )
             return self._build_draft_data(existing_by_source)
 
-        if source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt":
+        is_material_purchase_receipt = source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt"
+        if is_material_purchase_receipt:
             self._validate_material_purchase_receipt(company=company, source_id=source_id, items=item_rows)
 
         self._validate_stock_entry_master_data(
@@ -2415,7 +2416,7 @@ class WarehouseService:
             source_id=source_id,
             source_warehouse=source_warehouse,
             target_warehouse=target_warehouse,
-            status="pending_outbox",
+            status="draft" if is_material_purchase_receipt else "pending_outbox",
             created_by=current_user,
             created_at=now,
             idempotency_key=idempotency_key,
@@ -2452,10 +2453,6 @@ class WarehouseService:
             )
         )
         session.flush()
-
-        if source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt":
-            self._apply_material_purchase_receipt(company=company, source_id=source_id, items=item_rows)
-            session.flush()
 
         return self._build_draft_data(draft)
 
@@ -2552,7 +2549,11 @@ class WarehouseService:
         if any(str(event.status) == "succeeded" for event in events):
             raise WarehouseServiceError(409, "WAREHOUSE_INVALID_STATUS", "已同步成功的入库草稿不可直接取消")
 
-        if str(draft.source_type) == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and str(draft.purpose) == "Material Receipt":
+        if (
+            str(draft.source_type) == MaterialPurchaseService.PURCHASE_SOURCE_TYPE
+            and str(draft.purpose) == "Material Receipt"
+            and str(draft.status) == "pending_outbox"
+        ):
             self._reverse_material_purchase_receipt(
                 company=str(draft.company),
                 source_id=str(draft.source_id),
@@ -2593,6 +2594,12 @@ class WarehouseService:
             raise WarehouseServiceError(409, "WAREHOUSE_INVALID_STATUS", "当前状态不允许审核")
 
         if str(draft.status) == "draft":
+            if str(draft.source_type) == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and str(draft.purpose) == "Material Receipt":
+                self._apply_material_purchase_receipt(
+                    company=str(draft.company),
+                    source_id=str(draft.source_id),
+                    items=self._draft_purchase_receipt_rows(draft_id=draft_id),
+                )
             draft.status = "pending_outbox"
             session.flush()
 
@@ -3381,7 +3388,14 @@ class WarehouseService:
         rows = (
             self._require_session()
             .query(LyWarehouseStockEntryOutboxEvent)
-            .filter(LyWarehouseStockEntryOutboxEvent.status.in_(["in_pending", "failed"]))
+            .join(
+                LyWarehouseStockEntryDraft,
+                LyWarehouseStockEntryDraft.id == LyWarehouseStockEntryOutboxEvent.draft_id,
+            )
+            .filter(
+                LyWarehouseStockEntryOutboxEvent.status.in_(["in_pending", "failed"]),
+                LyWarehouseStockEntryDraft.status == "pending_outbox",
+            )
             .order_by(LyWarehouseStockEntryOutboxEvent.id.asc())
             .limit(max(1, int(batch_size)))
             .all()
