@@ -1117,6 +1117,51 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
             )
             self.assertEqual(str(outbox.status), "cancelled")
 
+    def test_cancel_material_purchase_return_removes_local_balance(self) -> None:
+        payload = self._purchase_return_payload(qty="4")
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        draft_id = int(create_resp.json()["data"]["id"])
+        self.assertEqual(create_resp.json()["data"]["source_type"], "material_purchase_return")
+
+        issue_ledger = [
+            row
+            for row in self._stock_ledger_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE)
+            if row["voucher_no"] == f"DRAFT-{draft_id}"
+        ]
+        self.assertEqual(len(issue_ledger), 1)
+        self.assertEqual(Decimal(str(issue_ledger[0]["actual_qty"])), Decimal("-4.000000"))
+        self.assertEqual(Decimal(str(issue_ledger[0]["qty_after_transaction"])), Decimal("-4.000000"))
+        issue_summary = self._stock_summary_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE)
+        self.assertEqual(len(issue_summary), 1)
+        self.assertEqual(Decimal(str(issue_summary[0]["actual_qty"])), Decimal("-4.000000"))
+
+        cancel_payload = self._cancel_payload(reason="reverse purchase return", source_payload=payload)
+        cancel_resp = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+            headers=self._headers(
+                "warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    cancel_payload,
+                    operation="cancel_stock_entry_draft",
+                    status_action="cancel",
+                ),
+            ),
+            json=cancel_payload,
+        )
+        self.assertEqual(cancel_resp.status_code, 200, cancel_resp.text)
+        self.assertEqual(cancel_resp.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancel_resp.json()["data"]["outbox"]["status"], "cancelled")
+        self.assertEqual(self._stock_ledger_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE), [])
+        self.assertEqual(self._stock_summary_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE), [])
+
     def test_repeat_cancel_returns_409(self) -> None:
         create_resp = self.client.post(
             "/api/warehouse/stock-entry-drafts",
