@@ -23,8 +23,10 @@ from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
+from app.models.production import LyProductionWorkOrderLink
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
@@ -79,6 +81,8 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
                 LyStyleProfitSnapshot,
                 LyMaterialPurchaseOrderItem,
                 LyMaterialPurchaseOrder,
+                LyProductionJobCardLink,
+                LyProductionWorkOrderLink,
                 LyProductionPlanMaterial,
                 LyProductionPlan,
                 LyBomOperation,
@@ -202,6 +206,30 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         session.add(plan)
         session.flush()
         session.add(
+            LyProductionWorkOrderLink(
+                plan_id=int(plan.id),
+                work_order="WO-RPT-001",
+                erpnext_docstatus=1,
+                erpnext_status="LocalSynced",
+                sync_status="succeeded",
+                created_by="seed",
+            )
+        )
+        session.add(
+            LyProductionJobCardLink(
+                plan_id=int(plan.id),
+                work_order="WO-RPT-001",
+                job_card="JC-RPT-001-SEW",
+                company="COMP-A",
+                item_code="STYLE-A",
+                operation="车缝",
+                operation_sequence=20,
+                expected_qty=Decimal("80"),
+                completed_qty=Decimal("12"),
+                erpnext_status="LocalSynced",
+            )
+        )
+        session.add(
             LyProductionPlanMaterial(
                 plan_id=int(plan.id),
                 bom_item_id=int(material.id),
@@ -259,6 +287,12 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(payload["total"], 1)
         row = payload["items"][0]
         self.assertEqual(row["sales_order"], "SO-RPT-001")
+        self.assertGreater(int(row["planId"]), 0)
+        self.assertEqual(row["planNo"], "PP-RPT-001")
+        self.assertEqual(row["company"], "COMP-A")
+        self.assertEqual(row["workOrder"], "WO-RPT-001")
+        self.assertEqual(row["primaryJobCard"], "JC-RPT-001-SEW")
+        self.assertEqual(row["jobCardCount"], 1)
         self.assertEqual(Decimal(str(row["amount"])), Decimal("2000"))
         self.assertEqual(Decimal(str(row["totalCost"])), Decimal("1140"))
         self.assertEqual(Decimal(str(row["profit"])), Decimal("860"))
@@ -275,14 +309,16 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         basis_text = "；".join(payload["data_basis"])
         pending_text = "；".join(payload["pending_b_phase_fields"])
         self.assertIn("sourceLabel/sourceStatus/hasSnapshot", basis_text)
-        self.assertIn("A期报表是经营测算/快照披露", basis_text)
+        self.assertIn("可生成款式利润快照", basis_text)
+        self.assertIn("已生成快照的行纳入实际工票工资", basis_text)
+        self.assertIn("B期报表继续披露经营测算/快照", basis_text)
         self.assertIn("尚未在本报表合并为财务总账毛利闭环", basis_text)
         self.assertNotIn("真实毛利闭环已完成", basis_text)
         self.assertNotIn("已接本地 FastAPI 闭环", basis_text)
         self.assertNotIn("已建页面的成品入库、发货开票、回款", pending_text)
-        self.assertIn("实际工票工资归集", pending_text)
+        self.assertIn("未生成利润快照的行仍按工序工价预测", pending_text)
         self.assertNotIn("成品入库/发货开票未建页面", pending_text)
-        self.assertIn("不声明真实毛利闭环完成", row["remark"])
+        self.assertIn("生成利润快照后纳入实际工票工资", row["remark"])
 
     def test_material_detail_report_uses_material_check_snapshot(self) -> None:
         response = self.client.get(

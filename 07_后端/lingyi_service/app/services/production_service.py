@@ -2510,11 +2510,12 @@ class ProductionService:
             data_basis=[
                 "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
                 "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
+                "订单利润报表可生成款式利润快照：后端从销售、BOM、库存、工票与外发真实来源收集，已生成快照的行纳入实际工票工资",
                 "报表行通过 sourceLabel/sourceStatus/hasSnapshot 显式标识实际快照、部分估算或纯估算口径",
-                "A期报表是经营测算/快照披露：成品入库、发货开票、回款页已接 FastAPI 执行数据，但尚未在本报表合并为财务总账毛利闭环",
+                "B期报表继续披露经营测算/快照：成品入库、发货开票、回款页已接 FastAPI 执行数据，但尚未在本报表合并为财务总账毛利闭环",
             ],
             pending_b_phase_fields=[
-                "实际工票工资归集、加工厂对账、财务总账仍按 B 期补齐口径披露",
+                "未生成利润快照的行仍按工序工价预测；加工厂对账、财务总账仍按 B 期补齐口径披露",
                 "样衣成本与样衣偏差等待 B 期样衣成本口径合并后补齐",
             ],
         )
@@ -2584,6 +2585,15 @@ class ProductionService:
                     self.session.query(LyProductionJobCardLink)
                     .filter(LyProductionJobCardLink.plan_id.in_(plan_ids))
                     .order_by(LyProductionJobCardLink.plan_id.asc(), LyProductionJobCardLink.id.asc())
+                    .all()
+                )
+
+            work_order_links = []
+            if plan_ids:
+                work_order_links = (
+                    self.session.query(LyProductionWorkOrderLink)
+                    .filter(LyProductionWorkOrderLink.plan_id.in_(plan_ids))
+                    .order_by(LyProductionWorkOrderLink.plan_id.asc(), LyProductionWorkOrderLink.id.asc())
                     .all()
                 )
 
@@ -2658,6 +2668,10 @@ class ProductionService:
         for row in job_cards:
             job_card_map.setdefault(int(row.plan_id), []).append(row)
 
+        work_order_map: dict[int, LyProductionWorkOrderLink] = {}
+        for row in work_order_links:
+            work_order_map.setdefault(int(row.plan_id), row)
+
         snapshot_map: dict[tuple[str, str, str], LyStyleProfitSnapshot] = {}
         for row in snapshots:
             key = (str(row.company), str(row.sales_order or ""), str(row.item_code))
@@ -2671,6 +2685,7 @@ class ProductionService:
             "bom_item_by_id": bom_item_by_id,
             "operation_map": operation_map,
             "job_card_map": job_card_map,
+            "work_order_map": work_order_map,
             "snapshot_map": snapshot_map,
             "purchase_unit_price_map": purchase_unit_price_map,
         }
@@ -2886,6 +2901,12 @@ class ProductionService:
         sales_item = context["sales_map"].get((company, sales_order, item_code))
         sales_header = context["sales_header_map"].get(sales_order)
         snapshot = context["snapshot_map"].get((company, sales_order, item_code))
+        work_order_link = context["work_order_map"].get(int(plan.id))
+        job_cards = context["job_card_map"].get(int(plan.id), [])
+        work_order = str(work_order_link.work_order or "") if work_order_link is not None else ""
+        if not work_order and job_cards:
+            work_order = str(job_cards[0].work_order or "")
+        primary_job_card = str(job_cards[0].job_card or "") if job_cards else ""
         qty = self._dec(getattr(sales_item, "qty", None)) or self._dec(plan.planned_qty)
         amount = self._dec(getattr(sales_item, "amount", None))
         if amount == Decimal("0"):
@@ -2924,6 +2945,9 @@ class ProductionService:
 
         return {
             "id": f"PR-{int(plan.id)}",
+            "planId": int(plan.id),
+            "planNo": str(plan.plan_no),
+            "company": company,
             "sales_order": sales_order,
             "styleNo": item_code,
             "styleName": str(getattr(sales_item, "item_name", None) or item_code),
@@ -2941,7 +2965,7 @@ class ProductionService:
             "grossMargin": gross_margin,
             "progress": Decimal("0"),
             "delayDays": Decimal("0"),
-            "remark": "A期现有页：利润按本地真实订单、BOM/利润快照测算；报表不声明真实毛利闭环完成，实际工票工资、加工厂对账、财务总账按待补口径披露。",
+            "remark": "现有页：利润按本地真实订单、BOM/利润快照测算；生成利润快照后纳入实际工票工资，未生成快照及财务总账仍按待补口径披露。",
             "sourceType": "style_profit_snapshot" if has_snapshot else "bom_purchase_estimate",
             "sourceLabel": source_label,
             "sourceNote": source_note,
@@ -2951,6 +2975,9 @@ class ProductionService:
             "snapshotNo": snapshot_no,
             "revenueSourceStatus": revenue_source_status,
             "costSourceStatus": cost_source_status,
+            "workOrder": work_order,
+            "primaryJobCard": primary_job_card,
+            "jobCardCount": len(job_cards),
         }
 
     def _estimated_costs(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> tuple[Decimal, Decimal, Decimal]:
