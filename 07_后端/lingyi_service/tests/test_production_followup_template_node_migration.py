@@ -11,6 +11,7 @@ import sqlalchemy as sa
 
 migration_072a = importlib.import_module("migrations.versions.task_072a_create_production_followup_template")
 migration_074a = importlib.import_module("migrations.versions.task_074a_create_production_followup_template_nodes")
+migration_077a = importlib.import_module("migrations.versions.task_077a_extend_production_followup_node_operations")
 
 
 def _run_migration(engine: sa.Engine, migration, direction: str) -> None:
@@ -28,9 +29,11 @@ def _run_migration(engine: sa.Engine, migration, direction: str) -> None:
 def _run_upgrade(engine: sa.Engine) -> None:
     _run_migration(engine, migration_072a, "upgrade")
     _run_migration(engine, migration_074a, "upgrade")
+    _run_migration(engine, migration_077a, "upgrade")
 
 
 def _run_downgrade(engine: sa.Engine) -> None:
+    _run_migration(engine, migration_077a, "downgrade")
     _run_migration(engine, migration_074a, "downgrade")
     _run_migration(engine, migration_072a, "downgrade")
 
@@ -43,6 +46,15 @@ def _table_names(engine: sa.Engine) -> set[str]:
 def _index_names(engine: sa.Engine, table_name: str) -> set[str]:
     with engine.connect() as connection:
         return {str(index["name"]) for index in sa.inspect(connection).get_indexes(table_name)}
+
+
+def _create_sql(engine: sa.Engine, table_name: str) -> str:
+    with engine.connect() as connection:
+        row = connection.execute(
+            sa.text("SELECT sql FROM sqlite_master WHERE type='table' AND name=:table_name"),
+            {"table_name": table_name},
+        ).fetchone()
+    return str(row[0]) if row else ""
 
 
 def test_upgrade_creates_followup_template_node_tables_and_indexes() -> None:
@@ -58,6 +70,9 @@ def test_upgrade_creates_followup_template_node_tables_and_indexes() -> None:
             engine,
             "ly_production_followup_template_node_operation",
         )
+        operation_sql = _create_sql(engine, "ly_production_followup_template_node_operation")
+        assert "'update_node'" in operation_sql
+        assert "'delete_node'" in operation_sql
     finally:
         engine.dispose()
 

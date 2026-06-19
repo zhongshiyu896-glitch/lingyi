@@ -83,8 +83,11 @@ from app.schemas.production import ProductionFollowupTemplateActionRequest
 from app.schemas.production import ProductionFollowupTemplateCopyRequest
 from app.schemas.production import ProductionFollowupTemplateCreateRequest
 from app.schemas.production import ProductionFollowupTemplateQuery
+from app.schemas.production import ProductionFollowupTemplateNodeActionRequest
 from app.schemas.production import ProductionFollowupTemplateNodeCreateRequest
+from app.schemas.production import ProductionFollowupTemplateNodeDeleteData
 from app.schemas.production import ProductionFollowupTemplateNodeItem
+from app.schemas.production import ProductionFollowupTemplateNodeUpdateRequest
 from app.schemas.production import ProductionFollowupTemplateUpdateRequest
 from app.schemas.production import ProductionJobCardLinkItem
 from app.schemas.production import ProductionMaterialCheckData
@@ -2157,6 +2160,128 @@ class ProductionService:
         except (SQLAlchemyError, ValueError) as exc:
             raise DatabaseWriteFailed() from exc
         return item
+
+    def update_followup_template_node(
+        self,
+        *,
+        template_id: int,
+        node_id: int,
+        payload: ProductionFollowupTemplateNodeUpdateRequest,
+        operator: str,
+    ) -> tuple[ProductionFollowupTemplateNodeItem, dict[str, Any], dict[str, Any]]:
+        company = self._require_non_blank(payload.company, code=PRODUCTION_COMPANY_REQUIRED, message="company 不能为空")
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        if payload.operation is not None and self._text(payload.operation) != "update_node":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="operation 必须为 update_node")
+        template = self._get_followup_template_for_mutation(template_id=template_id, company=company)
+        row = self._get_followup_template_node_for_mutation(template_id=template_id, node_id=node_id, company=company)
+        next_values = self._followup_template_node_next_values(payload=payload)
+        request_hash = self._build_request_hash(
+            {
+                "operation": "update_node",
+                "company": company,
+                "template_id": template_id,
+                "node_id": node_id,
+                "payload": next_values,
+            }
+        )
+        existing_operation = self._get_followup_template_node_operation(
+            company=company,
+            operation="update_node",
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            self._ensure_followup_operation_same(existing_operation, request_hash=request_hash)
+            item = self._followup_template_node_item_from_operation(existing_operation)
+            return item, item.model_dump(mode="json"), item.model_dump(mode="json")
+
+        before = self._snapshot_followup_template_node(row)
+        try:
+            for key, value in next_values.items():
+                setattr(row, key, value)
+            row.updated_by = operator
+            template.updated_by = operator
+            self.session.flush()
+            item = self._followup_template_node_item(row)
+            self._insert_followup_template_node_operation(
+                template_id=int(template.id),
+                node_id=int(row.id),
+                company=company,
+                operation="update_node",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        after = self._snapshot_followup_template_node(row)
+        return item, before, after
+
+    def delete_followup_template_node(
+        self,
+        *,
+        template_id: int,
+        node_id: int,
+        payload: ProductionFollowupTemplateNodeActionRequest,
+        operator: str,
+    ) -> tuple[ProductionFollowupTemplateNodeDeleteData, dict[str, Any], dict[str, Any]]:
+        company = self._require_non_blank(payload.company, code=PRODUCTION_COMPANY_REQUIRED, message="company 不能为空")
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        if payload.operation is not None and self._text(payload.operation) != "delete_node":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="operation 必须为 delete_node")
+        template = self._get_followup_template_for_mutation(template_id=template_id, company=company)
+        request_hash = self._build_request_hash(
+            {
+                "operation": "delete_node",
+                "company": company,
+                "template_id": template_id,
+                "node_id": node_id,
+                "reason": self._text(payload.reason),
+            }
+        )
+        existing_operation = self._get_followup_template_node_operation(
+            company=company,
+            operation="delete_node",
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            self._ensure_followup_operation_same(existing_operation, request_hash=request_hash)
+            data = self._followup_template_node_delete_from_operation(existing_operation)
+            return data, data.model_dump(mode="json"), data.model_dump(mode="json")
+
+        row = self._get_followup_template_node_for_mutation(template_id=template_id, node_id=node_id, company=company)
+        before = self._snapshot_followup_template_node(row)
+        data = ProductionFollowupTemplateNodeDeleteData(id=int(row.id), template_id=int(template.id), deleted=True)
+        try:
+            self.session.query(LyProductionFollowupTemplateNodeOperation).filter(
+                LyProductionFollowupTemplateNodeOperation.node_id == int(row.id),
+            ).update({"node_id": None}, synchronize_session=False)
+            self.session.delete(row)
+            template.updated_by = operator
+            self._insert_followup_template_node_operation(
+                template_id=int(template.id),
+                node_id=None,
+                company=company,
+                operation="delete_node",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=data,
+                operator=operator,
+            )
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return data, before, data.model_dump(mode="json")
 
     def list_order_io_quantities(
         self,
@@ -5818,6 +5943,12 @@ class ProductionService:
             return ProductionFollowupTemplateNodeItem.model_validate(payload)
         return ProductionFollowupTemplateNodeItem.parse_obj(payload)
 
+    def _followup_template_node_delete_from_operation(self, row: LyProductionFollowupTemplateNodeOperation) -> ProductionFollowupTemplateNodeDeleteData:
+        payload = row.response_json or {}
+        if hasattr(ProductionFollowupTemplateNodeDeleteData, "model_validate"):
+            return ProductionFollowupTemplateNodeDeleteData.model_validate(payload)
+        return ProductionFollowupTemplateNodeDeleteData.parse_obj(payload)
+
     def _list_followup_template_nodes(self, *, template_id: int, company: str) -> list[ProductionFollowupTemplateNodeItem]:
         try:
             rows = (
@@ -5848,6 +5979,24 @@ class ProductionService:
             reminder=str(row.reminder or ""),
             sequence_no=int(row.sequence_no or 0),
             updated_at=row.updated_at or row.created_at or datetime.utcnow(),
+        )
+
+    @classmethod
+    def _snapshot_followup_template_node(cls, row: LyProductionFollowupTemplateNode) -> dict[str, Any]:
+        return cls._canonicalize(
+            {
+                "id": int(row.id),
+                "template_id": int(row.template_id),
+                "company": row.company,
+                "node_name": row.node_name,
+                "owner": row.owner,
+                "lead_time_hours": int(row.lead_time_hours or 0),
+                "status": row.status,
+                "gate": row.gate,
+                "output": row.output,
+                "reminder": row.reminder,
+                "sequence_no": int(row.sequence_no or 0),
+            }
         )
 
     @classmethod
@@ -5896,6 +6045,34 @@ class ProductionService:
             values["status"] = self._normalize_followup_template_status(payload.status)
         return values
 
+    def _followup_template_node_next_values(self, *, payload: ProductionFollowupTemplateNodeUpdateRequest) -> dict[str, Any]:
+        values: dict[str, Any] = {}
+        text_fields = {
+            "node_name": payload.node_name,
+            "owner": payload.owner,
+            "gate": payload.gate,
+            "output": payload.output,
+            "reminder": payload.reminder,
+        }
+        for key, value in text_fields.items():
+            if value is None:
+                continue
+            if key == "node_name":
+                values[key] = self._require_non_blank(
+                    value,
+                    code=PRODUCTION_TRACKING_EXCEPTION_INVALID,
+                    message="node_name 不能为空",
+                )
+            else:
+                values[key] = self._text(value) or ""
+        if payload.lead_time_hours is not None:
+            values["lead_time_hours"] = int(payload.lead_time_hours)
+        if payload.sequence_no is not None:
+            values["sequence_no"] = int(payload.sequence_no)
+        if payload.status is not None:
+            values["status"] = self._normalize_followup_node_status(payload.status)
+        return values
+
     def _get_followup_template_by_no(self, *, company: str, template_no: str) -> LyProductionFollowupTemplate | None:
         try:
             return (
@@ -5923,6 +6100,23 @@ class ProductionService:
             raise DatabaseReadFailed() from exc
         if row is None:
             raise BusinessException(code=PRODUCTION_FOLLOWUP_TEMPLATE_NOT_FOUND, message="生产跟进模板不存在或不是本地模板")
+        return row
+
+    def _get_followup_template_node_for_mutation(self, *, template_id: int, node_id: int, company: str) -> LyProductionFollowupTemplateNode:
+        try:
+            row = (
+                self.session.query(LyProductionFollowupTemplateNode)
+                .filter(
+                    LyProductionFollowupTemplateNode.id == node_id,
+                    LyProductionFollowupTemplateNode.template_id == template_id,
+                    LyProductionFollowupTemplateNode.company == company,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=PRODUCTION_FOLLOWUP_TEMPLATE_NOT_FOUND, message="生产跟进模板节点不存在")
         return row
 
     def _get_followup_template_item_for_copy(self, *, template_id: int, company: str) -> ProductionFollowupTemplateListItem:
@@ -6052,12 +6246,12 @@ class ProductionService:
         self,
         *,
         template_id: int,
-        node_id: int,
+        node_id: int | None,
         company: str,
         operation: str,
         idempotency_key: str,
         request_hash: str,
-        response: ProductionFollowupTemplateNodeItem,
+        response: ProductionFollowupTemplateNodeItem | ProductionFollowupTemplateNodeDeleteData,
         operator: str,
     ) -> None:
         self.session.add(

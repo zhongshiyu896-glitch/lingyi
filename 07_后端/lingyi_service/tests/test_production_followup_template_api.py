@@ -193,7 +193,7 @@ class ProductionFollowupTemplateApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyProductionFollowupTemplateOperation).count(), 4)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "production").count(), 5)
 
-    def test_create_node_is_persisted_idempotent_and_listed_with_template(self) -> None:
+    def test_node_create_update_delete_is_persisted_idempotent_and_listed_with_template(self) -> None:
         created = self.client.post(
             "/api/production/followup-templates",
             headers=self._headers(request_id="PROD-FOLLOWUP-NODE-TEMPLATE"),
@@ -224,6 +224,7 @@ class ProductionFollowupTemplateApiTest(unittest.TestCase):
         self.assertEqual(node.json()["code"], "0")
         self.assertEqual(node.json()["data"]["node_name"], "面料开裁")
         self.assertEqual(node.json()["data"]["lead_time_hours"], 16)
+        node_id = int(node.json()["data"]["id"])
 
         retry = self.client.post(
             f"/api/production/followup-templates/{template_id}/nodes",
@@ -243,14 +244,75 @@ class ProductionFollowupTemplateApiTest(unittest.TestCase):
         self.assertEqual(item["nodes"][0]["node_name"], "面料开裁")
         self.assertEqual(item["nodes"][0]["sequence_no"], 20)
 
+        update_payload = {
+            "company": "COMP-A",
+            "node_name": "面料开裁确认",
+            "owner": "裁床主管",
+            "lead_time_hours": 8,
+            "status": "optional",
+            "gate": "裁床主管确认开裁数量",
+            "output": "开裁确认单",
+            "reminder": "每班次",
+            "sequence_no": 30,
+            "operation": "update_node",
+            "idempotency_key": "IDEM-PROD-FOLLOW-NODE-UPDATE",
+        }
+        updated = self.client.patch(
+            f"/api/production/followup-templates/{template_id}/nodes/{node_id}",
+            headers=self._headers(request_id="PROD-FOLLOWUP-NODE-UPDATE"),
+            json=update_payload,
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["data"]["node_name"], "面料开裁确认")
+        self.assertEqual(updated.json()["data"]["owner"], "裁床主管")
+        self.assertEqual(updated.json()["data"]["sequence_no"], 30)
+
+        update_retry = self.client.patch(
+            f"/api/production/followup-templates/{template_id}/nodes/{node_id}",
+            headers=self._headers(request_id="PROD-FOLLOWUP-NODE-UPDATE-RETRY"),
+            json=update_payload,
+        )
+        self.assertEqual(update_retry.status_code, 200, update_retry.text)
+        self.assertEqual(update_retry.json()["data"]["id"], node_id)
+
+        delete_payload = {
+            "company": "COMP-A",
+            "reason": "流程重排",
+            "operation": "delete_node",
+            "idempotency_key": "IDEM-PROD-FOLLOW-NODE-DELETE",
+        }
+        deleted = self.client.post(
+            f"/api/production/followup-templates/{template_id}/nodes/{node_id}/delete",
+            headers=self._headers(request_id="PROD-FOLLOWUP-NODE-DELETE"),
+            json=delete_payload,
+        )
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        self.assertEqual(deleted.json()["data"]["id"], node_id)
+        self.assertTrue(deleted.json()["data"]["deleted"])
+
+        delete_retry = self.client.post(
+            f"/api/production/followup-templates/{template_id}/nodes/{node_id}/delete",
+            headers=self._headers(request_id="PROD-FOLLOWUP-NODE-DELETE-RETRY"),
+            json=delete_payload,
+        )
+        self.assertEqual(delete_retry.status_code, 200, delete_retry.text)
+        self.assertTrue(delete_retry.json()["data"]["deleted"])
+
+        listed_after_delete = self.client.get(
+            "/api/production/followup-templates?company=COMP-A&keyword=FTPL-NODE-001&page=1&page_size=10",
+            headers=self._headers(request_id="PROD-FOLLOWUP-NODE-LIST-AFTER-DELETE"),
+        )
+        self.assertEqual(listed_after_delete.status_code, 200)
+        self.assertEqual(listed_after_delete.json()["data"]["items"][0]["nodes"], [])
+
         with self.SessionLocal() as session:
-            self.assertEqual(session.query(LyProductionFollowupTemplateNode).count(), 1)
-            self.assertEqual(session.query(LyProductionFollowupTemplateNodeOperation).count(), 1)
+            self.assertEqual(session.query(LyProductionFollowupTemplateNode).count(), 0)
+            self.assertEqual(session.query(LyProductionFollowupTemplateNodeOperation).count(), 3)
             self.assertEqual(
                 session.query(LyOperationAuditLog)
                 .filter(LyOperationAuditLog.resource_type == "production_followup_template_node")
                 .count(),
-                2,
+                6,
             )
 
     def test_create_node_idempotency_conflict_is_409(self) -> None:

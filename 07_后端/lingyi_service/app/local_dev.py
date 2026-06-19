@@ -101,6 +101,7 @@ def _create_local_tables() -> None:
     _ensure_local_bom_company_style_columns()
     _ensure_local_production_material_uom_column()
     _ensure_local_production_quote_operation_supports_convert()
+    _ensure_local_production_followup_node_operation_supports_edit()
 
 
 def _ensure_local_master_data_config_entities() -> None:
@@ -657,6 +658,54 @@ def _ensure_local_production_quote_operation_supports_convert() -> None:
                 ON ly_production_quote_operation (company, operation, idempotency_key);
             CREATE INDEX IF NOT EXISTS idx_ly_production_quote_operation_quote
                 ON ly_production_quote_operation (quote_id, operation);
+            PRAGMA foreign_keys=on;
+            """
+        )
+
+
+def _ensure_local_production_followup_node_operation_supports_edit() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_production_followup_template_node_operation'"
+        ).fetchone()
+        existing_sql = str(row[0]) if row else ""
+        if not row or ("'update_node'" in existing_sql and "'delete_node'" in existing_sql):
+            return
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            DROP INDEX IF EXISTS uk_ly_production_followup_template_node_operation_idem;
+            DROP INDEX IF EXISTS idx_ly_production_followup_template_node_operation_node;
+            CREATE TABLE ly_production_followup_template_node_operation_new (
+                id INTEGER NOT NULL,
+                template_id INTEGER NOT NULL,
+                node_id INTEGER,
+                company VARCHAR(140) NOT NULL,
+                operation VARCHAR(64) NOT NULL,
+                idempotency_key VARCHAR(128) NOT NULL,
+                request_hash VARCHAR(64) NOT NULL,
+                response_json JSON NOT NULL,
+                created_by VARCHAR(140) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ck_ly_production_followup_template_node_operation CHECK (operation IN ('create_node','update_node','delete_node')),
+                FOREIGN KEY(template_id) REFERENCES ly_production_followup_template (id),
+                FOREIGN KEY(node_id) REFERENCES ly_production_followup_template_node (id)
+            );
+            INSERT INTO ly_production_followup_template_node_operation_new (
+                id, template_id, node_id, company, operation, idempotency_key, request_hash, response_json, created_by, created_at
+            )
+            SELECT id, template_id, node_id, company, operation, idempotency_key, request_hash, response_json, created_by, created_at
+            FROM ly_production_followup_template_node_operation;
+            DROP TABLE ly_production_followup_template_node_operation;
+            ALTER TABLE ly_production_followup_template_node_operation_new RENAME TO ly_production_followup_template_node_operation;
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_production_followup_template_node_operation_idem
+                ON ly_production_followup_template_node_operation (company, operation, idempotency_key);
+            CREATE INDEX IF NOT EXISTS idx_ly_production_followup_template_node_operation_node
+                ON ly_production_followup_template_node_operation (node_id, operation);
             PRAGMA foreign_keys=on;
             """
         )

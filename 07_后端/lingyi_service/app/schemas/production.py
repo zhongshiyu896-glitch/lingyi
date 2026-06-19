@@ -582,6 +582,39 @@ class ProductionFollowupTemplateNodeCreateRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=128)
 
 
+class ProductionFollowupTemplateNodeUpdateRequest(BaseModel):
+    """Update one FastAPI-native production follow-up template node."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    node_name: Optional[str] = Field(default=None, max_length=255)
+    owner: Optional[str] = Field(default=None, max_length=140)
+    lead_time_hours: Optional[int] = Field(default=None, ge=0, le=10000)
+    status: Optional[str] = Field(default=None, max_length=32)
+    gate: Optional[str] = Field(default=None, max_length=1000)
+    output: Optional[str] = Field(default=None, max_length=1000)
+    reminder: Optional[str] = Field(default=None, max_length=1000)
+    sequence_no: Optional[int] = Field(default=None, ge=0)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionFollowupTemplateNodeActionRequest(BaseModel):
+    """Action request for a production follow-up template node."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    reason: Optional[str] = Field(default=None, max_length=255)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionFollowupTemplateNodeDeleteData(BaseModel):
+    """Delete result for a production follow-up template node."""
+
+    id: int
+    template_id: int
+    deleted: bool
+
+
 class ProductionOrderIOQuantityQuery(BaseModel):
     """Production order in/out quantity list query."""
 

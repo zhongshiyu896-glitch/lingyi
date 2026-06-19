@@ -57,8 +57,11 @@ from app.schemas.production import ProductionFollowupTemplateCopyRequest
 from app.schemas.production import ProductionFollowupTemplateCreateRequest
 from app.schemas.production import ProductionFollowupTemplateQuery
 from app.schemas.production import ProductionFollowupTemplateListItem
+from app.schemas.production import ProductionFollowupTemplateNodeActionRequest
 from app.schemas.production import ProductionFollowupTemplateNodeCreateRequest
+from app.schemas.production import ProductionFollowupTemplateNodeDeleteData
 from app.schemas.production import ProductionFollowupTemplateNodeItem
+from app.schemas.production import ProductionFollowupTemplateNodeUpdateRequest
 from app.schemas.production import ProductionFollowupTemplateUpdateRequest
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
@@ -1386,6 +1389,58 @@ def create_production_followup_template_node(
         return _app_err(app_exc)
 
 
+@router.patch("/followup-templates/{template_id}/nodes/{node_id}", response_model=ApiResponse[ProductionFollowupTemplateNodeItem])
+def update_production_followup_template_node(
+    template_id: int,
+    node_id: int,
+    payload: ProductionFollowupTemplateNodeUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _mutate_production_followup_template_node(
+        template_id=template_id,
+        node_id=node_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        audit_action="update_node",
+        mutate=lambda service: service.update_followup_template_node(
+            template_id=template_id,
+            node_id=node_id,
+            payload=payload,
+            operator=current_user.username,
+        ),
+    )
+
+
+@router.post("/followup-templates/{template_id}/nodes/{node_id}/delete", response_model=ApiResponse[ProductionFollowupTemplateNodeDeleteData])
+def delete_production_followup_template_node(
+    template_id: int,
+    node_id: int,
+    payload: ProductionFollowupTemplateNodeActionRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _mutate_production_followup_template_node(
+        template_id=template_id,
+        node_id=node_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        audit_action="delete_node",
+        mutate=lambda service: service.delete_followup_template_node(
+            template_id=template_id,
+            node_id=node_id,
+            payload=payload,
+            operator=current_user.username,
+        ),
+    )
+
+
 def _mutate_production_followup_template(
     *,
     template_id: int,
@@ -1459,6 +1514,84 @@ def _mutate_production_followup_template(
             resource_no=resource_no,
             before_data=None,
             after_data=None,
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+def _mutate_production_followup_template_node(
+    *,
+    template_id: int,
+    node_id: int,
+    payload: ProductionFollowupTemplateNodeUpdateRequest | ProductionFollowupTemplateNodeActionRequest,
+    request: Request,
+    current_user: CurrentUser,
+    session: Session,
+    audit_action: str,
+    mutate: Any,
+) -> JSONResponse | dict[str, Any]:
+    permission_action = PRODUCTION_FOLLOWUP_TEMPLATE_WRITE
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_followup_template",
+            resource_id=template_id,
+        )
+        data, before, after = mutate(_service(session=session, request=request))
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_followup_template_node",
+            resource_id=int(data.id),
+            resource_no=str(data.id),
+            before_data=before,
+            after_data=after,
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template_node",
+            resource_id=node_id,
+            resource_no=str(node_id),
+            before_data=None,
+            after_data={"node_name": getattr(payload, "node_name", None), "template_id": template_id},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template_node",
+            resource_id=node_id,
+            resource_no=str(node_id),
+            before_data=None,
+            after_data={"node_name": getattr(payload, "node_name", None), "template_id": template_id},
             error_code=app_exc.code,
         )
         return _app_err(app_exc)

@@ -350,7 +350,10 @@ class LyProductionFollowupTemplateNodeOperation(Base):
         PrimaryKeyConstraint("id", name="pk_ly_production_followup_template_node_operation"),
         Index("uk_ly_production_followup_template_node_operation_idem", "company", "operation", "idempotency_key", unique=True),
         Index("idx_ly_production_followup_template_node_operation_node", "node_id", "operation"),
-        CheckConstraint("operation IN ('create_node')", name="ck_ly_production_followup_template_node_operation"),
+        CheckConstraint(
+            "operation IN ('create_node','update_node','delete_node')",
+            name="ck_ly_production_followup_template_node_operation",
+        ),
         {"schema": "ly_schema", "comment": "大货跟进模板节点写操作幂等账本"},
     )
 
