@@ -44,6 +44,7 @@ from app.schemas.sales_inventory import SupplierItem
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
 from app.schemas.sales_inventory import SalesOrderDraftUpdateRequest
+from app.schemas.sales_inventory import SalesPaymentEntryCancelRequest
 from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryListData
 from app.schemas.sales_inventory import StockLedgerData
@@ -428,7 +429,7 @@ def _validate_sales_payment_write_gate(
         normalized_scenario_tag and SALES_PAYMENT_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag)
     )
     normalized_operation = _scope_text(operation) or "create_payment_entry"
-    if normalized_operation != "create_payment_entry":
+    if normalized_operation not in {"create_payment_entry", "cancel_payment_entry"}:
         _raise_sales_payment_conflict("operation 非法")
     if not _scope_text(company):
         _raise_sales_payment_conflict("company 不能为空")
@@ -1378,6 +1379,89 @@ def create_payment_entry(
         session.rollback()
         raise
     return _created(data)
+
+
+@router.post("/payment-entries/{payment_id}/cancel")
+def cancel_payment_entry(
+    request: Request,
+    payment_id: int,
+    payload: SalesPaymentEntryCancelRequest = Body(...),
+    idempotency_key_header: str | None = Header(default=None, alias="Idempotency-Key"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_WRITE
+    if not payload.idempotency_key and idempotency_key_header:
+        payload.idempotency_key = idempotency_key_header
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="payment_entry",
+    )
+    scenario_tag = _validate_sales_payment_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        operation=payload.operation,
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": payload.company,
+        },
+        required_fields=("company",),
+        resource_type="payment_entry",
+        resource_id=payment_id,
+        enforce_action=False,
+    )
+    try:
+        data = _write_service(session).cancel_payment_entry(
+            payment_id=payment_id,
+            payload=payload,
+            current_user=current_user.username,
+            scenario_tag=scenario_tag,
+        )
+        AuditService(session).record_success(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="payment_entry",
+            resource_id=int(data.id),
+            resource_no=str(data.payment_entry),
+            before_data={"status": "submitted"},
+            after_data=jsonable_encoder(data),
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="payment_entry",
+            resource_id=payment_id,
+            resource_no=payload.sales_invoice,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _ok(data)
 
 
 @router.post("/sales-orders/drafts")

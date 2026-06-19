@@ -158,6 +158,17 @@ class SalesPaymentEntryCreateRequest(BaseModel):
     operation: str | None = "create_payment_entry"
 
 
+class SalesPaymentEntryCancelRequest(BaseModel):
+    """Cancel FastAPI-native customer payment entry payload."""
+
+    company: str
+    sales_invoice: str
+    reason: str | None = None
+    idempotency_key: str
+    scenario_tag: str | None = None
+    operation: str | None = "cancel_payment_entry"
+
+
 class SalesPaymentEntryData(BaseModel):
     """FastAPI-native customer payment entry response."""
 

@@ -11,6 +11,7 @@ import json
 from typing import Any
 
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.error_codes import STYLE_MASTER_INVALID_REFERENCE
@@ -20,6 +21,7 @@ from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesPaymentEntry
+from app.models.sales_order import LySalesPaymentEntryOperation
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
@@ -67,6 +69,7 @@ from app.schemas.sales_inventory import SalesInventoryListData
 from app.schemas.sales_inventory import SalesInvoiceItem
 from app.schemas.sales_inventory import SupplierItem
 from app.schemas.sales_inventory import SalesInvoiceListData
+from app.schemas.sales_inventory import SalesPaymentEntryCancelRequest
 from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryData
 from app.schemas.sales_inventory import SalesPaymentEntryListData
@@ -1396,6 +1399,132 @@ class SalesInventoryService:
         )
         session.add(row)
         session.flush()
+        return self._build_sales_payment_entry_data(row)
+
+    def cancel_payment_entry(
+        self,
+        *,
+        payment_id: int,
+        payload: SalesPaymentEntryCancelRequest,
+        current_user: str,
+        scenario_tag: str | None,
+    ) -> SalesPaymentEntryData:
+        session = self._require_session()
+        company = self._text(payload.company)
+        sales_invoice = self._text(payload.sales_invoice)
+        idempotency_key = self._text(payload.idempotency_key)
+        operation = self._text(payload.operation) or "cancel_payment_entry"
+        reason = self._text(payload.reason)
+        if company is None:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "company 不能为空")
+        if sales_invoice is None:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "sales_invoice 不能为空")
+        if idempotency_key is None:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "idempotency_key 不能为空")
+        if operation != "cancel_payment_entry":
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "operation 非法")
+
+        row = self._find_sales_payment_entry_by_id_for_update(
+            company=company,
+            payment_id=payment_id,
+        )
+        if row is None:
+            raise SalesInventoryServiceError(404, "SALES_PAYMENT_ENTRY_NOT_FOUND", "销售回款单不存在")
+        if self._text(row.sales_invoice) != sales_invoice:
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "sales_invoice 与回款单不一致")
+
+        request_hash = self._sales_payment_entry_request_hash(
+            {
+                "company": company,
+                "sales_invoice": sales_invoice,
+                "payment_id": int(row.id),
+                "payment_entry": str(row.payment_entry),
+                "operation": operation,
+                "reason": reason,
+            }
+        )
+        existing_operation = self._find_sales_payment_operation_by_idempotency(
+            company=company,
+            operation_type=operation,
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash or "") != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "幂等键冲突且请求内容不一致")
+            replay_row = self._find_sales_payment_entry_by_id(
+                company=company,
+                payment_id=int(existing_operation.payment_entry_id),
+            )
+            if replay_row is None:
+                raise SalesInventoryServiceError(404, "SALES_PAYMENT_ENTRY_NOT_FOUND", "销售回款单不存在")
+            return self._build_sales_payment_entry_data(replay_row)
+
+        if str(row.status) != "submitted":
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "销售回款单已作废")
+
+        invoice = (
+            session.query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.sales_invoice == sales_invoice,
+            )
+            .with_for_update()
+            .first()
+        )
+        if invoice is None:
+            raise SalesInventoryServiceError(404, "SALES_PAYMENT_INVOICE_NOT_FOUND", "销售发票不存在")
+        if str(invoice.status) == "cancelled":
+            raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "已取消销售发票不可作废回款")
+
+        paid_amount = Decimal(str(row.paid_amount or 0))
+        paid_after = Decimal(str(invoice.paid_amount or 0)) - paid_amount
+        if paid_after < Decimal("0"):
+            paid_after = Decimal("0")
+        grand_total = Decimal(str(invoice.grand_total or 0))
+        outstanding_after = grand_total - paid_after
+        if outstanding_after < Decimal("0"):
+            outstanding_after = Decimal("0")
+
+        now = datetime.now(timezone.utc)
+        invoice.paid_amount = paid_after
+        invoice.outstanding_amount = outstanding_after
+        invoice.status = "paid" if outstanding_after == Decimal("0") else ("submitted" if paid_after == Decimal("0") else "partly_paid")
+        invoice.updated_by = current_user
+        invoice.updated_at = now
+
+        row.status = "cancelled"
+        row.docstatus = 2
+        row.updated_by = current_user
+        row.updated_at = now
+
+        session.add(
+            LySalesPaymentEntryOperation(
+                company=company,
+                sales_invoice=sales_invoice,
+                payment_entry_id=int(row.id),
+                operation_type=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                result_status="cancelled",
+                result_user=current_user,
+                result_at=now,
+                reason=reason,
+            )
+        )
+        replay_operation = self._flush_sales_payment_operation_or_resolve_replay(
+            company=company,
+            operation_type=operation,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+        )
+        if replay_operation is not None:
+            replay_row = self._find_sales_payment_entry_by_id(
+                company=company,
+                payment_id=int(replay_operation.payment_entry_id),
+            )
+            if replay_row is None:
+                raise SalesInventoryServiceError(404, "SALES_PAYMENT_ENTRY_NOT_FOUND", "销售回款单不存在")
+            return self._build_sales_payment_entry_data(replay_row)
         return self._build_sales_payment_entry_data(row)
 
     def list_local_payment_entries(
@@ -4971,6 +5100,82 @@ class SalesInventoryService:
                 )
             ]
         return rows
+
+    def _find_sales_payment_entry_by_id(
+        self,
+        *,
+        company: str,
+        payment_id: int,
+    ) -> LySalesPaymentEntry | None:
+        return (
+            self._require_session()
+            .query(LySalesPaymentEntry)
+            .filter(
+                LySalesPaymentEntry.company == company,
+                LySalesPaymentEntry.id == int(payment_id),
+            )
+            .first()
+        )
+
+    def _find_sales_payment_entry_by_id_for_update(
+        self,
+        *,
+        company: str,
+        payment_id: int,
+    ) -> LySalesPaymentEntry | None:
+        return (
+            self._require_session()
+            .query(LySalesPaymentEntry)
+            .filter(
+                LySalesPaymentEntry.company == company,
+                LySalesPaymentEntry.id == int(payment_id),
+            )
+            .with_for_update()
+            .first()
+        )
+
+    def _find_sales_payment_operation_by_idempotency(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str,
+    ) -> LySalesPaymentEntryOperation | None:
+        return (
+            self._require_session()
+            .query(LySalesPaymentEntryOperation)
+            .filter(
+                LySalesPaymentEntryOperation.company == company,
+                LySalesPaymentEntryOperation.operation_type == operation_type,
+                LySalesPaymentEntryOperation.idempotency_key == idempotency_key,
+            )
+            .one_or_none()
+        )
+
+    def _flush_sales_payment_operation_or_resolve_replay(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> LySalesPaymentEntryOperation | None:
+        session = self._require_session()
+        try:
+            session.flush()
+            return None
+        except IntegrityError as exc:
+            session.rollback()
+            existing = self._find_sales_payment_operation_by_idempotency(
+                company=company,
+                operation_type=operation_type,
+                idempotency_key=idempotency_key,
+            )
+            if existing is None:
+                raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "销售回款作废操作冲突") from exc
+            if str(existing.request_hash or "") != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_PAYMENT_ENTRY_CONFLICT", "幂等键冲突且请求内容不一致") from exc
+            return existing
 
     def _build_delivery_invoice_data(self, row: LyDeliveryInvoice) -> DeliveryInvoiceData:
         return DeliveryInvoiceData(

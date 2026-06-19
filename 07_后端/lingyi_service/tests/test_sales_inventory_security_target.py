@@ -47,6 +47,15 @@ class SalesInventorySecurityTargetTest(unittest.TestCase):
         self.assertEqual(resource_type, "SalesPaymentEntry")
         self.assertIsNone(resource_id)
 
+    def test_payment_entry_cancel_infers_write_action(self) -> None:
+        module, action, resource_type, resource_id = main_module._infer_security_target(
+            _request("POST", "/api/sales-inventory/payment-entries/123/cancel")
+        )
+        self.assertEqual(module, "sales_inventory")
+        self.assertEqual(action, SALES_INVENTORY_WRITE)
+        self.assertEqual(resource_type, "SalesPaymentEntry")
+        self.assertEqual(resource_id, "123")
+
     def test_sales_order_draft_writes_infer_write_action(self) -> None:
         cases = [
             ("POST", "/api/sales-inventory/sales-orders/drafts", None),

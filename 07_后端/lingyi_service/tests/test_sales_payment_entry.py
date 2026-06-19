@@ -20,6 +20,7 @@ from app.models.audit import LySecurityAuditLog
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesPaymentEntry
+from app.models.sales_order import LySalesPaymentEntryOperation
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 
@@ -68,6 +69,7 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LySalesPaymentEntryOperation).delete()
             session.query(LySalesPaymentEntry).delete()
             session.query(LyDeliveryInvoice).delete()
             session.add(
@@ -125,6 +127,19 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
             "idempotency_key": "idem-b5-payment-001",
             "scenario_tag": "B5-SALES-PAYMENT-001",
             "operation": "create_payment_entry",
+        }
+        payload.update(overrides)
+        return payload
+
+    @staticmethod
+    def _cancel_payload(**overrides) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "company": "COMP-A",
+            "sales_invoice": "SI-B5-001",
+            "reason": "VOID-B5-PAYMENT-001",
+            "idempotency_key": "idem-b5-payment-cancel-001",
+            "scenario_tag": "B5-SALES-PAYMENT-CANCEL-001",
+            "operation": "cancel_payment_entry",
         }
         payload.update(overrides)
         return payload
@@ -200,6 +215,92 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SALES_PAYMENT_AMOUNT_EXCEEDED")
+
+    def test_payment_entry_cancel_reopens_receivable_and_is_idempotent(self) -> None:
+        created = self.client.post(
+            "/api/sales-inventory/payment-entries",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created.status_code, 201)
+        payment_id = created.json()["data"]["id"]
+
+        cancelled = self.client.post(
+            f"/api/sales-inventory/payment-entries/{payment_id}/cancel",
+            headers=self._headers(),
+            json=self._cancel_payload(),
+        )
+        replay = self.client.post(
+            f"/api/sales-inventory/payment-entries/{payment_id}/cancel",
+            headers=self._headers(),
+            json=self._cancel_payload(),
+        )
+        conflict = self.client.post(
+            f"/api/sales-inventory/payment-entries/{payment_id}/cancel",
+            headers=self._headers(),
+            json=self._cancel_payload(reason="VOID-B5-PAYMENT-CHANGED"),
+        )
+        submitted_payments = self.client.get(
+            "/api/sales-inventory/payment-entries?status=submitted",
+            headers=self._headers(),
+        )
+        cancelled_payments = self.client.get(
+            "/api/sales-inventory/payment-entries?status=cancelled",
+            headers=self._headers(),
+        )
+        sales_invoices = self.client.get(
+            "/api/sales-inventory/sales-invoices?sales_order=SO-B5-001",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(cancelled.status_code, 200)
+        self.assertEqual(replay.status_code, 200)
+        self.assertEqual(cancelled.json()["data"]["id"], replay.json()["data"]["id"])
+        self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancelled.json()["data"]["docstatus"], 2)
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "SALES_PAYMENT_ENTRY_CONFLICT")
+        self.assertEqual(submitted_payments.status_code, 200)
+        self.assertEqual(submitted_payments.json()["data"]["total"], 0)
+        self.assertEqual(cancelled_payments.status_code, 200)
+        self.assertEqual(cancelled_payments.json()["data"]["total"], 1)
+        invoice_row = sales_invoices.json()["data"]["items"][0]
+        self.assertEqual(invoice_row["status"], "submitted")
+        self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("400.000000"))
+
+        with self.SessionLocal() as session:
+            invoice = session.query(LyDeliveryInvoice).one()
+            payment = session.query(LySalesPaymentEntry).one()
+            self.assertEqual(str(invoice.status), "submitted")
+            self.assertEqual(Decimal(str(invoice.paid_amount)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(invoice.outstanding_amount)), Decimal("400.000000"))
+            self.assertEqual(str(payment.status), "cancelled")
+            self.assertEqual(int(payment.docstatus), 2)
+            self.assertEqual(session.query(LySalesPaymentEntryOperation).count(), 1)
+
+    def test_payment_entry_cancel_requires_write_permission(self) -> None:
+        created = self.client.post(
+            "/api/sales-inventory/payment-entries",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created.status_code, 201)
+        payment_id = created.json()["data"]["id"]
+
+        blocked = self.client.post(
+            f"/api/sales-inventory/payment-entries/{payment_id}/cancel",
+            headers=self._headers("Finance Manager"),
+            json=self._cancel_payload(),
+        )
+        self.assertEqual(blocked.status_code, 403)
+        self.assertEqual(blocked.json()["code"], "AUTH_FORBIDDEN")
+        with self.SessionLocal() as session:
+            payment = session.query(LySalesPaymentEntry).one()
+            invoice = session.query(LyDeliveryInvoice).one()
+            self.assertEqual(str(payment.status), "submitted")
+            self.assertEqual(str(invoice.status), "partly_paid")
+            self.assertEqual(session.query(LySalesPaymentEntryOperation).count(), 0)
 
 
 if __name__ == "__main__":

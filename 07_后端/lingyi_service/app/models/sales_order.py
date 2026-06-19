@@ -218,3 +218,49 @@ class LySalesPaymentEntry(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_by = Column(String(140), nullable=True)
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class LySalesPaymentEntryOperation(Base):
+    """FastAPI-native customer payment operation idempotency ledger."""
+
+    __tablename__ = "ly_sales_payment_entry_operation"
+    __table_args__ = (
+        Index(
+            "uk_ly_sales_payment_op_idem",
+            "company",
+            "operation_type",
+            "idempotency_key",
+            unique=True,
+        ),
+        Index(
+            "idx_ly_sales_payment_op_payment",
+            "payment_entry_id",
+            "operation_type",
+            "created_at",
+        ),
+        Index(
+            "idx_ly_sales_payment_op_invoice",
+            "company",
+            "sales_invoice",
+            "operation_type",
+            "created_at",
+        ),
+        CheckConstraint(
+            "operation_type IN ('cancel_payment_entry')",
+            name="ck_ly_sales_payment_op_type",
+        ),
+        {"schema": "ly_schema", "comment": "FastAPI 原生销售回款操作幂等记录"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    sales_invoice = Column(String(140), nullable=False)
+    payment_entry_id = Column(IDType, ForeignKey("ly_schema.ly_sales_payment_entry.id"), nullable=False)
+    operation_type = Column(String(64), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    result_status = Column(String(32), nullable=False)
+    result_user = Column(String(140), nullable=False)
+    result_at = Column(DateTime(timezone=True), nullable=False)
+    reason = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
