@@ -49,6 +49,10 @@ from app.models.factory_statement import LyFactoryStatementOperation
 from app.models.factory_statement import LyFactoryStatementPayableOutbox
 from app.models.factory_statement import LyFactoryStatementPayment
 from app.models.factory_statement import LyFactoryStatementPaymentOperation
+from app.models.material_purchase import LyMaterialPurchaseInvoice
+from app.models.material_purchase import LyMaterialPurchasePayment
+from app.models.sales_order import LyDeliveryInvoice
+from app.models.sales_order import LySalesPaymentEntry
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
 from app.schemas.factory_statement import FactoryStatementCancelData
@@ -1769,96 +1773,15 @@ class FactoryStatementService:
         if from_date and to_date and from_date > to_date:
             raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
 
-        seed_rows: list[dict[str, object]] = [
-            {
-                "summary_no": "CRS-2026-0501",
-                "statement_no": "FS-202605011140-9C12A8",
-                "company": "凌云服饰",
-                "supplier": "东莞卓越制衣厂",
-                "customer_name": "广州艺帛贸易",
-                "customer_code": "CUS-0132",
-                "currency": "CNY",
-                "opening_receivable": Decimal("16800.00"),
-                "current_receivable": Decimal("25200.00"),
-                "received_amount": Decimal("12000.00"),
-                "ending_receivable": Decimal("30000.00"),
-                "aging_30": Decimal("9600.00"),
-                "aging_60": Decimal("11800.00"),
-                "aging_90_plus": Decimal("8600.00"),
-                "risk_level": "高风险",
-                "review_status": "待复核",
-                "summary_date": date(2026, 5, 1),
-                "owner": "李佳琳",
-                "remark": "超 60 天账龄占比较高，需加密跟催",
-            },
-            {
-                "summary_no": "CRS-2026-0502",
-                "statement_no": "FS-202605021255-6D77B1",
-                "company": "凌云服饰",
-                "supplier": "广州星河辅料厂",
-                "customer_name": "深圳雅尚服饰",
-                "customer_code": "CUS-0218",
-                "currency": "CNY",
-                "opening_receivable": Decimal("12400.00"),
-                "current_receivable": Decimal("18450.00"),
-                "received_amount": Decimal("18450.00"),
-                "ending_receivable": Decimal("12400.00"),
-                "aging_30": Decimal("12400.00"),
-                "aging_60": Decimal("0.00"),
-                "aging_90_plus": Decimal("0.00"),
-                "risk_level": "低风险",
-                "review_status": "已通过",
-                "summary_date": date(2026, 5, 2),
-                "owner": "周晨",
-                "remark": "本期新增应收已回款，历史余额稳定",
-            },
-            {
-                "summary_no": "CRS-2026-0503",
-                "statement_no": "FS-202605031420-1F39E6",
-                "company": "凌云服饰",
-                "supplier": "深圳远航加工厂",
-                "customer_name": "杭州新禾服装",
-                "customer_code": "CUS-0305",
-                "currency": "CNY",
-                "opening_receivable": Decimal("9800.00"),
-                "current_receivable": Decimal("16980.00"),
-                "received_amount": Decimal("5300.00"),
-                "ending_receivable": Decimal("21480.00"),
-                "aging_30": Decimal("10200.00"),
-                "aging_60": Decimal("6680.00"),
-                "aging_90_plus": Decimal("4600.00"),
-                "risk_level": "中风险",
-                "review_status": "复核中",
-                "summary_date": date(2026, 5, 3),
-                "owner": "吴静怡",
-                "remark": "客户存在货损争议，回款节奏需复核",
-            },
-            {
-                "summary_no": "CRS-2026-0504",
-                "statement_no": "FS-202605041605-8B65C4",
-                "company": "凌云服饰",
-                "supplier": "杭州匠心制衣厂",
-                "customer_name": "苏州织远商贸",
-                "customer_code": "CUS-0440",
-                "currency": "CNY",
-                "opening_receivable": Decimal("15200.00"),
-                "current_receivable": Decimal("14320.00"),
-                "received_amount": Decimal("0.00"),
-                "ending_receivable": Decimal("29520.00"),
-                "aging_30": Decimal("6800.00"),
-                "aging_60": Decimal("9200.00"),
-                "aging_90_plus": Decimal("13520.00"),
-                "risk_level": "高风险",
-                "review_status": "未开始",
-                "summary_date": date(2026, 5, 4),
-                "owner": "邵伟",
-                "remark": "长期未回款，建议升级客户信用等级预警",
-            },
-        ]
+        source_rows = self._build_customer_receivable_summary_rows(
+            from_date=from_date,
+            to_date=to_date,
+            readable_companies=readable_companies,
+        )
 
         filtered_rows: list[dict[str, object]] = []
         keyword_lc = (normalized_keyword or "").lower()
-        for row in seed_rows:
+        for row in source_rows:
             if normalized_summary_no and row["summary_no"] != normalized_summary_no:
                 continue
             if normalized_statement_no and row["statement_no"] != normalized_statement_no:
@@ -1871,10 +1794,9 @@ class FactoryStatementService:
                 continue
 
             row_company = str(row["company"])
-            row_supplier = str(row["supplier"])
             if readable_companies is not None and row_company not in readable_companies:
                 continue
-            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+            if readable_suppliers is not None and not readable_suppliers:
                 continue
 
             row_date = row["summary_date"]
@@ -2341,96 +2263,16 @@ class FactoryStatementService:
         if from_date and to_date and from_date > to_date:
             raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
 
-        seed_rows: list[dict[str, object]] = [
-            {
-                "summary_no": "FPS-2026-0501",
-                "statement_no": "FS-202605011140-9C12A8",
-                "company": "凌云服饰",
-                "supplier": "东莞卓越制衣厂",
-                "factory_name": "东莞卓越制衣厂",
-                "factory_code": "FAC-0018",
-                "currency": "CNY",
-                "opening_payable": Decimal("19800.00"),
-                "current_payable": Decimal("26800.00"),
-                "paid_amount": Decimal("16000.00"),
-                "ending_payable": Decimal("30600.00"),
-                "aging_30": Decimal("12600.00"),
-                "aging_60": Decimal("10100.00"),
-                "aging_90_plus": Decimal("7900.00"),
-                "risk_level": "高风险",
-                "review_status": "待复核",
-                "summary_date": date(2026, 5, 1),
-                "owner": "李佳琳",
-                "remark": "账龄超过60天占比偏高，建议优先清偿。",
-            },
-            {
-                "summary_no": "FPS-2026-0502",
-                "statement_no": "FS-202605021255-6D77B1",
-                "company": "凌云服饰",
-                "supplier": "广州星河辅料厂",
-                "factory_name": "广州星河辅料厂",
-                "factory_code": "FAC-0033",
-                "currency": "CNY",
-                "opening_payable": Decimal("11200.00"),
-                "current_payable": Decimal("21450.00"),
-                "paid_amount": Decimal("21450.00"),
-                "ending_payable": Decimal("11200.00"),
-                "aging_30": Decimal("11200.00"),
-                "aging_60": Decimal("0.00"),
-                "aging_90_plus": Decimal("0.00"),
-                "risk_level": "低风险",
-                "review_status": "已通过",
-                "summary_date": date(2026, 5, 2),
-                "owner": "周晨",
-                "remark": "本期新增应付已结清，历史余额稳定。",
-            },
-            {
-                "summary_no": "FPS-2026-0503",
-                "statement_no": "FS-202605031420-1F39E6",
-                "company": "凌云服饰",
-                "supplier": "深圳远航加工厂",
-                "factory_name": "深圳远航加工厂",
-                "factory_code": "FAC-0046",
-                "currency": "CNY",
-                "opening_payable": Decimal("9800.00"),
-                "current_payable": Decimal("18730.00"),
-                "paid_amount": Decimal("6000.00"),
-                "ending_payable": Decimal("22530.00"),
-                "aging_30": Decimal("10530.00"),
-                "aging_60": Decimal("8200.00"),
-                "aging_90_plus": Decimal("3800.00"),
-                "risk_level": "中风险",
-                "review_status": "复核中",
-                "summary_date": date(2026, 5, 3),
-                "owner": "吴静怡",
-                "remark": "返工费用争议处理中，付款节奏需复核。",
-            },
-            {
-                "summary_no": "FPS-2026-0504",
-                "statement_no": "FS-202605041605-8B65C4",
-                "company": "凌云服饰",
-                "supplier": "杭州匠心制衣厂",
-                "factory_name": "杭州匠心制衣厂",
-                "factory_code": "FAC-0061",
-                "currency": "CNY",
-                "opening_payable": Decimal("15400.00"),
-                "current_payable": Decimal("13200.00"),
-                "paid_amount": Decimal("0.00"),
-                "ending_payable": Decimal("28600.00"),
-                "aging_30": Decimal("7800.00"),
-                "aging_60": Decimal("9200.00"),
-                "aging_90_plus": Decimal("11600.00"),
-                "risk_level": "高风险",
-                "review_status": "未开始",
-                "summary_date": date(2026, 5, 4),
-                "owner": "邵伟",
-                "remark": "长期挂账且未启动复核，需升级预警。",
-            },
-        ]
+        source_rows = self._build_factory_payable_summary_rows(
+            from_date=from_date,
+            to_date=to_date,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+        )
 
         filtered_rows: list[dict[str, object]] = []
         keyword_lc = (normalized_keyword or "").lower()
-        for row in seed_rows:
+        for row in source_rows:
             if normalized_summary_no and row["summary_no"] != normalized_summary_no:
                 continue
             if normalized_statement_no and row["statement_no"] != normalized_statement_no:
@@ -2906,96 +2748,16 @@ class FactoryStatementService:
         if from_date and to_date and from_date > to_date:
             raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
 
-        seed_rows: list[dict[str, object]] = [
-            {
-                "summary_no": "SPS-2026-0601",
-                "statement_no": "FS-202606011035-1A92CD",
-                "company": "凌云服饰",
-                "supplier": "绍兴华绣制衣厂",
-                "supplier_code": "SUP-0118",
-                "currency": "CNY",
-                "opening_payable": Decimal("16800.00"),
-                "current_payable": Decimal("14230.00"),
-                "paid_amount": Decimal("12600.00"),
-                "ending_payable": Decimal("18430.00"),
-                "aging_30": Decimal("9300.00"),
-                "aging_60": Decimal("6410.00"),
-                "aging_90_plus": Decimal("2720.00"),
-                "risk_level": "中风险",
-                "review_status": "待复核",
-                "follow_up_status": "待跟进",
-                "summary_date": date(2026, 6, 1),
-                "owner": "周敏",
-                "remark": "尾款账期偏长，需跟进回款计划。",
-            },
-            {
-                "summary_no": "SPS-2026-0602",
-                "statement_no": "FS-202606021130-6B14EF",
-                "company": "凌云服饰",
-                "supplier": "嘉兴瑞泰辅料厂",
-                "supplier_code": "SUP-0211",
-                "currency": "CNY",
-                "opening_payable": Decimal("10200.00"),
-                "current_payable": Decimal("18960.00"),
-                "paid_amount": Decimal("18960.00"),
-                "ending_payable": Decimal("10200.00"),
-                "aging_30": Decimal("10200.00"),
-                "aging_60": Decimal("0.00"),
-                "aging_90_plus": Decimal("0.00"),
-                "risk_level": "低风险",
-                "review_status": "已通过",
-                "follow_up_status": "已完成",
-                "summary_date": date(2026, 6, 2),
-                "owner": "刘晨",
-                "remark": "当期新增应付已结清，历史余额稳定。",
-            },
-            {
-                "summary_no": "SPS-2026-0603",
-                "statement_no": "FS-202606031455-9D77AC",
-                "company": "凌云服饰",
-                "supplier": "湖州恒远加工厂",
-                "supplier_code": "SUP-0336",
-                "currency": "CNY",
-                "opening_payable": Decimal("22100.00"),
-                "current_payable": Decimal("11680.00"),
-                "paid_amount": Decimal("6000.00"),
-                "ending_payable": Decimal("27780.00"),
-                "aging_30": Decimal("7800.00"),
-                "aging_60": Decimal("9630.00"),
-                "aging_90_plus": Decimal("10350.00"),
-                "risk_level": "高风险",
-                "review_status": "复核中",
-                "follow_up_status": "跟进中",
-                "summary_date": date(2026, 6, 3),
-                "owner": "吴静",
-                "remark": "逾期账龄占比高，需升级付款审批。",
-            },
-            {
-                "summary_no": "SPS-2026-0604",
-                "statement_no": "FS-202606041210-5C11BE",
-                "company": "凌云服饰",
-                "supplier": "宁波雅诚服装厂",
-                "supplier_code": "SUP-0440",
-                "currency": "CNY",
-                "opening_payable": Decimal("9600.00"),
-                "current_payable": Decimal("8400.00"),
-                "paid_amount": Decimal("0.00"),
-                "ending_payable": Decimal("18000.00"),
-                "aging_30": Decimal("5200.00"),
-                "aging_60": Decimal("6000.00"),
-                "aging_90_plus": Decimal("6800.00"),
-                "risk_level": "高风险",
-                "review_status": "未开始",
-                "follow_up_status": "待跟进",
-                "summary_date": date(2026, 6, 4),
-                "owner": "邵伟",
-                "remark": "应付增长较快且复核未启动，需重点关注。",
-            },
-        ]
+        source_rows = self._build_supplier_payable_summary_rows(
+            from_date=from_date,
+            to_date=to_date,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+        )
 
         filtered_rows: list[dict[str, object]] = []
         keyword_lc = (normalized_keyword or "").lower()
-        for row in seed_rows:
+        for row in source_rows:
             if normalized_summary_no and row["summary_no"] != normalized_summary_no:
                 continue
             if normalized_statement_no and row["statement_no"] != normalized_statement_no:
@@ -4688,6 +4450,298 @@ class FactoryStatementService:
     @staticmethod
     def _contains_like(value: str, keyword: str) -> bool:
         return keyword.lower() in value.lower()
+
+    def _build_customer_receivable_summary_rows(
+        self,
+        *,
+        from_date: date | None,
+        to_date: date | None,
+        readable_companies: set[str] | None,
+    ) -> list[dict[str, object]]:
+        query = self.session.query(LyDeliveryInvoice).filter(
+            LyDeliveryInvoice.status != "cancelled",
+            LyDeliveryInvoice.docstatus != 2,
+        )
+        if readable_companies is not None:
+            if not readable_companies:
+                return []
+            query = query.filter(LyDeliveryInvoice.company.in_(sorted(readable_companies)))
+        if from_date:
+            query = query.filter(LyDeliveryInvoice.posting_date >= from_date)
+        if to_date:
+            query = query.filter(LyDeliveryInvoice.posting_date <= to_date)
+
+        invoices = query.order_by(LyDeliveryInvoice.posting_date.desc(), LyDeliveryInvoice.id.desc()).all()
+        grouped: dict[tuple[str, str], dict[str, object]] = {}
+        for invoice in invoices:
+            company = str(invoice.company)
+            customer = self._normalize_text(invoice.customer) or "未填写客户"
+            key = (company, customer)
+            row = grouped.setdefault(
+                key,
+                {
+                    "summary_no": f"CRS-{self._stable_code(company)}-{self._stable_code(customer)}",
+                    "statement_no": f"AR-{self._stable_code(company)}-{self._stable_code(customer)}",
+                    "company": company,
+                    "customer_name": customer,
+                    "customer_code": customer,
+                    "currency": "CNY",
+                    "opening_receivable": Decimal("0"),
+                    "current_receivable": Decimal("0"),
+                    "received_amount": Decimal("0"),
+                    "ending_receivable": Decimal("0"),
+                    "aging_30": Decimal("0"),
+                    "aging_60": Decimal("0"),
+                    "aging_90_plus": Decimal("0"),
+                    "risk_level": "低风险",
+                    "review_status": "已通过",
+                    "summary_date": invoice.posting_date,
+                    "owner": str(invoice.created_by),
+                    "remark": "FastAPI 本地发货开票与回款汇总",
+                },
+            )
+            row["current_receivable"] = self._to_decimal(row["current_receivable"]) + self._to_decimal(invoice.grand_total)
+            row["ending_receivable"] = self._to_decimal(row["ending_receivable"]) + self._to_decimal(invoice.outstanding_amount)
+            row["summary_date"] = max(row["summary_date"], invoice.posting_date)  # type: ignore[arg-type]
+            if self._to_decimal(invoice.outstanding_amount) > Decimal("0"):
+                bucket = self._aging_bucket(due_date=invoice.due_date or invoice.posting_date, as_of=to_date)
+                row[bucket] = self._to_decimal(row[bucket]) + self._to_decimal(invoice.outstanding_amount)
+
+        if not grouped:
+            return []
+
+        payment_query = self.session.query(LySalesPaymentEntry).filter(
+            LySalesPaymentEntry.status == "submitted",
+            LySalesPaymentEntry.docstatus == 1,
+        )
+        if readable_companies is not None:
+            payment_query = payment_query.filter(LySalesPaymentEntry.company.in_(sorted(readable_companies)))
+        if from_date:
+            payment_query = payment_query.filter(LySalesPaymentEntry.posting_date >= from_date)
+        if to_date:
+            payment_query = payment_query.filter(LySalesPaymentEntry.posting_date <= to_date)
+        for payment in payment_query.all():
+            customer = self._normalize_text(payment.customer) or "未填写客户"
+            row = grouped.get((str(payment.company), customer))
+            if row is None:
+                continue
+            row["received_amount"] = self._to_decimal(row["received_amount"]) + self._to_decimal(payment.paid_amount)
+            row["summary_date"] = max(row["summary_date"], payment.posting_date)  # type: ignore[arg-type]
+
+        for row in grouped.values():
+            self._apply_financial_summary_status(row=row, ending_key="ending_receivable")
+        return list(grouped.values())
+
+    def _build_supplier_payable_summary_rows(
+        self,
+        *,
+        from_date: date | None,
+        to_date: date | None,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> list[dict[str, object]]:
+        query = self.session.query(LyMaterialPurchaseInvoice).filter(
+            LyMaterialPurchaseInvoice.status != "cancelled",
+            LyMaterialPurchaseInvoice.docstatus != 2,
+        )
+        if readable_companies is not None:
+            if not readable_companies:
+                return []
+            query = query.filter(LyMaterialPurchaseInvoice.company.in_(sorted(readable_companies)))
+        if readable_suppliers is not None:
+            if not readable_suppliers:
+                return []
+            query = query.filter(LyMaterialPurchaseInvoice.supplier_name.in_(sorted(readable_suppliers)))
+        if from_date:
+            query = query.filter(LyMaterialPurchaseInvoice.posting_date >= from_date)
+        if to_date:
+            query = query.filter(LyMaterialPurchaseInvoice.posting_date <= to_date)
+
+        invoices = query.order_by(LyMaterialPurchaseInvoice.posting_date.desc(), LyMaterialPurchaseInvoice.id.desc()).all()
+        grouped: dict[tuple[str, str], dict[str, object]] = {}
+        for invoice in invoices:
+            company = str(invoice.company)
+            supplier = str(invoice.supplier_name)
+            key = (company, supplier)
+            row = grouped.setdefault(
+                key,
+                {
+                    "summary_no": f"SPS-{self._stable_code(company)}-{self._stable_code(supplier)}",
+                    "statement_no": str(invoice.purchase_invoice),
+                    "company": company,
+                    "supplier": supplier,
+                    "supplier_code": supplier,
+                    "currency": "CNY",
+                    "opening_payable": Decimal("0"),
+                    "current_payable": Decimal("0"),
+                    "paid_amount": Decimal("0"),
+                    "ending_payable": Decimal("0"),
+                    "aging_30": Decimal("0"),
+                    "aging_60": Decimal("0"),
+                    "aging_90_plus": Decimal("0"),
+                    "risk_level": "低风险",
+                    "review_status": "已通过",
+                    "follow_up_status": "已完成",
+                    "summary_date": invoice.posting_date,
+                    "owner": str(invoice.created_by),
+                    "remark": "FastAPI 本地采购发票与供应商付款汇总",
+                },
+            )
+            row["current_payable"] = self._to_decimal(row["current_payable"]) + self._to_decimal(invoice.grand_total)
+            row["ending_payable"] = self._to_decimal(row["ending_payable"]) + self._to_decimal(invoice.outstanding_amount)
+            row["summary_date"] = max(row["summary_date"], invoice.posting_date)  # type: ignore[arg-type]
+            if self._to_decimal(invoice.outstanding_amount) > Decimal("0"):
+                bucket = self._aging_bucket(due_date=invoice.due_date or invoice.posting_date, as_of=to_date)
+                row[bucket] = self._to_decimal(row[bucket]) + self._to_decimal(invoice.outstanding_amount)
+
+        if not grouped:
+            return []
+
+        payment_query = self.session.query(LyMaterialPurchasePayment).filter(
+            LyMaterialPurchasePayment.status == "submitted",
+            LyMaterialPurchasePayment.docstatus == 1,
+        )
+        if readable_companies is not None:
+            payment_query = payment_query.filter(LyMaterialPurchasePayment.company.in_(sorted(readable_companies)))
+        if readable_suppliers is not None:
+            payment_query = payment_query.filter(LyMaterialPurchasePayment.supplier_name.in_(sorted(readable_suppliers)))
+        if from_date:
+            payment_query = payment_query.filter(LyMaterialPurchasePayment.posting_date >= from_date)
+        if to_date:
+            payment_query = payment_query.filter(LyMaterialPurchasePayment.posting_date <= to_date)
+        for payment in payment_query.all():
+            row = grouped.get((str(payment.company), str(payment.supplier_name)))
+            if row is None:
+                continue
+            row["paid_amount"] = self._to_decimal(row["paid_amount"]) + self._to_decimal(payment.paid_amount)
+            row["summary_date"] = max(row["summary_date"], payment.posting_date)  # type: ignore[arg-type]
+
+        for row in grouped.values():
+            self._apply_financial_summary_status(row=row, ending_key="ending_payable")
+        return list(grouped.values())
+
+    def _build_factory_payable_summary_rows(
+        self,
+        *,
+        from_date: date | None,
+        to_date: date | None,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> list[dict[str, object]]:
+        query = self.session.query(LyFactoryStatement).filter(
+            LyFactoryStatement.statement_status.in_(
+                [self._STATUS_CONFIRMED, self._STATUS_PAYABLE_DRAFT_CREATED]
+            )
+        )
+        if readable_companies is not None:
+            if not readable_companies:
+                return []
+            query = query.filter(LyFactoryStatement.company.in_(sorted(readable_companies)))
+        if readable_suppliers is not None:
+            if not readable_suppliers:
+                return []
+            query = query.filter(LyFactoryStatement.supplier.in_(sorted(readable_suppliers)))
+        if from_date:
+            query = query.filter(LyFactoryStatement.to_date >= from_date)
+        if to_date:
+            query = query.filter(LyFactoryStatement.to_date <= to_date)
+
+        statements = query.order_by(LyFactoryStatement.to_date.desc(), LyFactoryStatement.id.desc()).all()
+        grouped: dict[tuple[str, str], dict[str, object]] = {}
+        statement_ids: list[int] = []
+        for statement in statements:
+            company = str(statement.company)
+            supplier = str(statement.supplier)
+            key = (company, supplier)
+            statement_ids.append(int(statement.id))
+            row = grouped.setdefault(
+                key,
+                {
+                    "summary_no": f"FPS-{self._stable_code(company)}-{self._stable_code(supplier)}",
+                    "statement_no": str(statement.statement_no),
+                    "company": company,
+                    "supplier": supplier,
+                    "factory_name": supplier,
+                    "factory_code": supplier,
+                    "currency": "CNY",
+                    "opening_payable": Decimal("0"),
+                    "current_payable": Decimal("0"),
+                    "paid_amount": Decimal("0"),
+                    "ending_payable": Decimal("0"),
+                    "aging_30": Decimal("0"),
+                    "aging_60": Decimal("0"),
+                    "aging_90_plus": Decimal("0"),
+                    "risk_level": "低风险",
+                    "review_status": "已通过",
+                    "summary_date": statement.to_date,
+                    "owner": str(statement.created_by),
+                    "remark": "FastAPI 本地加工厂对账单与付款汇总",
+                },
+            )
+            row["current_payable"] = self._to_decimal(row["current_payable"]) + self._to_decimal(statement.net_amount)
+            row["summary_date"] = max(row["summary_date"], statement.to_date)  # type: ignore[arg-type]
+
+        if not grouped:
+            return []
+
+        paid_by_statement = self._fetch_paid_amount_map(statement_ids=statement_ids)
+        for statement in statements:
+            row = grouped[(str(statement.company), str(statement.supplier))]
+            paid = paid_by_statement.get(int(statement.id), Decimal("0"))
+            outstanding = self._compute_outstanding_amount(net_amount=self._to_decimal(statement.net_amount), paid_amount=paid)
+            row["paid_amount"] = self._to_decimal(row["paid_amount"]) + paid
+            row["ending_payable"] = self._to_decimal(row["ending_payable"]) + outstanding
+            if outstanding > Decimal("0"):
+                bucket = self._aging_bucket(due_date=statement.to_date, as_of=to_date)
+                row[bucket] = self._to_decimal(row[bucket]) + outstanding
+
+        for row in grouped.values():
+            self._apply_financial_summary_status(row=row, ending_key="ending_payable")
+        return list(grouped.values())
+
+    @staticmethod
+    def _stable_code(value: object) -> str:
+        raw = str(value or "").strip() or "UNKNOWN"
+        normalized = "".join(ch if ch.isalnum() else "-" for ch in raw.upper())
+        normalized = "-".join(part for part in normalized.split("-") if part)
+        return normalized[:40] or "UNKNOWN"
+
+    @staticmethod
+    def _aging_bucket(*, due_date: date, as_of: date | None) -> str:
+        reference_date = as_of or date.today()
+        days = max((reference_date - due_date).days, 0)
+        if days <= 30:
+            return "aging_30"
+        if days <= 60:
+            return "aging_60"
+        return "aging_90_plus"
+
+    def _apply_financial_summary_status(self, *, row: dict[str, object], ending_key: str) -> None:
+        ending = self._to_decimal(row[ending_key])
+        if ending <= Decimal("0"):
+            row["risk_level"] = "低风险"
+            row["review_status"] = "已通过"
+            if "follow_up_status" in row:
+                row["follow_up_status"] = "已完成"
+            return
+
+        aging_90_plus = self._to_decimal(row["aging_90_plus"])
+        aging_60 = self._to_decimal(row["aging_60"])
+        if aging_90_plus > Decimal("0"):
+            row["risk_level"] = "高风险"
+            row["review_status"] = "待复核"
+            if "follow_up_status" in row:
+                row["follow_up_status"] = "待跟进"
+        elif aging_60 > Decimal("0"):
+            row["risk_level"] = "中风险"
+            row["review_status"] = "复核中"
+            if "follow_up_status" in row:
+                row["follow_up_status"] = "跟进中"
+        else:
+            row["risk_level"] = "低风险"
+            row["review_status"] = "待复核"
+            if "follow_up_status" in row:
+                row["follow_up_status"] = "待跟进"
 
     def _to_list_item(
         self,
