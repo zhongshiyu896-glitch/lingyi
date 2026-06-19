@@ -23,6 +23,7 @@ from app.models.subcontract import Base as SubcontractBase
 from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractOrder
 from app.models.subcontract import LySubcontractStockOutbox
+from app.routers import subcontract as subcontract_router
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.subcontract import get_db_session as subcontract_db_dep
 from app.services.subcontract_stock_outbox_service import SubcontractStockOutboxService
@@ -30,6 +31,8 @@ from app.services.subcontract_stock_outbox_service import SubcontractStockOutbox
 
 class SubcontractStockOutboxIdempotencyTest(unittest.TestCase):
     """Validate issue-material idempotency and outbox key stability."""
+
+    SCENARIO_TAG = "Z003-SUBCONTRACT-20260619-002"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -105,7 +108,8 @@ class SubcontractStockOutboxIdempotencyTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
@@ -130,14 +134,72 @@ class SubcontractStockOutboxIdempotencyTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers() -> dict[str, str]:
-        return {"X-LY-Dev-User": "idem.user", "X-LY-Dev-Roles": "Subcontract Manager"}
+    def _headers(request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "idem.user", "X-LY-Dev-Roles": "Subcontract Manager"}
+        if request_id is not None:
+            headers["X-Request-ID"] = request_id
+        return headers
 
-    def _issue_payload(self, *, idem: str, issued_qty: str) -> dict[str, object]:
+    @staticmethod
+    def _carrier_code(value: str) -> str:
+        return subcontract_router._fnv_carrier_code(value)
+
+    def _request_id(
+        self,
+        *,
+        idempotency_key: str,
+        source_ref: str,
+        subcontract_ref: str,
+        supplier_ref: str,
+        work_order_ref: str,
+        item_code: str,
+        status_action: str,
+    ) -> str:
+        operation_code = subcontract_router.SUBCONTRACT_OPERATION_CODE_BY_NAME["issue_material"]
+        return (
+            f"{self.SCENARIO_TAG}-SC-{operation_code}-"
+            f"{self._carrier_code(idempotency_key)}-"
+            f"{self._carrier_code(source_ref)}-"
+            f"{self._carrier_code(subcontract_ref)}-"
+            f"{self._carrier_code(supplier_ref)}-"
+            f"{self._carrier_code(work_order_ref)}-"
+            f"{self._carrier_code(item_code)}-"
+            f"{self._carrier_code(status_action)}"
+        )
+
+    def _issue_payload(
+        self,
+        *,
+        idem: str,
+        issued_qty: str,
+        materials: list[dict[str, str]] | None = None,
+    ) -> dict[str, object]:
+        status_action = "issue_material"
+        source_ref = f"{self.SCENARIO_TAG}:issue_material:1:{idem}"
         return {
+            "request_id": self._request_id(
+                idempotency_key=idem,
+                source_ref=source_ref,
+                subcontract_ref="1",
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                status_action=status_action,
+            ),
             "idempotency_key": idem,
+            "scenario_tag": self.SCENARIO_TAG,
+            "source_ref": source_ref,
+            "subcontract_ref": "1",
+            "supplier_ref": "SUP-A",
+            "work_order_ref": "NO-WORK-ORDER",
+            "operation": "issue_material",
+            "item_code": "ITEM-A",
+            "quantity": issued_qty,
+            "status_action": status_action,
             "warehouse": "WH-A",
-            "materials": [
+            "materials": materials
+            if materials is not None
+            else [
                 {
                     "material_item_code": "MAT-A",
                     "required_qty": "100",
@@ -146,17 +208,18 @@ class SubcontractStockOutboxIdempotencyTest(unittest.TestCase):
             ],
         }
 
+    def _post_issue_material(self, payload: dict[str, object]):
+        return self.client.post(
+            "/api/subcontract/1/issue-material",
+            headers=self._headers(request_id=str(payload["request_id"])),
+            json=payload,
+        )
+
     def test_issue_material_idempotent_same_payload_returns_existing_result(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=self._issue_payload(idem="idem-same", issued_qty="10"),
-        )
-        second = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=self._issue_payload(idem="idem-same", issued_qty="10"),
-        )
+        first_payload = self._issue_payload(idem="idem-same", issued_qty="10")
+        second_payload = self._issue_payload(idem="idem-same", issued_qty="10")
+        first = self._post_issue_material(first_payload)
+        second = self._post_issue_material(second_payload)
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
@@ -172,16 +235,8 @@ class SubcontractStockOutboxIdempotencyTest(unittest.TestCase):
         self.assertEqual(material_count, 1)
 
     def test_issue_material_idempotency_key_different_payload_returns_conflict(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=self._issue_payload(idem="idem-conflict", issued_qty="10"),
-        )
-        second = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=self._issue_payload(idem="idem-conflict", issued_qty="12"),
-        )
+        first = self._post_issue_material(self._issue_payload(idem="idem-conflict", issued_qty="10"))
+        second = self._post_issue_material(self._issue_payload(idem="idem-conflict", issued_qty="12"))
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 409)
@@ -225,9 +280,9 @@ class SubcontractStockOutboxIdempotencyTest(unittest.TestCase):
         self.assertNotEqual(key_a, key_b)
 
     def test_issue_material_empty_items_payload_hash_stable_after_issue(self) -> None:
-        payload = {"idempotency_key": "idem-auto-empty", "warehouse": "WH-A", "materials": []}
-        first = self.client.post("/api/subcontract/1/issue-material", headers=self._headers(), json=payload)
-        second = self.client.post("/api/subcontract/1/issue-material", headers=self._headers(), json=payload)
+        payload = self._issue_payload(idem="idem-auto-empty", issued_qty="100", materials=[])
+        first = self._post_issue_material(payload)
+        second = self._post_issue_material(payload)
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()["data"]["outbox_id"], second.json()["data"]["outbox_id"])
