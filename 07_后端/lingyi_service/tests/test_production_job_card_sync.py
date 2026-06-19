@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import json
 import os
 import unittest
-from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -24,14 +24,12 @@ from app.models.production import LyProductionPlan
 from app.models.production import LyProductionWorkOrderLink
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
-from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
-from app.services.erpnext_permission_adapter import UserPermissionResult
-from app.services.erpnext_production_adapter import ERPNextJobCard
-from app.services.erpnext_production_adapter import ERPNextProductionAdapter
 
 
 class ProductionJobCardSyncTest(unittest.TestCase):
-    """Ensure manual Job Card sync writes local mapping only."""
+    """Ensure manual Job Card sync writes FastAPI-native local mapping only."""
+
+    SCENARIO_TAG = "Z003-PROD-PLAN-DETAIL-20260619-901"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -85,9 +83,13 @@ class ProductionJobCardSyncTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
-        os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {"users": {"prod.jc.user": {"company": ["COMP-A"], "item_code": ["ITEM-A"]}}}
+        )
 
         with self.SessionLocal() as session:
             session.query(LyProductionJobCardLink).delete()
@@ -129,38 +131,33 @@ class ProductionJobCardSyncTest(unittest.TestCase):
     def _headers(role: str = "Production Manager") -> dict[str, str]:
         return {"X-LY-Dev-User": "prod.jc.user", "X-LY-Dev-Roles": role}
 
-    @staticmethod
-    def _cards() -> list[ERPNextJobCard]:
-        return [
-            ERPNextJobCard(
-                name="JC-P-001",
-                operation="Cut",
-                operation_sequence=10,
-                expected_qty=Decimal("20"),
-                completed_qty=Decimal("8"),
-                status="Open",
-            ),
-            ERPNextJobCard(
-                name="JC-P-002",
-                operation="Sew",
-                operation_sequence=20,
-                expected_qty=Decimal("10"),
-                completed_qty=Decimal("2"),
-                status="Open",
-            ),
-        ]
+    @classmethod
+    def _sync_payload(cls, *, idempotency_key: str = "sync-jc-001") -> dict[str, object]:
+        request_id = f"req-{cls.SCENARIO_TAG}"
+        return {
+            "scenario_tag": cls.SCENARIO_TAG,
+            "operation": "sync_job_cards",
+            "plan_id": 9201,
+            "plan_no_or_work_order": "WO-JC-001",
+            "company": "COMP-A",
+            "item_code": "ITEM-A",
+            "source_ref": "|".join([cls.SCENARIO_TAG, "COMP-A", "9201", "WO-JC-001", "ITEM-A", "sync_job_cards"]),
+            "idempotency_key": f"{cls.SCENARIO_TAG}-{idempotency_key}",
+            "request_id": request_id,
+        }
 
     def test_sync_job_cards_updates_local_projection_for_regular_path(self) -> None:
-        with patch.object(ERPNextProductionAdapter, "list_job_cards", return_value=self._cards()):
-            response = self.client.post(
-                "/api/production/work-orders/WO-JC-001/sync-job-cards",
-                headers=self._headers(),
-            )
+        request_id = f"req-{self.SCENARIO_TAG}"
+        response = self.client.post(
+            "/api/production/work-orders/WO-JC-001/sync-job-cards",
+            headers={**self._headers(), "X-Request-ID": request_id},
+            json=self._sync_payload(),
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
         self.assertEqual(response.json()["data"]["work_order"], "WO-JC-001")
-        self.assertEqual(response.json()["data"]["synced_count"], 2)
+        self.assertEqual(response.json()["data"]["synced_count"], 3)
 
         with self.SessionLocal() as session:
             rows = (
@@ -169,9 +166,10 @@ class ProductionJobCardSyncTest(unittest.TestCase):
                 .order_by(LyProductionJobCardLink.job_card.asc())
                 .all()
             )
-            self.assertEqual(len(rows), 2)
-            self.assertEqual(rows[0].work_order, "WO-JC-001")
-            self.assertEqual(rows[0].operation, "Cut")
+            self.assertEqual(len(rows), 3)
+            self.assertEqual({row.work_order for row in rows}, {"WO-JC-001"})
+            self.assertEqual({row.operation for row in rows}, {"裁剪", "车缝", "后整"})
+            self.assertEqual({row.erpnext_status for row in rows}, {"LocalSynced"})
 
             audit_row = (
                 session.query(LyOperationAuditLog)
@@ -186,26 +184,18 @@ class ProductionJobCardSyncTest(unittest.TestCase):
             self.assertIsNotNone(audit_row)
 
     def test_sync_job_cards_forbidden_when_resource_scope_not_allowed(self) -> None:
-        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
-        os.environ["LINGYI_ERPNEXT_BASE_URL"] = "https://erpnext.example.test"
-
-        with patch.object(
-            ERPNextPermissionAdapter,
-            "get_user_permissions",
-            return_value=UserPermissionResult(
-                source_available=True,
-                unrestricted=False,
-                allowed_items={"ITEM-B"},
-                allowed_companies={"COMP-A"},
-            ),
-        ), patch.object(ERPNextProductionAdapter, "list_job_cards", return_value=self._cards()):
-            response = self.client.post(
-                "/api/production/work-orders/WO-JC-001/sync-job-cards",
-                headers=self._headers(),
-            )
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {"users": {"prod.jc.user": {"company": ["COMP-A"], "item_code": ["ITEM-B"]}}}
+        )
+        request_id = f"req-{self.SCENARIO_TAG}"
+        response = self.client.post(
+            "/api/production/work-orders/WO-JC-001/sync-job-cards",
+            headers={**self._headers(), "X-Request-ID": request_id},
+            json=self._sync_payload(idempotency_key="sync-jc-forbidden"),
+        )
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
 
 
 if __name__ == "__main__":
