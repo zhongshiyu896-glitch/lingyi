@@ -37,6 +37,7 @@ from app.schemas.sales_inventory import DiagnosticData
 from app.schemas.sales_inventory import DeliveryInvoiceCreateRequest
 from app.schemas.sales_inventory import DeliveryInvoiceListData
 from app.schemas.sales_inventory import InventoryAggregationData
+from app.schemas.sales_inventory import InventoryAggregationItem
 from app.schemas.sales_inventory import ReferenceDraftCreateRequest
 from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
 from app.schemas.sales_inventory import SupplierItem
@@ -113,6 +114,8 @@ def _is_local_reference_route_enabled() -> bool:
 
 
 def _is_local_sales_inventory_read_enabled() -> bool:
+    if get_permission_source() == "fastapi":
+        return True
     app_env = os.getenv("APP_ENV", "").strip().lower()
     db_url = os.getenv("LINGYI_DB_URL", "").strip()
     allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
@@ -693,6 +696,39 @@ def _build_local_stock_ledger_fallback(
         page=ledger.page,
         page_size=ledger.page_size,
         dropped_count=0,
+    )
+
+
+def _build_local_inventory_aggregation(
+    *,
+    session: Session,
+    company: str | None,
+    item_code: str | None,
+    warehouse: str | None,
+) -> InventoryAggregationData:
+    summary = WarehouseService(session=session).get_local_stock_summary(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+    )
+    return InventoryAggregationData(
+        company=_scope_text(company),
+        item_code=_scope_text(item_code),
+        warehouse=_scope_text(warehouse),
+        items=[
+            InventoryAggregationItem(
+                item_code=row.item_code,
+                warehouse=row.warehouse,
+                actual_qty=row.actual_qty,
+                ordered_qty=0,
+                indented_qty=0,
+                safety_stock=0,
+                reorder_level=0,
+                is_below_safety=False,
+                is_below_reorder=False,
+            )
+            for row in summary.items
+        ],
     )
 
 
@@ -2941,26 +2977,34 @@ def get_stock_summary(
         enforce_action=False,
         user_permissions=permissions,
     )
-    try:
-        data = _service(request).get_stock_summary(item_code=item_code, company=company, warehouse=warehouse)
-    except ERPNextAdapterException as exc:
-        if _local_read_fallback_enabled(exc):
-            data = _build_local_stock_summary_fallback(
-                session=session,
-                item_code=item_code,
-                company=company,
-                warehouse=warehouse,
-            )
-        else:
-            _handle_erpnext_error(
-                exc=exc,
-                permission_service=permission_service,
-                request=request,
-                current_user=current_user,
-                action=action,
-                resource_type="Item",
-                resource_no=item_code,
-            )
+    if get_permission_source() == "fastapi":
+        data = _build_local_stock_summary_fallback(
+            session=session,
+            item_code=item_code,
+            company=company,
+            warehouse=warehouse,
+        )
+    else:
+        try:
+            data = _service(request).get_stock_summary(item_code=item_code, company=company, warehouse=warehouse)
+        except ERPNextAdapterException as exc:
+            if _local_read_fallback_enabled(exc):
+                data = _build_local_stock_summary_fallback(
+                    session=session,
+                    item_code=item_code,
+                    company=company,
+                    warehouse=warehouse,
+                )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="Item",
+                    resource_no=item_code,
+                )
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     data.items = filtered
     return _ok(data)
@@ -3011,8 +3055,9 @@ def list_stock_ledger(
     parsed_from_date = _parse_optional_date(from_date, "from_date")
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
-    try:
-        data = _service(request).list_stock_ledger(
+    if get_permission_source() == "fastapi":
+        data = _build_local_stock_ledger_fallback(
+            session=session,
             item_code=item_code,
             company=company,
             warehouse=warehouse,
@@ -3021,10 +3066,9 @@ def list_stock_ledger(
             page=page,
             page_size=page_size,
         )
-    except ERPNextAdapterException as exc:
-        if _local_read_fallback_enabled(exc):
-            data = _build_local_stock_ledger_fallback(
-                session=session,
+    else:
+        try:
+            data = _service(request).list_stock_ledger(
                 item_code=item_code,
                 company=company,
                 warehouse=warehouse,
@@ -3033,16 +3077,28 @@ def list_stock_ledger(
                 page=page,
                 page_size=page_size,
             )
-        else:
-            _handle_erpnext_error(
-                exc=exc,
-                permission_service=permission_service,
-                request=request,
-                current_user=current_user,
-                action=action,
-                resource_type="StockLedgerEntry",
-                resource_no=item_code,
-            )
+        except ERPNextAdapterException as exc:
+            if _local_read_fallback_enabled(exc):
+                data = _build_local_stock_ledger_fallback(
+                    session=session,
+                    item_code=item_code,
+                    company=company,
+                    warehouse=warehouse,
+                    from_date=parsed_from_date,
+                    to_date=parsed_to_date,
+                    page=page,
+                    page_size=page_size,
+                )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="StockLedgerEntry",
+                    resource_no=item_code,
+                )
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     data.items = filtered
     data.total = len(filtered)
@@ -3255,26 +3311,34 @@ def get_inventory_aggregation(
         enforce_action=False,
         user_permissions=permissions,
     )
-    try:
-        data = _service(request).get_inventory_aggregation(company=company, item_code=item_code, warehouse=warehouse)
-    except ERPNextAdapterException as exc:
-        if _local_read_fallback_enabled(exc):
-            data = InventoryAggregationData(
-                company=company,
-                item_code=item_code,
-                warehouse=warehouse,
-                items=[],
-            )
-        else:
-            _handle_erpnext_error(
-                exc=exc,
-                permission_service=permission_service,
-                request=request,
-                current_user=current_user,
-                action=action,
-                resource_type="Bin",
-                resource_no=item_code,
-            )
+    if get_permission_source() == "fastapi":
+        data = _build_local_inventory_aggregation(
+            session=session,
+            company=company,
+            item_code=item_code,
+            warehouse=warehouse,
+        )
+    else:
+        try:
+            data = _service(request).get_inventory_aggregation(company=company, item_code=item_code, warehouse=warehouse)
+        except ERPNextAdapterException as exc:
+            if _local_read_fallback_enabled(exc):
+                data = InventoryAggregationData(
+                    company=company,
+                    item_code=item_code,
+                    warehouse=warehouse,
+                    items=[],
+                )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="Bin",
+                    resource_no=item_code,
+                )
     data.items = [item for item in data.items if _scope_allowed(item, permissions)]
     return _ok(data)
 

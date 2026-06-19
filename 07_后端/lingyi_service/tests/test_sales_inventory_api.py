@@ -349,6 +349,63 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         }
         self.assertEqual(summary_rows, {"WH-A": Decimal("4.000000"), "WH-B": Decimal("2.000000")})
 
+    def test_stock_reads_fastapi_use_local_source_without_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "sales.inventory.user": {
+                        "companies": ["COMP-A"],
+                        "item_codes": ["ITEM-A"],
+                        "warehouses": ["WH-A"],
+                    }
+                }
+            }
+        )
+        self._seed_stock_entry(
+            qty="10",
+            purpose="Material Receipt",
+            event_key="EVT-SALES-INV-FASTAPI-STOCK-001",
+            created_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        )
+        self._seed_stock_entry(
+            qty="3",
+            purpose="Material Issue",
+            event_key="EVT-SALES-INV-FASTAPI-STOCK-002",
+            created_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+        )
+        with patch.object(ERPNextSalesInventoryAdapter, "list_stock_ledger") as mocked_ledger, patch.object(
+            ERPNextSalesInventoryAdapter,
+            "get_stock_summary",
+        ) as mocked_summary, patch.object(
+            ERPNextSalesInventoryAdapter,
+            "_list_resource",
+        ) as mocked_bin:
+            ledger = self.client.get(
+                "/api/sales-inventory/items/ITEM-A/stock-ledger?company=COMP-A&page=1&page_size=20",
+                headers=self._headers(),
+            )
+            summary = self.client.get(
+                "/api/sales-inventory/items/ITEM-A/stock-summary?company=COMP-A",
+                headers=self._headers(),
+            )
+            aggregation = self.client.get(
+                "/api/sales-inventory/aggregation?company=COMP-A&item_code=ITEM-A",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        self.assertEqual(summary.status_code, 200, summary.text)
+        self.assertEqual(aggregation.status_code, 200, aggregation.text)
+        self.assertEqual(ledger.json()["data"]["total"], 2)
+        self.assertEqual(Decimal(str(summary.json()["data"]["items"][0]["balance_qty"])), Decimal("7.000000"))
+        aggregation_payload = aggregation.json()["data"]
+        self.assertEqual(aggregation_payload["items"][0]["warehouse"], "WH-A")
+        self.assertEqual(Decimal(str(aggregation_payload["items"][0]["actual_qty"])), Decimal("7.000000"))
+        mocked_ledger.assert_not_called()
+        mocked_summary.assert_not_called()
+        mocked_bin.assert_not_called()
+
     def test_detail_denied_before_erpnext_read_to_hide_existence(self) -> None:
         with patch.object(ERPNextSalesInventoryAdapter, "get_sales_order") as mocked_detail:
             response = self.client.get(
@@ -566,23 +623,26 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
                 }
             }
         )
-        with patch.object(
-            ERPNextSalesInventoryAdapter,
-            "list_warehouses",
-            return_value=(
-                [
-                    {"name": "WH-A", "company": "COMP-A", "warehouse_name": "仓A", "disabled": 0},
-                    {"name": "WH-B", "company": "COMP-A", "warehouse_name": "仓B", "disabled": 0},
-                ],
-                2,
-            ),
-        ):
+        self._seed_stock_entry(
+            company="COMP-A",
+            item_code="ITEM-A",
+            warehouse="WH-A",
+            event_key="EVT-SALES-INV-FASTAPI-WH-A",
+        )
+        self._seed_stock_entry(
+            company="COMP-A",
+            item_code="ITEM-B",
+            warehouse="WH-B",
+            event_key="EVT-SALES-INV-FASTAPI-WH-B",
+        )
+        with patch.object(ERPNextSalesInventoryAdapter, "list_warehouses") as mocked_list:
             response = self.client.get("/api/sales-inventory/warehouses?company=COMP-A", headers=self._headers())
 
         self.assertEqual(response.status_code, 200, response.text)
         payload = response.json()["data"]
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["items"][0]["name"], "WH-A")
+        mocked_list.assert_not_called()
 
     def test_aggregation_filter_by_allowed_warehouses(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
