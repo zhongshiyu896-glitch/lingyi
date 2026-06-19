@@ -41,6 +41,7 @@ from app.core.permissions import PRODUCTION_FOLLOWUP_TEMPLATE_WRITE
 from app.core.permissions import PRODUCTION_MATERIAL_CHECK
 from app.core.permissions import PRODUCTION_MATERIAL_ISSUE
 from app.core.permissions import PRODUCTION_PLAN_CREATE
+from app.core.permissions import PRODUCTION_QUOTE_WRITE
 from app.core.permissions import PRODUCTION_READ
 from app.core.permissions import PRODUCTION_TRACKING_EXCEPTION
 from app.core.permissions import PRODUCTION_WORK_ORDER_CREATE
@@ -72,7 +73,9 @@ from app.schemas.production import ProductionPlanCreateRequest
 from app.schemas.production import ProductionPlanDetailData
 from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionQuoteCreateRequest
 from app.schemas.production import ProductionQuoteListData
+from app.schemas.production import ProductionQuoteListItem
 from app.schemas.production import ProductionQuoteQuery
 from app.schemas.production import ProductionReportSuiteData
 from app.schemas.production import ProductionReportSuiteQuery
@@ -882,6 +885,82 @@ def list_production_quotes(
         return _app_err(exc)
     except Exception as exc:
         return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.post("/quotes", response_model=ApiResponse[ProductionQuoteListItem])
+def create_production_quote(
+    payload: ProductionQuoteCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_QUOTE_WRITE
+    audit_action = "create"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    resource_no = payload.quote_no or str(payload.plan_id)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_quote",
+            resource_id=None,
+        )
+        data = _service(session=session, request=request).create_quote(payload=payload, operator=current_user.username)
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_quote",
+            resource_id=int(data.quote_id or 0),
+            resource_no=str(data.quote_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=None,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"plan_id": payload.plan_id, "quote_no": payload.quote_no},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=None,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"plan_id": payload.plan_id, "quote_no": payload.quote_no},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
 
 
 @router.get("/followup-templates", response_model=ApiResponse[ProductionFollowupTemplateListData])

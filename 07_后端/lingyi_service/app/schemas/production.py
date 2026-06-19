@@ -380,9 +380,26 @@ class ProductionQuoteQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
+class ProductionQuoteCreateRequest(BaseModel):
+    """Create a saved production quote from an existing production plan."""
+
+    plan_id: int = Field(..., ge=1)
+    company: Optional[str] = Field(default=None, max_length=140)
+    quote_no: Optional[str] = Field(default=None, max_length=140)
+    quote_qty: Optional[Decimal] = Field(default=None, gt=0)
+    labor_cost: Decimal = Field(default=Decimal("0"), ge=0)
+    management_fee: Decimal = Field(default=Decimal("0"), ge=0)
+    valid_until: Optional[date] = None
+    status: Optional[str] = Field(default="draft", max_length=32)
+    remark: Optional[str] = Field(default=None, max_length=500)
+    operation: Optional[str] = Field(default="create", max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
 class ProductionQuoteListItem(BaseModel):
     """Production quote list row."""
 
+    quote_id: Optional[int] = None
     plan_id: int
     quote_no: str
     plan_no: str
@@ -392,12 +409,18 @@ class ProductionQuoteListItem(BaseModel):
     customer: Optional[str] = None
     item_code: str
     quote_qty: Decimal
+    material_cost: Decimal = Decimal("0")
+    labor_cost: Decimal = Decimal("0")
+    management_fee: Decimal = Decimal("0")
     quote_unit_price: Decimal
     quote_amount: Decimal
+    gross_margin: Decimal = Decimal("0")
     currency: str = "CNY"
     quoted_at: Optional[datetime] = None
     delivery_date: Optional[date] = None
+    valid_until: Optional[date] = None
     status: str
+    source: str = "derived"
 
 
 class ProductionQuoteListData(BaseModel):

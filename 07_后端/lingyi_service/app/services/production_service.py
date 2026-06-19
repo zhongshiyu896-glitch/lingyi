@@ -28,6 +28,8 @@ from app.core.error_codes import PRODUCTION_IDEMPOTENCY_KEY_REQUIRED
 from app.core.error_codes import PRODUCTION_MATERIAL_CHECK_STATUS_INVALID
 from app.core.error_codes import PRODUCTION_MATERIAL_ISSUE_NOT_READY
 from app.core.error_codes import PRODUCTION_PLANNED_QTY_EXCEEDED
+from app.core.error_codes import PRODUCTION_QUOTE_CONFLICT
+from app.core.error_codes import PRODUCTION_QUOTE_NOT_FOUND
 from app.core.error_codes import PRODUCTION_SO_CLOSED_OR_CANCELLED
 from app.core.error_codes import PRODUCTION_SO_ITEM_AMBIGUOUS
 from app.core.error_codes import PRODUCTION_SO_ITEM_NOT_FOUND
@@ -54,6 +56,8 @@ from app.models.production import LyProductionFollowupTemplateOperation
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
+from app.models.production import LyProductionQuote
+from app.models.production import LyProductionQuoteOperation
 from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionTrackingException
 from app.models.production import LyProductionTrackingReconcile
@@ -101,6 +105,7 @@ from app.schemas.production import ProductionPlanMaterialSnapshotItem
 from app.schemas.production import ProductionPlanQuery
 from app.schemas.production import ProductionQuoteListData
 from app.schemas.production import ProductionQuoteListItem
+from app.schemas.production import ProductionQuoteCreateRequest
 from app.schemas.production import ProductionQuoteQuery
 from app.schemas.production import ProductionReportSuiteCompositionItem
 from app.schemas.production import ProductionReportSuiteData
@@ -1188,8 +1193,97 @@ class ProductionService:
         readable_item_codes: set[str] | None = None,
         readable_companies: set[str] | None = None,
     ) -> ProductionQuoteListData:
+        saved_rows = self._list_saved_quotes(
+            query=query,
+            readable_item_codes=readable_item_codes,
+            readable_companies=readable_companies,
+        )
+        saved_plan_ids = {int(row.plan_id) for row in saved_rows}
+        derived_rows = self._list_derived_quotes(
+            query=query,
+            readable_item_codes=readable_item_codes,
+            readable_companies=readable_companies,
+            exclude_plan_ids=saved_plan_ids,
+        )
+        rows = saved_rows + derived_rows
+        rows.sort(key=lambda item: item.quoted_at.isoformat() if item.quoted_at else "", reverse=True)
+        total = len(rows)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return ProductionQuoteListData(
+            items=rows[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def _list_saved_quotes(
+        self,
+        *,
+        query: ProductionQuoteQuery,
+        readable_item_codes: set[str] | None,
+        readable_companies: set[str] | None,
+    ) -> list[ProductionQuoteListItem]:
+        normalized_quote_no = (query.quote_no or "").strip().lower()
+        normalized_keyword = (query.keyword or "").strip().lower()
+        try:
+            sql = self.session.query(LyProductionQuote, LyProductionPlan).join(
+                LyProductionPlan,
+                LyProductionPlan.id == LyProductionQuote.plan_id,
+            )
+            if query.sales_order:
+                sql = sql.filter(LyProductionQuote.sales_order == query.sales_order)
+            if query.turnover_no:
+                sql = sql.filter(LyProductionQuote.sales_order_item.like(f"%{query.turnover_no.strip()}%"))
+            if query.item_code:
+                sql = sql.filter(LyProductionQuote.item_code == query.item_code)
+            if query.customer:
+                sql = sql.filter(LyProductionQuote.customer.like(f"%{query.customer.strip()}%"))
+            if query.status:
+                sql = sql.filter(LyProductionQuote.status == query.status)
+            if query.from_date:
+                sql = sql.filter(func.date(LyProductionQuote.created_at) >= query.from_date)
+            if query.to_date:
+                sql = sql.filter(func.date(LyProductionQuote.created_at) <= query.to_date)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return []
+                sql = sql.filter(LyProductionQuote.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return []
+                sql = sql.filter(LyProductionQuote.company.in_(sorted(readable_companies)))
+            if normalized_quote_no:
+                sql = sql.filter(func.lower(LyProductionQuote.quote_no).like(f"%{normalized_quote_no}%"))
+            if normalized_keyword:
+                like_value = f"%{normalized_keyword}%"
+                sql = sql.filter(
+                    or_(
+                        func.lower(LyProductionQuote.quote_no).like(like_value),
+                        func.lower(LyProductionQuote.plan_no).like(like_value),
+                        func.lower(LyProductionQuote.sales_order).like(like_value),
+                        func.lower(LyProductionQuote.sales_order_item).like(like_value),
+                        func.lower(LyProductionQuote.item_code).like(like_value),
+                        func.lower(LyProductionQuote.customer).like(like_value),
+                    )
+                )
+            rows = sql.order_by(LyProductionQuote.created_at.desc(), LyProductionQuote.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        return [self._quote_item(row, plan=plan) for row, plan in rows]
+
+    def _list_derived_quotes(
+        self,
+        *,
+        query: ProductionQuoteQuery,
+        readable_item_codes: set[str] | None,
+        readable_companies: set[str] | None,
+        exclude_plan_ids: set[int],
+    ) -> list[ProductionQuoteListItem]:
         try:
             plan_sql = self.session.query(LyProductionPlan)
+            if exclude_plan_ids:
+                plan_sql = plan_sql.filter(~LyProductionPlan.id.in_(sorted(exclude_plan_ids)))
             if query.sales_order:
                 plan_sql = plan_sql.filter(LyProductionPlan.sales_order == query.sales_order)
             if query.keyword:
@@ -1299,6 +1393,7 @@ class ProductionService:
 
             rows.append(
                 ProductionQuoteListItem(
+                    quote_id=None,
                     plan_id=int(plan.id),
                     quote_no=quote_no,
                     plan_no=str(plan.plan_no),
@@ -1308,24 +1403,110 @@ class ProductionService:
                     customer=(str(plan.customer) if plan.customer else None),
                     item_code=str(plan.item_code),
                     quote_qty=quote_qty,
+                    material_cost=quote_material_cost,
+                    labor_cost=Decimal("0"),
+                    management_fee=Decimal("0"),
                     quote_unit_price=quote_unit_price,
                     quote_amount=quote_amount,
+                    gross_margin=Decimal("0"),
                     delivery_date=plan.planned_start_date,
                     quoted_at=quoted_at,
                     status=str(plan.status),
+                    source="derived",
                 )
             )
 
-        total = len(rows)
-        start = (query.page - 1) * query.page_size
-        end = start + query.page_size
-        paged_items = rows[start:end]
-        return ProductionQuoteListData(
-            items=paged_items,
-            total=total,
-            page=query.page,
-            page_size=query.page_size,
+        return rows
+
+    def create_quote(
+        self,
+        *,
+        payload: ProductionQuoteCreateRequest,
+        operator: str,
+    ) -> ProductionQuoteListItem:
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
         )
+        company_input = self._text(payload.company)
+        quote_no_input = self._text(payload.quote_no)
+        status = self._normalize_quote_status(payload.status)
+        quote_qty_input = Decimal(str(payload.quote_qty)) if payload.quote_qty is not None else None
+        labor_cost = self._decimal_nonnegative(payload.labor_cost, field_name="labor_cost")
+        management_fee = self._decimal_nonnegative(payload.management_fee, field_name="management_fee")
+        remark = self._text(payload.remark) or ""
+
+        plan = self._get_plan_for_quote(plan_id=payload.plan_id, company=company_input)
+        company = str(plan.company)
+        quote_qty = quote_qty_input if quote_qty_input is not None else Decimal(str(plan.planned_qty or 0))
+        if quote_qty <= 0:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="quote_qty 必须大于 0")
+
+        request_hash = self._build_request_hash(
+            {
+                "operation": "create",
+                "company": company,
+                "plan_id": int(plan.id),
+                "quote_no": quote_no_input,
+                "quote_qty": quote_qty,
+                "labor_cost": labor_cost,
+                "management_fee": management_fee,
+                "valid_until": payload.valid_until.isoformat() if payload.valid_until else None,
+                "status": status,
+                "remark": remark,
+            }
+        )
+        existing_operation = self._get_quote_operation(company=company, operation="create", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_quote_operation_same(existing_operation, request_hash=request_hash)
+            return self._quote_item_from_operation(existing_operation)
+
+        quote_no = quote_no_input or self._next_quote_no()
+        if self._get_quote_by_no(company=company, quote_no=quote_no) is not None:
+            raise BusinessException(code=PRODUCTION_QUOTE_CONFLICT, message=f"{quote_no} 已存在")
+
+        material_cost = self._calculate_quote_material_cost(plan=plan, quote_qty=quote_qty)
+        quote_amount = (material_cost + labor_cost + management_fee).quantize(Decimal("0.000001"))
+
+        try:
+            row = LyProductionQuote(
+                quote_no=quote_no,
+                company=company,
+                plan_id=int(plan.id),
+                plan_no=str(plan.plan_no),
+                sales_order=str(plan.sales_order),
+                sales_order_item=str(plan.sales_order_item),
+                customer=str(plan.customer) if plan.customer else None,
+                item_code=str(plan.item_code),
+                quote_qty=quote_qty,
+                material_cost=material_cost,
+                labor_cost=labor_cost,
+                management_fee=management_fee,
+                quote_amount=quote_amount,
+                currency="CNY",
+                valid_until=payload.valid_until,
+                status=status,
+                remark=remark,
+                created_by=operator,
+                updated_by=operator,
+            )
+            self.session.add(row)
+            self.session.flush()
+            item = self._quote_item(row, plan=plan)
+            self._insert_quote_operation(
+                quote_id=int(row.id),
+                company=company,
+                operation="create",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return item
 
     def list_followup_templates(
         self,
@@ -4899,6 +5080,184 @@ class ProductionService:
         if hasattr(ProductionTrackingExceptionItem, "model_validate"):
             return ProductionTrackingExceptionItem.model_validate(payload)
         return ProductionTrackingExceptionItem.parse_obj(payload)
+
+    def _calculate_quote_material_cost(self, *, plan: LyProductionPlan, quote_qty: Decimal) -> Decimal:
+        try:
+            snapshots = (
+                self.session.query(LyProductionPlanMaterial)
+                .filter(LyProductionPlanMaterial.plan_id == int(plan.id))
+                .order_by(LyProductionPlanMaterial.id.asc())
+                .all()
+            )
+            bom_rows = (
+                self.session.query(LyApparelBomItem)
+                .filter(LyApparelBomItem.bom_id == int(plan.bom_id))
+                .order_by(LyApparelBomItem.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        bom_item_by_id = {int(row.id): row for row in bom_rows}
+        return self._quote_material_cost_from_rows(
+            plan=plan,
+            quote_qty=quote_qty,
+            snapshot_items=snapshots,
+            bom_items=bom_rows,
+            bom_item_by_id=bom_item_by_id,
+        )
+
+    def _quote_material_cost_from_rows(
+        self,
+        *,
+        plan: LyProductionPlan,
+        quote_qty: Decimal,
+        snapshot_items: list[LyProductionPlanMaterial],
+        bom_items: list[LyApparelBomItem],
+        bom_item_by_id: dict[int, LyApparelBomItem],
+    ) -> Decimal:
+        material_cost = Decimal("0")
+        planned_qty = Decimal(str(plan.planned_qty or 0))
+        if snapshot_items:
+            ratio = Decimal("1")
+            if planned_qty > 0:
+                ratio = (quote_qty / planned_qty).quantize(Decimal("0.000001"))
+            for snapshot in snapshot_items:
+                bom_item = bom_item_by_id.get(int(snapshot.bom_item_id)) if snapshot.bom_item_id is not None else None
+                unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+                required_qty = (Decimal(str(snapshot.required_qty or 0)) * ratio).quantize(Decimal("0.000001"))
+                material_cost += required_qty * unit_price
+            return material_cost.quantize(Decimal("0.000001"))
+
+        for bom_item in bom_items:
+            qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+            loss_rate = Decimal(str(bom_item.loss_rate or 0))
+            unit_price = self._extract_unit_price_from_remark(bom_item.remark)
+            required_qty = (quote_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+            material_cost += required_qty * unit_price
+        return material_cost.quantize(Decimal("0.000001"))
+
+    def _quote_item(self, row: LyProductionQuote, *, plan: LyProductionPlan | None = None) -> ProductionQuoteListItem:
+        quote_qty = Decimal(str(row.quote_qty or 0))
+        quote_amount = Decimal(str(row.quote_amount or 0))
+        if quote_qty > 0:
+            quote_unit_price = (quote_amount / quote_qty).quantize(Decimal("0.000001"))
+        else:
+            quote_unit_price = Decimal("0")
+        return ProductionQuoteListItem(
+            quote_id=int(row.id),
+            plan_id=int(row.plan_id),
+            quote_no=str(row.quote_no),
+            plan_no=str(row.plan_no),
+            company=str(row.company),
+            sales_order=str(row.sales_order),
+            sales_order_item=str(row.sales_order_item),
+            customer=str(row.customer) if row.customer else None,
+            item_code=str(row.item_code),
+            quote_qty=quote_qty,
+            material_cost=Decimal(str(row.material_cost or 0)),
+            labor_cost=Decimal(str(row.labor_cost or 0)),
+            management_fee=Decimal(str(row.management_fee or 0)),
+            quote_unit_price=quote_unit_price,
+            quote_amount=quote_amount,
+            gross_margin=Decimal("0"),
+            currency=str(row.currency or "CNY"),
+            quoted_at=row.created_at,
+            delivery_date=plan.planned_start_date if plan is not None else None,
+            valid_until=row.valid_until,
+            status=str(row.status),
+            source="saved",
+        )
+
+    def _quote_item_from_operation(self, row: LyProductionQuoteOperation) -> ProductionQuoteListItem:
+        payload = row.response_json or {}
+        if hasattr(ProductionQuoteListItem, "model_validate"):
+            return ProductionQuoteListItem.model_validate(payload)
+        return ProductionQuoteListItem.parse_obj(payload)
+
+    def _get_plan_for_quote(self, *, plan_id: int, company: str | None) -> LyProductionPlan:
+        try:
+            sql = self.session.query(LyProductionPlan).filter(LyProductionPlan.id == int(plan_id))
+            if company:
+                sql = sql.filter(LyProductionPlan.company == company)
+            row = sql.first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=PRODUCTION_QUOTE_NOT_FOUND, message="生产计划不存在，不能创建报价")
+        return row
+
+    def _get_quote_by_no(self, *, company: str, quote_no: str) -> LyProductionQuote | None:
+        try:
+            return (
+                self.session.query(LyProductionQuote)
+                .filter(
+                    LyProductionQuote.company == company,
+                    LyProductionQuote.quote_no == quote_no,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    def _get_quote_operation(self, *, company: str, operation: str, idempotency_key: str) -> LyProductionQuoteOperation | None:
+        try:
+            return (
+                self.session.query(LyProductionQuoteOperation)
+                .filter(
+                    LyProductionQuoteOperation.company == company,
+                    LyProductionQuoteOperation.operation == operation,
+                    LyProductionQuoteOperation.idempotency_key == idempotency_key,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    @staticmethod
+    def _ensure_quote_operation_same(row: LyProductionQuoteOperation, *, request_hash: str) -> None:
+        if str(row.request_hash) != request_hash:
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突，且请求内容不一致")
+
+    def _insert_quote_operation(
+        self,
+        *,
+        quote_id: int,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+        request_hash: str,
+        response: ProductionQuoteListItem,
+        operator: str,
+    ) -> None:
+        self.session.add(
+            LyProductionQuoteOperation(
+                quote_id=quote_id,
+                company=company,
+                operation=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response_json=response.model_dump(mode="json"),
+                created_by=operator,
+            )
+        )
+
+    @staticmethod
+    def _normalize_quote_status(value: str | None) -> str:
+        status = (value or "draft").strip().lower()
+        if status not in {"draft", "pricing", "quoted", "converted", "void"}:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="报价状态非法")
+        return status
+
+    @staticmethod
+    def _decimal_nonnegative(value: Decimal, *, field_name: str) -> Decimal:
+        amount = Decimal(str(value or 0))
+        if amount < 0:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message=f"{field_name} 不能小于 0")
+        return amount.quantize(Decimal("0.000001"))
+
+    @staticmethod
+    def _next_quote_no() -> str:
+        return f"QT-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
 
     def _followup_template_item(self, row: LyProductionFollowupTemplate) -> ProductionFollowupTemplateListItem:
         return ProductionFollowupTemplateListItem(

@@ -4,6 +4,8 @@ from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
+from app.models.production import LyProductionQuote
+from app.models.production import LyProductionQuoteOperation
 from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionTrackingException
 from app.models.production import LyProductionTrackingReconcile
@@ -28,6 +30,8 @@ __all__ = [
     "LyProductionPlan",
     "LyProductionPlanMaterial",
     "LyProductionPlanOperation",
+    "LyProductionQuote",
+    "LyProductionQuoteOperation",
     "LyProductionWorkOrderLink",
     "LyProductionWorkOrderOutbox",
     "LyProductionJobCardLink",

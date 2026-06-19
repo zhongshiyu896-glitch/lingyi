@@ -515,9 +515,12 @@
       "api_path": "/api/production/quotes",
       "backend_status": "real_backend_route",
       "backend_class": "A",
-      "contract_schemas": [],
+      "contract_schemas": [
+        "ProductionQuoteListItem",
+        "ProductionQuoteCreateRequest"
+      ],
       "field_gaps": [
-        "ProductQuote: 契约无 ProductQuote schema；api模式只读绑定 ProductionQuoteListData，写操作待B期"
+        "ProductQuote: api模式支持从已有生产计划新建报价真落库，面辅料成本按生产计划物料快照或款BOM计算；转订单/作废/复制待后续闭环"
       ],
       "priority": "P1_first_readonly_connect"
     },

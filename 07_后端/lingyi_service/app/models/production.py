@@ -310,6 +310,72 @@ class LyProductionFollowupTemplateOperation(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class LyProductionQuote(Base):
+    """FastAPI-native production quote saved from the existing quote page."""
+
+    __tablename__ = "ly_production_quote"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_quote"),
+        Index("uk_ly_production_quote_no", "company", "quote_no", unique=True),
+        Index("idx_ly_production_quote_plan", "plan_id", "status"),
+        Index("idx_ly_production_quote_company_status", "company", "status"),
+        Index("idx_ly_production_quote_item", "company", "item_code"),
+        CheckConstraint("quote_qty >= 0", name="ck_ly_production_quote_qty_nonnegative"),
+        CheckConstraint("material_cost >= 0", name="ck_ly_production_quote_material_nonnegative"),
+        CheckConstraint("labor_cost >= 0", name="ck_ly_production_quote_labor_nonnegative"),
+        CheckConstraint("management_fee >= 0", name="ck_ly_production_quote_management_nonnegative"),
+        CheckConstraint("quote_amount >= 0", name="ck_ly_production_quote_amount_nonnegative"),
+        CheckConstraint("status IN ('draft','pricing','quoted','converted','void')", name="ck_ly_production_quote_status"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生报价单"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    quote_no = Column(String(140), nullable=False)
+    company = Column(String(140), nullable=False)
+    plan_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_plan.id"), nullable=False)
+    plan_no = Column(String(64), nullable=False)
+    sales_order = Column(String(140), nullable=False)
+    sales_order_item = Column(String(140), nullable=False)
+    customer = Column(String(140), nullable=True)
+    item_code = Column(String(140), nullable=False)
+    quote_qty = Column(Numeric(18, 6), nullable=False)
+    material_cost = Column(Numeric(18, 6), nullable=False, server_default="0")
+    labor_cost = Column(Numeric(18, 6), nullable=False, server_default="0")
+    management_fee = Column(Numeric(18, 6), nullable=False, server_default="0")
+    quote_amount = Column(Numeric(18, 6), nullable=False, server_default="0")
+    currency = Column(String(16), nullable=False, server_default="CNY")
+    valid_until = Column(Date, nullable=True)
+    status = Column(String(32), nullable=False, server_default="draft")
+    remark = Column(String(500), nullable=False, server_default="")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class LyProductionQuoteOperation(Base):
+    """Idempotency ledger for production quote writes."""
+
+    __tablename__ = "ly_production_quote_operation"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_quote_operation"),
+        Index("uk_ly_production_quote_operation_idem", "company", "operation", "idempotency_key", unique=True),
+        Index("idx_ly_production_quote_operation_quote", "quote_id", "operation"),
+        CheckConstraint("operation IN ('create')", name="ck_ly_production_quote_operation"),
+        {"schema": "ly_schema", "comment": "报价单写操作幂等账本"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    quote_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_quote.id"), nullable=True)
+    company = Column(String(140), nullable=False)
+    operation = Column(String(64), nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    response_json = Column(JSONType, nullable=False, default=dict)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LyProductionTrackingReconcileBatch(Base):
     """样板单到大货订单对账生成批次。"""
 

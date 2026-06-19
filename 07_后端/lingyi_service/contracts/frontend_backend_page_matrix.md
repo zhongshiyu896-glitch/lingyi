@@ -35,7 +35,7 @@
 | P4_hold | 设计打样 | 样板单 | `/sample/sampleListV2` | `/api/sample/orders` | real_backend_route | SampleOrder: SampleOrder FastAPI 已接入 /api/sample/orders；mock 模式保留旧占位，API 模式封样后转大货会生成 A4 销售订单草稿。 |
 | P1_first_readonly_connect | 设计打样 | 跟进模板 | `/sample/trackingTemplate` | `/api/sample/tracking-templates` | real_backend_route | SampleTrackingTemplate: SampleTrackingTemplate schema 已由 FastAPI /api/sample/tracking-templates 承接；mock 模式保留 owner gap 占位。 |
 | P4_hold | 大货管理 | 大货看板 | `/production/home` | `/api/dashboard/overview?company=<company>` | real_backend_route | ProductionDashboard: A期已用 DashboardOverviewData 接入 /api/dashboard/overview；专属 ProductionDashboard schema 与节点级业务钻取待B期补齐。 |
-| P1_first_readonly_connect | 大货管理 | 报价单 | `/production/productQuote` | `/api/production/quotes` | real_backend_route | ProductQuote: 契约无 ProductQuote schema；api模式只读绑定 ProductionQuoteListData，写操作待B期 |
+| P1_first_readonly_connect | 大货管理 | 报价单 | `/production/productQuote` | `/api/production/quotes` | real_backend_route | ProductQuote: api模式支持从已有生产计划新建报价真落库，面辅料成本按生产计划物料快照或款BOM计算；转订单/作废/复制待后续闭环 |
 | P1_first_readonly_connect | 大货管理 | 订单 | `/production/productOrder` | `/api/sales-inventory/sales-orders` | real_backend_route | SalesOrderListItem, SalesOrderDraftCreateRequest, ProductionMaterialCheckRequest |
 | P1_first_readonly_connect | 大货管理 | 大货跟进 | `/production/orderTrackingV2` | `/api/production/plans` | real_backend_route | ProductionTracking: 跟进节点/异常/进度字段缺口；列表降级绑定 ProductionPlanListItem |
 | P1_first_readonly_connect | 大货管理 | 跟进模板 | `/production/factoryPacking/pending` | `/api/production/followup-templates` | real_backend_route | ProductionFollowupTemplateListItem/Create/Update/Copy/Action；api模式已接 FastAPI 跟进模板增改复制停用真落库 |
