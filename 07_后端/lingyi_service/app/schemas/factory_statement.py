@@ -595,6 +595,17 @@ class FactoryStatementPaymentCreateRequest(BaseModel):
     operation: str | None = Field(default="create_payment_entry", max_length=64)
 
 
+class FactoryStatementPaymentCancelRequest(BaseModel):
+    """Cancel a FastAPI-native factory statement payment entry."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    statement_no: str | None = Field(default=None, max_length=140)
+    reason: str | None = Field(default=None, max_length=500)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str | None = Field(default=None, max_length=64)
+    operation: str | None = Field(default="cancel_payment_entry", max_length=64)
+
+
 class FactoryStatementPaymentData(BaseModel):
     """FastAPI-native factory statement payment response."""
 

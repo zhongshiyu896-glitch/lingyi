@@ -71,6 +71,7 @@ from app.core.permissions import FACTORY_STATEMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_READ
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
+from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CREATE
 from app.core.permissions import MASTER_DATA_MANAGE
 from app.core.permissions import MASTER_DATA_READ
@@ -2436,6 +2437,8 @@ class PermissionService:
             base["factory_statement_payable_draft_worker"] = FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER in actions
             base["payment_create"] = FACTORY_STATEMENT_PAYMENT_CREATE in actions
             base["factory_statement_payment_create"] = FACTORY_STATEMENT_PAYMENT_CREATE in actions
+            base["payment_cancel"] = FACTORY_STATEMENT_PAYMENT_CANCEL in actions
+            base["factory_statement_payment_cancel"] = FACTORY_STATEMENT_PAYMENT_CANCEL in actions
             return base
         if module == "sales_inventory":
             base["read"] = SALES_INVENTORY_READ in actions

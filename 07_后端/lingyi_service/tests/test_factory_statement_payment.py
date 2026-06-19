@@ -7,6 +7,7 @@ import unittest
 
 from app.models.audit import LyOperationAuditLog
 from app.models.factory_statement import LyFactoryStatementPayment
+from app.models.factory_statement import LyFactoryStatementPaymentOperation
 from tests.test_factory_statement_api import FactoryStatementApiBase
 
 
@@ -36,6 +37,24 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
                 "source_ref": cls._scoped_value(source_ref),
                 "idempotency_key": cls._scoped_value(idempotency_key),
                 "operation": "create_payment_entry",
+            }
+        )
+        return payload
+
+    @classmethod
+    def _payment_cancel_payload(
+        cls,
+        statement_data: dict[str, object],
+        *,
+        idempotency_key: str,
+        reason: str = "cancel test payment",
+    ) -> dict[str, object]:
+        payload = cls._statement_chain_payload(statement_data)
+        payload.update(
+            {
+                "idempotency_key": cls._scoped_value(idempotency_key),
+                "reason": reason,
+                "operation": "cancel_payment_entry",
             }
         )
         return payload
@@ -187,6 +206,126 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         )
         self.assertEqual(blocked.status_code, 409)
         self.assertEqual(blocked.json()["code"], "FACTORY_STATEMENT_STATUS_INVALID")
+
+    def test_payment_cancel_reopens_payable_and_is_idempotent(self) -> None:
+        statement_data = self._create_confirmed_statement()
+        statement_id = int(statement_data["statement_id"])
+        created = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments",
+            headers=self._headers(),
+            json=self._payment_payload(
+                statement_data,
+                paid_amount=1200,
+                payment_entry="FSP-B6-CANCEL",
+                source_ref="SRC-B6-FSP-CANCEL",
+                idempotency_key="idem-b6-fsp-cancel-create",
+                reference_no="BANK-B6-CANCEL",
+            ),
+        )
+        self.assertEqual(created.status_code, 201)
+        payment_id = int(created.json()["data"]["id"])
+        cancel_payload = self._payment_cancel_payload(
+            statement_data,
+            idempotency_key="idem-b6-fsp-cancel",
+            reason="operator voids duplicate bank entry",
+        )
+
+        cancelled = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments/{payment_id}/cancel",
+            headers=self._headers(),
+            json=cancel_payload,
+        )
+        replay = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments/{payment_id}/cancel",
+            headers=self._headers(),
+            json=cancel_payload,
+        )
+        mismatch_payload = dict(cancel_payload)
+        mismatch_payload["reason"] = "different reason"
+        conflict = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments/{payment_id}/cancel",
+            headers=self._headers(),
+            json=mismatch_payload,
+        )
+        statement_detail = self.client.get(
+            f"/api/factory-statements/{statement_id}",
+            headers=self._headers(),
+        )
+        statement_list = self.client.get(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            params={"company": "COMP-A", "supplier": "SUP-A"},
+        )
+        submitted_payments = self.client.get(
+            "/api/factory-statements/payments",
+            headers=self._headers(),
+            params={"statement_no": statement_data["statement_no"], "status": "submitted"},
+        )
+        cancelled_payments = self.client.get(
+            "/api/factory-statements/payments",
+            headers=self._headers(),
+            params={"statement_no": statement_data["statement_no"], "status": "cancelled"},
+        )
+
+        self.assertEqual(cancelled.status_code, 200)
+        self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancelled.json()["data"]["docstatus"], 2)
+        self.assertEqual(replay.status_code, 200)
+        self.assertEqual(replay.json()["data"]["id"], payment_id)
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "FACTORY_STATEMENT_PAYMENT_CONFLICT")
+        self.assertEqual(statement_detail.status_code, 200)
+        self.assertEqual(Decimal(str(statement_detail.json()["data"]["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(statement_detail.json()["data"]["outstanding_amount"])), Decimal("4700.000000"))
+        self.assertEqual(statement_detail.json()["data"]["payment_status"], "unpaid")
+        list_row = statement_list.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(list_row["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(list_row["outstanding_amount"])), Decimal("4700.000000"))
+        self.assertEqual(list_row["payment_status"], "unpaid")
+        self.assertEqual(submitted_payments.json()["data"]["total"], 0)
+        self.assertEqual(cancelled_payments.json()["data"]["total"], 1)
+
+        with self.SessionLocal() as session:
+            payment = session.query(LyFactoryStatementPayment).one()
+            self.assertEqual(payment.status, "cancelled")
+            self.assertEqual(payment.docstatus, 2)
+            self.assertEqual(session.query(LyFactoryStatementPaymentOperation).count(), 1)
+            audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
+            self.assertIn("factory_statement:payment_cancel", audit_actions)
+
+    def test_payment_cancel_requires_permission_and_does_not_mutate(self) -> None:
+        statement_data = self._create_confirmed_statement()
+        statement_id = int(statement_data["statement_id"])
+        created = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments",
+            headers=self._headers(),
+            json=self._payment_payload(
+                statement_data,
+                paid_amount=1200,
+                payment_entry="FSP-B6-CANCEL-PERM",
+                source_ref="SRC-B6-FSP-CANCEL-PERM",
+                idempotency_key="idem-b6-fsp-cancel-perm-create",
+                reference_no="BANK-B6-CANCEL-PERM",
+            ),
+        )
+        self.assertEqual(created.status_code, 201)
+        payment_id = int(created.json()["data"]["id"])
+
+        denied = self.client.post(
+            f"/api/factory-statements/{statement_id}/payments/{payment_id}/cancel",
+            headers=self._headers(role="Viewer"),
+            json=self._payment_cancel_payload(
+                statement_data,
+                idempotency_key="idem-b6-fsp-cancel-perm",
+            ),
+        )
+
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(denied.json()["code"], "FACTORY_STATEMENT_PERMISSION_DENIED")
+        with self.SessionLocal() as session:
+            payment = session.query(LyFactoryStatementPayment).one()
+            self.assertEqual(payment.status, "submitted")
+            self.assertEqual(session.query(LyFactoryStatementPaymentOperation).count(), 0)
 
 
 if __name__ == "__main__":

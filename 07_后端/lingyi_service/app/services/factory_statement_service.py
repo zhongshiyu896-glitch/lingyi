@@ -48,6 +48,7 @@ from app.models.factory_statement import LyFactoryStatementLog
 from app.models.factory_statement import LyFactoryStatementOperation
 from app.models.factory_statement import LyFactoryStatementPayableOutbox
 from app.models.factory_statement import LyFactoryStatementPayment
+from app.models.factory_statement import LyFactoryStatementPaymentOperation
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
 from app.schemas.factory_statement import FactoryStatementCancelData
@@ -92,6 +93,7 @@ from app.schemas.factory_statement import FactoryStatementLogData
 from app.schemas.factory_statement import FactoryStatementPayableDraftData
 from app.schemas.factory_statement import FactoryStatementPayableOutboxData
 from app.schemas.factory_statement import FactoryStatementPayableDraftRequest
+from app.schemas.factory_statement import FactoryStatementPaymentCancelRequest
 from app.schemas.factory_statement import FactoryStatementPaymentCreateRequest
 from app.schemas.factory_statement import FactoryStatementPaymentData
 from app.schemas.factory_statement import FactoryStatementPaymentListData
@@ -124,6 +126,7 @@ class FactoryStatementService:
     _OP_CANCEL = "cancel"
     _OP_PAYABLE_DRAFT_CREATE = "payable_draft_create"
     _OP_PAYMENT_CREATE = "create_payment_entry"
+    _OP_PAYMENT_CANCEL = "cancel_payment_entry"
     _LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 
     def __init__(self, session: Session):
@@ -3837,6 +3840,137 @@ class FactoryStatementService:
             raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
         return self._to_payment_data(row)
 
+    def cancel_payment_entry(
+        self,
+        *,
+        statement_id: int,
+        payment_id: int,
+        payload: FactoryStatementPaymentCancelRequest,
+        operator: str,
+        request_id: str,
+    ) -> FactoryStatementPaymentData:
+        """Cancel a submitted local payment entry and reopen statement payable balance."""
+        company = self._normalize_text(payload.company)
+        statement_no = self._normalize_text(payload.statement_no)
+        idempotency_key = self._normalize_text(payload.idempotency_key)
+        reason = self._normalize_text(payload.reason)
+        operation = self._normalize_text(payload.operation) or self._OP_PAYMENT_CANCEL
+
+        if not company:
+            raise BusinessException(code=FACTORY_STATEMENT_COMPANY_REQUIRED)
+        if not idempotency_key:
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="idempotency_key 不能为空")
+        if operation != self._OP_PAYMENT_CANCEL:
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="operation 非法")
+
+        try:
+            statement = (
+                self.session.query(LyFactoryStatement)
+                .filter(LyFactoryStatement.id == statement_id)
+                .with_for_update()
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+        if statement is None:
+            raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
+        if company != str(statement.company):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="company 与对账单不一致")
+        if statement_no is not None and statement_no != str(statement.statement_no):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="statement_no 与对账单不一致")
+
+        row = self._find_payment_by_id_for_update(
+            company=company,
+            statement_id=statement_id,
+            payment_id=payment_id,
+        )
+        if row is None:
+            raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
+
+        request_hash = self._build_payment_request_hash(
+            {
+                "company": company,
+                "statement_id": int(statement.id),
+                "statement_no": str(statement.statement_no),
+                "payment_id": int(row.id),
+                "payment_entry": str(row.payment_entry),
+                "operation": operation,
+                "reason": reason,
+            }
+        )
+
+        existing_operation = self._find_payment_operation_by_idempotency(
+            company=company,
+            operation_type=operation,
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash or "") != request_hash:
+                raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="幂等键冲突且请求内容不一致")
+            replay_payment = self._find_payment_by_id(
+                company=company,
+                statement_id=int(existing_operation.statement_id),
+                payment_id=int(existing_operation.payment_id),
+            )
+            if replay_payment is None:
+                raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
+            return self._to_payment_data(replay_payment)
+
+        if str(row.status) != "submitted":
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="付款已作废")
+
+        now = datetime.utcnow()
+        row.status = "cancelled"
+        row.docstatus = 2
+        row.updated_by = self._normalize_text(operator) or "system"
+        row.updated_at = now
+
+        payment_operation = LyFactoryStatementPaymentOperation(
+            company=company,
+            statement_id=int(statement.id),
+            payment_id=int(row.id),
+            operation_type=operation,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            result_status="cancelled",
+            result_user=self._normalize_text(operator) or "system",
+            result_at=now,
+            reason=reason,
+        )
+        self.session.add(payment_operation)
+        self.session.add(
+            LyFactoryStatementLog(
+                statement_id=int(statement.id),
+                company=str(statement.company),
+                supplier=str(statement.supplier),
+                from_status="submitted",
+                to_status="cancelled",
+                action="factory_statement:payment_cancel",
+                operator=self._normalize_text(operator) or "system",
+                request_id=self._normalize_text(request_id),
+                remark=f"payment:{row.payment_entry}",
+            )
+        )
+
+        replay_operation = self._flush_payment_operation_or_resolve_replay(
+            company=company,
+            operation_type=operation,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+        )
+        if replay_operation is not None:
+            replay_payment = self._find_payment_by_id(
+                company=company,
+                statement_id=int(replay_operation.statement_id),
+                payment_id=int(replay_operation.payment_id),
+            )
+            if replay_payment is None:
+                raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
+            return self._to_payment_data(replay_payment)
+
+        return self._to_payment_data(row)
+
     def list_payment_entries(
         self,
         *,
@@ -4186,6 +4320,67 @@ class FactoryStatementService:
         except SQLAlchemyError as exc:
             raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
 
+    def _find_payment_by_id(
+        self,
+        *,
+        company: str,
+        statement_id: int,
+        payment_id: int,
+    ) -> LyFactoryStatementPayment | None:
+        try:
+            return (
+                self.session.query(LyFactoryStatementPayment)
+                .filter(
+                    LyFactoryStatementPayment.company == company,
+                    LyFactoryStatementPayment.statement_id == int(statement_id),
+                    LyFactoryStatementPayment.id == int(payment_id),
+                )
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+    def _find_payment_by_id_for_update(
+        self,
+        *,
+        company: str,
+        statement_id: int,
+        payment_id: int,
+    ) -> LyFactoryStatementPayment | None:
+        try:
+            return (
+                self.session.query(LyFactoryStatementPayment)
+                .filter(
+                    LyFactoryStatementPayment.company == company,
+                    LyFactoryStatementPayment.statement_id == int(statement_id),
+                    LyFactoryStatementPayment.id == int(payment_id),
+                )
+                .with_for_update()
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+    def _find_payment_operation_by_idempotency(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str | None,
+    ) -> LyFactoryStatementPaymentOperation | None:
+        try:
+            return (
+                self.session.query(LyFactoryStatementPaymentOperation)
+                .filter(
+                    LyFactoryStatementPaymentOperation.company == company,
+                    LyFactoryStatementPaymentOperation.operation_type == operation_type,
+                    LyFactoryStatementPaymentOperation.idempotency_key == idempotency_key,
+                )
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
     def _query_payment_entries(
         self,
         *,
@@ -4358,6 +4553,35 @@ class FactoryStatementService:
                 raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
             if str(existing.request_hash or "") != request_hash:
                 raise BusinessException(code=FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT)
+            return existing
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
+
+    def _flush_payment_operation_or_resolve_replay(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str | None,
+        request_hash: str,
+    ) -> LyFactoryStatementPaymentOperation | None:
+        try:
+            self.session.flush()
+            return None
+        except IntegrityError as exc:
+            try:
+                self.session.rollback()
+            except SQLAlchemyError as rollback_exc:
+                raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from rollback_exc
+            existing = self._find_payment_operation_by_idempotency(
+                company=company,
+                operation_type=operation_type,
+                idempotency_key=idempotency_key,
+            )
+            if existing is None:
+                raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
+            if str(existing.request_hash or "") != request_hash:
+                raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="幂等键冲突且请求内容不一致")
             return existing
         except SQLAlchemyError as exc:
             raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc

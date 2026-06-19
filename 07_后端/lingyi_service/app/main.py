@@ -63,6 +63,7 @@ from app.core.permissions import FACTORY_STATEMENT_CONFIRM
 from app.core.permissions import FACTORY_STATEMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_READ
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
+from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
@@ -472,6 +473,13 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             return (
                 "factory_statement",
                 FACTORY_STATEMENT_PAYMENT_CREATE,
+                "FactoryStatementPayment",
+                statement_id,
+            )
+        if "/payments/" in path and path.endswith("/cancel") and method == "POST":
+            return (
+                "factory_statement",
+                FACTORY_STATEMENT_PAYMENT_CANCEL,
                 "FactoryStatementPayment",
                 statement_id,
             )

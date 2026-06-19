@@ -26,6 +26,7 @@ from app.models.subcontract import Base as SubcontractBase
 from app.models.factory_statement import LyFactoryStatementOperation
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
+from app.models.factory_statement import LyFactoryStatementPaymentOperation
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.factory_statement import get_db_session as factory_statement_db_dep
 
@@ -95,6 +96,7 @@ class FactoryStatementApiBase(unittest.TestCase):
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
 
         with self.SessionLocal() as session:
+            session.query(LyFactoryStatementPaymentOperation).delete()
             session.query(LyFactoryStatementPayment).delete()
             session.query(LyFactoryStatementPayableOutbox).delete()
             session.query(LyFactoryStatementOperation).delete()
