@@ -502,6 +502,29 @@ class MaterialPurchaseService:
             requirements=requirements,
             requested_supplier=requested_supplier,
         )
+        self._ensure_active_master_records(
+            company=company,
+            entity_type="supplier",
+            values=[supplier_name],
+            label="供应商",
+            match_name=True,
+        )
+        self._ensure_active_master_records(
+            company=company,
+            entity_type="material",
+            values=[str(requirement.material_item_code) for requirement in requirements],
+            label="物料",
+            match_name=False,
+        )
+        warehouses = [warehouse for requirement in requirements if (warehouse := self._optional_text(requirement.warehouse))]
+        if warehouses:
+            self._ensure_active_master_records(
+                company=company,
+                entity_type="warehouse",
+                values=warehouses,
+                label="仓库",
+                match_name=True,
+            )
         grouped = self._group_requirements_for_order(requirements=requirements, group_by_material=payload.group_by_material)
         total_qty = Decimal("0")
         total_amount = Decimal("0")

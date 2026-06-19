@@ -27,6 +27,8 @@ from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchasePayment
 from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -84,6 +86,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         BomBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
@@ -133,6 +136,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             session.query(LyMaterialPurchaseRequirement).delete()
             session.query(LyMaterialPurchaseOrderItem).delete()
             session.query(LyMaterialPurchaseOrder).delete()
+            session.query(LyMasterDataRecord).delete()
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionPlan).delete()
             session.query(LySampleIdempotency).delete()
@@ -164,6 +168,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             )
             session.add(style)
             session.flush()
+            self._seed_master_data(session=session)
             session.add(
                 LyApparelBom(
                     id=601,
@@ -204,6 +209,33 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             row = session.query(LyStyleMaster).filter_by(company=self.COMPANY, ys_style_no=self.STYLE).one()
             return int(row.id)
 
+    def _seed_master_data(self, *, session) -> None:
+        self._seed_master_data_record(session=session, entity_type="supplier", code="SUP-A6", name="SUP-A6")
+        self._seed_master_data_record(session=session, entity_type="material", code=self.MATERIAL, name="A6 棉布")
+        self._seed_master_data_record(session=session, entity_type="warehouse", code=self.WAREHOUSE, name=self.WAREHOUSE)
+
+    def _seed_master_data_record(
+        self,
+        *,
+        session,
+        entity_type: str,
+        code: str,
+        name: str | None = None,
+        status: str = "active",
+    ) -> None:
+        session.add(
+            LyMasterDataRecord(
+                entity_type=entity_type,
+                company=self.COMPANY,
+                code=code,
+                name=name or code,
+                status=status,
+                payload={},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
+
     def _sample_payload(self, *, sample_no: str, idempotency_key: str) -> dict[str, object]:
         return {
             "operation": "create",
@@ -234,8 +266,12 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         sales_order: str = "SO-A6-SEED",
         sales_order_item: str = "SO-A6-SEED-ITEM",
         supplier_name: str = "SUP-A6",
+        material_item_code: str | None = None,
+        warehouse: str | None = None,
         unit_price: str = "12.5",
     ) -> int:
+        material_code = material_item_code or self.MATERIAL
+        target_warehouse = warehouse or self.WAREHOUSE
         with self.SessionLocal() as session:
             row = LyMaterialPurchaseRequirement(
                 company=self.COMPANY,
@@ -248,10 +284,10 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 sales_order=sales_order,
                 sales_order_item=sales_order_item,
                 item_code=self.STYLE,
-                material_item_code=self.MATERIAL,
+                material_item_code=material_code,
                 material_name="A6 棉布",
                 supplier_name=supplier_name,
-                warehouse=self.WAREHOUSE,
+                warehouse=target_warehouse,
                 required_qty=Decimal(net_required_qty),
                 available_qty=Decimal("0"),
                 net_required_qty=Decimal(net_required_qty),
@@ -394,6 +430,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         requirement_ids: list[int],
         idempotency_key: str,
         purchase_no: str | None = None,
+        supplier_name: str | None = None,
     ) -> dict[str, object]:
         payload: dict[str, object] = {
             "operation": "create_order_from_requirements",
@@ -406,6 +443,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         }
         if purchase_no:
             payload["purchase_no"] = purchase_no
+        if supplier_name:
+            payload["supplier_name"] = supplier_name
         return payload
 
     def _cancel_order_payload(self, *, idempotency_key: str, reason: str = "测试取消采购单") -> dict[str, object]:
@@ -891,6 +930,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             order = session.query(LySampleOrder).filter_by(id=order_id).one()
+            self._seed_master_data_record(session=session, entity_type="material", code=sample_material, name="样板替代料")
             session.add(
                 LySampleMaterialBom(
                     id=701,
@@ -1018,6 +1058,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             requirement_ids=[int(requirement["id"])],
             idempotency_key="idem-a6-sample-edit-req-to-po",
             purchase_no="PO-A6-SAMPLE-EDIT",
+            supplier_name="SUP-A6",
         )
         create_po = self.client.post(
             "/api/material-purchase/orders/from-requirements",
@@ -1460,6 +1501,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
 
     def test_material_check_filters_bom_rows_by_sales_order_color_size(self) -> None:
         with self.SessionLocal() as session:
+            self._seed_master_data_record(session=session, entity_type="material", code="FAB-A6-WHT", name="A6 白色配布")
+            self._seed_master_data_record(session=session, entity_type="material", code="FAB-A6-BLK", name="A6 黑色配布")
             session.add_all(
                 [
                     LyApparelBomItem(
@@ -2012,6 +2055,99 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(len(requirement_rows), 2)
             self.assertTrue(all(str(row.status) == "pending" for row in requirement_rows))
             self.assertTrue(all(row.purchase_order_id is None for row in requirement_rows))
+
+    def test_from_requirements_rejects_inactive_supplier_master(self) -> None:
+        supplier_name = "SUP-A6-OFF"
+        with self.SessionLocal() as session:
+            self._seed_master_data_record(
+                session=session,
+                entity_type="supplier",
+                code=supplier_name,
+                name=supplier_name,
+                status="inactive",
+            )
+            session.commit()
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-SUP-OFF", supplier_name=supplier_name)
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-inactive-supplier"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-inactive-supplier",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("供应商不存在或已停用", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            requirement = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertEqual(str(requirement.status), "pending")
+            self.assertIsNone(requirement.purchase_order_id)
+
+    def test_from_requirements_rejects_inactive_material_master(self) -> None:
+        material_code = "FAB-A6-OFF"
+        with self.SessionLocal() as session:
+            self._seed_master_data_record(
+                session=session,
+                entity_type="material",
+                code=material_code,
+                name="停用布料",
+                status="inactive",
+            )
+            session.commit()
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-MAT-OFF", material_item_code=material_code)
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-inactive-material"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-inactive-material",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("物料不存在或已停用", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            requirement = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertEqual(str(requirement.status), "pending")
+            self.assertIsNone(requirement.purchase_order_id)
+
+    def test_from_requirements_rejects_inactive_warehouse_master(self) -> None:
+        warehouse = "WH-A6-OFF"
+        with self.SessionLocal() as session:
+            self._seed_master_data_record(
+                session=session,
+                entity_type="warehouse",
+                code=warehouse,
+                name=warehouse,
+                status="inactive",
+            )
+            session.commit()
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-WH-OFF", warehouse=warehouse)
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-inactive-warehouse"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-inactive-warehouse",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("仓库不存在或已停用", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            requirement = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertEqual(str(requirement.status), "pending")
+            self.assertIsNone(requirement.purchase_order_id)
 
     def test_from_requirements_accepts_camel_group_by_material_false(self) -> None:
         requirement_a = self._seed_requirement(
