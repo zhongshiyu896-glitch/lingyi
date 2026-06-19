@@ -1423,6 +1423,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(str(order_row.status), "received")
             self.assertEqual(Decimal(str(order_line.received_qty)), Decimal("54.000000"))
             self.assertEqual(str(invoice_row.status), "paid")
+            self.assertEqual(int(invoice_row.purchase_order_id), int(order_row.id))
             self.assertEqual(str(invoice_row.purchase_no), purchase_no)
             self.assertEqual(Decimal(str(invoice_row.outstanding_amount)), Decimal("0.000000"))
             self.assertEqual(str(payment_row.purchase_no), purchase_no)
