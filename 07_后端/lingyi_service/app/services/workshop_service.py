@@ -55,6 +55,8 @@ from app.models.workshop import YsWorkshopDailyWage
 from app.models.workshop import YsWorkshopJobCardSyncLog
 from app.models.workshop import YsWorkshopJobCardSyncOutbox
 from app.models.workshop import YsWorkshopTicket
+from app.models.production import LyProductionJobCardLink
+from app.models.production import LyProductionPlan
 from app.schemas.workshop import OperationWageRateCreateData
 from app.schemas.workshop import OperationWageRateCreateRequest
 from app.schemas.workshop import OperationWageRateDeactivateData
@@ -102,6 +104,7 @@ class WorkshopResourceContext:
     work_order: str | None
     item_code: str
     company: str
+    source: str = "external"
 
 
 @dataclass(frozen=True)
@@ -182,7 +185,20 @@ class WorkshopService:
                 work_order=f"WO-{local_scenario_tag}",
                 item_code=(request_item_code or WORKSHOP_LOCAL_DEFAULT_ITEM_CODE).strip() or WORKSHOP_LOCAL_DEFAULT_ITEM_CODE,
                 company=self._local_synthetic_company(),
+                source="local_synthetic",
             )
+
+        local_resource = self._resolve_local_job_card_resource(
+            job_card=job_card,
+            process_name=process_name,
+            request_item_code=request_item_code,
+            enforce_status=enforce_status,
+        )
+        if local_resource is not None:
+            return local_resource
+
+        if self._is_fastapi_native_source():
+            raise BusinessException(code=WORKSHOP_JOB_CARD_NOT_FOUND, message="Job Card 不存在")
 
         job_card_info = self._get_job_card_or_raise(job_card=job_card)
         if process_name:
@@ -201,6 +217,7 @@ class WorkshopService:
             work_order=job_card_info.work_order,
             item_code=item_code,
             company=company,
+            source="external",
         )
 
     def get_ticket_resource_context(self, ticket_id: int) -> WorkshopResourceContext:
@@ -219,6 +236,7 @@ class WorkshopService:
                 work_order=(str(row.work_order) if row.work_order else f"WO-{local_scenario_tag}"),
                 item_code=str(row.item_code),
                 company=self._local_synthetic_company(),
+                source="local_synthetic",
             )
 
         resolved = self.resolve_job_card_resource(
@@ -232,6 +250,7 @@ class WorkshopService:
             work_order=row.work_order or resolved.work_order,
             item_code=row.item_code,
             company=resolved.company,
+            source=resolved.source,
         )
 
     def resolve_wage_rate_resource(self, *, item_code: str | None, company: str | None) -> WageRateResource:
@@ -240,6 +259,13 @@ class WorkshopService:
         requested_company = self._normalize_company(company)
 
         if self._is_local_synthetic_context_enabled():
+            if not normalized_item_code:
+                return WageRateResource(item_code=None, company=requested_company, is_global=True)
+            if not requested_company:
+                raise BusinessException(code=WORKSHOP_WAGE_RATE_COMPANY_REQUIRED, message="item 工价必须提供 company")
+            return WageRateResource(item_code=normalized_item_code, company=requested_company, is_global=False)
+
+        if self._is_fastapi_native_source():
             if not normalized_item_code:
                 return WageRateResource(item_code=None, company=requested_company, is_global=True)
             if not requested_company:
@@ -282,7 +308,11 @@ class WorkshopService:
             local_scenario_tag=local_scenario_tag,
         )
         item_code = resolved.item_code
-        self._require_employee(payload.employee, local_scenario_tag=local_scenario_tag)
+        self._require_employee(
+            payload.employee,
+            local_scenario_tag=local_scenario_tag,
+            allow_unregistered=resolved.source in {"fastapi", "local_synthetic"},
+        )
 
         existing = self._get_by_idempotent(
             ticket_key=payload.ticket_key,
@@ -380,7 +410,11 @@ class WorkshopService:
             local_scenario_tag=local_scenario_tag,
         )
         item_code = resolved.item_code
-        self._require_employee(payload.employee, local_scenario_tag=local_scenario_tag)
+        self._require_employee(
+            payload.employee,
+            local_scenario_tag=local_scenario_tag,
+            allow_unregistered=resolved.source in {"fastapi", "local_synthetic"},
+        )
         if payload.original_ticket_id:
             self._validate_original_ticket_for_reversal(payload=payload)
 
@@ -1288,6 +1322,59 @@ class WorkshopService:
             raise BusinessException(code=WORKSHOP_JOB_CARD_NOT_FOUND, message="Job Card 不存在")
         return data
 
+    def _resolve_local_job_card_resource(
+        self,
+        *,
+        job_card: str,
+        process_name: str | None,
+        request_item_code: str | None,
+        enforce_status: bool,
+    ) -> WorkshopResourceContext | None:
+        normalized_job_card = self._normalize_text(job_card)
+        if not normalized_job_card:
+            return None
+        try:
+            row = (
+                self.session.query(LyProductionJobCardLink, LyProductionPlan)
+                .join(LyProductionPlan, LyProductionPlan.id == LyProductionJobCardLink.plan_id)
+                .filter(LyProductionJobCardLink.job_card == normalized_job_card)
+                .order_by(desc(LyProductionJobCardLink.id))
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_fastapi_native_source():
+                raise DatabaseReadFailed() from exc
+            return None
+        if row is None:
+            return None
+
+        link, plan = row
+        status = self._normalize_text(link.erpnext_status)
+        if enforce_status and status and status.lower() in {"cancelled", "closed"}:
+            raise BusinessException(code=WORKSHOP_JOB_CARD_STATUS_INVALID, message="Job Card 状态不允许登记工票")
+        operation = self._normalize_text(link.operation)
+        if process_name and operation and operation.lower() != process_name.strip().lower():
+            raise BusinessException(code=WORKSHOP_PROCESS_MISMATCH, message="工票工序与 Job Card 工序不一致")
+
+        item_code = self._normalize_text(link.item_code) or self._normalize_text(plan.item_code)
+        if not item_code:
+            raise BusinessException(code=WORKSHOP_JOB_CARD_ITEM_NOT_FOUND, message="无法从 Job Card / Work Order 派生 item_code")
+        req_item = self._normalize_text(request_item_code)
+        if req_item and req_item != item_code:
+            raise BusinessException(code=WORKSHOP_ITEM_MISMATCH, message="请求 item_code 与 Job Card 派生 item_code 不一致")
+
+        company = self._normalize_company(link.company) or self._normalize_company(plan.company)
+        if not company:
+            raise BusinessException(code=WORKSHOP_JOB_CARD_COMPANY_NOT_FOUND, message="无法从 Job Card / Work Order 派生 company")
+
+        return WorkshopResourceContext(
+            job_card=str(link.job_card),
+            work_order=str(link.work_order) if link.work_order else None,
+            item_code=item_code,
+            company=company,
+            source="fastapi",
+        )
+
     @staticmethod
     def _validate_job_card(*, job_card_info: JobCardInfo, process_name: str, enforce_status: bool) -> None:
         if enforce_status and job_card_info.status.strip().lower() in {"cancelled", "closed"}:
@@ -1325,9 +1412,12 @@ class WorkshopService:
             raise BusinessException(code=WORKSHOP_JOB_CARD_COMPANY_NOT_FOUND, message="无法从 Job Card / Work Order 派生 company")
         return company
 
-    def _require_employee(self, employee: str, *, local_scenario_tag: str | None = None):
-        if local_scenario_tag and self._is_local_synthetic_context_enabled():
-            return EmployeeInfo(name=employee, status="Active", disabled=False)
+    def _require_employee(self, employee: str, *, local_scenario_tag: str | None = None, allow_unregistered: bool = False):
+        if allow_unregistered or (local_scenario_tag and self._is_local_synthetic_context_enabled()):
+            normalized_employee = self._normalize_text(employee)
+            if not normalized_employee:
+                raise BusinessException(code=WORKSHOP_EMPLOYEE_NOT_FOUND, message="员工不存在或无效")
+            return EmployeeInfo(name=normalized_employee, status="Active", disabled=False)
         try:
             data = self.erp_adapter.get_employee(employee=employee)
         except ERPNextServiceUnavailableError as exc:
@@ -1515,6 +1605,10 @@ class WorkshopService:
         app_env = os.getenv("APP_ENV", "").strip().lower()
         db_url = os.getenv("LINGYI_DB_URL", "").strip()
         return app_env in {"development", "test"} and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+
+    @staticmethod
+    def _is_fastapi_native_source() -> bool:
+        return os.getenv("LINGYI_PERMISSION_SOURCE", "").strip().lower() == "fastapi"
 
     @staticmethod
     def _extract_local_scenario_tag_from_text(value: str) -> str | None:

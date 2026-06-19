@@ -22,6 +22,9 @@ from sqlalchemy.pool import StaticPool
 import app.main as main_module
 from app.main import app
 from app.models.audit import Base as AuditBase
+from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionJobCardLink
+from app.models.production import LyProductionPlan
 from app.models.workshop import Base as WorkshopBase
 from app.models.workshop import LyOperationWageRate
 from app.models.workshop import YsWorkshopTicket
@@ -50,6 +53,7 @@ class WorkshopTicketApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         WorkshopBase.metadata.create_all(bind=cls.engine)
+        ProductionBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         with cls.SessionLocal() as session:
@@ -95,6 +99,8 @@ class WorkshopTicketApiTest(unittest.TestCase):
         self._synthetic_context_patch.start()
         with self.SessionLocal() as session:
             session.query(YsWorkshopTicket).delete()
+            session.query(LyProductionJobCardLink).delete()
+            session.query(LyProductionPlan).delete()
             session.query(LyOperationWageRate).filter(LyOperationWageRate.id > 1).delete()
             base = session.query(LyOperationWageRate).filter(LyOperationWageRate.id == 1).first()
             if base is not None:
@@ -203,6 +209,43 @@ class WorkshopTicketApiTest(unittest.TestCase):
     def _mock_work_order(item_code: str = "ITEM-A", company: str = "COMP-A", name: str = "WO-001") -> WorkOrderInfo:
         return WorkOrderInfo(name=name, production_item=item_code, company=company)
 
+    def _seed_local_production_job_card(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionPlan(
+                    id=9001,
+                    plan_no="PP-WORKSHOP-9001",
+                    company="COMP-A",
+                    sales_order="SO-WORKSHOP-001",
+                    sales_order_item="SOI-WORKSHOP-001",
+                    customer="CUST-A",
+                    item_code="ITEM-A",
+                    bom_id=401,
+                    bom_version="v1",
+                    planned_qty=Decimal("100"),
+                    status="job_cards_synced",
+                    idempotency_key="idem-workshop-local-plan",
+                    request_hash="hash-workshop-local-plan",
+                    created_by="seed",
+                )
+            )
+            session.add(
+                LyProductionJobCardLink(
+                    id=9002,
+                    plan_id=9001,
+                    work_order="WO-WORKSHOP-001",
+                    job_card="JC-LOCAL-001",
+                    company="COMP-A",
+                    item_code="ITEM-A",
+                    operation="sew",
+                    operation_sequence=10,
+                    expected_qty=Decimal("100"),
+                    completed_qty=Decimal("0"),
+                    erpnext_status="Open",
+                )
+            )
+            session.commit()
+
     def test_register_ticket_success_and_wage_amount(self) -> None:
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card()), patch.object(
             ERPNextJobCardAdapter,
@@ -225,6 +268,48 @@ class WorkshopTicketApiTest(unittest.TestCase):
         self.assertEqual(payload["code"], "0")
         self.assertEqual(Decimal(str(payload["data"]["wage_amount"])), Decimal("50.000000"))
         self.assertIn(payload["data"]["sync_status"], {"synced", "failed", "pending"})
+
+    def test_register_ticket_uses_fastapi_job_card_projection_without_erpnext(self) -> None:
+        self._seed_local_production_job_card()
+        payload = self._register_payload(ticket_key="TK-LOCAL-JC-001", qty="12")
+        payload["job_card"] = "JC-LOCAL-001"
+
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", side_effect=AssertionError("adapter must not read job card")), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            side_effect=AssertionError("adapter must not read employee"),
+        ):
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+        body = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(body["code"], "0")
+        self.assertEqual(Decimal(str(body["data"]["unit_wage"])), Decimal("0.500000"))
+        self.assertEqual(Decimal(str(body["data"]["wage_amount"])), Decimal("6.000000"))
+        with self.SessionLocal() as session:
+            ticket = session.query(YsWorkshopTicket).filter(YsWorkshopTicket.job_card == "JC-LOCAL-001").one()
+            self.assertEqual(ticket.work_order, "WO-WORKSHOP-001")
+            self.assertEqual(ticket.item_code, "ITEM-A")
+
+    def test_fastapi_source_missing_local_job_card_does_not_call_erpnext(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        payload = self._register_payload(ticket_key="TK-FASTAPI-MISSING-JC-001", qty="12")
+        payload["job_card"] = "JC-MISSING-LOCAL"
+
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", side_effect=AssertionError("adapter must not read job card")):
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+        body = response.json()
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(body["code"], "WORKSHOP_JOB_CARD_NOT_FOUND")
 
     def test_register_idempotent_same_payload_returns_same_ticket(self) -> None:
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card()), patch.object(
