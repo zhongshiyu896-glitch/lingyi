@@ -191,6 +191,7 @@ class MaterialPurchaseService:
 
         supplier_name = self._require_text(payload.supplier_name, "supplier_name")
         material_codes = [self._require_text(line.material_item_code, "material_item_code") for line in payload.items]
+        warehouses = [warehouse for line in payload.items if (warehouse := self._optional_text(line.warehouse))]
         self._ensure_active_master_records(
             company=company,
             entity_type="supplier",
@@ -205,6 +206,14 @@ class MaterialPurchaseService:
             label="物料",
             match_name=False,
         )
+        if warehouses:
+            self._ensure_active_master_records(
+                company=company,
+                entity_type="warehouse",
+                values=warehouses,
+                label="仓库",
+                match_name=True,
+            )
 
         total_qty = Decimal("0")
         total_amount = Decimal("0")

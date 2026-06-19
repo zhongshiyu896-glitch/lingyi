@@ -144,6 +144,18 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
                 updated_by="seed",
             )
         )
+        session.add(
+            LyMasterDataRecord(
+                entity_type="warehouse",
+                company=cls.COMPANY,
+                code=cls.WAREHOUSE,
+                name=cls.WAREHOUSE,
+                status="active",
+                payload={},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
 
     @staticmethod
     def _decimal_text(value: object) -> str:

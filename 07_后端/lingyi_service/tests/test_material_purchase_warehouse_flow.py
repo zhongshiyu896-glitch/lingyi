@@ -119,11 +119,26 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             session.query(LyMasterDataRecord).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
-            self._seed_purchase_master_data(session=session, company="COMP-A", supplier_name="SUP-A", material_code=self.ITEM_CODE)
+            self._seed_purchase_master_data(
+                session=session,
+                company="COMP-A",
+                supplier_name="SUP-A",
+                material_code=self.ITEM_CODE,
+                warehouse=self.WAREHOUSE,
+            )
             session.commit()
 
     @staticmethod
-    def _seed_purchase_master_data(*, session, company: str, supplier_name: str, material_code: str, material_status: str = "active") -> None:
+    def _seed_purchase_master_data(
+        *,
+        session,
+        company: str,
+        supplier_name: str,
+        material_code: str,
+        material_status: str = "active",
+        warehouse: str | None = None,
+        warehouse_status: str = "active",
+    ) -> None:
         session.add(
             LyMasterDataRecord(
                 entity_type="supplier",
@@ -136,6 +151,19 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 updated_by="seed",
             )
         )
+        if warehouse:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="warehouse",
+                    company=company,
+                    code=warehouse,
+                    name=warehouse,
+                    status=warehouse_status,
+                    payload={},
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
         session.add(
             LyMasterDataRecord(
                 entity_type="material",
@@ -241,6 +269,49 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
         self.assertIn("物料不存在或已停用", response.json()["message"])
+
+    def test_create_purchase_order_rejects_inactive_warehouse_master(self) -> None:
+        inactive_warehouse = "WH-OFFLINE"
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="warehouse",
+                    company="COMP-A",
+                    code=inactive_warehouse,
+                    name=inactive_warehouse,
+                    status="inactive",
+                    payload={},
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        purchase_payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "purchase_no": "PO-A5-INACTIVE-WH",
+            "supplier_name": "SUP-A",
+            "transaction_date": "2026-06-16",
+            "currency": "CNY",
+            "idempotency_key": "idem-po-a5-inactive-wh",
+            "items": [
+                {
+                    "material_item_code": self.ITEM_CODE,
+                    "material_name": "棉布",
+                    "qty": "10",
+                    "uom": "米",
+                    "unit_price": "12.5",
+                    "warehouse": inactive_warehouse,
+                }
+            ],
+        }
+
+        response = self.client.post("/api/material-purchase/orders", headers=self._headers(), json=purchase_payload)
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("仓库不存在或已停用", response.json()["message"])
 
     def test_purchase_order_receipt_draft_updates_received_qty_and_audits(self) -> None:
         purchase_payload = {
