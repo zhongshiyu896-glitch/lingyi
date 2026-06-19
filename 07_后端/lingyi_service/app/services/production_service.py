@@ -584,6 +584,45 @@ class ProductionService:
                 message=f"用料物料主数据不存在或已停用: {', '.join(invalid_codes)}",
             )
 
+    def _ensure_warehouse_master_active(self, *, company: str, warehouse: str) -> None:
+        if not self._has_sqlite_tables({LyMasterDataRecord.__tablename__}):
+            return
+
+        normalized = str(warehouse or "").strip()
+        if not normalized:
+            return
+
+        try:
+            warehouse_master_count = (
+                self.session.query(func.count(LyMasterDataRecord.id))
+                .filter(
+                    LyMasterDataRecord.entity_type == "warehouse",
+                    LyMasterDataRecord.company == company,
+                )
+                .scalar()
+            )
+            if int(warehouse_master_count or 0) == 0:
+                return
+
+            active_count = (
+                self.session.query(func.count(LyMasterDataRecord.id))
+                .filter(
+                    LyMasterDataRecord.entity_type == "warehouse",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.status == "active",
+                    or_(LyMasterDataRecord.code == normalized, LyMasterDataRecord.name == normalized),
+                )
+                .scalar()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        if int(active_count or 0) <= 0:
+            raise BusinessException(
+                code=PRODUCTION_BOM_NOT_ACTIVE,
+                message=f"仓库主数据不存在或已停用: {normalized}",
+            )
+
     @staticmethod
     def _empty_material_readiness_summary(*, include_private: bool = False) -> dict[str, Any]:
         summary: dict[str, Any] = {
@@ -3497,6 +3536,7 @@ class ProductionService:
                 raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
             return self._production_material_check_data_from_json(existing_operation.response_json)
 
+        self._ensure_warehouse_master_active(company=str(plan.company), warehouse=warehouse)
         self._ensure_material_check_status_allowed(plan=plan)
 
         bom_rows = self._material_bom_rows_for_plan(plan=plan)
@@ -3846,6 +3886,7 @@ class ProductionService:
             )
             return self._build_material_issue_data(plan_id=int(plan.id), draft=existing_by_source)
 
+        self._ensure_warehouse_master_active(company=str(plan.company), warehouse=warehouse)
         now = datetime.utcnow()
         event_key = self._build_material_issue_event_key(
             company=str(plan.company),

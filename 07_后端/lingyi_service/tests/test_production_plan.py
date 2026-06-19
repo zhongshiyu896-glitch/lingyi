@@ -24,6 +24,8 @@ from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
@@ -67,6 +69,7 @@ class ProductionPlanTest(unittest.TestCase):
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
         WarehouseBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
@@ -137,6 +140,7 @@ class ProductionPlanTest(unittest.TestCase):
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrder).delete()
+            session.query(LyMasterDataRecord).delete()
             session.commit()
         self._seed_sales_order()
 
@@ -239,6 +243,23 @@ class ProductionPlanTest(unittest.TestCase):
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrder).delete()
+            session.commit()
+
+    def _seed_warehouse_master(self, *, code: str, status: str = "active", company: str = "COMP-A") -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="warehouse",
+                    company=company,
+                    code=code,
+                    name=code,
+                    status=status,
+                    payload={},
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
             session.commit()
 
     def _seed_orphan_plan(self, *, status: str = "planned", with_ready_snapshot: bool = False) -> int:
@@ -817,6 +838,33 @@ class ProductionPlanTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
+
+    def test_material_check_rejects_inactive_warehouse_master(self) -> None:
+        warehouse = "WIP-OFFLINE-001"
+        self._seed_warehouse_master(code=warehouse, status="inactive")
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-inactive-warehouse", planned_qty="12"),
+            )
+        self.assertEqual(create_response.status_code, 200, create_response.text)
+        plan_id = create_response.json()["data"]["plan_id"]
+
+        response = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._material_check_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-material-inactive-warehouse",
+                warehouse=warehouse,
+            ),
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "PRODUCTION_BOM_NOT_ACTIVE")
+        self.assertIn("仓库主数据不存在或已停用", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
 
     def test_material_check_rejects_orphan_plan_without_requirements(self) -> None:
         self._clear_sales_orders()
