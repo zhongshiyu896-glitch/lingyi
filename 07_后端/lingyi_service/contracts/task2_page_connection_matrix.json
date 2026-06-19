@@ -441,9 +441,15 @@
       "page": "跟进模板",
       "route": "/production/factoryPacking/pending",
       "api": "/api/production/followup-templates",
-      "schemas": [],
+      "schemas": [
+        "ProductionFollowupTemplateListItem",
+        "ProductionFollowupTemplateCreateRequest",
+        "ProductionFollowupTemplateUpdateRequest",
+        "ProductionFollowupTemplateCopyRequest",
+        "ProductionFollowupTemplateActionRequest"
+      ],
       "partial_gap": [
-        "ProductionTrackingTemplate: 契约无 ProductionTrackingTemplate schema；api模式只读绑定 ProductionFollowupTemplateListData，写操作待B期"
+        "ProductionTrackingTemplate: api模式已接 FastAPI 跟进模板增改复制停用真落库"
       ],
       "priority": "P1_first_readonly_connect"
     },
@@ -578,10 +584,12 @@
       "api": "/api/warehouse/stock-entry-drafts",
       "schemas": [
         "WarehouseStockEntryDraftData",
-        "WarehouseStockEntryDraftCreateRequest"
+        "WarehouseStockEntryDraftCreateRequest",
+        "WarehouseStockEntryDraftAuditRequest",
+        "WarehouseStockEntryDraftCancelRequest"
       ],
       "partial_gap": [
-        "MaterialProcessInboundSource: A期已用 WarehouseStockEntryDraftData + source_type=material_process_inbound 隔离物料加工入仓；审核/反审核待 B 期补齐"
+        "MaterialProcessInboundSource: A期已用 WarehouseStockEntryDraftData + source_type=material_process_inbound 隔离物料加工入仓；创建/审核/取消走统一库存草稿"
       ],
       "priority": "P4_hold"
     },
@@ -620,10 +628,12 @@
       "api": "/api/warehouse/stock-entry-drafts",
       "schemas": [
         "WarehouseStockEntryDraftData",
-        "WarehouseStockEntryDraftCreateRequest"
+        "WarehouseStockEntryDraftCreateRequest",
+        "WarehouseStockEntryDraftAuditRequest",
+        "WarehouseStockEntryDraftCancelRequest"
       ],
       "partial_gap": [
-        "PurchaseReturnStockOut: A期已用 WarehouseStockEntryDraftData + source_type=material_purchase_return 隔离采购退料出仓；审核/反审核待 B 期补齐"
+        "PurchaseReturnStockOut: A期已用 WarehouseStockEntryDraftData + source_type=material_purchase_return 隔离采购退料出仓；创建/审核/取消走统一库存草稿"
       ],
       "priority": "P4_hold"
     },
@@ -634,10 +644,12 @@
       "api": "/api/warehouse/stock-entry-drafts",
       "schemas": [
         "WarehouseStockEntryDraftData",
-        "WarehouseStockEntryDraftCreateRequest"
+        "WarehouseStockEntryDraftCreateRequest",
+        "WarehouseStockEntryDraftAuditRequest",
+        "WarehouseStockEntryDraftCancelRequest"
       ],
       "partial_gap": [
-        "MaterialSaleOutWarehouse: A期已用 WarehouseStockEntryDraftData + source_type=material_sale_outbound 隔离物料销售出仓；审核/反审核待 B 期补齐"
+        "MaterialSaleOutWarehouse: A期已用 WarehouseStockEntryDraftData + source_type=material_sale_outbound 隔离物料销售出仓；创建/审核/取消走统一库存草稿"
       ],
       "priority": "P4_hold"
     },
@@ -820,10 +832,12 @@
       "api": "/api/warehouse/stock-entry-drafts",
       "schemas": [
         "WarehouseStockEntryDraftData",
-        "WarehouseStockEntryDraftCreateRequest"
+        "WarehouseStockEntryDraftCreateRequest",
+        "WarehouseStockEntryDraftAuditRequest",
+        "WarehouseStockEntryDraftCancelRequest"
       ],
       "partial_gap": [
-        "MaterialPurchaseInboundSource: A期复用 WarehouseStockEntryDraftData + source_type=material_purchase_order 承接采购入库；审核/反审核待 B 期补齐"
+        "MaterialPurchaseInboundSource: A期复用 WarehouseStockEntryDraftData + source_type=material_purchase_order 承接采购入库；创建/审核/取消走统一库存草稿并回写采购需求"
       ],
       "priority": "P4_hold"
     }
