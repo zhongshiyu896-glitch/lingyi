@@ -1166,6 +1166,17 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         )
         self.assertEqual(create_resp.status_code, 201, create_resp.text)
         draft_id = int(create_resp.json()["data"]["id"])
+        hold_ledger = [
+            row
+            for row in self._stock_ledger_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE)
+            if row["voucher_no"] == f"DRAFT-{draft_id}"
+        ]
+        self.assertEqual(len(hold_ledger), 1)
+        self.assertEqual(Decimal(str(hold_ledger[0]["actual_qty"])), Decimal("-5.000000"))
+        self.assertEqual(Decimal(str(hold_ledger[0]["qty_after_transaction"])), Decimal("-5.000000"))
+        hold_summary = self._stock_summary_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE)
+        self.assertEqual(len(hold_summary), 1)
+        self.assertEqual(Decimal(str(hold_summary[0]["actual_qty"])), Decimal("-5.000000"))
 
         release_payload = self._release_hold_payload(reason="release hold", source_payload=hold_payload)
         release_resp = self.client.post(
@@ -1184,6 +1195,8 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         self.assertEqual(release_resp.json()["data"]["status"], "cancelled")
         self.assertEqual(release_resp.json()["data"]["outbox"]["status"], "cancelled")
         self.assertEqual(release_resp.json()["data"]["cancel_reason"], "release hold")
+        self.assertEqual(self._stock_ledger_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE), [])
+        self.assertEqual(self._stock_summary_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE), [])
 
         with self.SessionLocal() as session:
             draft = session.query(LyWarehouseStockEntryDraft).filter(LyWarehouseStockEntryDraft.id == draft_id).one()
