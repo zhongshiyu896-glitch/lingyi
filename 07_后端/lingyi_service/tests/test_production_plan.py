@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -125,6 +126,7 @@ class ProductionPlanTest(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
 
         with self.SessionLocal() as session:
             session.query(LyMaterialPurchaseRequirement).delete()
@@ -143,6 +145,28 @@ class ProductionPlanTest(unittest.TestCase):
             session.query(LyMasterDataRecord).delete()
             session.commit()
         self._seed_sales_order()
+
+    def test_fastapi_list_plans_does_not_construct_erpnext_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "prod.plan.user": {
+                        "company": ["COMP-A"],
+                        "item_code": ["ITEM-A"],
+                    }
+                }
+            }
+        )
+
+        with patch("app.routers.production.ERPNextProductionAdapter", side_effect=AssertionError("erpnext adapter")):
+            response = self.client.get(
+                "/api/production/plans?company=COMP-A&item_code=ITEM-A",
+                headers=self._headers(role="production:read"),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["code"], "0")
 
     @staticmethod
     def _request_id(scenario_tag: str) -> str:

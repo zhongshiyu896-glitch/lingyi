@@ -269,6 +269,8 @@ def _record_failure_safely(
 
 
 def _service(session: Session, request: Request, *, use_service_account: bool = False) -> ProductionService:
+    if get_permission_source() == "fastapi":
+        return ProductionService(session=session)
     return ProductionService(
         session=session,
         erp_adapter=ERPNextProductionAdapter(request_obj=request, use_service_account=use_service_account),

@@ -177,7 +177,7 @@ PRODUCTION_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
 class ProductionService:
     """Production plan service."""
 
-    def __init__(self, *, session: Session, erp_adapter: ERPNextProductionAdapter):
+    def __init__(self, *, session: Session, erp_adapter: ERPNextProductionAdapter | None = None):
         self.session = session
         self.erp_adapter = erp_adapter
         self.outbox_service = ProductionWorkOrderOutboxService(session=session)
