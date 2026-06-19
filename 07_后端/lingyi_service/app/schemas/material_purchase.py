@@ -248,6 +248,17 @@ class MaterialPurchasePaymentCreateRequest(BaseModel):
     scenario_tag: str | None = Field(default=None, max_length=64)
 
 
+class MaterialPurchasePaymentCancelRequest(BaseModel):
+    """Cancel supplier payment entry request."""
+
+    operation: Literal["cancel_purchase_payment"] = "cancel_purchase_payment"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    purchase_invoice: str = Field(..., min_length=1, max_length=140)
+    reason: str | None = Field(default=None, max_length=500)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str | None = Field(default=None, max_length=64)
+
+
 class MaterialPurchasePaymentData(BaseModel):
     """Supplier payment entry row."""
 

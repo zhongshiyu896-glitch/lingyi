@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy import false
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -28,6 +29,7 @@ from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchasePayment
+from app.models.material_purchase import LyMaterialPurchasePaymentOperation
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import LyProductionPlanMaterial
 from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
@@ -39,6 +41,7 @@ from app.schemas.material_purchase import MaterialPurchaseOrderCreateData
 from app.schemas.material_purchase import MaterialPurchaseOrderCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseOrderData
 from app.schemas.material_purchase import MaterialPurchaseOrderListItem
+from app.schemas.material_purchase import MaterialPurchasePaymentCancelRequest
 from app.schemas.material_purchase import MaterialPurchasePaymentCreateRequest
 from app.schemas.material_purchase import MaterialPurchasePaymentData
 from app.schemas.material_purchase import MaterialPurchasePaymentListData
@@ -1211,6 +1214,155 @@ class MaterialPurchaseService:
             resource_no=str(row.payment_entry),
         )
 
+    def cancel_purchase_payment(
+        self,
+        *,
+        payment_id: int,
+        payload: MaterialPurchasePaymentCancelRequest,
+        actor: str,
+    ) -> PurchasePaymentMutationResult:
+        company = self._require_text(payload.company, "company")
+        purchase_invoice = self._require_text(payload.purchase_invoice, "purchase_invoice")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        reason = self._optional_text(payload.reason)
+        operation = str(payload.operation or "cancel_purchase_payment")
+        if operation != "cancel_purchase_payment":
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="operation 非法")
+
+        row = self._get_purchase_payment_by_id_for_update(company=company, payment_id=payment_id)
+        if row is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购付款单不存在")
+        if str(row.purchase_invoice) != purchase_invoice:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="purchase_invoice 与付款单不一致")
+
+        request_hash = self._mutation_hash(
+            {
+                "operation": operation,
+                "company": company,
+                "purchase_invoice": purchase_invoice,
+                "payment_id": int(row.id),
+                "payment_entry": str(row.payment_entry),
+                "reason": reason,
+            }
+        )
+        existing_operation = self._get_purchase_payment_operation_by_idempotency(
+            company=company,
+            operation_type=operation,
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash or "") != request_hash:
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="幂等键冲突且请求内容不一致")
+            replay_row = self._get_purchase_payment_by_id(
+                company=company,
+                payment_id=int(existing_operation.payment_id),
+            )
+            if replay_row is None:
+                raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购付款单不存在")
+            data = self._payment_data(replay_row)
+            snapshot = data.model_dump(mode="json")
+            return PurchasePaymentMutationResult(
+                item=data,
+                before=snapshot,
+                after=snapshot,
+                resource_id=int(replay_row.id),
+                resource_no=str(replay_row.payment_entry),
+                idempotent=True,
+            )
+        if str(row.status) != "submitted":
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购付款单已作废")
+
+        invoice = (
+            self.session.query(LyMaterialPurchaseInvoice)
+            .filter(
+                LyMaterialPurchaseInvoice.company == company,
+                LyMaterialPurchaseInvoice.purchase_invoice == purchase_invoice,
+            )
+            .with_for_update()
+            .first()
+        )
+        if invoice is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购发票不存在")
+        if str(invoice.status) == "cancelled":
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="已取消采购发票不可作废付款")
+
+        before = self._invoice_data(invoice).model_dump(mode="json")
+        paid_amount = Decimal(str(row.paid_amount or 0))
+        paid_after = Decimal(str(invoice.paid_amount or 0)) - paid_amount
+        if paid_after < Decimal("0"):
+            paid_after = Decimal("0")
+        grand_total = Decimal(str(invoice.grand_total or 0))
+        outstanding_after = grand_total - paid_after
+        if outstanding_after < Decimal("0"):
+            outstanding_after = Decimal("0")
+
+        now = datetime.now(UTC)
+        try:
+            invoice.paid_amount = paid_after
+            invoice.outstanding_amount = outstanding_after
+            invoice.status = "paid" if outstanding_after == Decimal("0") else ("submitted" if paid_after == Decimal("0") else "partly_paid")
+            invoice.updated_by = actor
+            invoice.updated_at = now
+
+            row.status = "cancelled"
+            row.docstatus = 2
+            row.updated_by = actor
+            row.updated_at = now
+
+            self.session.add(
+                LyMaterialPurchasePaymentOperation(
+                    company=company,
+                    purchase_invoice=purchase_invoice,
+                    payment_id=int(row.id),
+                    operation_type=operation,
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                    result_status="cancelled",
+                    result_user=actor,
+                    result_at=now,
+                    reason=reason,
+                )
+            )
+            replay_operation = self._flush_purchase_payment_operation_or_resolve_replay(
+                company=company,
+                operation_type=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+            )
+        except BusinessException:
+            raise
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+
+        if replay_operation is not None:
+            replay_row = self._get_purchase_payment_by_id(
+                company=company,
+                payment_id=int(replay_operation.payment_id),
+            )
+            if replay_row is None:
+                raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购付款单不存在")
+            data = self._payment_data(replay_row)
+            snapshot = data.model_dump(mode="json")
+            return PurchasePaymentMutationResult(
+                item=data,
+                before=snapshot,
+                after=snapshot,
+                resource_id=int(replay_row.id),
+                resource_no=str(replay_row.payment_entry),
+                idempotent=True,
+            )
+        data = self._payment_data(row)
+        return PurchasePaymentMutationResult(
+            item=data,
+            before=before,
+            after={
+                "payment": data.model_dump(mode="json"),
+                "invoice": self._invoice_data(invoice).model_dump(mode="json"),
+            },
+            resource_id=int(data.id),
+            resource_no=str(data.payment_entry),
+        )
+
     def snapshot_order(self, *, order_id: int) -> dict[str, Any]:
         row = self._get_order_by_id(order_id)
         return self._create_data(row=row, idempotency_key="").model_dump(mode="json")
@@ -1787,6 +1939,27 @@ class MaterialPurchaseService:
             .first()
         )
 
+    def _get_purchase_payment_by_id(self, *, company: str, payment_id: int) -> LyMaterialPurchasePayment | None:
+        return (
+            self.session.query(LyMaterialPurchasePayment)
+            .filter(
+                LyMaterialPurchasePayment.company == company,
+                LyMaterialPurchasePayment.id == int(payment_id),
+            )
+            .first()
+        )
+
+    def _get_purchase_payment_by_id_for_update(self, *, company: str, payment_id: int) -> LyMaterialPurchasePayment | None:
+        return (
+            self.session.query(LyMaterialPurchasePayment)
+            .filter(
+                LyMaterialPurchasePayment.company == company,
+                LyMaterialPurchasePayment.id == int(payment_id),
+            )
+            .with_for_update()
+            .first()
+        )
+
     def _get_purchase_payment_by_idempotency(
         self,
         *,
@@ -1801,6 +1974,47 @@ class MaterialPurchaseService:
             )
             .first()
         )
+
+    def _get_purchase_payment_operation_by_idempotency(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str,
+    ) -> LyMaterialPurchasePaymentOperation | None:
+        return (
+            self.session.query(LyMaterialPurchasePaymentOperation)
+            .filter(
+                LyMaterialPurchasePaymentOperation.company == company,
+                LyMaterialPurchasePaymentOperation.operation_type == operation_type,
+                LyMaterialPurchasePaymentOperation.idempotency_key == idempotency_key,
+            )
+            .one_or_none()
+        )
+
+    def _flush_purchase_payment_operation_or_resolve_replay(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> LyMaterialPurchasePaymentOperation | None:
+        try:
+            self.session.flush()
+            return None
+        except IntegrityError as exc:
+            self.session.rollback()
+            existing = self._get_purchase_payment_operation_by_idempotency(
+                company=company,
+                operation_type=operation_type,
+                idempotency_key=idempotency_key,
+            )
+            if existing is None:
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购付款作废操作冲突") from exc
+            if str(existing.request_hash or "") != request_hash:
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="幂等键冲突且请求内容不一致") from exc
+            return existing
 
     def _get_purchase_payment_by_source(self, *, company: str, source_ref: str) -> LyMaterialPurchasePayment | None:
         return (

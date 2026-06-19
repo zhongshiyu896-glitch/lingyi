@@ -23,6 +23,7 @@ from app.core.permissions import MATERIAL_PURCHASE_WRITE
 from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseOrderCancelRequest
 from app.schemas.material_purchase import MaterialPurchaseOrderCreateRequest
+from app.schemas.material_purchase import MaterialPurchasePaymentCancelRequest
 from app.schemas.material_purchase import MaterialPurchasePaymentCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderRequest
 from app.services.audit_service import AuditContext
@@ -555,3 +556,62 @@ def create_purchase_payment(
         session.commit()
         return _err(exc)
     return _created(result.item)
+
+
+@router.post("/purchase-payments/{payment_id}/cancel")
+def cancel_purchase_payment(
+    payment_id: int,
+    payload: MaterialPurchasePaymentCancelRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MATERIAL_PURCHASE_WRITE,
+        resource_type="MATERIAL_PURCHASE_PAYMENT",
+        resource_id=payment_id,
+    )
+    audit = AuditService(session)
+    try:
+        result = MaterialPurchaseService(session).cancel_purchase_payment(
+            payment_id=payment_id,
+            payload=payload,
+            actor=current_user.username,
+        )
+        audit.record_success(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_PAYMENT",
+            resource_id=result.resource_id,
+            resource_no=result.resource_no,
+            before_data=result.before,
+            after_data=result.after,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except AuditWriteFailed as exc:
+        session.rollback()
+        return _err(exc)
+    except AppException as exc:
+        session.rollback()
+        audit.record_failure(
+            module="material_purchase",
+            action=MATERIAL_PURCHASE_WRITE,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="MATERIAL_PURCHASE_PAYMENT",
+            resource_id=payment_id,
+            resource_no=payload.purchase_invoice,
+            before_data=None,
+            after_data=None,
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        return _err(exc)
+    return _ok(result.item)

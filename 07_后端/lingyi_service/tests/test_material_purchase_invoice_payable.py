@@ -25,6 +25,7 @@ from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchasePayment
+from app.models.material_purchase import LyMaterialPurchasePaymentOperation
 from app.models.quality import Base as QualityBase
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
@@ -89,6 +90,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyMaterialPurchasePaymentOperation).delete()
             session.query(LyMaterialPurchasePayment).delete()
             session.query(LyMaterialPurchaseInvoice).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
@@ -102,10 +104,10 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(*, request_id: str = "req-b2-material-purchase") -> dict[str, str]:
+    def _headers(*, request_id: str = "req-b2-material-purchase", role: str = "System Manager") -> dict[str, str]:
         return {
             "X-LY-Dev-User": "b2.purchase.user",
-            "X-LY-Dev-Roles": "System Manager",
+            "X-LY-Dev-Roles": role,
             "X-Request-ID": request_id,
         }
 
@@ -291,6 +293,19 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         payload.update(overrides)
         return payload
 
+    @staticmethod
+    def _payment_cancel_payload(**overrides) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "operation": "cancel_purchase_payment",
+            "company": "COMP-B2",
+            "purchase_invoice": "PINV-B2-001",
+            "reason": "VOID-B2-PAYMENT-001",
+            "idempotency_key": "idem-b2-pp-cancel-001",
+            "scenario_tag": "B2-PURCHASE-PAYMENT-CANCEL-001",
+        }
+        payload.update(overrides)
+        return payload
+
     def test_purchase_invoice_and_payment_reduce_payable(self) -> None:
         self._create_received_purchase_order()
 
@@ -394,6 +409,106 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+
+    def test_purchase_payment_cancel_reopens_payable_and_is_idempotent(self) -> None:
+        self._create_received_purchase_order()
+        created_invoice = self.client.post(
+            "/api/material-purchase/purchase-invoices",
+            headers=self._headers(),
+            json=self._invoice_payload(),
+        )
+        self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+        created_payment = self.client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=self._headers(),
+            json=self._payment_payload(),
+        )
+        self.assertEqual(created_payment.status_code, 201, created_payment.text)
+        payment_id = created_payment.json()["data"]["id"]
+
+        cancelled = self.client.post(
+            f"/api/material-purchase/purchase-payments/{payment_id}/cancel",
+            headers=self._headers(),
+            json=self._payment_cancel_payload(),
+        )
+        replay = self.client.post(
+            f"/api/material-purchase/purchase-payments/{payment_id}/cancel",
+            headers=self._headers(),
+            json=self._payment_cancel_payload(),
+        )
+        conflict = self.client.post(
+            f"/api/material-purchase/purchase-payments/{payment_id}/cancel",
+            headers=self._headers(),
+            json=self._payment_cancel_payload(reason="VOID-B2-PAYMENT-CHANGED"),
+        )
+        submitted_payments = self.client.get(
+            "/api/material-purchase/purchase-payments?status=submitted",
+            headers=self._headers(),
+        )
+        cancelled_payments = self.client.get(
+            "/api/material-purchase/purchase-payments?status=cancelled",
+            headers=self._headers(),
+        )
+        invoices = self.client.get(
+            "/api/material-purchase/purchase-invoices?keyword=PINV-B2-001",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(cancelled.status_code, 200, cancelled.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(cancelled.json()["data"]["id"], replay.json()["data"]["id"])
+        self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancelled.json()["data"]["docstatus"], 2)
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertEqual(submitted_payments.status_code, 200)
+        self.assertEqual(submitted_payments.json()["data"]["total"], 0)
+        self.assertEqual(cancelled_payments.status_code, 200)
+        self.assertEqual(cancelled_payments.json()["data"]["total"], 1)
+        invoice_row = invoices.json()["data"]["items"][0]
+        self.assertEqual(invoice_row["status"], "submitted")
+        self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("250.000000"))
+
+        with self.SessionLocal() as session:
+            invoice = session.query(LyMaterialPurchaseInvoice).one()
+            payment = session.query(LyMaterialPurchasePayment).one()
+            self.assertEqual(str(invoice.status), "submitted")
+            self.assertEqual(Decimal(str(invoice.paid_amount)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(invoice.outstanding_amount)), Decimal("250.000000"))
+            self.assertEqual(str(payment.status), "cancelled")
+            self.assertEqual(int(payment.docstatus), 2)
+            self.assertEqual(session.query(LyMaterialPurchasePaymentOperation).count(), 1)
+
+    def test_purchase_payment_cancel_requires_write_permission(self) -> None:
+        self._create_received_purchase_order()
+        created_invoice = self.client.post(
+            "/api/material-purchase/purchase-invoices",
+            headers=self._headers(),
+            json=self._invoice_payload(),
+        )
+        self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+        created_payment = self.client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=self._headers(),
+            json=self._payment_payload(),
+        )
+        self.assertEqual(created_payment.status_code, 201, created_payment.text)
+        payment_id = created_payment.json()["data"]["id"]
+
+        blocked = self.client.post(
+            f"/api/material-purchase/purchase-payments/{payment_id}/cancel",
+            headers=self._headers(role="Finance Manager"),
+            json=self._payment_cancel_payload(),
+        )
+        self.assertEqual(blocked.status_code, 403)
+        self.assertEqual(blocked.json()["code"], "AUTH_FORBIDDEN")
+        with self.SessionLocal() as session:
+            invoice = session.query(LyMaterialPurchaseInvoice).one()
+            payment = session.query(LyMaterialPurchasePayment).one()
+            self.assertEqual(str(invoice.status), "partly_paid")
+            self.assertEqual(str(payment.status), "submitted")
+            self.assertEqual(session.query(LyMaterialPurchasePaymentOperation).count(), 0)
 
 
 if __name__ == "__main__":

@@ -563,6 +563,9 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             if method == "POST":
                 return "material_purchase", MATERIAL_PURCHASE_WRITE, "MaterialPurchasePayment", None
             return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchasePayment", None
+        material_payment_cancel_match = re.match(r"^/api/material-purchase/purchase-payments/(\d+)/cancel/?$", path)
+        if material_payment_cancel_match:
+            return "material_purchase", MATERIAL_PURCHASE_WRITE, "MaterialPurchasePayment", material_payment_cancel_match.group(1)
         return "material_purchase", MATERIAL_PURCHASE_READ, "MaterialPurchaseOrder", None
 
     if path.startswith("/api/style-master"):
