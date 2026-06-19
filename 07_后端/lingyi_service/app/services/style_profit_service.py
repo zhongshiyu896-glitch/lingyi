@@ -58,6 +58,8 @@ class StyleProfitService:
             else StyleProfitSnapshotCreateRequest.model_validate(request)
         )
         self._validate_payload(payload)
+        if hasattr(self.source_service, "session"):
+            self.source_service.session = session
 
         request_hash = self.source_service.build_snapshot_request_hash(payload.model_dump(mode="json"))
         company = self._normalize_text(payload.company)

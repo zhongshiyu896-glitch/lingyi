@@ -27,6 +27,10 @@ from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
+from app.models.style_profit import Base as StyleProfitBase
+from app.models.style_profit import LyStyleProfitDetail
+from app.models.style_profit import LyStyleProfitSnapshot
+from app.models.style_profit import LyStyleProfitSourceMap
 from app.models.subcontract import Base as SubcontractBase
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
@@ -38,6 +42,7 @@ from app.routers.style_profit import _build_local_style_profit_fallback_request
 from app.schemas.style_profit import StyleProfitSnapshotSelectorRequest
 from app.services.erpnext_style_profit_adapter import ERPNextStyleProfitAdapter
 from app.services.style_profit_api_source_collector import StyleProfitApiSourceCollector
+from app.services.style_profit_service import StyleProfitService
 
 
 class ERPNextStyleProfitAdapterTest(unittest.TestCase):
@@ -56,6 +61,7 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
         ProductionBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
+        StyleProfitBase.metadata.create_all(bind=cls.engine)
         # Subcontract models use a dedicated declarative metadata and hold FK to ly_apparel_bom.
         # Mirror BOM table into subcontract metadata so FK resolution works in isolated test DB.
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
@@ -82,6 +88,9 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
             session.query(YsWorkshopTicket).delete()
             session.query(LyProductionJobCardLink).delete()
             session.query(LyProductionPlan).delete()
+            session.query(LyStyleProfitSourceMap).delete()
+            session.query(LyStyleProfitDetail).delete()
+            session.query(LyStyleProfitSnapshot).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
             session.query(LyDeliveryInvoice).delete()
@@ -483,6 +492,164 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
         self.assertEqual(request.stock_ledger_rows[0]["source_system"], "fastapi")
         self.assertEqual(request.stock_ledger_rows[0]["production_plan_id"], int(plan.id))
         self.assertEqual(Decimal(str(request.stock_ledger_rows[0]["stock_value_difference"])), Decimal("-17.2"))
+
+    def test_local_fallback_request_creates_actual_same_source_profit_snapshot(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyDeliveryInvoice(
+                    company="COMP-A",
+                    delivery_note="DN-SAME-001",
+                    sales_invoice="SI-SAME-001",
+                    sales_order="SO-001",
+                    customer="CUST-A",
+                    item_code="STYLE-A",
+                    item_name="Style A",
+                    warehouse="WH-FG",
+                    delivered_qty=Decimal("10"),
+                    rate=Decimal("40"),
+                    grand_total=Decimal("400"),
+                    paid_amount=Decimal("400"),
+                    outstanding_amount=Decimal("0"),
+                    posting_date=date(2026, 4, 15),
+                    status="paid",
+                    docstatus=1,
+                    source_ref="delivery:SO-001:same-source",
+                    idempotency_key="idem-local-same-source-invoice",
+                    request_hash="hash-local-same-source-invoice",
+                    created_by="tester",
+                )
+            )
+            bom = LyApparelBom(
+                id=20,
+                bom_no="BOM-SAME-SOURCE-001",
+                item_code="STYLE-A",
+                version_no="V1",
+                is_default=True,
+                status="active",
+                created_by="tester",
+                updated_by="tester",
+            )
+            session.add(bom)
+            session.flush()
+            session.add(
+                LyApparelBomItem(
+                    id=20,
+                    bom_id=int(bom.id),
+                    material_item_code="FAB-A",
+                    qty_per_piece=Decimal("1"),
+                    loss_rate=Decimal("0"),
+                    uom="米",
+                )
+            )
+            session.add(
+                LyBomOperation(
+                    id=20,
+                    bom_id=int(bom.id),
+                    process_name="SEW",
+                    sequence_no=1,
+                    is_subcontract=False,
+                    wage_rate=Decimal("2"),
+                )
+            )
+            plan = LyProductionPlan(
+                plan_no="PLAN-SAME-SOURCE-001",
+                company="COMP-A",
+                sales_order="SO-001",
+                sales_order_item="SO-001-1",
+                customer="CUST-1",
+                item_code="STYLE-A",
+                bom_id=int(bom.id),
+                bom_version="V1",
+                planned_qty=Decimal("10"),
+                status="material_issued",
+                idempotency_key="plan-same-source-idem-1",
+                request_hash="plan-same-source-hash-1",
+                created_by="tester",
+            )
+            session.add(plan)
+            session.flush()
+            session.add(
+                LyProductionJobCardLink(
+                    plan_id=int(plan.id),
+                    work_order="WO-001",
+                    job_card="JC-SAME-001",
+                    company="COMP-A",
+                    item_code="STYLE-A",
+                    operation="SEW",
+                    operation_sequence=1,
+                    expected_qty=Decimal("10"),
+                    completed_qty=Decimal("5"),
+                )
+            )
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Issue",
+                source_type="production_plan",
+                source_id=f"production_plan:{int(plan.id)}:material_issue",
+                source_warehouse="WH-MAT",
+                status="pending_outbox",
+                created_by="tester",
+                created_at=datetime(2026, 4, 12, 10, 0, 0),
+                idempotency_key="idem-local-same-source-stock",
+                event_key="evt-local-same-source-stock",
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company="COMP-A",
+                    item_code="FAB-A",
+                    qty=Decimal("4"),
+                    uom="米",
+                    source_warehouse="WH-MAT",
+                )
+            )
+            session.add(
+                YsWorkshopTicket(
+                    ticket_no="TK-SAME-001",
+                    ticket_key="TK-SAME-KEY-001",
+                    job_card="JC-SAME-001",
+                    work_order="WO-001",
+                    bom_id=int(bom.id),
+                    item_code="STYLE-A",
+                    employee="EMP-1",
+                    process_name="SEW",
+                    color=None,
+                    size=None,
+                    operation_type="register",
+                    qty=Decimal("6"),
+                    unit_wage=Decimal("3"),
+                    wage_amount=Decimal("18"),
+                    work_date=date(2026, 4, 16),
+                    source="manual",
+                    source_ref=None,
+                    created_by="tester",
+                )
+            )
+            session.commit()
+
+            adapter = ERPNextStyleProfitAdapter(session=session)
+            collector = StyleProfitApiSourceCollector(session=session, adapter=adapter)
+            with (
+                patch.object(adapter, "_request_json", side_effect=AssertionError("ERPNext must not be called")),
+                patch.object(adapter, "_resolve_material_unit_cost", return_value=(Decimal("5"), "item_price")),
+            ):
+                request = _build_local_style_profit_fallback_request(
+                    selector=self.selector,
+                    idempotency_key="idem-same-source-profit",
+                    collector=collector,
+                )
+            result = StyleProfitService().create_snapshot(session=session, request=request, operator="tester")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+
+        self.assertEqual(row.revenue_status, "actual")
+        self.assertEqual(row.actual_revenue_amount, Decimal("400"))
+        self.assertEqual(row.actual_material_cost, Decimal("34.4"))
+        self.assertEqual(row.actual_workshop_cost, Decimal("18"))
+        self.assertEqual(row.actual_total_cost, Decimal("52.4"))
+        self.assertEqual(row.profit_amount, Decimal("347.6"))
+        self.assertEqual(row.snapshot_status, "complete")
 
     def test_load_subcontract_rows_returns_candidates_instead_of_silent_empty(self) -> None:
         with self.SessionLocal() as session:
