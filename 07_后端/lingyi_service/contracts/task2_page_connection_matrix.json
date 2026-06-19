@@ -409,7 +409,7 @@
         "ProductionQuoteCreateRequest"
       ],
       "partial_gap": [
-        "ProductQuote: api模式支持从已有生产计划新建报价真落库，面辅料成本按生产计划物料快照或款BOM计算；转订单/作废/复制待后续闭环"
+        "ProductQuote: api模式支持从已有生产计划新建报价真落库，面辅料成本按生产计划物料快照或款BOM计算；转订单、复制报价、作废已接 FastAPI 写链，批量核价和导出文件待后续接口"
       ],
       "priority": "P1_first_readonly_connect"
     },
