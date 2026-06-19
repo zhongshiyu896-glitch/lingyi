@@ -29,7 +29,7 @@ class CurrentUserData(BaseModel):
 
 
 class LocalLoginRequest(BaseModel):
-    """Login request for ERPNext session or development-only local profile."""
+    """Login request for FastAPI-native session or development-only local profile."""
 
     username: str = Field(min_length=1, max_length=64)
     password: Optional[str] = Field(default=None, max_length=256)

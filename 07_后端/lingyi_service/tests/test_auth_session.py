@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import unittest
 from urllib import error as url_error
@@ -110,6 +111,7 @@ class AuthSessionTest(unittest.TestCase):
         os.environ["LINGYI_AUTH_CACHE_TTL_SECONDS"] = "45"
         os.environ["LINGYI_ERPNEXT_API_KEY"] = ""
         os.environ["LINGYI_ERPNEXT_API_SECRET"] = ""
+        os.environ.pop("LINGYI_FASTAPI_AUTH_USERS_JSON", None)
 
     def _login(self, *, username: str = "w003a.local", profile: str = "system_manager"):
         response = self.client.post(
@@ -151,10 +153,15 @@ class AuthSessionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
 
-    def test_production_login_without_erpnext_base_url_fails_closed(self) -> None:
+    def test_production_fastapi_login_without_user_source_fails_closed(self) -> None:
         with patch.dict(
             os.environ,
-            {"APP_ENV": "production", "LINGYI_ALLOW_DEV_AUTH": "true", "LINGYI_ERPNEXT_BASE_URL": ""},
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+            },
             clear=False,
         ):
             response = self.client.post(
@@ -163,79 +170,84 @@ class AuthSessionTest(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["code"], "ERPNEXT_SERVICE_UNAVAILABLE")
+        self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
 
-    def test_production_login_proxies_erpnext_and_sets_sid_cookie(self) -> None:
-        captured_login_body = b""
-
+    def test_production_login_uses_fastapi_native_session_without_erpnext(self) -> None:
         def _fake_urlopen(req, timeout=0):
-            nonlocal captured_login_body
-            self.assertEqual(timeout, 5)
-            url = req.full_url
-            if url.endswith("/api/method/login"):
-                captured_login_body = req.data or b""
-                return _FakeERPNextResponse(
-                    {"message": "Logged In"},
-                    ["sid=erpnext-session-123; Path=/; HttpOnly; SameSite=Lax"],
-                )
-            if url.endswith("/api/method/frappe.auth.get_logged_user"):
-                self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-session-123")
-                return _FakeERPNextResponse({"message": "erp.user@example.com"})
-            if "/api/resource/User/erp.user%40example.com" in url:
-                self.assertEqual(req.headers.get("Authorization"), "token service-key:service-secret")
-                self.assertIsNone(req.headers.get("Cookie"))
-                return _FakeERPNextResponse(
-                    {"data": {"roles": [{"role": "System Manager"}, {"role": "BOM Editor"}]}}
-                )
-            raise AssertionError(f"unexpected ERPNext URL: {url}")
+            raise AssertionError(f"unexpected ERPNext URL: {req.full_url}")
+
+        users = {
+            "users": {
+                "fastapi.user@example.com": {
+                    "password_hash": auth_core.make_fastapi_password_hash(
+                        "secret-pass",
+                        salt="auth-test-salt",
+                        iterations=1_000,
+                    ),
+                    "roles": ["System Manager", "BOM Editor"],
+                }
+            }
+        }
 
         with patch.dict(
             os.environ,
             {
                 "APP_ENV": "production",
                 "LINGYI_ALLOW_DEV_AUTH": "false",
-                "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
-                "LINGYI_PERMISSION_SOURCE": "erpnext",
-                "LINGYI_ERPNEXT_API_KEY": "service-key",
-                "LINGYI_ERPNEXT_API_SECRET": "service-secret",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_FASTAPI_AUTH_USERS_JSON": json.dumps(users),
             },
             clear=False,
         ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
             response = self.client.post(
                 "/api/auth/login",
-                json={"username": "erp.user@example.com", "password": "secret-pass"},
+                json={"username": "fastapi.user@example.com", "password": "secret-pass"},
             )
             self.assertEqual(response.status_code, 200)
-            self.assertIn(b"usr=erp.user%40example.com", captured_login_body)
-            self.assertIn(b"pwd=secret-pass", captured_login_body)
-            self.assertIn("sid=erpnext-session-123", response.headers.get("set-cookie", ""))
+            self.assertIn("lingyi_local_session=", response.headers.get("set-cookie", ""))
+            self.assertNotIn("sid=", response.headers.get("set-cookie", ""))
             payload = response.json()
             self.assertEqual(payload["code"], "0")
-            self.assertEqual(payload["data"]["username"], "erp.user@example.com")
+            self.assertEqual(payload["data"]["username"], "fastapi.user@example.com")
             self.assertEqual(payload["data"]["roles"], ["BOM Editor", "System Manager"])
-            self.assertEqual(payload["data"]["source"], "erpnext_session")
+            self.assertEqual(payload["data"]["source"], "fastapi_session")
 
             me_response = self.client.get("/api/auth/me")
             self.assertEqual(me_response.status_code, 200)
-            self.assertEqual(me_response.json()["data"]["source"], "erpnext_session")
+            self.assertEqual(me_response.json()["data"]["source"], "fastapi_session")
 
-    def test_production_login_fail_closed_on_erpnext_unauthorized(self) -> None:
+    def test_production_fastapi_login_fail_closed_on_bad_password(self) -> None:
         def _fake_urlopen(req, timeout=0):
-            raise url_error.HTTPError(req.full_url, 401, "Unauthorized", hdrs=None, fp=None)
+            raise AssertionError(f"unexpected ERPNext URL: {req.full_url}")
+
+        users = {
+            "users": {
+                "fastapi.user@example.com": {
+                    "password_hash": auth_core.make_fastapi_password_hash(
+                        "secret-pass",
+                        salt="auth-test-salt",
+                        iterations=1_000,
+                    ),
+                    "roles": ["System Manager"],
+                }
+            }
+        }
 
         with patch.dict(
             os.environ,
             {
                 "APP_ENV": "production",
                 "LINGYI_ALLOW_DEV_AUTH": "false",
-                "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
-                "LINGYI_PERMISSION_SOURCE": "erpnext",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_FASTAPI_AUTH_USERS_JSON": json.dumps(users),
             },
             clear=False,
         ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
             response = self.client.post(
                 "/api/auth/login",
-                json={"username": "erp.user@example.com", "password": "bad-pass"},
+                json={"username": "fastapi.user@example.com", "password": "bad-pass"},
             )
 
         self.assertEqual(response.status_code, 401)

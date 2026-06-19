@@ -18,7 +18,9 @@ from app.core.auth import clear_erpnext_session_cookie
 from app.core.auth import clear_local_session_cookie
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.auth import is_fastapi_session_auth_enabled
 from app.core.auth import is_local_session_auth_enabled
+from app.core.auth import login_fastapi_user
 from app.core.auth import login_erpnext_user
 from app.core.auth import set_erpnext_session_cookie
 from app.core.auth import set_local_session_cookie
@@ -59,6 +61,9 @@ def login(payload: LocalLoginRequest, request: Request, response: Response):
     if is_local_session_auth_enabled():
         current_user = build_local_login_user(username=payload.username, profile=payload.profile or "system_manager")
         set_local_session_cookie(response, current_user)
+    elif is_fastapi_session_auth_enabled():
+        current_user = login_fastapi_user(username=payload.username, password=payload.password or "")
+        set_local_session_cookie(response, current_user, secure=_is_secure_cookie_request(request))
     else:
         erpnext_session = login_erpnext_user(username=payload.username, password=payload.password or "")
         current_user = erpnext_session.current_user

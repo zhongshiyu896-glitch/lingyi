@@ -9,6 +9,7 @@ import hmac
 from http.cookies import SimpleCookie
 import json
 import os
+import secrets
 import threading
 import time
 from typing import Any
@@ -26,9 +27,13 @@ from app.core.error_codes import ERPNEXT_TIMEOUT
 from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.permissions import AUTH_FORBIDDEN_CODE
 from app.core.permissions import AUTH_UNAUTHORIZED_CODE
+from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
+from app.core.permissions import get_permission_source
 
 DEV_AUTH_ALLOWED_ENVS = frozenset({"development", "test", "local"})
 LOCAL_SESSION_COOKIE_NAME = "lingyi_local_session"
+LOCAL_SESSION_SOURCE = "dev_session"
+FASTAPI_SESSION_SOURCE = "fastapi_session"
 LOCAL_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 ERPNEXT_SESSION_COOKIE_NAME = "sid"
 AUTH_SESSION_CACHE_TTL_ENV = "LINGYI_AUTH_CACHE_TTL_SECONDS"
@@ -36,6 +41,9 @@ AUTH_SESSION_CACHE_DEFAULT_TTL_SECONDS = 45.0
 AUTH_SESSION_CACHE_MAX_TTL_SECONDS = 60.0
 ERPNEXT_API_KEY_ENV = "LINGYI_ERPNEXT_API_KEY"
 ERPNEXT_API_SECRET_ENV = "LINGYI_ERPNEXT_API_SECRET"
+FASTAPI_AUTH_USERS_ENV = "LINGYI_FASTAPI_AUTH_USERS_JSON"
+FASTAPI_PASSWORD_HASH_SCHEME = "pbkdf2_sha256"
+FASTAPI_PASSWORD_HASH_ITERATIONS = 260_000
 
 LOCAL_LOGIN_ROLE_PROFILES: dict[str, list[str]] = {
     "system_manager": ["System Manager"],
@@ -180,6 +188,13 @@ def _local_auth_disabled_error(message: str = "本地登录仅在 local/developm
     )
 
 
+def _auth_source_unavailable_error(message: str = "FastAPI 认证用户源暂时不可用") -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail={"code": PERMISSION_SOURCE_UNAVAILABLE_CODE, "message": message, "data": {}},
+    )
+
+
 def _erpnext_unavailable_error(
     message: str = "ERPNext 服务暂时不可用",
     *,
@@ -204,6 +219,10 @@ def _normalized_app_env(default: str = "development") -> str:
 
 def is_local_session_auth_enabled() -> bool:
     return _normalized_app_env() in DEV_AUTH_ALLOWED_ENVS and _env_flag("LINGYI_ALLOW_DEV_AUTH", default=False)
+
+
+def is_fastapi_session_auth_enabled() -> bool:
+    return _normalized_app_env() == "production" and get_permission_source() == "fastapi"
 
 
 def ensure_local_session_auth_enabled() -> None:
@@ -273,6 +292,93 @@ def _service_account_users() -> set[str]:
     return {item.strip() for item in raw.split(",") if item.strip()}
 
 
+def make_fastapi_password_hash(
+    password: str,
+    *,
+    salt: str | None = None,
+    iterations: int = FASTAPI_PASSWORD_HASH_ITERATIONS,
+) -> str:
+    """Build a PBKDF2-SHA256 password hash for FastAPI-native auth config."""
+    normalized_password = password or ""
+    normalized_salt = salt or secrets.token_urlsafe(16)
+    if "$" in normalized_salt:
+        raise ValueError("salt must not contain '$'")
+    safe_iterations = max(1_000, min(int(iterations), 1_000_000))
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        normalized_password.encode("utf-8"),
+        normalized_salt.encode("utf-8"),
+        safe_iterations,
+    ).hex()
+    return f"{FASTAPI_PASSWORD_HASH_SCHEME}${safe_iterations}${normalized_salt}${digest}"
+
+
+def _verify_fastapi_password(password: str, password_hash: str) -> bool:
+    parts = password_hash.split("$")
+    if len(parts) != 4:
+        return False
+    scheme, iterations_raw, salt, expected_digest = parts
+    if scheme != FASTAPI_PASSWORD_HASH_SCHEME or not salt or not expected_digest:
+        return False
+    try:
+        iterations = int(iterations_raw)
+    except ValueError:
+        return False
+    if iterations < 1_000 or iterations > 1_000_000:
+        return False
+    actual_hash = make_fastapi_password_hash(password, salt=salt, iterations=iterations)
+    actual_digest = actual_hash.rsplit("$", maxsplit=1)[-1]
+    return hmac.compare_digest(actual_digest, expected_digest)
+
+
+def _load_fastapi_auth_users_config() -> dict[str, Any]:
+    raw = os.getenv(FASTAPI_AUTH_USERS_ENV, "").strip()
+    if not raw:
+        raise _auth_source_unavailable_error("FastAPI 认证用户源未配置")
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise _auth_source_unavailable_error("FastAPI 认证用户源 JSON 非法") from exc
+    if not isinstance(payload, dict):
+        raise _auth_source_unavailable_error("FastAPI 认证用户源结构非法")
+    users_payload = payload.get("users", payload)
+    if not isinstance(users_payload, dict):
+        raise _auth_source_unavailable_error("FastAPI 认证用户源 users 结构非法")
+    return users_payload
+
+
+def login_fastapi_user(*, username: str, password: str) -> CurrentUser:
+    if not is_fastapi_session_auth_enabled():
+        raise _local_auth_disabled_error("FastAPI 原生登录仅在 production 且权限源 fastapi 时可用")
+
+    normalized_username = username.strip()
+    if not normalized_username or not password:
+        raise _auth_error("用户名或密码错误")
+
+    users = _load_fastapi_auth_users_config()
+    entry = users.get(normalized_username)
+    if not isinstance(entry, dict) or bool(entry.get("disabled", False)):
+        raise _auth_error("用户名或密码错误")
+
+    password_hash = str(entry.get("password_hash") or "")
+    if not password_hash or not _verify_fastapi_password(password, password_hash):
+        raise _auth_error("用户名或密码错误")
+
+    roles_raw = entry.get("roles")
+    if not isinstance(roles_raw, list):
+        raise _auth_source_unavailable_error("FastAPI 认证用户角色未配置")
+    roles = sorted({role.strip() for role in roles_raw if isinstance(role, str) and role.strip()})
+    if not roles:
+        raise _auth_source_unavailable_error("FastAPI 认证用户角色未配置")
+
+    return CurrentUser(
+        username=normalized_username,
+        roles=roles,
+        is_service_account=bool(entry.get("is_service_account", False)) or normalized_username in _service_account_users(),
+        source=FASTAPI_SESSION_SOURCE,
+    )
+
+
 def _internal_worker_trusted_roles() -> set[str]:
     raw = os.getenv("LINGYI_INTERNAL_WORKER_TRUSTED_ROLES", "LY Integration Service,System Manager")
     return {item.strip() for item in raw.split(",") if item.strip()}
@@ -319,7 +425,7 @@ def create_local_session_token(current_user: CurrentUser) -> str:
         "username": current_user.username,
         "roles": current_user.roles,
         "is_service_account": current_user.is_service_account,
-        "source": "dev_session",
+        "source": current_user.source,
         "exp": int(time.time()) + LOCAL_SESSION_MAX_AGE_SECONDS,
     }
     raw_payload = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -327,14 +433,14 @@ def create_local_session_token(current_user: CurrentUser) -> str:
     return f"{_urlsafe_b64encode(raw_payload)}.{_urlsafe_b64encode(signature)}"
 
 
-def set_local_session_cookie(response: Response, current_user: CurrentUser) -> None:
+def set_local_session_cookie(response: Response, current_user: CurrentUser, *, secure: bool = False) -> None:
     response.set_cookie(
         key=LOCAL_SESSION_COOKIE_NAME,
         value=create_local_session_token(current_user),
         max_age=LOCAL_SESSION_MAX_AGE_SECONDS,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=secure,
         path="/",
     )
 
@@ -536,10 +642,7 @@ def _resolve_dev_user(request_obj: Request) -> CurrentUser | None:
     )
 
 
-def _resolve_local_session_user(request_obj: Request) -> CurrentUser | None:
-    if not is_local_session_auth_enabled():
-        return None
-
+def _resolve_signed_session_user(request_obj: Request) -> CurrentUser | None:
     token = request_obj.cookies.get(LOCAL_SESSION_COOKIE_NAME, "").strip()
     if not token:
         return None
@@ -571,17 +674,38 @@ def _resolve_local_session_user(request_obj: Request) -> CurrentUser | None:
     username = payload.get("username")
     roles = payload.get("roles")
     is_service_account = bool(payload.get("is_service_account", False))
+    source = payload.get("source", LOCAL_SESSION_SOURCE)
     if not isinstance(username, str) or not username.strip():
         return None
     if not isinstance(roles, list) or not all(isinstance(role, str) and role.strip() for role in roles):
+        return None
+    if source not in {LOCAL_SESSION_SOURCE, FASTAPI_SESSION_SOURCE}:
         return None
 
     return CurrentUser(
         username=username.strip(),
         roles=[role.strip() for role in roles],
         is_service_account=is_service_account,
-        source="dev_session",
+        source=source,
     )
+
+
+def _resolve_local_session_user(request_obj: Request) -> CurrentUser | None:
+    if not is_local_session_auth_enabled():
+        return None
+    user = _resolve_signed_session_user(request_obj)
+    if user and user.source == LOCAL_SESSION_SOURCE:
+        return user
+    return None
+
+
+def _resolve_fastapi_session_user(request_obj: Request) -> CurrentUser | None:
+    if not is_fastapi_session_auth_enabled():
+        return None
+    user = _resolve_signed_session_user(request_obj)
+    if user and user.source == FASTAPI_SESSION_SOURCE:
+        return user
+    return None
 
 
 def is_internal_worker_principal(current_user: CurrentUser) -> bool:
@@ -611,22 +735,32 @@ def is_internal_worker_api_enabled() -> bool:
 
 
 def get_current_user(request_obj: Request) -> CurrentUser:
-    """Resolve current user from ERPNext auth/session, with local dev fallback."""
+    """Resolve current user from FastAPI/local session or explicit ERPNext compatibility auth."""
     base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
     authorization = request_obj.headers.get("Authorization")
 
     local_session_token = request_obj.cookies.get(LOCAL_SESSION_COOKIE_NAME, "").strip()
     local_session_cache_key = _local_session_cache_key(local_session_token) if local_session_token else None
-    cached_local_user = _auth_session_cache_get(local_session_cache_key)
-    if cached_local_user and is_local_session_auth_enabled():
-        request_obj.state.current_user = cached_local_user
-        return cached_local_user
+    cached_signed_user = _auth_session_cache_get(local_session_cache_key)
+    if cached_signed_user:
+        if cached_signed_user.source == LOCAL_SESSION_SOURCE and is_local_session_auth_enabled():
+            request_obj.state.current_user = cached_signed_user
+            return cached_signed_user
+        if cached_signed_user.source == FASTAPI_SESSION_SOURCE and is_fastapi_session_auth_enabled():
+            request_obj.state.current_user = cached_signed_user
+            return cached_signed_user
 
     local_session_user = _resolve_local_session_user(request_obj)
     if local_session_user:
         _auth_session_cache_set(local_session_cache_key, local_session_user)
         request_obj.state.current_user = local_session_user
         return local_session_user
+
+    fastapi_session_user = _resolve_fastapi_session_user(request_obj)
+    if fastapi_session_user:
+        _auth_session_cache_set(local_session_cache_key, fastapi_session_user)
+        request_obj.state.current_user = fastapi_session_user
+        return fastapi_session_user
 
     cookie = request_obj.headers.get("Cookie")
     erpnext_sid = request_obj.cookies.get(ERPNEXT_SESSION_COOKIE_NAME, "").strip()
@@ -637,11 +771,11 @@ def get_current_user(request_obj: Request) -> CurrentUser:
         erpnext_cache_key = _erpnext_authorization_cache_key(authorization)
 
     cached_erpnext_user = _auth_session_cache_get(erpnext_cache_key)
-    if cached_erpnext_user and base_url and (authorization or cookie):
+    if cached_erpnext_user and get_permission_source() != "fastapi" and base_url and (authorization or cookie):
         request_obj.state.current_user = cached_erpnext_user
         return cached_erpnext_user
 
-    if base_url and (authorization or cookie):
+    if get_permission_source() != "fastapi" and base_url and (authorization or cookie):
         user = _resolve_erpnext_user(
             base_url=base_url,
             authorization=authorization,
