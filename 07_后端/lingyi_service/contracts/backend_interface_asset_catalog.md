@@ -101,9 +101,9 @@
 | A | POST | `/api/material-purchase/orders/from-requirements` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | POST | `/api/material-purchase/orders/{order_id}/cancel` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/material-purchase/purchase-invoices` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
-| A | POST | `/api/material-purchase/purchase-invoices` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
+| A | POST | `/api/material-purchase/purchase-invoices` | 否 | 是 | 是 | verified_real_write | code, message, data, data.purchase_invoice, data.purchase_no, data.grand_total, data.outstanding_amount, data.status | 已接现有采购发票应付页; 后端落库/审计/幂等/同采购单应付链路已由 A6 与 API smoke 验证 |
 | A | GET | `/api/material-purchase/purchase-payments` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
-| A | POST | `/api/material-purchase/purchase-payments` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
+| A | POST | `/api/material-purchase/purchase-payments` | 否 | 是 | 是 | verified_real_write | code, message, data, data.payment_entry, data.purchase_invoice, data.purchase_no, data.paid_amount, data.outstanding_after, data.status | 已接现有采购发票应付页; 后端落库/审计/幂等/同采购单付款冲减已由 A6 与 API smoke 验证 |
 | A | GET | `/api/material-purchase/requirements` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/permissions/actions/catalog` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/permissions/audit/operations` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
