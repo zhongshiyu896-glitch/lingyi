@@ -47,6 +47,8 @@ from app.core.error_codes import WORKSHOP_WAGE_RATE_SCOPE_REQUIRED
 from app.core.error_codes import WORKSHOP_WAGE_PAYMENT_ALREADY_PAID
 from app.core.error_codes import WORKSHOP_WAGE_PAYMENT_AMOUNT_EXCEEDED
 from app.core.error_codes import WORKSHOP_WAGE_PAYMENT_CONFLICT
+from app.core.error_codes import WORKSHOP_WAGE_PAYMENT_NOT_FOUND
+from app.core.error_codes import WORKSHOP_WAGE_PAYMENT_STATUS_INVALID
 from app.core.error_codes import WORKSHOP_DAILY_WAGE_NOT_FOUND
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.exceptions import AppException
@@ -75,6 +77,7 @@ from app.schemas.workshop import WorkshopBatchResult
 from app.schemas.workshop import WorkshopDailyWageListData
 from app.schemas.workshop import WorkshopDailyWageQuery
 from app.schemas.workshop import WorkshopDailyWageRow
+from app.schemas.workshop import WorkshopWagePaymentCancelRequest
 from app.schemas.workshop import WorkshopWagePaymentCreateRequest
 from app.schemas.workshop import WorkshopWagePaymentData
 from app.schemas.workshop import WorkshopWagePaymentListData
@@ -799,6 +802,48 @@ class WorkshopService:
                             {},
                         ).get("payment_count", 0)
                     ),
+                    latest_payment_id=(
+                        int(payment_summary.get(
+                            self._daily_wage_key(
+                                employee=str(row.employee),
+                                work_date=row.work_date,
+                                process_name=str(row.process_name),
+                                item_code=row.item_code,
+                            ),
+                            {},
+                        ).get("latest_payment_id"))
+                        if payment_summary.get(
+                            self._daily_wage_key(
+                                employee=str(row.employee),
+                                work_date=row.work_date,
+                                process_name=str(row.process_name),
+                                item_code=row.item_code,
+                            ),
+                            {},
+                        ).get("latest_payment_id") is not None
+                        else None
+                    ),
+                    latest_payment_entry=(
+                        str(payment_summary.get(
+                            self._daily_wage_key(
+                                employee=str(row.employee),
+                                work_date=row.work_date,
+                                process_name=str(row.process_name),
+                                item_code=row.item_code,
+                            ),
+                            {},
+                        ).get("latest_payment_entry"))
+                        if payment_summary.get(
+                            self._daily_wage_key(
+                                employee=str(row.employee),
+                                work_date=row.work_date,
+                                process_name=str(row.process_name),
+                                item_code=row.item_code,
+                            ),
+                            {},
+                        ).get("latest_payment_entry") is not None
+                        else None
+                    ),
                 )
                 for row in rows
             ],
@@ -952,6 +997,47 @@ class WorkshopService:
             self.session.flush()
         except IntegrityError as exc:
             raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_CONFLICT, message="工资发放付款冲突") from exc
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return self._to_wage_payment_data(row)
+
+    def cancel_wage_payment(
+        self,
+        *,
+        payment_id: int,
+        payload: WorkshopWagePaymentCancelRequest,
+        operator: str,
+    ) -> WorkshopWagePaymentData:
+        """Cancel one submitted wage payment and reopen the daily wage outstanding amount."""
+        try:
+            row = self.session.query(YsWorkshopWagePayment).filter(YsWorkshopWagePayment.id == payment_id).first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_NOT_FOUND, message="工资发放付款不存在")
+
+        if row.status == "cancelled":
+            return self._to_wage_payment_data(row)
+        if row.status != "submitted":
+            raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_STATUS_INVALID, message="工资发放付款状态不允许取消")
+
+        row.status = "cancelled"
+        row.updated_by = operator
+        row.updated_at = datetime.utcnow()
+        row.payload = {
+            **(row.payload or {}),
+            "cancel": {
+                "reason": payload.reason.strip(),
+                "source_ref": self._normalize_text(payload.source_ref),
+                "idempotency_key": self._normalize_text(payload.idempotency_key),
+                "scenario_tag": self._normalize_text(payload.scenario_tag),
+                "operation": payload.operation.strip(),
+                "cancelled_by": operator,
+                "cancelled_at": row.updated_at.isoformat(),
+            },
+        }
+        try:
+            self.session.flush()
         except SQLAlchemyError as exc:
             raise DatabaseWriteFailed() from exc
         return self._to_wage_payment_data(row)
@@ -1247,6 +1333,29 @@ class WorkshopService:
             "effective_from": row.effective_from.isoformat(),
             "effective_to": row.effective_to.isoformat() if row.effective_to else None,
             "status": row.status,
+        }
+
+    def get_wage_payment_snapshot(self, payment_id: int) -> dict[str, Any]:
+        """Get wage payment snapshot for audit and resource permission checks."""
+        try:
+            row = self.session.query(YsWorkshopWagePayment).filter(YsWorkshopWagePayment.id == payment_id).first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_NOT_FOUND, message="工资发放付款不存在")
+        return {
+            "id": int(row.id),
+            "payment_entry": row.payment_entry,
+            "employee": row.employee,
+            "work_date": row.work_date.isoformat(),
+            "process_name": row.process_name,
+            "item_code": row.item_code,
+            "wage_amount": str(row.wage_amount),
+            "paid_amount": str(row.paid_amount),
+            "outstanding_before": str(row.outstanding_before),
+            "outstanding_after": str(row.outstanding_after),
+            "status": row.status,
+            "source_ref": row.source_ref,
         }
 
     def backfill_wage_rate_company_scope(
@@ -2273,7 +2382,7 @@ class WorkshopService:
         process_name: str | None,
         item_code: str | None,
         allowed_item_codes: set[str] | None,
-    ) -> dict[tuple[str, date, str, str], dict[str, Decimal | int]]:
+    ) -> dict[tuple[str, date, str, str], dict[str, Any]]:
         sql = self.session.query(YsWorkshopWagePayment).filter(YsWorkshopWagePayment.status == "submitted")
         if allowed_item_codes is not None:
             if not allowed_item_codes:
@@ -2292,7 +2401,7 @@ class WorkshopService:
         if to_date:
             sql = sql.filter(YsWorkshopWagePayment.work_date <= to_date)
 
-        summary: dict[tuple[str, date, str, str], dict[str, Decimal | int]] = {}
+        summary: dict[tuple[str, date, str, str], dict[str, Any]] = {}
         for row in sql.all():
             key = self._daily_wage_key(
                 employee=str(row.employee),
@@ -2300,9 +2409,23 @@ class WorkshopService:
                 process_name=str(row.process_name),
                 item_code=row.item_code,
             )
-            current = summary.setdefault(key, {"paid_amount": Decimal("0"), "payment_count": 0})
+            current = summary.setdefault(
+                key,
+                {
+                    "paid_amount": Decimal("0"),
+                    "payment_count": 0,
+                    "latest_payment_id": None,
+                    "latest_payment_entry": None,
+                    "latest_created_at": None,
+                },
+            )
             current["paid_amount"] = self._round(Decimal(str(current["paid_amount"])) + Decimal(row.paid_amount))
             current["payment_count"] = int(current["payment_count"]) + 1
+            latest_created_at = current.get("latest_created_at")
+            if latest_created_at is None or row.created_at >= latest_created_at:
+                current["latest_payment_id"] = int(row.id)
+                current["latest_payment_entry"] = str(row.payment_entry)
+                current["latest_created_at"] = row.created_at
         return summary
 
     def _wage_paid_amount_for_daily(

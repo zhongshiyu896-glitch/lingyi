@@ -258,6 +258,17 @@ class WorkshopWageApiTest(unittest.TestCase):
         }
 
     @classmethod
+    def _cancel_payment_payload(cls, *, carrier_suffix: str) -> dict[str, object]:
+        scenario_tag = cls.PAYMENT_SCENARIO_TAG
+        return {
+            "scenario_tag": scenario_tag,
+            "idempotency_key": cls._scenario_value(scenario_tag, f"CANCEL-IDEMP-{carrier_suffix}"),
+            "source_ref": cls._scenario_value(scenario_tag, f"CANCEL-SRC-{carrier_suffix}"),
+            "reason": cls._scenario_value(scenario_tag, f"cancel-{carrier_suffix}"),
+            "operation": "cancel_wage_payment",
+        }
+
+    @classmethod
     def _headers_for_ticket_payload(cls, payload: dict[str, object]) -> dict[str, str]:
         return cls._headers(request_id=cls._ticket_request_id(payload))
 
@@ -463,6 +474,40 @@ class WorkshopWageApiTest(unittest.TestCase):
         self.assertEqual(payments.json()["data"]["total"], 1)
         self.assertEqual(payments.json()["data"]["items"][0]["payment_entry"], data["payment_entry"])
 
+        cancel_payload = self._cancel_payment_payload(carrier_suffix="PAY-001")
+        cancel = self.client.post(
+            f"/api/workshop/wage-payments/{data['id']}/cancel",
+            headers=self._headers(role="Workshop Wage Clerk"),
+            json=cancel_payload,
+        )
+        self.assertEqual(cancel.status_code, 200)
+        self.assertEqual(cancel.json()["data"]["status"], "cancelled")
+
+        replay_cancel = self.client.post(
+            f"/api/workshop/wage-payments/{data['id']}/cancel",
+            headers=self._headers(role="Workshop Wage Clerk"),
+            json=cancel_payload,
+        )
+        self.assertEqual(replay_cancel.status_code, 200)
+        self.assertEqual(replay_cancel.json()["data"]["status"], "cancelled")
+
+        reopened = self.client.get(
+            "/api/workshop/daily-wages?employee=EMP-PAY-001&from_date=2026-04-12&to_date=2026-04-12",
+            headers=self._headers(role="Workshop Wage Clerk"),
+        )
+        self.assertEqual(reopened.status_code, 200)
+        reopened_row = reopened.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(reopened_row["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(reopened_row["outstanding_amount"])), wage_amount)
+        self.assertEqual(reopened_row["payment_status"], "unpaid")
+
+        submitted_payments = self.client.get(
+            "/api/workshop/wage-payments?employee=EMP-PAY-001&from_date=2026-04-12&to_date=2026-04-12",
+            headers=self._headers(role="Workshop Wage Clerk"),
+        )
+        self.assertEqual(submitted_payments.status_code, 200)
+        self.assertEqual(submitted_payments.json()["data"]["total"], 0)
+
     def test_wage_payment_over_amount_returns_409(self) -> None:
         row = self._create_daily_wage_for_payment(ticket_key="PAY-RG-002", qty="4", employee="EMP-PAY-002")
         over_amount = Decimal(str(row["wage_amount"])) + Decimal("0.010000")
@@ -493,6 +538,30 @@ class WorkshopWageApiTest(unittest.TestCase):
             "/api/workshop/wage-payments",
             headers=self._headers(role="Workshop Clerk"),
             json=payload,
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
+
+    def test_wage_payment_cancel_requires_payment_permission(self) -> None:
+        row = self._create_daily_wage_for_payment(ticket_key="PAY-RG-004", qty="6", employee="EMP-PAY-004")
+        create_payload = self._payment_payload(
+            row=row,
+            paid_amount=str(row["wage_amount"]),
+            carrier_suffix="PAY-004",
+        )
+        created = self.client.post(
+            "/api/workshop/wage-payments",
+            headers=self._headers(role="Workshop Wage Clerk"),
+            json=create_payload,
+        )
+        self.assertEqual(created.status_code, 200)
+        cancel_payload = self._cancel_payment_payload(carrier_suffix="PAY-004")
+
+        response = self.client.post(
+            f"/api/workshop/wage-payments/{created.json()['data']['id']}/cancel",
+            headers=self._headers(role="Workshop Clerk"),
+            json=cancel_payload,
         )
 
         self.assertEqual(response.status_code, 403)

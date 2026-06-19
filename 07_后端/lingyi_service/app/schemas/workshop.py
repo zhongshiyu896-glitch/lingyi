@@ -198,6 +198,8 @@ class WorkshopDailyWageRow(BaseModel):
     outstanding_amount: Decimal = Decimal("0")
     payment_status: str = "unpaid"
     payment_count: int = 0
+    latest_payment_id: Optional[int] = None
+    latest_payment_entry: Optional[str] = None
 
 
 class WorkshopDailyWageListData(BaseModel):
@@ -228,6 +230,16 @@ class WorkshopWagePaymentCreateRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     scenario_tag: Optional[str] = Field(default=None, max_length=64)
     operation: str = Field(default="create_wage_payment", max_length=64)
+
+
+class WorkshopWagePaymentCancelRequest(BaseModel):
+    """Cancel FastAPI-native wage payment request."""
+
+    reason: str = Field(..., min_length=1, max_length=255)
+    source_ref: Optional[str] = Field(default=None, max_length=140)
+    idempotency_key: Optional[str] = Field(default=None, max_length=140)
+    scenario_tag: Optional[str] = Field(default=None, max_length=64)
+    operation: str = Field(default="cancel_wage_payment", max_length=64)
 
 
 class WorkshopWagePaymentData(BaseModel):

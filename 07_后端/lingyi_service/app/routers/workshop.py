@@ -64,6 +64,7 @@ from app.core.permissions import WORKSHOP_WAGE_RATE_MANAGE
 from app.core.permissions import WORKSHOP_WAGE_RATE_MANAGE_ALL
 from app.core.permissions import WORKSHOP_WAGE_RATE_READ
 from app.core.permissions import WORKSHOP_WAGE_RATE_READ_ALL
+from app.core.permissions import WORKSHOP_WAGE_PAYMENT_CANCEL
 from app.core.permissions import WORKSHOP_WAGE_PAYMENT_CREATE
 from app.core.permissions import WORKSHOP_WAGE_READ
 from app.core.permissions import get_permission_source
@@ -74,6 +75,7 @@ from app.schemas.workshop import OperationWageRateDeactivateRequest
 from app.schemas.workshop import OperationWageRateListData
 from app.schemas.workshop import WorkshopDailyWageListData
 from app.schemas.workshop import WorkshopDailyWageQuery
+from app.schemas.workshop import WorkshopWagePaymentCancelRequest
 from app.schemas.workshop import WorkshopWagePaymentCreateRequest
 from app.schemas.workshop import WorkshopWagePaymentData
 from app.schemas.workshop import WorkshopWagePaymentListData
@@ -1672,6 +1674,110 @@ def create_wage_payment(
             resource_id=None,
             resource_no=resource_no,
             before_data=None,
+            after_data=payload.model_dump(mode="json"),
+            error_code=WORKSHOP_INTERNAL_ERROR,
+        )
+        return _app_err(_unknown_to_internal_error(request, action, exc))
+
+
+@router.post("/wage-payments/{payment_id}/cancel")
+def cancel_wage_payment(
+    payment_id: int,
+    payload: WorkshopWagePaymentCancelRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """Cancel one workshop wage payment."""
+    permission_service = PermissionService(session=session)
+    service = _service(session=session, request=request)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    action = WORKSHOP_WAGE_PAYMENT_CANCEL
+    before_data: dict[str, Any] | None = None
+    resource_no = str(payment_id)
+
+    try:
+        before_data = service.get_wage_payment_snapshot(payment_id=payment_id)
+        resource_no = str(before_data.get("payment_entry") or payment_id)
+        item_code = before_data.get("item_code")
+        if item_code:
+            permission_service.ensure_workshop_resource_permission(
+                current_user=current_user,
+                request_obj=request,
+                action=WORKSHOP_WAGE_PAYMENT_CANCEL,
+                item_code=str(item_code),
+                company=None,
+                resource_type="Item",
+                resource_no=str(item_code),
+                enforce_action=True,
+            )
+        else:
+            permission_service.require_action(
+                current_user=current_user,
+                request_obj=request,
+                action=WORKSHOP_WAGE_PAYMENT_CANCEL,
+                module="workshop",
+                resource_type="wage_payment",
+                resource_id=payment_id,
+            )
+
+        data = service.cancel_wage_payment(
+            payment_id=payment_id,
+            payload=payload,
+            operator=current_user.username,
+        )
+        after_data = data.model_dump(mode="json")
+        audit.record_success(
+            module="workshop",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="wage_payment",
+            resource_id=payment_id,
+            resource_no=data.payment_entry,
+            before_data=before_data,
+            after_data=after_data,
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=action)
+        return _ok(after_data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        raise exc
+    except AuditWriteFailed as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type="wage_payment",
+            resource_id=payment_id,
+            resource_no=resource_no,
+            before_data=before_data,
+            after_data=payload.model_dump(mode="json"),
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type="wage_payment",
+            resource_id=payment_id,
+            resource_no=resource_no,
+            before_data=before_data,
             after_data=payload.model_dump(mode="json"),
             error_code=WORKSHOP_INTERNAL_ERROR,
         )

@@ -33,6 +33,7 @@ WORKSHOP_WAGE_RATE_READ_ALL = "workshop:wage_rate_read_all"
 WORKSHOP_WAGE_RATE_MANAGE = "workshop:wage_rate_manage"
 WORKSHOP_WAGE_RATE_MANAGE_ALL = "workshop:wage_rate_manage_all"
 WORKSHOP_WAGE_PAYMENT_CREATE = "workshop:wage_payment_create"
+WORKSHOP_WAGE_PAYMENT_CANCEL = "workshop:wage_payment_cancel"
 WORKSHOP_JOB_CARD_SYNC = "workshop:job_card_sync"
 WORKSHOP_JOB_CARD_SYNC_WORKER = "workshop:job_card_sync_worker"
 
@@ -167,6 +168,7 @@ ALL_WORKSHOP_ACTIONS = {
     WORKSHOP_WAGE_RATE_MANAGE,
     WORKSHOP_WAGE_RATE_MANAGE_ALL,
     WORKSHOP_WAGE_PAYMENT_CREATE,
+    WORKSHOP_WAGE_PAYMENT_CANCEL,
     WORKSHOP_JOB_CARD_SYNC,
     WORKSHOP_JOB_CARD_SYNC_WORKER,
 }
@@ -382,6 +384,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         WORKSHOP_WAGE_RATE_READ,
         WORKSHOP_WAGE_RATE_MANAGE,
         WORKSHOP_WAGE_PAYMENT_CREATE,
+        WORKSHOP_WAGE_PAYMENT_CANCEL,
     },
     "Workshop Sync Operator": {WORKSHOP_READ, WORKSHOP_JOB_CARD_SYNC},
     "Subcontract Operator": {

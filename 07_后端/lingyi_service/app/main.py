@@ -40,6 +40,7 @@ from app.core.permissions import WORKSHOP_TICKET_REGISTER
 from app.core.permissions import WORKSHOP_TICKET_REVERSAL
 from app.core.permissions import WORKSHOP_WAGE_RATE_MANAGE
 from app.core.permissions import WORKSHOP_WAGE_RATE_READ
+from app.core.permissions import WORKSHOP_WAGE_PAYMENT_CANCEL
 from app.core.permissions import WORKSHOP_WAGE_PAYMENT_CREATE
 from app.core.permissions import WORKSHOP_WAGE_READ
 from app.core.permissions import SUBCONTRACT_CANCEL
@@ -369,6 +370,8 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             if method == "POST":
                 return "workshop", WORKSHOP_WAGE_PAYMENT_CREATE, "WorkshopWagePayment", None
             return "workshop", WORKSHOP_WAGE_READ, "WorkshopWagePayment", None
+        if "/wage-payments/" in path and path.endswith("/cancel"):
+            return "workshop", WORKSHOP_WAGE_PAYMENT_CANCEL, "WorkshopWagePayment", None
         if path.endswith("/wage-rates"):
             if method == "POST":
                 return "workshop", WORKSHOP_WAGE_RATE_MANAGE, "WageRate", None
