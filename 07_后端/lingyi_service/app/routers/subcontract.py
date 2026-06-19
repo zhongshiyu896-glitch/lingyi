@@ -370,14 +370,33 @@ def _resolve_subcontract_read_scope_sets(
     *,
     user_permissions,
 ) -> tuple[set[str] | None, set[str] | None, set[str] | None]:
-    """Resolve query-level resource filters from ERPNext user permissions."""
+    """Resolve query-level resource filters from configured user permissions."""
     if user_permissions is None or user_permissions.unrestricted:
         return None, None, None
 
+    strict_empty_scope = get_permission_source() == "fastapi"
     readable_items = set(user_permissions.allowed_items) if user_permissions.allowed_items else set()
-    readable_companies = set(user_permissions.allowed_companies) if user_permissions.allowed_companies else None
-    readable_suppliers = set(user_permissions.allowed_suppliers) if user_permissions.allowed_suppliers else None
+    readable_companies = (
+        set(user_permissions.allowed_companies)
+        if user_permissions.allowed_companies
+        else (set() if strict_empty_scope else None)
+    )
+    readable_suppliers = (
+        set(user_permissions.allowed_suppliers)
+        if user_permissions.allowed_suppliers
+        else (set() if strict_empty_scope else None)
+    )
     return readable_items, readable_companies, readable_suppliers
+
+
+def _resolve_subcontract_read_warehouse_scope(*, user_permissions) -> set[str] | None:
+    if user_permissions is None or user_permissions.unrestricted:
+        return None
+    if user_permissions.allowed_warehouses:
+        return set(user_permissions.allowed_warehouses)
+    if get_permission_source() == "fastapi":
+        return set()
+    return None
 
 
 def _resolve_subcontract_worker_scope(
@@ -859,19 +878,15 @@ def list_subcontract_order(
     readable_item_codes: set[str] | None = None
     readable_companies: set[str] | None = None
     readable_suppliers: set[str] | None = None
-    if get_permission_source() == "erpnext":
-        user_permissions = permission_service.get_subcontract_user_permissions(
-            current_user=current_user,
-            request_obj=request,
-            action=SUBCONTRACT_READ,
-            resource_type="subcontract_order",
-        )
-        if user_permissions is not None and not user_permissions.unrestricted:
-            readable_item_codes = set(user_permissions.allowed_items) if user_permissions.allowed_items else set()
-            readable_companies = set(user_permissions.allowed_companies) if user_permissions.allowed_companies else None
-
-            if user_permissions.allowed_suppliers:
-                readable_suppliers = set(user_permissions.allowed_suppliers)
+    user_permissions = permission_service.get_subcontract_user_permissions(
+        current_user=current_user,
+        request_obj=request,
+        action=SUBCONTRACT_READ,
+        resource_type="subcontract_order",
+    )
+    readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+        user_permissions=user_permissions
+    )
 
     service = SubcontractService(session=session)
     query = SubcontractListQuery(
@@ -924,18 +939,16 @@ def list_subcontract_material_issues(
     readable_companies: set[str] | None = None
     readable_suppliers: set[str] | None = None
     readable_warehouses: set[str] | None = None
-    if get_permission_source() == "erpnext":
-        user_permissions = permission_service.get_subcontract_user_permissions(
-            current_user=current_user,
-            request_obj=request,
-            action=SUBCONTRACT_READ,
-            resource_type="subcontract_material_issue",
-        )
-        readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
-            user_permissions=user_permissions
-        )
-        if user_permissions is not None and not user_permissions.unrestricted and user_permissions.allowed_warehouses:
-            readable_warehouses = set(user_permissions.allowed_warehouses)
+    user_permissions = permission_service.get_subcontract_user_permissions(
+        current_user=current_user,
+        request_obj=request,
+        action=SUBCONTRACT_READ,
+        resource_type="subcontract_material_issue",
+    )
+    readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+        user_permissions=user_permissions
+    )
+    readable_warehouses = _resolve_subcontract_read_warehouse_scope(user_permissions=user_permissions)
 
     service = SubcontractService(session=session)
     try:
@@ -988,18 +1001,16 @@ def list_subcontract_receipts(
     readable_companies: set[str] | None = None
     readable_suppliers: set[str] | None = None
     readable_warehouses: set[str] | None = None
-    if get_permission_source() == "erpnext":
-        user_permissions = permission_service.get_subcontract_user_permissions(
-            current_user=current_user,
-            request_obj=request,
-            action=SUBCONTRACT_READ,
-            resource_type="subcontract_receipt",
-        )
-        readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
-            user_permissions=user_permissions
-        )
-        if user_permissions is not None and not user_permissions.unrestricted and user_permissions.allowed_warehouses:
-            readable_warehouses = set(user_permissions.allowed_warehouses)
+    user_permissions = permission_service.get_subcontract_user_permissions(
+        current_user=current_user,
+        request_obj=request,
+        action=SUBCONTRACT_READ,
+        resource_type="subcontract_receipt",
+    )
+    readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+        user_permissions=user_permissions
+    )
+    readable_warehouses = _resolve_subcontract_read_warehouse_scope(user_permissions=user_permissions)
 
     service = SubcontractService(session=session)
     try:
@@ -1051,18 +1062,16 @@ def list_subcontract_return_materials(
     readable_companies: set[str] | None = None
     readable_suppliers: set[str] | None = None
     readable_warehouses: set[str] | None = None
-    if get_permission_source() == "erpnext":
-        user_permissions = permission_service.get_subcontract_user_permissions(
-            current_user=current_user,
-            request_obj=request,
-            action=SUBCONTRACT_READ,
-            resource_type="subcontract_return_material",
-        )
-        if user_permissions is not None and not user_permissions.unrestricted:
-            readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
-                user_permissions=user_permissions
-            )
-            readable_warehouses = set(user_permissions.allowed_warehouses) if user_permissions.allowed_warehouses else None
+    user_permissions = permission_service.get_subcontract_user_permissions(
+        current_user=current_user,
+        request_obj=request,
+        action=SUBCONTRACT_READ,
+        resource_type="subcontract_return_material",
+    )
+    readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+        user_permissions=user_permissions
+    )
+    readable_warehouses = _resolve_subcontract_read_warehouse_scope(user_permissions=user_permissions)
 
     service = SubcontractService(session=session)
     try:
@@ -1115,16 +1124,15 @@ def list_subcontract_settlement_candidates(
         readable_item_codes: set[str] | None = None
         readable_companies: set[str] | None = None
         readable_suppliers: set[str] | None = None
-        if get_permission_source() == "erpnext":
-            user_permissions = permission_service.get_subcontract_user_permissions(
-                current_user=current_user,
-                request_obj=request,
-                action=action,
-                resource_type="subcontract_settlement",
-            )
-            readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
-                user_permissions=user_permissions,
-            )
+        user_permissions = permission_service.get_subcontract_user_permissions(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            resource_type="subcontract_settlement",
+        )
+        readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+            user_permissions=user_permissions,
+        )
 
         result = settlement_service.list_candidates(
             company=company,
@@ -1179,16 +1187,15 @@ def preview_subcontract_settlement(
         readable_item_codes: set[str] | None = None
         readable_companies: set[str] | None = None
         readable_suppliers: set[str] | None = None
-        if get_permission_source() == "erpnext":
-            user_permissions = permission_service.get_subcontract_user_permissions(
-                current_user=current_user,
-                request_obj=request,
-                action=action,
-                resource_type="subcontract_settlement",
-            )
-            readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
-                user_permissions=user_permissions,
-            )
+        user_permissions = permission_service.get_subcontract_user_permissions(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            resource_type="subcontract_settlement",
+        )
+        readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+            user_permissions=user_permissions,
+        )
 
         if payload.inspection_ids:
             for scope_row in settlement_service.list_scope_rows(inspection_ids=payload.inspection_ids):
@@ -1255,14 +1262,12 @@ def lock_subcontract_settlement(
             module="subcontract",
             resource_type="subcontract_settlement",
         )
-        user_permissions = None
-        if get_permission_source() == "erpnext":
-            user_permissions = permission_service.get_subcontract_user_permissions(
-                current_user=current_user,
-                request_obj=request,
-                action=action,
-                resource_type="subcontract_settlement",
-            )
+        user_permissions = permission_service.get_subcontract_user_permissions(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            resource_type="subcontract_settlement",
+        )
 
         for scope_row in settlement_service.list_scope_rows(inspection_ids=payload.inspection_ids):
             permission_service.ensure_subcontract_resource_permission(
@@ -1349,14 +1354,12 @@ def release_subcontract_settlement_locks(
             module="subcontract",
             resource_type="subcontract_settlement",
         )
-        user_permissions = None
-        if get_permission_source() == "erpnext":
-            user_permissions = permission_service.get_subcontract_user_permissions(
-                current_user=current_user,
-                request_obj=request,
-                action=action,
-                resource_type="subcontract_settlement",
-            )
+        user_permissions = permission_service.get_subcontract_user_permissions(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            resource_type="subcontract_settlement",
+        )
 
         for scope_row in settlement_service.list_scope_rows(inspection_ids=payload.inspection_ids):
             permission_service.ensure_subcontract_resource_permission(

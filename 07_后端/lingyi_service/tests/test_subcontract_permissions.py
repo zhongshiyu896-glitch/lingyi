@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -203,6 +204,7 @@ class SubcontractPermissionTest(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
@@ -523,6 +525,31 @@ class SubcontractPermissionTest(unittest.TestCase):
         items = payload["data"]["items"]
         self.assertTrue(items)
         self.assertTrue(all(row["item_code"] == "ITEM-B" for row in items))
+
+    def test_list_filters_by_fastapi_resource_scope(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "subcontract.user": {
+                        "companies": ["COMP-B"],
+                        "item_codes": ["ITEM-B"],
+                        "suppliers": ["SUP-B"],
+                    }
+                }
+            }
+        )
+
+        response = self.client.get("/api/subcontract/", headers=self._headers(role="Subcontract Manager"))
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        items = payload["data"]["items"]
+        self.assertTrue(items)
+        self.assertTrue(all(row["company"] == "COMP-B" for row in items))
+        self.assertTrue(all(row["item_code"] == "ITEM-B" for row in items))
+        self.assertTrue(all(row["supplier"] == "SUP-B" for row in items))
 
     def test_detail_returns_scope_bridge_fields_for_readonly_traceability(self) -> None:
         response = self.client.get("/api/subcontract/13", headers=self._headers(role="Subcontract Manager"))
