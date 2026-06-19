@@ -5,6 +5,7 @@ from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
 from app.models.production import LyProductionStatusLog
+from app.models.production import LyProductionTrackingException
 from app.models.production import LyProductionTrackingReconcile
 from app.models.production import LyProductionTrackingReconcileBatch
 from app.models.production import LyProductionWorkOrderLink
@@ -31,6 +32,7 @@ __all__ = [
     "LyProductionWorkOrderOutbox",
     "LyProductionJobCardLink",
     "LyProductionStatusLog",
+    "LyProductionTrackingException",
     "LyProductionTrackingReconcile",
     "LyProductionTrackingReconcileBatch",
     "LyFactoryStatement",

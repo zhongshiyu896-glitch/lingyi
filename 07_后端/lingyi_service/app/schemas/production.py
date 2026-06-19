@@ -107,6 +107,46 @@ class ProductionPlanListData(BaseModel):
     page_size: int
 
 
+class ProductionTrackingExceptionItem(BaseModel):
+    """Production tracking exception row."""
+
+    id: int
+    exception_no: str
+    plan_id: int
+    company: str
+    plan_no: str
+    sales_order: str
+    sales_order_item: str
+    item_code: str
+    exception_type: str
+    severity: str
+    status: str
+    description: str
+    owner: str
+    created_by: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+class ProductionTrackingExceptionCreateRequest(BaseModel):
+    """Register a production tracking exception from existing order tracking page."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    exception_type: Optional[str] = Field(default="progress", max_length=64)
+    severity: Optional[str] = Field(default="medium", max_length=32)
+    status: Optional[str] = Field(default="open", max_length=32)
+    description: str = Field(..., min_length=1, max_length=1000)
+    owner: Optional[str] = Field(default=None, max_length=140)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    scenario_tag: Optional[str] = Field(default=None, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    request_id: Optional[str] = Field(default=None, max_length=64)
+
+
 class ProductionTrackingReconcileQuery(BaseModel):
     """样板单到大货订单对账列表查询。"""
 
@@ -610,6 +650,7 @@ class ProductionPlanDetailData(BaseModel):
     purchase_status: str = "not_calculated"
     material_snapshots: List[ProductionPlanMaterialSnapshotItem] = Field(default_factory=list)
     job_cards: List[ProductionJobCardLinkItem] = Field(default_factory=list)
+    tracking_exceptions: List[ProductionTrackingExceptionItem] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

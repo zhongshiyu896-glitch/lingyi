@@ -18,6 +18,10 @@ from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionPlan
+from app.models.production import LyProductionPlanOperation
+from app.models.production import LyProductionStatusLog
+from app.models.production import LyProductionTrackingException
 from app.models.production import LyProductionTrackingReconcile
 from app.models.production import LyProductionTrackingReconcileBatch
 from app.models.sample import Base as SampleBase
@@ -75,8 +79,12 @@ class ProductionTrackingReconcileTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyProductionPlanOperation).delete()
+            session.query(LyProductionStatusLog).delete()
+            session.query(LyProductionTrackingException).delete()
             session.query(LyProductionTrackingReconcileBatch).delete()
             session.query(LyProductionTrackingReconcile).delete()
+            session.query(LyProductionPlan).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
             session.query(LySampleOrder).delete()
@@ -166,6 +174,29 @@ class ProductionTrackingReconcileTest(unittest.TestCase):
                 )
             )
             session.commit()
+
+    def _seed_plan(self, *, plan_no: str = "PP-PTR-EXC-001", status: str = "planned") -> int:
+        with self.SessionLocal() as session:
+            row = LyProductionPlan(
+                plan_no=plan_no,
+                company="COMP-PTR",
+                sales_order="SO-PTR-EXC",
+                sales_order_item="SO-PTR-EXC-001",
+                customer="PTR 客户",
+                item_code="ST-PTR-001",
+                bom_id=1,
+                bom_version="V1",
+                planned_qty="24",
+                planned_start_date=date(2026, 6, 20),
+                status=status,
+                idempotency_key=f"IDEMP-{plan_no}",
+                request_hash=f"HASH-{plan_no}",
+                created_by="seed",
+            )
+            session.add(row)
+            session.commit()
+            session.refresh(row)
+            return int(row.id)
 
     def test_generate_list_idempotency_and_conflict(self) -> None:
         sample = self._seed_sample(sample_no="SMP-PTR-001", status="converted", bulk_handoff_no="SO-PTR-001")
@@ -257,6 +288,99 @@ class ProductionTrackingReconcileTest(unittest.TestCase):
         self.assertIsNone(item["sales_order"])
         self.assertEqual(item["diff_status"], "unmatched")
         self.assertIn("未找到本地大货销售订单", item["remark"])
+
+    def test_register_tracking_exception_idempotency_detail_and_permissions(self) -> None:
+        plan_id = self._seed_plan()
+        payload = {
+            "company": "COMP-PTR",
+            "exception_type": "material",
+            "severity": "high",
+            "status": "open",
+            "description": "面料到仓延期，影响排产",
+            "owner": "跟单 PTR",
+            "operation": "tracking_exception",
+            "scenario_tag": "tracking-exception-smoke",
+            "idempotency_key": "IDEMP-PTR-EXC-001",
+            "plan_id": plan_id,
+            "sales_order": "SO-PTR-EXC",
+            "sales_order_item": "SO-PTR-EXC-001",
+            "item_code": "ST-PTR-001",
+            "request_id": "PTR-EXC-001",
+        }
+
+        denied = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-exceptions",
+            headers=self._headers(roles="production:read", request_id="PTR-EXC-DENY"),
+            json=payload,
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(denied.json()["code"], "AUTH_FORBIDDEN")
+
+        created = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-exceptions",
+            headers=self._headers(roles="Production Manager", request_id="PTR-EXC-001"),
+            json=payload,
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        data = created.json()["data"]
+        self.assertEqual(data["plan_id"], plan_id)
+        self.assertEqual(data["company"], "COMP-PTR")
+        self.assertEqual(data["sales_order"], "SO-PTR-EXC")
+        self.assertEqual(data["item_code"], "ST-PTR-001")
+        self.assertEqual(data["exception_type"], "material")
+        self.assertEqual(data["severity"], "high")
+        self.assertEqual(data["status"], "open")
+        self.assertEqual(data["description"], "面料到仓延期，影响排产")
+
+        detail = self.client.get(
+            f"/api/production/plans/{plan_id}",
+            headers=self._headers(roles="production:read", request_id="PTR-EXC-DETAIL"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        exceptions = detail.json()["data"]["tracking_exceptions"]
+        self.assertEqual(len(exceptions), 1)
+        self.assertEqual(exceptions[0]["exception_no"], data["exception_no"])
+
+        replay = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-exceptions",
+            headers=self._headers(roles="Production Manager", request_id="PTR-EXC-001"),
+            json=payload,
+        )
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["data"]["id"], data["id"])
+
+        conflict = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-exceptions",
+            headers=self._headers(roles="Production Manager", request_id="PTR-EXC-001"),
+            json={**payload, "description": "内容变更但幂等键未变"},
+        )
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionTrackingException).count(), 1)
+            self.assertEqual(
+                session.query(LyProductionPlanOperation)
+                .filter(LyProductionPlanOperation.operation == "tracking_exception")
+                .count(),
+                1,
+            )
+            self.assertEqual(
+                session.query(LyProductionStatusLog)
+                .filter(LyProductionStatusLog.action == "tracking_exception")
+                .count(),
+                1,
+            )
+            self.assertEqual(
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "production",
+                    LyOperationAuditLog.action == "production:tracking_exception",
+                    LyOperationAuditLog.result == "success",
+                )
+                .count(),
+                2,
+            )
 
 
 if __name__ == "__main__":

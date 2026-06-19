@@ -221,6 +221,38 @@ class LyProductionStatusLog(Base):
     request_id = Column(String(64), nullable=True)
 
 
+class LyProductionTrackingException(Base):
+    """生产跟进异常登记事实。"""
+
+    __tablename__ = "ly_production_tracking_exception"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_tracking_exception"),
+        Index("uk_ly_production_tracking_exception_no", "exception_no", unique=True),
+        Index("idx_ly_production_tracking_exception_plan", "plan_id", "created_at"),
+        Index("idx_ly_production_tracking_exception_company_status", "company", "status", "severity"),
+        CheckConstraint("severity IN ('low','medium','high','blocker')", name="ck_ly_production_tracking_exception_severity"),
+        CheckConstraint("status IN ('open','processing','resolved','ignored')", name="ck_ly_production_tracking_exception_status"),
+        {"schema": "ly_schema", "comment": "生产跟进异常登记事实"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    exception_no = Column(String(64), nullable=False)
+    plan_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_plan.id"), nullable=False)
+    company = Column(String(140), nullable=False)
+    plan_no = Column(String(64), nullable=False)
+    sales_order = Column(String(140), nullable=False)
+    sales_order_item = Column(String(140), nullable=False)
+    item_code = Column(String(140), nullable=False)
+    exception_type = Column(String(64), nullable=False, server_default="progress")
+    severity = Column(String(32), nullable=False, server_default="medium")
+    status = Column(String(32), nullable=False, server_default="open")
+    description = Column(String(1000), nullable=False)
+    owner = Column(String(140), nullable=False, server_default="")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
 class LyProductionTrackingReconcileBatch(Base):
     """样板单到大货订单对账生成批次。"""
 

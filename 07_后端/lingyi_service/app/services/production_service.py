@@ -32,6 +32,7 @@ from app.core.error_codes import PRODUCTION_SO_ITEM_NOT_FOUND
 from app.core.error_codes import PRODUCTION_SO_NOT_APPROVED
 from app.core.error_codes import PRODUCTION_SO_NOT_FOUND
 from app.core.error_codes import PRODUCTION_START_DATE_REQUIRED
+from app.core.error_codes import PRODUCTION_TRACKING_EXCEPTION_INVALID
 from app.core.error_codes import PRODUCTION_WAREHOUSE_REQUIRED
 from app.core.error_codes import PRODUCTION_WORK_ORDER_SYNC_FAILED
 from app.core.exceptions import BusinessException
@@ -50,6 +51,7 @@ from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
 from app.models.production import LyProductionStatusLog
+from app.models.production import LyProductionTrackingException
 from app.models.production import LyProductionTrackingReconcile
 from app.models.production import LyProductionTrackingReconcileBatch
 from app.models.production import LyProductionWorkOrderLink
@@ -110,6 +112,8 @@ from app.schemas.production import ProductionTrackingReconcileGenerateRequest
 from app.schemas.production import ProductionTrackingReconcileListData
 from app.schemas.production import ProductionTrackingReconcileListItem
 from app.schemas.production import ProductionTrackingReconcileQuery
+from app.schemas.production import ProductionTrackingExceptionCreateRequest
+from app.schemas.production import ProductionTrackingExceptionItem
 from app.schemas.production import ProductionWorkOrderListData
 from app.schemas.production import ProductionWorkOrderListItem
 from app.schemas.production import ProductionWorkOrderQuery
@@ -132,6 +136,9 @@ PRODUCTION_MATERIAL_CHECK_ALLOWED_STATUSES = frozenset(
 )
 PRODUCTION_PLAN_SCENARIO_TAG_PATTERN = re.compile(r"^Z003-PROD-PLAN-\d{8}-\d{3}$")
 PRODUCTION_PLAN_DETAIL_SCENARIO_TAG_PATTERN = re.compile(r"^Z003-PROD-PLAN-DETAIL-\d{8}-\d{3}$")
+PRODUCTION_TRACKING_EXCEPTION_TYPES = frozenset({"progress", "material", "quality", "delivery", "workshop", "other"})
+PRODUCTION_TRACKING_EXCEPTION_SEVERITIES = frozenset({"low", "medium", "high", "blocker"})
+PRODUCTION_TRACKING_EXCEPTION_STATUSES = frozenset({"open", "processing", "resolved", "ignored"})
 PRODUCTION_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 PRODUCTION_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 PRODUCTION_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
@@ -2435,6 +2442,12 @@ class ProductionService:
                 .order_by(LyProductionJobCardLink.id.asc())
                 .all()
             )
+            exceptions = (
+                self.session.query(LyProductionTrackingException)
+                .filter(LyProductionTrackingException.plan_id == int(plan.id))
+                .order_by(LyProductionTrackingException.created_at.desc(), LyProductionTrackingException.id.desc())
+                .all()
+            )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -2508,9 +2521,108 @@ class ProductionService:
                 )
                 for row in cards
             ],
+            tracking_exceptions=[self._tracking_exception_item(row) for row in exceptions],
             created_at=plan.created_at,
             updated_at=plan.updated_at,
         )
+
+    def register_tracking_exception(
+        self,
+        *,
+        plan_id: int,
+        payload: ProductionTrackingExceptionCreateRequest,
+        operator: str,
+        request_id: str | None = None,
+    ) -> ProductionTrackingExceptionItem:
+        plan = self._must_get_plan(plan_id=plan_id)
+        self._validate_tracking_exception_payload(plan=plan, payload=payload, plan_id=plan_id, request_id=request_id)
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        exception_type = (self._text(payload.exception_type) or "progress").lower()
+        severity = (self._text(payload.severity) or "medium").lower()
+        status = (self._text(payload.status) or "open").lower()
+        description = self._require_non_blank(
+            payload.description,
+            code=PRODUCTION_TRACKING_EXCEPTION_INVALID,
+            message="异常说明不能为空",
+        )
+        owner = self._text(payload.owner) or operator
+        scenario_tag = self._text(payload.scenario_tag)
+        request_hash = self._production_operation_request_hash(
+            {
+                "plan_id": int(plan.id),
+                "company": str(plan.company),
+                "operation": "tracking_exception",
+                "scenario_tag": scenario_tag,
+                "exception_type": exception_type,
+                "severity": severity,
+                "status": status,
+                "description": description,
+                "owner": owner,
+                "sales_order": str(plan.sales_order),
+                "sales_order_item": str(plan.sales_order_item),
+                "item_code": str(plan.item_code),
+            }
+        )
+        existing_operation = self._get_plan_operation(
+            company=str(plan.company),
+            operation="tracking_exception",
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash) != request_hash:
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+            return self._production_tracking_exception_item_from_json(existing_operation.response_json)
+
+        row = LyProductionTrackingException(
+            exception_no=self._next_tracking_exception_no(),
+            plan_id=int(plan.id),
+            company=str(plan.company),
+            plan_no=str(plan.plan_no),
+            sales_order=str(plan.sales_order),
+            sales_order_item=str(plan.sales_order_item),
+            item_code=str(plan.item_code),
+            exception_type=exception_type,
+            severity=severity,
+            status=status,
+            description=description,
+            owner=owner,
+            created_by=operator,
+        )
+        self.session.add(row)
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+
+        data = self._tracking_exception_item(row)
+        self.session.add(
+            LyProductionPlanOperation(
+                plan_id=int(plan.id),
+                company=str(plan.company),
+                operation="tracking_exception",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response_json=self._production_model_to_json(data),
+                created_by=operator,
+            )
+        )
+        self._log_status(
+            plan_id=int(plan.id),
+            from_status=str(plan.status),
+            to_status=str(plan.status),
+            action="tracking_exception",
+            operator=operator,
+            request_id=request_id,
+        )
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return data
 
     def material_check(
         self,
@@ -4398,6 +4510,70 @@ class ProductionService:
             updated_at=row.updated_at,
         )
 
+    def _validate_tracking_exception_payload(
+        self,
+        *,
+        plan: LyProductionPlan,
+        payload: ProductionTrackingExceptionCreateRequest,
+        plan_id: int,
+        request_id: str | None,
+    ) -> None:
+        operation = self._text(payload.operation) or "tracking_exception"
+        if operation != "tracking_exception":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="operation 必须为 tracking_exception")
+        if payload.plan_id is not None and int(payload.plan_id) != int(plan_id):
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="plan_id 与路径不一致")
+        if payload.company and str(payload.company).strip() != str(plan.company):
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="company 与生产计划不一致")
+        if payload.sales_order and str(payload.sales_order).strip() != str(plan.sales_order):
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="sales_order 与生产计划不一致")
+        if payload.sales_order_item and str(payload.sales_order_item).strip() != str(plan.sales_order_item):
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="sales_order_item 与生产计划不一致")
+        if payload.item_code and str(payload.item_code).strip() != str(plan.item_code):
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="item_code 与生产计划不一致")
+        exception_type = (self._text(payload.exception_type) or "progress").lower()
+        severity = (self._text(payload.severity) or "medium").lower()
+        status = (self._text(payload.status) or "open").lower()
+        if exception_type not in PRODUCTION_TRACKING_EXCEPTION_TYPES:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="异常类型无效")
+        if severity not in PRODUCTION_TRACKING_EXCEPTION_SEVERITIES:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="异常严重度无效")
+        if status not in PRODUCTION_TRACKING_EXCEPTION_STATUSES:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="异常状态无效")
+        payload_request_id = self._text(payload.request_id)
+        header_request_id = self._text(request_id)
+        if payload_request_id and header_request_id and payload_request_id != header_request_id:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="request_id 与请求头不一致")
+        if payload_request_id and not is_request_id_valid(payload_request_id):
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="request_id 格式无效")
+
+    @staticmethod
+    def _tracking_exception_item(row: LyProductionTrackingException) -> ProductionTrackingExceptionItem:
+        return ProductionTrackingExceptionItem(
+            id=int(row.id),
+            exception_no=str(row.exception_no),
+            plan_id=int(row.plan_id),
+            company=str(row.company),
+            plan_no=str(row.plan_no),
+            sales_order=str(row.sales_order),
+            sales_order_item=str(row.sales_order_item),
+            item_code=str(row.item_code),
+            exception_type=str(row.exception_type),
+            severity=str(row.severity),
+            status=str(row.status),
+            description=str(row.description),
+            owner=str(row.owner or ""),
+            created_by=str(row.created_by),
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    @staticmethod
+    def _production_tracking_exception_item_from_json(payload: dict[str, Any]) -> ProductionTrackingExceptionItem:
+        if hasattr(ProductionTrackingExceptionItem, "model_validate"):
+            return ProductionTrackingExceptionItem.model_validate(payload)
+        return ProductionTrackingExceptionItem.parse_obj(payload)
+
     @staticmethod
     def _text(value: Any) -> str | None:
         text = str(value).strip() if value is not None else ""
@@ -4412,6 +4588,11 @@ class ProductionService:
     def _next_tracking_reconcile_no() -> str:
         ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         return f"PTR-{ts}"
+
+    @staticmethod
+    def _next_tracking_exception_no() -> str:
+        ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+        return f"PTEX-{ts}"
 
     def _build_request_hash(self, payload: dict[str, Any]) -> str:
         canonical = self._canonicalize(payload)
