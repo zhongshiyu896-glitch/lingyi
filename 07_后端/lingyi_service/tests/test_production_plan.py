@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from datetime import datetime
 from decimal import Decimal
 import os
@@ -30,11 +31,13 @@ from app.models.production import LyProductionPlanOperation
 from app.models.production import LyProductionWorkOrderLink
 from app.models.production import LyProductionWorkOrderOutbox
 from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
 from app.models.warehouse import Base as WarehouseBase
 from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
@@ -123,12 +126,14 @@ class ProductionPlanTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyMaterialPurchaseRequirement).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionWorkOrderOutbox).delete()
             session.query(LyProductionWorkOrderLink).delete()
             session.query(LyProductionPlan).delete()
+            session.query(LyDeliveryInvoice).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrder).delete()
@@ -706,6 +711,91 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertIn("sync-job-cards", data["write_entry_frozen_reason"])
         self.assertIn("create-work-order", data["write_entry_frozen_reason"])
         self.assertNotIn("普通前端仍冻结 create-work-order / sync-job-cards", data["write_entry_frozen_reason"])
+
+    def test_order_io_quantities_use_real_local_stock_and_delivery_facts(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-real-io", planned_qty="10"),
+            )
+        self.assertEqual(create_response.status_code, 200, create_response.text)
+        plan_id = int(create_response.json()["data"]["plan_id"])
+
+        with self.SessionLocal() as session:
+            plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one()
+            receipt = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="finished_goods_inbound",
+                source_id=str(plan.plan_no),
+                source_warehouse=None,
+                target_warehouse="FG-WH-001",
+                status="pending_outbox",
+                created_by="seed",
+                created_at=datetime.utcnow(),
+                idempotency_key="idem-real-io-inbound",
+                event_key="event-real-io-inbound",
+            )
+            session.add(receipt)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(receipt.id),
+                    company="COMP-A",
+                    item_code="ITEM-A",
+                    qty=Decimal("6"),
+                    uom="Nos",
+                    source_warehouse=None,
+                    target_warehouse="FG-WH-001",
+                )
+            )
+            session.add(
+                LyDeliveryInvoice(
+                    company="COMP-A",
+                    delivery_note="DN-REAL-IO-001",
+                    sales_invoice="SI-REAL-IO-001",
+                    sales_order="SO-TEST-001",
+                    customer="CUST-A",
+                    item_code="ITEM-A",
+                    item_name="ITEM-A",
+                    warehouse="FG-WH-001",
+                    delivered_qty=Decimal("4"),
+                    uom="Nos",
+                    rate=Decimal("1"),
+                    grand_total=Decimal("4"),
+                    paid_amount=Decimal("0"),
+                    outstanding_amount=Decimal("4"),
+                    posting_date=date(2026, 4, 13),
+                    due_date=date(2026, 4, 30),
+                    status="submitted",
+                    docstatus=1,
+                    source_ref="SRC-REAL-IO-001",
+                    idempotency_key="idem-real-io-delivery",
+                    request_hash="hash-real-io-delivery",
+                    scenario_tag="REAL-IO",
+                    warehouse_draft_id=None,
+                    payload={},
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        response = self.client.get(
+            "/api/production/order-io-quantities?keyword=SO-TEST-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        rows = response.json()["data"]["items"]
+        matched = next(row for row in rows if int(row["plan_id"]) == plan_id)
+        self.assertEqual(Decimal(str(matched["ordered_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(matched["inbound_qty"])), Decimal("6.000000"))
+        self.assertEqual(Decimal(str(matched["outbound_qty"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(matched["pending_inbound_qty"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(matched["pending_outbound_qty"])), Decimal("6.000000"))
+        self.assertEqual(Decimal(str(matched["inbound_progress"])), Decimal("60.00"))
+        self.assertEqual(Decimal(str(matched["outbound_progress"])), Decimal("40.00"))
+        self.assertEqual(matched["io_status"], "in_progress")
 
     def test_material_check_requires_warehouse(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):

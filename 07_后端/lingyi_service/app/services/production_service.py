@@ -68,6 +68,7 @@ from app.models.production import LyProductionWorkOrderLink
 from app.models.sample import LySampleMaterialBom
 from app.models.sample import LySampleMaterialBomItem
 from app.models.sample import LySampleOrder
+from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.style_profit import LyStyleProfitSnapshot
@@ -2048,16 +2049,7 @@ class ProductionService:
 
         normalized_keyword = (query.keyword or "").strip().lower()
         normalized_io_status = (query.io_status or "").strip().lower()
-        qty_ratio_by_status: dict[str, tuple[Decimal, Decimal]] = {
-            "draft": (Decimal("0"), Decimal("0")),
-            "planned": (Decimal("0.15"), Decimal("0.05")),
-            "material_checked": (Decimal("0.35"), Decimal("0.15")),
-            "work_order_pending": (Decimal("0.55"), Decimal("0.25")),
-            "work_order_created": (Decimal("0.75"), Decimal("0.45")),
-            "job_cards_synced": (Decimal("0.90"), Decimal("0.70")),
-            "cancelled": (Decimal("0"), Decimal("0")),
-            "failed": (Decimal("0.10"), Decimal("0")),
-        }
+        quantity_facts = self._production_order_io_quantity_facts(plans)
 
         items: list[ProductionOrderIOQuantityListItem] = []
         for plan in plans:
@@ -2065,11 +2057,9 @@ class ProductionService:
             ordered_qty = Decimal(str(plan.planned_qty or 0))
             if ordered_qty < 0:
                 ordered_qty = Decimal("0")
-            inbound_ratio, outbound_ratio = qty_ratio_by_status.get(status, (Decimal("0.40"), Decimal("0.20")))
-            inbound_qty = (ordered_qty * inbound_ratio).quantize(Decimal("0.000001"))
-            outbound_qty = (ordered_qty * outbound_ratio).quantize(Decimal("0.000001"))
-            if outbound_qty > inbound_qty:
-                outbound_qty = inbound_qty
+            fact = quantity_facts.get(int(plan.id), {})
+            inbound_qty = Decimal(str(fact.get("inbound_qty", Decimal("0")))).quantize(Decimal("0.000001"))
+            outbound_qty = Decimal(str(fact.get("outbound_qty", Decimal("0")))).quantize(Decimal("0.000001"))
             pending_inbound_qty = (ordered_qty - inbound_qty).quantize(Decimal("0.000001"))
             if pending_inbound_qty < 0:
                 pending_inbound_qty = Decimal("0")
@@ -2078,17 +2068,19 @@ class ProductionService:
                 pending_outbound_qty = Decimal("0")
 
             if ordered_qty > 0:
-                inbound_progress = ((inbound_qty / ordered_qty) * Decimal("100")).quantize(Decimal("0.01"))
-                outbound_progress = ((outbound_qty / ordered_qty) * Decimal("100")).quantize(Decimal("0.01"))
+                inbound_progress = min((inbound_qty / ordered_qty) * Decimal("100"), Decimal("100")).quantize(Decimal("0.01"))
+                outbound_progress = min((outbound_qty / ordered_qty) * Decimal("100"), Decimal("100")).quantize(Decimal("0.01"))
             else:
                 inbound_progress = Decimal("0")
                 outbound_progress = Decimal("0")
 
             if status in {"cancelled", "failed"}:
                 io_status = "blocked"
-            elif outbound_progress >= Decimal("90"):
+            elif outbound_qty > inbound_qty:
+                io_status = "blocked"
+            elif ordered_qty > Decimal("0") and outbound_qty >= ordered_qty:
                 io_status = "done"
-            elif inbound_progress >= Decimal("40"):
+            elif inbound_qty > Decimal("0") or outbound_qty > Decimal("0"):
                 io_status = "in_progress"
             else:
                 io_status = "pending"
@@ -2150,6 +2142,121 @@ class ProductionService:
             page=query.page,
             page_size=query.page_size,
         )
+
+    def _production_order_io_quantity_facts(self, plans: list[LyProductionPlan]) -> dict[int, dict[str, Decimal]]:
+        facts: dict[int, dict[str, Decimal]] = {
+            int(plan.id): {"inbound_qty": Decimal("0"), "outbound_qty": Decimal("0")} for plan in plans
+        }
+        if not plans:
+            return facts
+
+        companies = {str(plan.company) for plan in plans if plan.company}
+        item_codes = {str(plan.item_code) for plan in plans if plan.item_code}
+        sales_orders = {str(plan.sales_order) for plan in plans if plan.sales_order}
+        inbound_refs: dict[tuple[str, str, str], list[LyProductionPlan]] = {}
+        outbound_refs: dict[tuple[str, str, str], list[LyProductionPlan]] = {}
+
+        for plan in sorted(plans, key=lambda row: int(row.id)):
+            company = str(plan.company)
+            item_code = str(plan.item_code)
+            for ref in self._production_order_inbound_refs(plan):
+                key = (company, item_code, ref)
+                bucket = inbound_refs.setdefault(key, [])
+                if all(int(existing.id) != int(plan.id) for existing in bucket):
+                    bucket.append(plan)
+            outbound_refs.setdefault((company, item_code, str(plan.sales_order)), []).append(plan)
+
+        try:
+            if self._has_sqlite_tables({LyWarehouseStockEntryDraft.__tablename__, LyWarehouseStockEntryDraftItem.__tablename__}):
+                inbound_query = (
+                    self.session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+                    .join(LyWarehouseStockEntryDraftItem, LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id)
+                    .filter(
+                        LyWarehouseStockEntryDraft.status != "cancelled",
+                        LyWarehouseStockEntryDraft.purpose == "Material Receipt",
+                        LyWarehouseStockEntryDraft.source_type == "finished_goods_inbound",
+                    )
+                )
+                if companies:
+                    inbound_query = inbound_query.filter(LyWarehouseStockEntryDraft.company.in_(sorted(companies)))
+                if item_codes:
+                    inbound_query = inbound_query.filter(LyWarehouseStockEntryDraftItem.item_code.in_(sorted(item_codes)))
+                if inbound_refs:
+                    inbound_query = inbound_query.filter(
+                        LyWarehouseStockEntryDraft.source_id.in_(sorted({key[2] for key in inbound_refs}))
+                    )
+                for draft, line in inbound_query.all():
+                    key = (str(draft.company), str(line.item_code), str(draft.source_id))
+                    self._allocate_order_io_quantity(
+                        facts=facts,
+                        plans=inbound_refs.get(key, []),
+                        quantity=Decimal(str(line.qty or 0)),
+                        field="inbound_qty",
+                    )
+
+            if self._has_sqlite_tables({LyDeliveryInvoice.__tablename__}):
+                outbound_query = self.session.query(LyDeliveryInvoice).filter(LyDeliveryInvoice.status != "cancelled")
+                if companies:
+                    outbound_query = outbound_query.filter(LyDeliveryInvoice.company.in_(sorted(companies)))
+                if item_codes:
+                    outbound_query = outbound_query.filter(LyDeliveryInvoice.item_code.in_(sorted(item_codes)))
+                if sales_orders:
+                    outbound_query = outbound_query.filter(LyDeliveryInvoice.sales_order.in_(sorted(sales_orders)))
+                for row in outbound_query.all():
+                    key = (str(row.company), str(row.item_code), str(row.sales_order))
+                    self._allocate_order_io_quantity(
+                        facts=facts,
+                        plans=outbound_refs.get(key, []),
+                        quantity=Decimal(str(row.delivered_qty or 0)),
+                        field="outbound_qty",
+                    )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        return facts
+
+    @staticmethod
+    def _production_order_inbound_refs(plan: LyProductionPlan) -> set[str]:
+        plan_id = int(plan.id)
+        return {
+            str(plan.plan_no),
+            str(plan.sales_order_item),
+            str(plan.sales_order),
+            f"production_plan:{plan_id}",
+            f"production_plan:{plan_id}:finished_goods_inbound",
+            f"plan:{plan_id}",
+        }
+
+    @staticmethod
+    def _allocate_order_io_quantity(
+        *,
+        facts: dict[int, dict[str, Decimal]],
+        plans: list[LyProductionPlan],
+        quantity: Decimal,
+        field: str,
+    ) -> None:
+        remaining = Decimal(str(quantity or 0))
+        if remaining <= Decimal("0") or not plans:
+            return
+        assigned_plan_ids: list[int] = []
+        for plan in sorted(plans, key=lambda row: int(row.id)):
+            plan_id = int(plan.id)
+            assigned_plan_ids.append(plan_id)
+            planned_qty = Decimal(str(plan.planned_qty or 0))
+            already_assigned = facts.setdefault(plan_id, {"inbound_qty": Decimal("0"), "outbound_qty": Decimal("0")}).setdefault(
+                field,
+                Decimal("0"),
+            )
+            remaining_capacity = planned_qty - already_assigned
+            if remaining_capacity <= Decimal("0"):
+                continue
+            assigned_qty = min(remaining, remaining_capacity)
+            facts[plan_id][field] = already_assigned + assigned_qty
+            remaining -= assigned_qty
+            if remaining <= Decimal("0"):
+                return
+        if remaining > Decimal("0") and assigned_plan_ids:
+            last_plan_id = assigned_plan_ids[-1]
+            facts[last_plan_id][field] = facts[last_plan_id].get(field, Decimal("0")) + remaining
 
     def list_salesperson_performance(
         self,
