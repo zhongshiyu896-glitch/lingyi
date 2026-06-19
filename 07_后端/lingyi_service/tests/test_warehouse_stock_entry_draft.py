@@ -268,8 +268,8 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         )
 
     @classmethod
-    def _cancel_payload(cls, *, reason: str) -> dict:
-        payload = cls._payload()
+    def _cancel_payload(cls, *, reason: str, source_payload: dict | None = None) -> dict:
+        payload = source_payload or cls._payload()
         return {
             "reason": reason,
             "idempotency_key": str(payload["idempotency_key"]),
@@ -282,6 +282,34 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
             "status_action": "cancel",
             "scenario_tag": str(payload["scenario_tag"]),
         }
+
+    def _stock_ledger_items(self, *, item_code: str, warehouse: str) -> list[dict]:
+        response = self.client.get(
+            "/api/warehouse/stock-ledger",
+            params={
+                "company": "COMP-A",
+                "item_code": item_code,
+                "warehouse": warehouse,
+                "page": 1,
+                "page_size": 100,
+            },
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()["data"]["items"]
+
+    def _stock_summary_items(self, *, item_code: str, warehouse: str) -> list[dict]:
+        response = self.client.get(
+            "/api/warehouse/stock-summary",
+            params={
+                "company": "COMP-A",
+                "item_code": item_code,
+                "warehouse": warehouse,
+            },
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()["data"]["items"]
 
     @classmethod
     def _audit_payload(cls, *, reason: str | None = None) -> dict:
@@ -1017,6 +1045,67 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         self.assertEqual(cancel_resp.status_code, 200, cancel_resp.text)
         self.assertEqual(cancel_resp.json()["data"]["status"], "cancelled")
         self.assertEqual(cancel_resp.json()["data"]["outbox"]["status"], "cancelled")
+
+        with self.SessionLocal() as session:
+            draft = session.query(LyWarehouseStockEntryDraft).filter(LyWarehouseStockEntryDraft.id == draft_id).one()
+            self.assertEqual(str(draft.status), "cancelled")
+            outbox = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == draft_id)
+                .one()
+            )
+            self.assertEqual(str(outbox.status), "cancelled")
+
+    def test_cancel_material_transfer_removes_source_and_target_local_balance(self) -> None:
+        payload = self._payload(qty="4")
+        payload["target_warehouse"] = "WH-C"
+        payload["items"][0]["target_warehouse"] = "WH-C"
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        draft_id = int(create_resp.json()["data"]["id"])
+
+        source_ledger = self._stock_ledger_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE)
+        target_ledger = self._stock_ledger_items(item_code=self.ITEM_CODE, warehouse="WH-C")
+        self.assertEqual(len(source_ledger), 1)
+        self.assertEqual(len(target_ledger), 1)
+        self.assertEqual(Decimal(str(source_ledger[0]["actual_qty"])), Decimal("-4.000000"))
+        self.assertEqual(Decimal(str(target_ledger[0]["actual_qty"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(source_ledger[0]["qty_after_transaction"])), Decimal("-4.000000"))
+        self.assertEqual(Decimal(str(target_ledger[0]["qty_after_transaction"])), Decimal("4.000000"))
+
+        source_summary = self._stock_summary_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE)
+        target_summary = self._stock_summary_items(item_code=self.ITEM_CODE, warehouse="WH-C")
+        self.assertEqual(Decimal(str(source_summary[0]["actual_qty"])), Decimal("-4.000000"))
+        self.assertEqual(Decimal(str(target_summary[0]["actual_qty"])), Decimal("4.000000"))
+
+        cancel_payload = self._cancel_payload(reason="reverse transfer", source_payload=payload)
+        cancel_resp = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+            headers=self._headers(
+                "warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    cancel_payload,
+                    operation="cancel_stock_entry_draft",
+                    status_action="cancel",
+                ),
+            ),
+            json=cancel_payload,
+        )
+        self.assertEqual(cancel_resp.status_code, 200, cancel_resp.text)
+        self.assertEqual(cancel_resp.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancel_resp.json()["data"]["outbox"]["status"], "cancelled")
+
+        self.assertEqual(self._stock_ledger_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE), [])
+        self.assertEqual(self._stock_ledger_items(item_code=self.ITEM_CODE, warehouse="WH-C"), [])
+        self.assertEqual(self._stock_summary_items(item_code=self.ITEM_CODE, warehouse=self.WAREHOUSE), [])
+        self.assertEqual(self._stock_summary_items(item_code=self.ITEM_CODE, warehouse="WH-C"), [])
 
         with self.SessionLocal() as session:
             draft = session.query(LyWarehouseStockEntryDraft).filter(LyWarehouseStockEntryDraft.id == draft_id).one()
