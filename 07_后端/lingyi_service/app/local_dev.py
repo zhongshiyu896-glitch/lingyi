@@ -23,10 +23,10 @@ from sqlalchemy import create_engine
 from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
 
-os.environ.setdefault("APP_ENV", "development")
-os.environ.setdefault("LINGYI_ALLOW_DEV_AUTH", "true")
-os.environ.setdefault("LINGYI_ERPNEXT_BASE_URL", "")
-os.environ.setdefault("LINGYI_PERMISSION_SOURCE", "static")
+os.environ["APP_ENV"] = "development"
+os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
+os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
+os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
 os.environ.setdefault("LINGYI_DB_URL", "sqlite:///./lingyi_service.local.db")
 
 from app import main as main_module  # noqa: E402

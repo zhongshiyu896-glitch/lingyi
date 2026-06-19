@@ -85,6 +85,24 @@ class LocalDevAsgiContractTest(unittest.TestCase):
         sys.modules.pop("app.local_dev", None)
         return importlib.import_module("app.local_dev")
 
+    def test_local_dev_forces_static_source_and_blocks_inherited_erpnext_base_url(self) -> None:
+        os.environ["APP_ENV"] = "production"
+        os.environ["LINGYI_ALLOW_DEV_AUTH"] = "false"
+        os.environ["LINGYI_ERPNEXT_BASE_URL"] = "http://127.0.0.1:9081"
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        os.environ["LINGYI_DB_URL"] = f"sqlite:///{self._temp_db_path}"
+        sys.modules.pop("app.local_dev", None)
+
+        local_dev_module = importlib.import_module("app.local_dev")
+        engine_db = Path(local_dev_module.main_module.engine.url.database).resolve()
+
+        self.assertEqual(os.environ["APP_ENV"], "development")
+        self.assertEqual(os.environ["LINGYI_ALLOW_DEV_AUTH"], "true")
+        self.assertEqual(os.environ["LINGYI_ERPNEXT_BASE_URL"], "")
+        self.assertEqual(os.environ["LINGYI_PERMISSION_SOURCE"], "static")
+        self.assertEqual(engine_db, self._temp_db_path.resolve())
+        self._assert_repo_db_stats_unchanged()
+
     def test_main_app_does_not_expose_local_dev_routes_without_direct_import(self) -> None:
         os.environ["APP_ENV"] = "test"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
