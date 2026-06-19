@@ -80,6 +80,7 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
@@ -284,6 +285,44 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         items = response.json()["data"]["items"]
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["warehouse"], "WH-A")
+
+    def test_fastapi_alerts_and_batches_do_not_construct_erpnext_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "warehouse.user": {
+                        "company": ["COMP-A"],
+                        "warehouse": ["WH-A"],
+                        "item_code": ["ITEM-A"],
+                    }
+                }
+            }
+        )
+
+        with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("erpnext adapter")):
+            alerts = self.client.get(
+                "/api/warehouse/alerts?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+                headers=self._headers(),
+            )
+            batches = self.client.get(
+                "/api/warehouse/batches?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+                headers=self._headers(),
+            )
+            batch_detail = self.client.get(
+                "/api/warehouse/batches/BATCH-NOPE?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(alerts.status_code, 200, alerts.text)
+        self.assertEqual(alerts.json()["code"], "0")
+        self.assertEqual(alerts.json()["data"]["items"], [])
+        self.assertEqual(batches.status_code, 200, batches.text)
+        self.assertEqual(batches.json()["code"], "0")
+        self.assertEqual(batches.json()["data"]["total"], 0)
+        self.assertEqual(batches.json()["data"]["items"], [])
+        self.assertEqual(batch_detail.status_code, 404, batch_detail.text)
+        self.assertEqual(batch_detail.json()["code"], "WAREHOUSE_BATCH_NOT_FOUND")
 
     def test_invalid_date_range_returns_400(self) -> None:
         response = self.client.get(

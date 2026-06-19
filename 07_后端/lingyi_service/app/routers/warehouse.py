@@ -715,6 +715,23 @@ def _build_local_batches_fallback(
     )
 
 
+def _build_local_batch_detail_fallback(
+    *,
+    batch_no: str,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+) -> WarehouseBatchDetailData:
+    return WarehouseBatchDetailData(
+        batch_no=batch_no,
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+        total=0,
+        items=[],
+    )
+
+
 def _handle_erpnext_error(
     *,
     exc: ERPNextAdapterException,
@@ -2174,30 +2191,38 @@ def get_stock_alerts(
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
 
-    try:
-        data = _read_service(request).get_alerts(
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
-            alert_type=_scope_text(alert_type),
+    if get_permission_source() == "fastapi":
+        data = _build_local_alerts_fallback(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            alert_type=alert_type,
         )
-    except ERPNextAdapterException as exc:
-        if _local_warehouse_read_fallback_enabled(exc):
-            data = _build_local_alerts_fallback(
-                company=company,
-                warehouse=warehouse,
-                item_code=item_code,
-                alert_type=alert_type,
+    else:
+        try:
+            data = _read_service(request).get_alerts(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+                alert_type=_scope_text(alert_type),
             )
-        else:
-            _handle_erpnext_error(
-                exc=exc,
-                permission_service=permission_service,
-                request=request,
-                current_user=current_user,
-                action=action,
-                resource_type="WarehouseAlert",
-            )
+        except ERPNextAdapterException as exc:
+            if _local_warehouse_read_fallback_enabled(exc):
+                data = _build_local_alerts_fallback(
+                    company=company,
+                    warehouse=warehouse,
+                    item_code=item_code,
+                    alert_type=alert_type,
+                )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="WarehouseAlert",
+                )
 
     filtered = [
         row
@@ -2255,32 +2280,40 @@ def list_batches(
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
 
-    try:
-        data = _read_service(request).list_batches(
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
-            batch_no=_scope_text(batch_no),
-            page=page,
-            page_size=page_size,
+    if get_permission_source() == "fastapi":
+        data = _build_local_batches_fallback(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            batch_no=batch_no,
         )
-    except ERPNextAdapterException as exc:
-        if _local_warehouse_read_fallback_enabled(exc):
-            data = _build_local_batches_fallback(
-                company=company,
-                warehouse=warehouse,
-                item_code=item_code,
-                batch_no=batch_no,
+    else:
+        try:
+            data = _read_service(request).list_batches(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+                batch_no=_scope_text(batch_no),
+                page=page,
+                page_size=page_size,
             )
-        else:
-            _handle_erpnext_error(
-                exc=exc,
-                permission_service=permission_service,
-                request=request,
-                current_user=current_user,
-                action=action,
-                resource_type="Batch",
-            )
+        except ERPNextAdapterException as exc:
+            if _local_warehouse_read_fallback_enabled(exc):
+                data = _build_local_batches_fallback(
+                    company=company,
+                    warehouse=warehouse,
+                    item_code=item_code,
+                    batch_no=batch_no,
+                )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="Batch",
+                )
 
     normalized_batch = _scope_text(batch_no)
     filtered = [
@@ -2339,22 +2372,30 @@ def get_batch_detail(
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
 
-    try:
-        data = _read_service(request).get_batch_detail(
+    if get_permission_source() == "fastapi":
+        data = _build_local_batch_detail_fallback(
             batch_no=batch_no,
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
         )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="Batch",
-        )
+    else:
+        try:
+            data = _read_service(request).get_batch_detail(
+                batch_no=batch_no,
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+            )
+        except ERPNextAdapterException as exc:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="Batch",
+            )
 
     filtered = [
         row
