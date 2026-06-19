@@ -26,6 +26,7 @@ from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.models.warehouse import LyWarehouseInventoryCount
 from app.models.warehouse import LyWarehouseInventoryCountItem
+from app.schemas.warehouse import WarehouseFactoryReturnMaterialDraftRequest
 from app.services.warehouse_service import WarehouseService
 
 
@@ -432,6 +433,135 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         self.assertEqual(Decimal(str(reconciliation_by_key[("WH-FG", "STYLE-BAL")].book_qty)), Decimal("3.000000"))
         self.assertEqual(Decimal(str(reconciliation_by_key[("WH-FG", "STYLE-BAL")].actual_qty)), Decimal("3.000000"))
         self.assertEqual(reconciliation_by_key[("WH-FG", "STYLE-BAL")].status, "balanced")
+
+    def test_factory_return_material_draft_returns_to_unified_stock_balance(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LySubcontractOrder(
+                    id=902,
+                    subcontract_no="SC-RET-001",
+                    supplier="RET-FAC",
+                    item_code="STYLE-RET",
+                    company="COMP-A",
+                    bom_id=1,
+                    process_name="外发裁剪",
+                    planned_qty=Decimal("10"),
+                    issued_qty=Decimal("8"),
+                    received_qty=Decimal("5"),
+                    inspected_qty=Decimal("0"),
+                    accepted_qty=Decimal("0"),
+                    status="waiting_inspection",
+                    settlement_status="unsettled",
+                )
+            )
+            session.add(
+                LySubcontractStockOutbox(
+                    id=903,
+                    subcontract_id=902,
+                    event_key="ret-issue-outbox",
+                    stock_action="issue",
+                    idempotency_key="ret-issue-idem",
+                    payload_hash="ret-issue-hash",
+                    company="COMP-A",
+                    supplier="RET-FAC",
+                    item_code="STYLE-RET",
+                    warehouse="WH-RET",
+                    action="issue",
+                    status="succeeded",
+                    stock_entry_name="LOCAL-ISSUE-RET-001",
+                    request_id="ret-issue-request",
+                    created_by="warehouse.test",
+                    created_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+                )
+            )
+            session.add(
+                LySubcontractMaterial(
+                    id=903,
+                    subcontract_id=902,
+                    stock_outbox_id=903,
+                    company="COMP-A",
+                    issue_batch_no="SIB-RET-001",
+                    material_item_code="FAB-RET",
+                    required_qty=Decimal("8"),
+                    issued_qty=Decimal("8"),
+                    sync_status="succeeded",
+                    stock_entry_name="LOCAL-ISSUE-RET-001",
+                    created_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+                )
+            )
+            session.commit()
+
+        with self.SessionLocal() as session:
+            service = WarehouseService(session=session)
+            report = service.list_local_factory_return_material_report(
+                company="COMP-A",
+                warehouse="WH-RET",
+                item_code="FAB-RET",
+                status=None,
+            )
+            self.assertEqual(len(report.items), 1)
+            report_row = report.items[0]
+            self.assertEqual(report_row.subcontract_no, "SC-RET-001")
+            self.assertEqual(Decimal(str(report_row.issued_qty)), Decimal("8.00"))
+            self.assertEqual(Decimal(str(report_row.theoretical_usage_qty)), Decimal("4.00"))
+            self.assertEqual(Decimal(str(report_row.pending_qty)), Decimal("4.00"))
+
+            payload = WarehouseFactoryReturnMaterialDraftRequest(
+                company="COMP-A",
+                scenario_tag="factory-return-material",
+                source_ref=f"{report_row.report_no}:return:001",
+                quantity=Decimal("2"),
+                uom="米",
+                business_date=date(2026, 6, 4),
+                idempotency_key="idem-factory-return-ret-001",
+            )
+            created = service.create_factory_return_material_draft(
+                report_no=report_row.report_no,
+                payload=payload,
+                current_user="warehouse.test",
+            )
+            replayed = service.create_factory_return_material_draft(
+                report_no=report_row.report_no,
+                payload=payload,
+                current_user="warehouse.test",
+            )
+            session.commit()
+            ledger = service.list_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-RET",
+                item_code="FAB-RET",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            summary = service.get_stock_summary(company="COMP-A", warehouse="WH-RET", item_code="FAB-RET")
+            refreshed = service.list_local_factory_return_material_report(
+                company="COMP-A",
+                warehouse="WH-RET",
+                item_code="FAB-RET",
+                status=None,
+            )
+
+        self.assertEqual(created.draft.id, replayed.draft.id)
+        self.assertEqual(created.draft.source_type, "factory_return_material")
+        self.assertEqual(created.draft.purpose, "Material Receipt")
+        self.assertEqual(Decimal(str(created.report_item.returned_qty)), Decimal("2.00"))
+        self.assertEqual(Decimal(str(created.report_item.pending_qty)), Decimal("2.00"))
+        self.assertEqual(created.report_item.status, "confirmed")
+        self.assertEqual(
+            [(row.voucher_type, row.voucher_no, Decimal(str(row.actual_qty)), Decimal(str(row.qty_after_transaction))) for row in ledger.items],
+            [
+                ("Subcontract/Material Issue", "SIB-RET-001", Decimal("-8.000000"), Decimal("-8.000000")),
+                ("Stock Entry Draft/Material Receipt", f"DRAFT-{created.draft.id}", Decimal("2.000000"), Decimal("-6.000000")),
+            ],
+        )
+        self.assertEqual(
+            [(row.company, row.warehouse, row.item_code, Decimal(str(row.actual_qty))) for row in summary.items],
+            [("COMP-A", "WH-RET", "FAB-RET", Decimal("-6.000000"))],
+        )
+        self.assertEqual(Decimal(str(refreshed.items[0].returned_qty)), Decimal("2.00"))
+        self.assertEqual(Decimal(str(refreshed.items[0].pending_qty)), Decimal("2.00"))
 
     def test_pending_subcontract_outbox_is_excluded_from_unified_stock_balance(self) -> None:
         with self.SessionLocal() as session:
