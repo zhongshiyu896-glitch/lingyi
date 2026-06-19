@@ -412,6 +412,7 @@ class ProductionQuoteListData(BaseModel):
 class ProductionFollowupTemplateQuery(BaseModel):
     """Production follow-up template list query."""
 
+    company: Optional[str] = Field(default=None, max_length=140)
     template_no: Optional[str] = Field(default=None, max_length=140)
     template_name: Optional[str] = Field(default=None, max_length=140)
     template_type: Optional[str] = Field(default=None, max_length=140)
@@ -448,6 +449,60 @@ class ProductionFollowupTemplateListData(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ProductionFollowupTemplateCreateRequest(BaseModel):
+    """Create a FastAPI-native production follow-up template."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    template_no: Optional[str] = Field(default=None, max_length=140)
+    template_name: str = Field(..., min_length=1, max_length=255)
+    template_type: Optional[str] = Field(default="基础跟进", max_length=140)
+    trigger_node: Optional[str] = Field(default="制单草稿", max_length=140)
+    followup_role: Optional[str] = Field(default="业务跟单", max_length=140)
+    followup_frequency: Optional[str] = Field(default="每日", max_length=64)
+    sla_hours: int = Field(default=24, ge=0, le=10000)
+    item_code: Optional[str] = Field(default="", max_length=140)
+    status: Optional[str] = Field(default="enabled", max_length=32)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionFollowupTemplateUpdateRequest(BaseModel):
+    """Update a FastAPI-native production follow-up template."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    template_no: Optional[str] = Field(default=None, max_length=140)
+    template_name: Optional[str] = Field(default=None, max_length=255)
+    template_type: Optional[str] = Field(default=None, max_length=140)
+    trigger_node: Optional[str] = Field(default=None, max_length=140)
+    followup_role: Optional[str] = Field(default=None, max_length=140)
+    followup_frequency: Optional[str] = Field(default=None, max_length=64)
+    sla_hours: Optional[int] = Field(default=None, ge=0, le=10000)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    status: Optional[str] = Field(default=None, max_length=32)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionFollowupTemplateCopyRequest(BaseModel):
+    """Copy an existing production follow-up template into a new template."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    template_no: Optional[str] = Field(default=None, max_length=140)
+    template_name: Optional[str] = Field(default=None, max_length=255)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionFollowupTemplateActionRequest(BaseModel):
+    """Action request for a production follow-up template."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    reason: Optional[str] = Field(default=None, max_length=255)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
 
 
 class ProductionOrderIOQuantityQuery(BaseModel):

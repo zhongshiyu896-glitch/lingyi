@@ -21,6 +21,8 @@ from app.core.error_codes import PRODUCTION_BOM_ITEM_MISMATCH
 from app.core.error_codes import PRODUCTION_BOM_NOT_ACTIVE
 from app.core.error_codes import PRODUCTION_BOM_NOT_FOUND
 from app.core.error_codes import PRODUCTION_COMPANY_REQUIRED
+from app.core.error_codes import PRODUCTION_FOLLOWUP_TEMPLATE_CONFLICT
+from app.core.error_codes import PRODUCTION_FOLLOWUP_TEMPLATE_NOT_FOUND
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_KEY_REQUIRED
 from app.core.error_codes import PRODUCTION_MATERIAL_CHECK_STATUS_INVALID
@@ -47,6 +49,8 @@ from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.master_data import LyMasterDataRecord
 from app.models.production import LyProductionJobCardLink
+from app.models.production import LyProductionFollowupTemplate
+from app.models.production import LyProductionFollowupTemplateOperation
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
@@ -68,7 +72,11 @@ from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionFollowupTemplateListData
 from app.schemas.production import ProductionFollowupTemplateListItem
+from app.schemas.production import ProductionFollowupTemplateActionRequest
+from app.schemas.production import ProductionFollowupTemplateCopyRequest
+from app.schemas.production import ProductionFollowupTemplateCreateRequest
 from app.schemas.production import ProductionFollowupTemplateQuery
+from app.schemas.production import ProductionFollowupTemplateUpdateRequest
 from app.schemas.production import ProductionJobCardLinkItem
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
@@ -1326,8 +1334,96 @@ class ProductionService:
         readable_item_codes: set[str] | None = None,
         readable_companies: set[str] | None = None,
     ) -> ProductionFollowupTemplateListData:
+        items = self._list_persisted_followup_templates(
+            query=query,
+            readable_item_codes=readable_item_codes,
+            readable_companies=readable_companies,
+        )
+        items.extend(
+            self._list_derived_followup_templates(
+                query=query,
+                readable_item_codes=readable_item_codes,
+                readable_companies=readable_companies,
+            )
+        )
+        items.sort(key=lambda item: item.updated_at, reverse=True)
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return ProductionFollowupTemplateListData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def _list_persisted_followup_templates(
+        self,
+        *,
+        query: ProductionFollowupTemplateQuery,
+        readable_item_codes: set[str] | None,
+        readable_companies: set[str] | None,
+    ) -> list[ProductionFollowupTemplateListItem]:
+        normalized_template_no = (query.template_no or "").strip().lower()
+        normalized_template_name = (query.template_name or "").strip().lower()
+        normalized_template_type = (query.template_type or "").strip().lower()
+        normalized_keyword = (query.keyword or "").strip().lower()
+        normalized_company = (query.company or "").strip()
+        try:
+            sql = self.session.query(LyProductionFollowupTemplate)
+            if normalized_company:
+                sql = sql.filter(LyProductionFollowupTemplate.company == normalized_company)
+            if query.item_code:
+                sql = sql.filter(LyProductionFollowupTemplate.item_code == query.item_code.strip())
+            if query.status:
+                sql = sql.filter(LyProductionFollowupTemplate.status == query.status.strip())
+            if query.from_date:
+                sql = sql.filter(func.date(LyProductionFollowupTemplate.updated_at) >= query.from_date)
+            if query.to_date:
+                sql = sql.filter(func.date(LyProductionFollowupTemplate.updated_at) <= query.to_date)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return []
+                sql = sql.filter(LyProductionFollowupTemplate.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return []
+                sql = sql.filter(LyProductionFollowupTemplate.company.in_(sorted(readable_companies)))
+            if normalized_template_no:
+                sql = sql.filter(func.lower(LyProductionFollowupTemplate.template_no).like(f"%{normalized_template_no}%"))
+            if normalized_template_name:
+                sql = sql.filter(func.lower(LyProductionFollowupTemplate.template_name).like(f"%{normalized_template_name}%"))
+            if normalized_template_type:
+                sql = sql.filter(func.lower(LyProductionFollowupTemplate.template_type).like(f"%{normalized_template_type}%"))
+            if normalized_keyword:
+                like_value = f"%{normalized_keyword}%"
+                sql = sql.filter(
+                    or_(
+                        func.lower(LyProductionFollowupTemplate.template_no).like(like_value),
+                        func.lower(LyProductionFollowupTemplate.template_name).like(like_value),
+                        func.lower(LyProductionFollowupTemplate.template_type).like(like_value),
+                        func.lower(LyProductionFollowupTemplate.trigger_node).like(like_value),
+                        func.lower(LyProductionFollowupTemplate.followup_role).like(like_value),
+                        func.lower(LyProductionFollowupTemplate.item_code).like(like_value),
+                        func.lower(LyProductionFollowupTemplate.company).like(like_value),
+                    )
+                )
+            rows = sql.order_by(LyProductionFollowupTemplate.updated_at.desc(), LyProductionFollowupTemplate.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        return [self._followup_template_item(row) for row in rows]
+
+    def _list_derived_followup_templates(
+        self,
+        *,
+        query: ProductionFollowupTemplateQuery,
+        readable_item_codes: set[str] | None,
+        readable_companies: set[str] | None,
+    ) -> list[ProductionFollowupTemplateListItem]:
         try:
             plan_sql = self.session.query(LyProductionPlan)
+            if query.company:
+                plan_sql = plan_sql.filter(LyProductionPlan.company == query.company.strip())
             if query.item_code:
                 plan_sql = plan_sql.filter(LyProductionPlan.item_code == query.item_code)
             if query.from_date:
@@ -1336,11 +1432,11 @@ class ProductionService:
                 plan_sql = plan_sql.filter(func.date(LyProductionPlan.updated_at) <= query.to_date)
             if readable_item_codes is not None:
                 if not readable_item_codes:
-                    return ProductionFollowupTemplateListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                    return []
                 plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
             if readable_companies is not None:
                 if not readable_companies:
-                    return ProductionFollowupTemplateListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                    return []
                 plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
             plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
         except SQLAlchemyError as exc:
@@ -1421,15 +1517,245 @@ class ProductionService:
                 )
             )
 
-        total = len(items)
-        start = (query.page - 1) * query.page_size
-        end = start + query.page_size
-        return ProductionFollowupTemplateListData(
-            items=items[start:end],
-            total=total,
-            page=query.page,
-            page_size=query.page_size,
+        return items
+
+    def create_followup_template(
+        self,
+        *,
+        payload: ProductionFollowupTemplateCreateRequest,
+        operator: str,
+    ) -> ProductionFollowupTemplateListItem:
+        company = self._require_non_blank(payload.company, code=PRODUCTION_COMPANY_REQUIRED, message="company 不能为空")
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
         )
+        template_no = self._text(payload.template_no) or self._next_followup_template_no()
+        status = self._normalize_followup_template_status(payload.status)
+        request_hash = self._build_request_hash(
+            {
+                "operation": "create",
+                "company": company,
+                "template_no": template_no,
+                "payload": payload.model_dump(mode="json"),
+            }
+        )
+        existing_operation = self._get_followup_template_operation(company=company, operation="create", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_followup_operation_same(existing_operation, request_hash=request_hash)
+            return self._followup_template_item_from_operation(existing_operation)
+        if self._get_followup_template_by_no(company=company, template_no=template_no) is not None:
+            raise BusinessException(code=PRODUCTION_FOLLOWUP_TEMPLATE_CONFLICT, message=f"{template_no} 已存在")
+
+        try:
+            row = LyProductionFollowupTemplate(
+                company=company,
+                template_no=template_no,
+                template_name=self._require_non_blank(
+                    payload.template_name,
+                    code=PRODUCTION_TRACKING_EXCEPTION_INVALID,
+                    message="template_name 不能为空",
+                ),
+                template_type=self._text(payload.template_type) or "基础跟进",
+                trigger_node=self._text(payload.trigger_node) or "制单草稿",
+                followup_role=self._text(payload.followup_role) or "业务跟单",
+                followup_frequency=self._text(payload.followup_frequency) or "每日",
+                sla_hours=int(payload.sla_hours or 0),
+                item_code=self._text(payload.item_code) or "",
+                status=status,
+                created_by=operator,
+                updated_by=operator,
+            )
+            self.session.add(row)
+            self.session.flush()
+            item = self._followup_template_item(row)
+            self._insert_followup_template_operation(
+                template_id=int(row.id),
+                company=company,
+                operation="create",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return item
+
+    def update_followup_template(
+        self,
+        *,
+        template_id: int,
+        payload: ProductionFollowupTemplateUpdateRequest,
+        operator: str,
+    ) -> tuple[ProductionFollowupTemplateListItem, dict[str, Any], dict[str, Any]]:
+        company = self._require_non_blank(payload.company, code=PRODUCTION_COMPANY_REQUIRED, message="company 不能为空")
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        row = self._get_followup_template_for_mutation(template_id=template_id, company=company)
+        next_values = self._followup_template_next_values(payload=payload)
+        request_hash = self._build_request_hash(
+            {
+                "operation": "update",
+                "company": company,
+                "template_id": template_id,
+                "payload": next_values,
+            }
+        )
+        existing_operation = self._get_followup_template_operation(company=company, operation="update", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_followup_operation_same(existing_operation, request_hash=request_hash)
+            item = self._followup_template_item_from_operation(existing_operation)
+            return item, item.model_dump(mode="json"), item.model_dump(mode="json")
+
+        before = self._snapshot_followup_template(row)
+        new_template_no = next_values.get("template_no")
+        if new_template_no and new_template_no != str(row.template_no):
+            existing = self._get_followup_template_by_no(company=company, template_no=str(new_template_no))
+            if existing is not None and int(existing.id) != int(row.id):
+                raise BusinessException(code=PRODUCTION_FOLLOWUP_TEMPLATE_CONFLICT, message=f"{new_template_no} 已存在")
+
+        try:
+            for key, value in next_values.items():
+                setattr(row, key, value)
+            row.updated_by = operator
+            self.session.flush()
+            item = self._followup_template_item(row)
+            self._insert_followup_template_operation(
+                template_id=int(row.id),
+                company=company,
+                operation="update",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        after = self._snapshot_followup_template(row)
+        return item, before, after
+
+    def copy_followup_template(
+        self,
+        *,
+        template_id: int,
+        payload: ProductionFollowupTemplateCopyRequest,
+        operator: str,
+    ) -> ProductionFollowupTemplateListItem:
+        company = self._require_non_blank(payload.company, code=PRODUCTION_COMPANY_REQUIRED, message="company 不能为空")
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        source = self._get_followup_template_item_for_copy(template_id=template_id, company=company)
+        template_no = self._text(payload.template_no) or self._copy_followup_template_no(source.template_no)
+        template_name = self._text(payload.template_name) or f"{source.template_name} 副本"
+        item_code = self._text(payload.item_code) if payload.item_code is not None else source.item_code
+        request_hash = self._build_request_hash(
+            {
+                "operation": "copy",
+                "company": company,
+                "source_template_id": template_id,
+                "template_no": template_no,
+                "template_name": template_name,
+                "item_code": item_code,
+                "payload": payload.model_dump(mode="json"),
+            }
+        )
+        existing_operation = self._get_followup_template_operation(company=company, operation="copy", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_followup_operation_same(existing_operation, request_hash=request_hash)
+            return self._followup_template_item_from_operation(existing_operation)
+        if self._get_followup_template_by_no(company=company, template_no=template_no) is not None:
+            raise BusinessException(code=PRODUCTION_FOLLOWUP_TEMPLATE_CONFLICT, message=f"{template_no} 已存在")
+
+        try:
+            row = LyProductionFollowupTemplate(
+                company=company,
+                template_no=template_no,
+                template_name=template_name,
+                template_type=source.template_type,
+                trigger_node=source.trigger_node,
+                followup_role=source.followup_role,
+                followup_frequency=source.followup_frequency,
+                sla_hours=int(source.sla_hours or 0),
+                item_code=item_code or "",
+                status="enabled",
+                created_by=operator,
+                updated_by=operator,
+            )
+            self.session.add(row)
+            self.session.flush()
+            item = self._followup_template_item(row)
+            self._insert_followup_template_operation(
+                template_id=int(row.id),
+                company=company,
+                operation="copy",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return item
+
+    def deactivate_followup_template(
+        self,
+        *,
+        template_id: int,
+        payload: ProductionFollowupTemplateActionRequest,
+        operator: str,
+    ) -> tuple[ProductionFollowupTemplateListItem, dict[str, Any], dict[str, Any]]:
+        company = self._require_non_blank(payload.company, code=PRODUCTION_COMPANY_REQUIRED, message="company 不能为空")
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        row = self._get_followup_template_for_mutation(template_id=template_id, company=company)
+        request_hash = self._build_request_hash(
+            {
+                "operation": "deactivate",
+                "company": company,
+                "template_id": template_id,
+                "reason": self._text(payload.reason),
+            }
+        )
+        existing_operation = self._get_followup_template_operation(company=company, operation="deactivate", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_followup_operation_same(existing_operation, request_hash=request_hash)
+            item = self._followup_template_item_from_operation(existing_operation)
+            return item, item.model_dump(mode="json"), item.model_dump(mode="json")
+
+        before = self._snapshot_followup_template(row)
+        try:
+            row.status = "disabled"
+            row.updated_by = operator
+            self.session.flush()
+            item = self._followup_template_item(row)
+            self._insert_followup_template_operation(
+                template_id=int(row.id),
+                company=company,
+                operation="deactivate",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        after = self._snapshot_followup_template(row)
+        return item, before, after
 
     def list_order_io_quantities(
         self,
@@ -4573,6 +4899,222 @@ class ProductionService:
         if hasattr(ProductionTrackingExceptionItem, "model_validate"):
             return ProductionTrackingExceptionItem.model_validate(payload)
         return ProductionTrackingExceptionItem.parse_obj(payload)
+
+    def _followup_template_item(self, row: LyProductionFollowupTemplate) -> ProductionFollowupTemplateListItem:
+        return ProductionFollowupTemplateListItem(
+            template_id=int(row.id),
+            template_no=str(row.template_no),
+            template_name=str(row.template_name),
+            template_type=str(row.template_type),
+            trigger_node=str(row.trigger_node),
+            followup_role=str(row.followup_role),
+            followup_frequency=str(row.followup_frequency),
+            sla_hours=int(row.sla_hours or 0),
+            item_code=str(row.item_code or ""),
+            company=str(row.company),
+            status=str(row.status),
+            updated_at=row.updated_at or row.created_at or datetime.utcnow(),
+        )
+
+    def _followup_template_item_from_operation(self, row: LyProductionFollowupTemplateOperation) -> ProductionFollowupTemplateListItem:
+        payload = row.response_json or {}
+        if hasattr(ProductionFollowupTemplateListItem, "model_validate"):
+            return ProductionFollowupTemplateListItem.model_validate(payload)
+        return ProductionFollowupTemplateListItem.parse_obj(payload)
+
+    @classmethod
+    def _snapshot_followup_template(cls, row: LyProductionFollowupTemplate) -> dict[str, Any]:
+        return cls._canonicalize(
+            {
+                "id": int(row.id),
+                "company": row.company,
+                "template_no": row.template_no,
+                "template_name": row.template_name,
+                "template_type": row.template_type,
+                "trigger_node": row.trigger_node,
+                "followup_role": row.followup_role,
+                "followup_frequency": row.followup_frequency,
+                "sla_hours": int(row.sla_hours or 0),
+                "item_code": row.item_code,
+                "status": row.status,
+            }
+        )
+
+    def _followup_template_next_values(self, *, payload: ProductionFollowupTemplateUpdateRequest) -> dict[str, Any]:
+        values: dict[str, Any] = {}
+        text_fields = {
+            "template_no": payload.template_no,
+            "template_name": payload.template_name,
+            "template_type": payload.template_type,
+            "trigger_node": payload.trigger_node,
+            "followup_role": payload.followup_role,
+            "followup_frequency": payload.followup_frequency,
+            "item_code": payload.item_code,
+        }
+        for key, value in text_fields.items():
+            if value is None:
+                continue
+            if key in {"template_no", "template_name"}:
+                values[key] = self._require_non_blank(
+                    value,
+                    code=PRODUCTION_TRACKING_EXCEPTION_INVALID,
+                    message=f"{key} 不能为空",
+                )
+            else:
+                values[key] = self._text(value) or ""
+        if payload.sla_hours is not None:
+            values["sla_hours"] = int(payload.sla_hours)
+        if payload.status is not None:
+            values["status"] = self._normalize_followup_template_status(payload.status)
+        return values
+
+    def _get_followup_template_by_no(self, *, company: str, template_no: str) -> LyProductionFollowupTemplate | None:
+        try:
+            return (
+                self.session.query(LyProductionFollowupTemplate)
+                .filter(
+                    LyProductionFollowupTemplate.company == company,
+                    LyProductionFollowupTemplate.template_no == template_no,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    def _get_followup_template_for_mutation(self, *, template_id: int, company: str) -> LyProductionFollowupTemplate:
+        try:
+            row = (
+                self.session.query(LyProductionFollowupTemplate)
+                .filter(
+                    LyProductionFollowupTemplate.id == template_id,
+                    LyProductionFollowupTemplate.company == company,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=PRODUCTION_FOLLOWUP_TEMPLATE_NOT_FOUND, message="生产跟进模板不存在或不是本地模板")
+        return row
+
+    def _get_followup_template_item_for_copy(self, *, template_id: int, company: str) -> ProductionFollowupTemplateListItem:
+        try:
+            row = (
+                self.session.query(LyProductionFollowupTemplate)
+                .filter(
+                    LyProductionFollowupTemplate.id == template_id,
+                    LyProductionFollowupTemplate.company == company,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is not None:
+            return self._followup_template_item(row)
+
+        try:
+            plan = (
+                self.session.query(LyProductionPlan)
+                .filter(
+                    LyProductionPlan.id == template_id,
+                    LyProductionPlan.company == company,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if plan is None:
+            raise BusinessException(code=PRODUCTION_FOLLOWUP_TEMPLATE_NOT_FOUND, message="生产跟进模板不存在")
+        return self._derived_followup_template_item(plan)
+
+    def _derived_followup_template_item(self, plan: LyProductionPlan) -> ProductionFollowupTemplateListItem:
+        template_config: dict[str, tuple[str, str, str, str, int]] = {
+            "draft": ("基础跟进", "制单草稿", "业务跟单", "每周", 72),
+            "planned": ("排期跟进", "已计划", "业务跟单", "每日", 24),
+            "material_checked": ("物料跟进", "已物料检查", "物料专员", "每日", 24),
+            "work_order_pending": ("工单跟进", "工单待同步", "生产跟单", "每班次", 8),
+            "work_order_created": ("工单跟进", "已创建工单", "生产跟单", "每日", 12),
+            "job_cards_synced": ("生产跟进", "工序卡已同步", "生产跟单", "每日", 24),
+            "cancelled": ("异常跟进", "已取消", "业务跟单", "按需", 48),
+            "failed": ("异常跟进", "失败", "业务跟单", "按需", 4),
+        }
+        status = str(plan.status or "")
+        template_type, trigger_node, followup_role, followup_frequency, sla_hours = template_config.get(
+            status,
+            ("基础跟进", status or "-", "业务跟单", "每日", 24),
+        )
+        return ProductionFollowupTemplateListItem(
+            template_id=int(plan.id),
+            template_no=f"FT-{str(plan.plan_no)}",
+            template_name=f"{str(plan.item_code)} 跟进模板",
+            template_type=template_type,
+            trigger_node=trigger_node,
+            followup_role=followup_role,
+            followup_frequency=followup_frequency,
+            sla_hours=sla_hours,
+            item_code=str(plan.item_code),
+            company=str(plan.company),
+            status="disabled" if status in {"cancelled", "failed"} else "enabled",
+            updated_at=plan.updated_at or plan.created_at or datetime.utcnow(),
+        )
+
+    def _get_followup_template_operation(self, *, company: str, operation: str, idempotency_key: str) -> LyProductionFollowupTemplateOperation | None:
+        try:
+            return (
+                self.session.query(LyProductionFollowupTemplateOperation)
+                .filter(
+                    LyProductionFollowupTemplateOperation.company == company,
+                    LyProductionFollowupTemplateOperation.operation == operation,
+                    LyProductionFollowupTemplateOperation.idempotency_key == idempotency_key,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    @staticmethod
+    def _ensure_followup_operation_same(row: LyProductionFollowupTemplateOperation, *, request_hash: str) -> None:
+        if str(row.request_hash) != request_hash:
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突，且请求内容不一致")
+
+    def _insert_followup_template_operation(
+        self,
+        *,
+        template_id: int,
+        company: str,
+        operation: str,
+        idempotency_key: str,
+        request_hash: str,
+        response: ProductionFollowupTemplateListItem,
+        operator: str,
+    ) -> None:
+        self.session.add(
+            LyProductionFollowupTemplateOperation(
+                template_id=template_id,
+                company=company,
+                operation=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response_json=response.model_dump(mode="json"),
+                created_by=operator,
+            )
+        )
+
+    @staticmethod
+    def _normalize_followup_template_status(value: str | None) -> str:
+        status = (value or "enabled").strip().lower()
+        if status not in {"enabled", "disabled"}:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="模板状态必须为 enabled 或 disabled")
+        return status
+
+    @staticmethod
+    def _next_followup_template_no() -> str:
+        return f"FTPL-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}"
+
+    @staticmethod
+    def _copy_followup_template_no(source_template_no: str) -> str:
+        suffix = datetime.utcnow().strftime("%m%d%H%M%S")
+        return f"{source_template_no}-COPY-{suffix}"[:140]
 
     @staticmethod
     def _text(value: Any) -> str | None:

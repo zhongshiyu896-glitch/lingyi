@@ -37,6 +37,7 @@ from app.core.exceptions import DatabaseWriteFailed
 from app.core.exceptions import ProductionInternalError
 from app.core.logging import log_safe_error
 from app.core.permissions import PRODUCTION_JOB_CARD_SYNC
+from app.core.permissions import PRODUCTION_FOLLOWUP_TEMPLATE_WRITE
 from app.core.permissions import PRODUCTION_MATERIAL_CHECK
 from app.core.permissions import PRODUCTION_MATERIAL_ISSUE
 from app.core.permissions import PRODUCTION_PLAN_CREATE
@@ -50,7 +51,12 @@ from app.schemas.production import ApiResponse
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionFollowupTemplateListData
+from app.schemas.production import ProductionFollowupTemplateActionRequest
+from app.schemas.production import ProductionFollowupTemplateCopyRequest
+from app.schemas.production import ProductionFollowupTemplateCreateRequest
 from app.schemas.production import ProductionFollowupTemplateQuery
+from app.schemas.production import ProductionFollowupTemplateListItem
+from app.schemas.production import ProductionFollowupTemplateUpdateRequest
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
 from app.schemas.production import ProductionMaterialIssueData
@@ -881,6 +887,7 @@ def list_production_quotes(
 @router.get("/followup-templates", response_model=ApiResponse[ProductionFollowupTemplateListData])
 def list_production_followup_templates(
     request: Request,
+    company: str | None = Query(default=None),
     template_no: str | None = Query(default=None),
     template_name: str | None = Query(default=None),
     template_type: str | None = Query(default=None),
@@ -914,6 +921,7 @@ def list_production_followup_templates(
             action=action,
         )
         query = ProductionFollowupTemplateQuery(
+            company=company,
             template_no=template_no,
             template_name=template_name,
             template_type=template_type,
@@ -937,6 +945,279 @@ def list_production_followup_templates(
         return _app_err(exc)
     except Exception as exc:
         return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.post("/followup-templates", response_model=ApiResponse[ProductionFollowupTemplateListItem])
+def create_production_followup_template(
+    payload: ProductionFollowupTemplateCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_FOLLOWUP_TEMPLATE_WRITE
+    audit_action = "create"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_followup_template",
+            resource_id=None,
+        )
+        data = _service(session=session, request=request).create_followup_template(payload=payload, operator=current_user.username)
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_followup_template",
+            resource_id=int(data.template_id),
+            resource_no=str(data.template_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template",
+            resource_id=None,
+            resource_no=payload.template_no,
+            before_data=None,
+            after_data={"template_name": payload.template_name, "item_code": payload.item_code},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template",
+            resource_id=None,
+            resource_no=payload.template_no,
+            before_data=None,
+            after_data={"template_name": payload.template_name, "item_code": payload.item_code},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.patch("/followup-templates/{template_id}", response_model=ApiResponse[ProductionFollowupTemplateListItem])
+def update_production_followup_template(
+    template_id: int,
+    payload: ProductionFollowupTemplateUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _mutate_production_followup_template(
+        template_id=template_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        audit_action="update",
+        resource_no=payload.template_no,
+        mutate=lambda service: service.update_followup_template(template_id=template_id, payload=payload, operator=current_user.username),
+    )
+
+
+@router.post("/followup-templates/{template_id}/copy", response_model=ApiResponse[ProductionFollowupTemplateListItem])
+def copy_production_followup_template(
+    template_id: int,
+    payload: ProductionFollowupTemplateCopyRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_FOLLOWUP_TEMPLATE_WRITE
+    audit_action = "create"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_followup_template",
+            resource_id=template_id,
+        )
+        data = _service(session=session, request=request).copy_followup_template(
+            template_id=template_id,
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_followup_template",
+            resource_id=int(data.template_id),
+            resource_no=str(data.template_no),
+            before_data={"source_template_id": template_id},
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template",
+            resource_id=template_id,
+            resource_no=payload.template_no,
+            before_data={"source_template_id": template_id},
+            after_data={"template_name": payload.template_name, "item_code": payload.item_code},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template",
+            resource_id=template_id,
+            resource_no=payload.template_no,
+            before_data={"source_template_id": template_id},
+            after_data={"template_name": payload.template_name, "item_code": payload.item_code},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.post("/followup-templates/{template_id}/deactivate", response_model=ApiResponse[ProductionFollowupTemplateListItem])
+def deactivate_production_followup_template(
+    template_id: int,
+    payload: ProductionFollowupTemplateActionRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _mutate_production_followup_template(
+        template_id=template_id,
+        payload=payload,
+        request=request,
+        current_user=current_user,
+        session=session,
+        audit_action="cancel",
+        resource_no=None,
+        mutate=lambda service: service.deactivate_followup_template(template_id=template_id, payload=payload, operator=current_user.username),
+    )
+
+
+def _mutate_production_followup_template(
+    *,
+    template_id: int,
+    payload: ProductionFollowupTemplateUpdateRequest | ProductionFollowupTemplateActionRequest,
+    request: Request,
+    current_user: CurrentUser,
+    session: Session,
+    audit_action: str,
+    resource_no: str | None,
+    mutate: Any,
+) -> JSONResponse | dict[str, Any]:
+    permission_action = PRODUCTION_FOLLOWUP_TEMPLATE_WRITE
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_followup_template",
+            resource_id=template_id,
+        )
+        data, before, after = mutate(_service(session=session, request=request))
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_followup_template",
+            resource_id=int(data.template_id),
+            resource_no=str(data.template_no),
+            before_data=before,
+            after_data=after,
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template",
+            resource_id=template_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data=None,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template",
+            resource_id=template_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data=None,
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
 
 
 @router.get("/order-io-quantities", response_model=ApiResponse[ProductionOrderIOQuantityListData])

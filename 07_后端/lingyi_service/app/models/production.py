@@ -253,6 +253,63 @@ class LyProductionTrackingException(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
+class LyProductionFollowupTemplate(Base):
+    """FastAPI-native production follow-up template used by the existing template page."""
+
+    __tablename__ = "ly_production_followup_template"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_followup_template"),
+        Index("uk_ly_production_followup_template_no", "company", "template_no", unique=True),
+        Index("idx_ly_production_followup_template_status", "company", "status"),
+        Index("idx_ly_production_followup_template_item", "company", "item_code"),
+        CheckConstraint("status IN ('enabled','disabled')", name="ck_ly_production_followup_template_status"),
+        CheckConstraint("sla_hours >= 0", name="ck_ly_production_followup_template_sla_hours"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生大货跟进模板"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    template_no = Column(String(140), nullable=False)
+    template_name = Column(String(255), nullable=False)
+    template_type = Column(String(140), nullable=False, server_default="基础跟进")
+    trigger_node = Column(String(140), nullable=False, server_default="制单草稿")
+    followup_role = Column(String(140), nullable=False, server_default="业务跟单")
+    followup_frequency = Column(String(64), nullable=False, server_default="每日")
+    sla_hours = Column(Integer, nullable=False, server_default="24")
+    item_code = Column(String(140), nullable=False, server_default="")
+    status = Column(String(32), nullable=False, server_default="enabled")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class LyProductionFollowupTemplateOperation(Base):
+    """Idempotency ledger for production follow-up template writes."""
+
+    __tablename__ = "ly_production_followup_template_operation"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_followup_template_operation"),
+        Index("uk_ly_production_followup_template_operation_idem", "company", "operation", "idempotency_key", unique=True),
+        Index("idx_ly_production_followup_template_operation_template", "template_id", "operation"),
+        CheckConstraint(
+            "operation IN ('create','update','copy','deactivate')",
+            name="ck_ly_production_followup_template_operation",
+        ),
+        {"schema": "ly_schema", "comment": "大货跟进模板写操作幂等账本"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    template_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_followup_template.id"), nullable=True)
+    company = Column(String(140), nullable=False)
+    operation = Column(String(64), nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    response_json = Column(JSONType, nullable=False, default=dict)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LyProductionTrackingReconcileBatch(Base):
     """样板单到大货订单对账生成批次。"""
 
