@@ -16,6 +16,7 @@ from app.core.permissions import MODULE_ACTION_REGISTRY
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_EXPORT
 from app.core.permissions import SALES_INVENTORY_READ
+from app.core.permissions import SALES_INVENTORY_WRITE
 from app.core.permissions import get_static_actions_for_roles
 from app.models.audit import Base as AuditBase
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
@@ -67,12 +68,13 @@ class SalesInventoryPermissionTest(unittest.TestCase):
     def test_actions_registered(self) -> None:
         self.assertEqual(
             MODULE_ACTION_REGISTRY["sales_inventory"],
-            {SALES_INVENTORY_READ, SALES_INVENTORY_EXPORT, SALES_INVENTORY_DIAGNOSTIC},
+            {SALES_INVENTORY_READ, SALES_INVENTORY_WRITE, SALES_INVENTORY_EXPORT, SALES_INVENTORY_DIAGNOSTIC},
         )
 
     def test_sales_manager_gets_read_and_export_not_diagnostic(self) -> None:
         actions = get_static_actions_for_roles(["Sales Manager"])
         self.assertIn(SALES_INVENTORY_READ, actions)
+        self.assertIn(SALES_INVENTORY_WRITE, actions)
         self.assertIn(SALES_INVENTORY_EXPORT, actions)
         self.assertNotIn(SALES_INVENTORY_DIAGNOSTIC, actions)
 
