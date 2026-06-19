@@ -43,9 +43,12 @@ from app.models.sample import LySampleTrackingEvent
 from app.models.sample import LySampleTrackingNode
 from app.models.sample import LySampleTrackingTemplate
 from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LyDeliveryInvoice
+from app.models.sales_order import LyDeliveryInvoiceOperation
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
+from app.models.sales_order import LySalesPaymentEntry
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
@@ -129,6 +132,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LySalesPaymentEntry).delete()
+            session.query(LyDeliveryInvoiceOperation).delete()
+            session.query(LyDeliveryInvoice).delete()
             session.query(LyMaterialPurchasePayment).delete()
             session.query(LyMaterialPurchaseInvoice).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
@@ -549,6 +555,53 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                         "item_code": receipt_item_code,
                         "qty": qty,
                         "uom": uom,
+                        "target_warehouse": self.WAREHOUSE,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        return response.json()["data"]
+
+    def _create_finished_goods_inbound(
+        self,
+        *,
+        sales_order: str,
+        qty: str,
+        idempotency_key: str,
+    ) -> dict[str, object]:
+        source_id = f"{self.WAREHOUSE_SCENARIO}:finished-goods:{sales_order}"
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_id,
+                    item_code=self.STYLE,
+                    quantity=qty,
+                )
+            ),
+            json={
+                "operation": "create_stock_entry_draft",
+                "company": self.COMPANY,
+                "purpose": "Material Receipt",
+                "source_type": "manual",
+                "source_id": source_id,
+                "source_ref": source_id,
+                "finished_goods_source_id": source_id,
+                "warehouse": self.WAREHOUSE,
+                "item_code": self.STYLE,
+                "quantity": qty,
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "create",
+                "scenario_tag": self.WAREHOUSE_SCENARIO,
+                "target_warehouse": self.WAREHOUSE,
+                "idempotency_key": idempotency_key,
+                "items": [
+                    {
+                        "item_code": self.STYLE,
+                        "qty": qty,
+                        "uom": "件",
                         "target_warehouse": self.WAREHOUSE,
                     }
                 ],
@@ -1551,6 +1604,137 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(material_issue_data["stock_entry_status"], "pending_outbox")
         self.assertEqual(material_issue_data["items"][0]["material_item_code"], self.MATERIAL)
         self.assertEqual(Decimal(str(material_issue_data["items"][0]["qty"])), Decimal("84.000000"))
+
+        finished_goods = self._create_finished_goods_inbound(
+            sales_order="SO-A6-001",
+            qty="10",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:fg-inbound:SO-A6-001",
+        )
+        self.assertEqual(finished_goods["source_type"], "finished_goods_inbound")
+        self.assertEqual(finished_goods["items"][0]["item_code"], self.STYLE)
+        self.assertEqual(Decimal(str(finished_goods["items"][0]["qty"])), Decimal("10.000000"))
+
+        delivery = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers("req-a6-delivery-invoice"),
+            json={
+                "operation": "create_delivery_invoice",
+                "company": self.COMPANY,
+                "sales_order": "SO-A6-001",
+                "customer": "CUST-A6",
+                "item_code": self.STYLE,
+                "item_name": "A6 Tee",
+                "warehouse": self.WAREHOUSE,
+                "delivered_qty": 10,
+                "uom": "件",
+                "rate": 80,
+                "posting_date": "2026-06-18",
+                "due_date": "2026-07-18",
+                "delivery_note": "DN-A6-001",
+                "sales_invoice": "SI-A6-001",
+                "source_ref": "SRC-A6-DELIVERY-001",
+                "idempotency_key": "idem-a6-delivery-001",
+            },
+        )
+        self.assertEqual(delivery.status_code, 201, delivery.text)
+        delivery_data = delivery.json()["data"]
+        self.assertEqual(delivery_data["sales_order"], "SO-A6-001")
+        self.assertEqual(delivery_data["item_code"], self.STYLE)
+        self.assertEqual(Decimal(str(delivery_data["grand_total"])), Decimal("800.000000"))
+        self.assertEqual(Decimal(str(delivery_data["outstanding_amount"])), Decimal("800.000000"))
+
+        sales_payment = self.client.post(
+            "/api/sales-inventory/payment-entries",
+            headers=self._headers("req-a6-sales-payment"),
+            json={
+                "operation": "create_payment_entry",
+                "company": self.COMPANY,
+                "sales_invoice": "SI-A6-001",
+                "customer": "CUST-A6",
+                "posting_date": "2026-06-19",
+                "paid_amount": "800",
+                "mode_of_payment": "Bank Transfer",
+                "reference_no": "BANK-A6-SALES-001",
+                "reference_date": "2026-06-19",
+                "payment_entry": "PE-A6-001",
+                "source_ref": "SRC-A6-PE-001",
+                "idempotency_key": "idem-a6-sales-payment-001",
+            },
+        )
+        self.assertEqual(sales_payment.status_code, 201, sales_payment.text)
+        self.assertEqual(Decimal(str(sales_payment.json()["data"]["outstanding_before"])), Decimal("800.000000"))
+        self.assertEqual(Decimal(str(sales_payment.json()["data"]["outstanding_after"])), Decimal("0.000000"))
+
+        receivable = self.client.get(
+            "/api/sales-inventory/sales-invoices?sales_order=SO-A6-001",
+            headers=self._headers("req-a6-sales-invoice-list"),
+        )
+        self.assertEqual(receivable.status_code, 200, receivable.text)
+        receivable_row = receivable.json()["data"]["items"][0]
+        self.assertEqual(receivable_row["sales_invoice"], "SI-A6-001")
+        self.assertEqual(receivable_row["status"], "paid")
+        self.assertEqual(Decimal(str(receivable_row["outstanding_amount"])), Decimal("0.000000"))
+
+        finished_goods_ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.STYLE}",
+            headers=self._headers("req-a6-fg-ledger"),
+        )
+        self.assertEqual(finished_goods_ledger.status_code, 200, finished_goods_ledger.text)
+        finished_goods_ledger_rows = finished_goods_ledger.json()["data"]["items"]
+        self.assertEqual(
+            [Decimal(str(row["actual_qty"])) for row in finished_goods_ledger_rows],
+            [Decimal("10.000000"), Decimal("-10.000000")],
+        )
+        self.assertEqual(Decimal(str(finished_goods_ledger_rows[-1]["qty_after_transaction"])), Decimal("0.000000"))
+
+        with self.SessionLocal() as session:
+            sales_order = session.query(LySalesOrder).filter_by(sales_order_no="SO-A6-001").one()
+            sales_line = session.query(LySalesOrderItem).filter_by(sales_order_id=int(sales_order.id)).one()
+            material_snapshot = session.query(LyProductionPlanMaterial).one()
+            requirement_row = session.query(LyMaterialPurchaseRequirement).one()
+            purchase_invoice_row = session.query(LyMaterialPurchaseInvoice).one()
+            purchase_payment_row = session.query(LyMaterialPurchasePayment).one()
+            delivery_row = session.query(LyDeliveryInvoice).one()
+            sales_payment_row = session.query(LySalesPaymentEntry).one()
+            finished_goods_draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_type="finished_goods_inbound").one()
+            finished_goods_item = session.query(LyWarehouseStockEntryDraftItem).filter_by(draft_id=int(finished_goods_draft.id)).one()
+            delivery_issue_draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_type="sales_delivery_invoice").one()
+            delivery_issue_item = session.query(LyWarehouseStockEntryDraftItem).filter_by(draft_id=int(delivery_issue_draft.id)).one()
+            material_issue_draft = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter_by(
+                    source_type="production_plan",
+                    purpose="Material Issue",
+                    source_id=f"production_plan:{plan_id}:material_issue",
+                )
+                .one()
+            )
+            material_issue_item = session.query(LyWarehouseStockEntryDraftItem).filter_by(draft_id=int(material_issue_draft.id)).one()
+            self.assertEqual(sales_line.item_code, self.STYLE)
+            self.assertEqual(str(material_snapshot.material_item_code), self.MATERIAL)
+            self.assertEqual(str(requirement_row.sales_order), str(sales_order.sales_order_no))
+            self.assertEqual(str(requirement_row.item_code), str(sales_line.item_code))
+            self.assertEqual(str(requirement_row.material_item_code), str(material_snapshot.material_item_code))
+            self.assertEqual(str(purchase_invoice_row.purchase_no), str(requirement_row.purchase_no))
+            self.assertEqual(str(purchase_payment_row.purchase_no), str(requirement_row.purchase_no))
+            self.assertEqual(str(finished_goods_draft.source_type), "finished_goods_inbound")
+            self.assertEqual(str(finished_goods_item.item_code), self.STYLE)
+            self.assertEqual(Decimal(str(finished_goods_item.qty)), Decimal("10.000000"))
+            self.assertEqual(str(delivery_issue_draft.source_id), str(delivery_row.delivery_note))
+            self.assertEqual(str(delivery_issue_item.item_code), self.STYLE)
+            self.assertEqual(Decimal(str(delivery_issue_item.qty)), Decimal("10.000000"))
+            self.assertEqual(str(delivery_row.sales_order), str(sales_order.sales_order_no))
+            self.assertEqual(str(delivery_row.item_code), str(sales_line.item_code))
+            self.assertEqual(str(delivery_row.status), "paid")
+            self.assertEqual(str(sales_payment_row.sales_order), str(sales_order.sales_order_no))
+            self.assertEqual(Decimal(str(sales_payment_row.outstanding_after)), Decimal("0.000000"))
+            self.assertEqual(str(material_issue_item.item_code), self.MATERIAL)
+            self.assertEqual(Decimal(str(material_issue_item.qty)), Decimal("84.000000"))
+            audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
+            self.assertIn("production:material_check", audit_actions)
+            self.assertIn("material_purchase:write", audit_actions)
+            self.assertIn("warehouse:stock_entry_draft", audit_actions)
+            self.assertIn("sales_inventory:write", audit_actions)
 
     def test_material_check_filters_bom_rows_by_sales_order_color_size(self) -> None:
         with self.SessionLocal() as session:
