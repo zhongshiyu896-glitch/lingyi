@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 import app.main as main_module
 from app.main import app
 from app.models.audit import Base as AuditBase
@@ -24,6 +25,9 @@ from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
 from app.services.erpnext_warehouse_adapter import ERPNextWarehouseAdapter
+from app.services.warehouse_service import WarehouseService
+from app.services.warehouse_service import WarehouseServiceError
+from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
 
 
 class WarehouseFinishedGoodsInboundApiBase(unittest.TestCase):
@@ -290,6 +294,40 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
         self.assertEqual(rows[0]["warehouse"], "FG-WH-001")
         self.assertEqual(rows[0]["inbound_status"], "outbox_pending")
         self.assertEqual(Decimal(str(rows[0]["inbound_qty"])), Decimal("3.000000"))
+
+    def test_finished_goods_local_source_fallback_rejected_in_production(self) -> None:
+        old_env = {
+            "APP_ENV": os.environ.get("APP_ENV"),
+            "LINGYI_DB_URL": os.environ.get("LINGYI_DB_URL"),
+            "LINGYI_ALLOW_DEV_AUTH": os.environ.get("LINGYI_ALLOW_DEV_AUTH"),
+            "LINGYI_ERPNEXT_BASE_URL": os.environ.get("LINGYI_ERPNEXT_BASE_URL"),
+        }
+        os.environ["APP_ENV"] = "production"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
+        os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
+        os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
+        try:
+            payload = self._draft_payload(qty="3", item_code="FG-PROD-LOCAL-001")
+            payload["source_id"] = f"{self.STOCK_ENTRY_SCENARIO_TAG}-PROD-LOCAL-FG-001"
+            payload["source_ref"] = payload["source_id"]
+            payload["finished_goods_source_id"] = payload["source_id"]
+            payload["items"][0]["item_code"] = "FG-PROD-LOCAL-001"
+            with self.SessionLocal() as session:
+                service = WarehouseService(session=session)
+                with self.assertRaises(WarehouseServiceError) as raised:
+                    service.create_stock_entry_draft(
+                        payload=WarehouseStockEntryDraftCreateRequest(**payload),
+                        current_user="warehouse.fg",
+                    )
+                self.assertEqual(raised.exception.status_code, 503)
+                self.assertEqual(raised.exception.code, EXTERNAL_SERVICE_UNAVAILABLE)
+                self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 0)
+        finally:
+            for key, value in old_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
     def test_cancel_finished_goods_draft_removes_effective_stock(self) -> None:
         payload = self._draft_payload(qty="3", item_code="FG-CANCEL-001")

@@ -3879,7 +3879,7 @@ class WarehouseService:
                 company=company,
             )
         except ERPNextAdapterException as exc:
-            if self._local_read_fallback_enabled():
+            if self._finished_goods_local_source_fallback_enabled():
                 return item_rows, "zero_placeholder_fallback", "FastAPI local finished goods inbound source"
             raise WarehouseServiceError(
                 int(exc.http_status or 503),
@@ -3966,6 +3966,10 @@ class WarehouseService:
         if self.adapter is None:
             self.adapter = ERPNextWarehouseAdapter()
         return self.adapter
+
+    def _finished_goods_local_source_fallback_enabled(self) -> bool:
+        """Allow placeholder finished-goods source only in the local dev fallback lane."""
+        return self._local_read_fallback_enabled()
 
     def _require_session(self) -> Session:
         if self.session is None:
