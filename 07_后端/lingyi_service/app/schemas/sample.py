@@ -284,6 +284,7 @@ class SampleTrackingEventCreateRequest(BaseModel):
 class SampleMaterialBomItemPayload(BaseModel):
     """Sample material BOM line payload."""
 
+    source_bom_item_id: int | None = Field(default=None, ge=1)
     material_item_code: str = Field(..., min_length=1, max_length=140)
     color: str | None = Field(default=None, max_length=64)
     part: str | None = Field(default=None, max_length=100)

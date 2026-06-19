@@ -401,6 +401,8 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(copied.status_code, 200, copied.text)
         self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+        copied_source_item_id = copied.json()["data"]["items"][0]["source_bom_item_id"]
+        self.assertIsNotNone(copied_source_item_id)
 
         edited = self.client.put(
             f"/api/sample/orders/{order_id}/material-bom",
@@ -412,6 +414,7 @@ class MaterialBomApiTest(unittest.TestCase):
                 "version_no": "S2",
                 "items": [
                     {
+                        "source_bom_item_id": copied_source_item_id,
                         "material_item_code": "FAB-ALT-001",
                         "color": "黑",
                         "part": "袖口",
@@ -427,6 +430,30 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(edited.status_code, 200, edited.text)
         self.assertTrue(edited.json()["data"]["items"][0]["is_alternative"])
+        self.assertEqual(edited.json()["data"]["items"][0]["source_bom_item_id"], copied_source_item_id)
+
+        invalid_source = self.client.put(
+            f"/api/sample/orders/{order_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-EDIT-BAD-SOURCE"),
+            json={
+                "operation": "upsert",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-EDIT-BAD-SOURCE",
+                "version_no": "S2",
+                "items": [
+                    {
+                        "source_bom_item_id": 999999,
+                        "material_item_code": "FAB-ALT-001",
+                        "qty_per_piece": "1.5",
+                        "loss_rate": "0.10",
+                        "uom": "米",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(invalid_source.status_code, 409, invalid_source.text)
+        self.assertEqual(invalid_source.json()["code"], "SAMPLE_CONFLICT")
+        self.assertIn("来源行不属于当前款 BOM", invalid_source.json()["message"])
 
         exploded = self.client.post(
             f"/api/sample/orders/{order_id}/material-bom/explode?company=COMP-MB",

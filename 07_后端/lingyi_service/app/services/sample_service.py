@@ -471,11 +471,13 @@ class SampleService:
 
         self._ensure_material_bom_items_active(company=company, items=payload.items)
         bom = self._find_sample_material_bom(order=order)
+        source_bom_id = int(bom.source_bom_id) if bom and bom.source_bom_id is not None else None
+        self._ensure_sample_bom_source_items(source_bom_id=source_bom_id, items=payload.items)
         before = self._sample_material_bom_data(order=order, bom=bom).model_dump(mode="json") if bom else None
         try:
             bom = self._upsert_sample_material_bom_header(
                 order=order,
-                source_bom_id=(int(bom.source_bom_id) if bom and bom.source_bom_id is not None else None),
+                source_bom_id=source_bom_id,
                 version_no=payload.version_no,
                 actor=actor,
                 existing=bom,
@@ -487,7 +489,7 @@ class SampleService:
                     LySampleMaterialBomItem(
                         id=next_item_id,
                         bom_id=int(bom.id),
-                        source_bom_item_id=None,
+                        source_bom_item_id=int(item.source_bom_item_id) if item.source_bom_item_id is not None else None,
                         material_item_code=item.material_item_code.strip(),
                         color=self._optional_text(item.color),
                         part=self._optional_text(item.part),
@@ -1386,6 +1388,37 @@ class SampleService:
             raise BusinessException(
                 code=STYLE_MASTER_INVALID_REFERENCE,
                 message=f"物料主数据不存在或已停用: {', '.join(invalid_codes)}",
+            )
+
+    def _ensure_sample_bom_source_items(self, *, source_bom_id: int | None, items: list[Any]) -> None:
+        source_item_ids = sorted(
+            {
+                int(getattr(item, "source_bom_item_id"))
+                for item in items
+                if getattr(item, "source_bom_item_id", None) is not None
+            }
+        )
+        if not source_item_ids:
+            return
+        if source_bom_id is None:
+            raise BusinessException(code=SAMPLE_CONFLICT, message="样板 BOM 未关联款 BOM，不能保存来源行血缘")
+        try:
+            rows = (
+                self.session.query(LyApparelBomItem.id)
+                .filter(
+                    LyApparelBomItem.bom_id == int(source_bom_id),
+                    LyApparelBomItem.id.in_(source_item_ids),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        existing_ids = {int(row[0]) for row in rows}
+        invalid_ids = [str(row_id) for row_id in source_item_ids if row_id not in existing_ids]
+        if invalid_ids:
+            raise BusinessException(
+                code=SAMPLE_CONFLICT,
+                message=f"样板 BOM 来源行不属于当前款 BOM: {', '.join(invalid_ids)}",
             )
 
     def _get_material_bom_operation(
