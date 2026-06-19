@@ -40,6 +40,8 @@ class LoggingSanitizationTest(unittest.TestCase):
     """Verify server-side error logs are redacted."""
 
     REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+    BOM_SCENARIO_TAG = "Z002-BOM-20260524-901"
+    BOM_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -95,10 +97,11 @@ class LoggingSanitizationTest(unittest.TestCase):
         cls.client = TestClient(app)
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ["LINGYI_DB_URL"] = self.BOM_LOCAL_ALLOWED_DB_URL
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -115,8 +118,34 @@ class LoggingSanitizationTest(unittest.TestCase):
         return headers
 
     @staticmethod
-    def _create_payload() -> dict:
+    def _carrier_code(value: str) -> str:
+        hash_value = 2166136261
+        for byte in value.strip().encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-4:]
+
+    @classmethod
+    def _create_source_ref(cls) -> str:
+        return f"{cls.BOM_SCENARIO_TAG}-SRC-ITEM-A"
+
+    @classmethod
+    def _request_id(cls, *, item_code: str = "ITEM-A", source_ref: str | None = None) -> str:
+        bom_ref = source_ref or cls._create_source_ref()
+        return (
+            f"{cls.BOM_SCENARIO_TAG}-RQ-"
+            f"I{cls._carrier_code(item_code)}-"
+            f"B{cls._carrier_code(bom_ref)}-"
+            f"R{cls._carrier_code('NONE')}"
+        )
+
+    @classmethod
+    def _create_payload(cls) -> dict:
+        source_ref = cls._create_source_ref()
         return {
+            "scenario_tag": cls.BOM_SCENARIO_TAG,
+            "idempotency_key": f"{cls.BOM_SCENARIO_TAG}-IDEMP-LOG-SANITIZE",
+            "source_ref": source_ref,
             "item_code": "ITEM-A",
             "version_no": "V2",
             "bom_items": [
@@ -168,7 +197,11 @@ class LoggingSanitizationTest(unittest.TestCase):
                 "[SQL: UPDATE ly_schema.ly_apparel_bom SET x=1] [parameters: {'password':'123','token':'abc'}]"
             ),
         ), self.assertLogs("app.routers.bom", level="ERROR") as log_ctx:
-            response = self.client.post("/api/bom/", headers=self._headers(), json=self._create_payload())
+            response = self.client.post(
+                "/api/bom/",
+                headers=self._headers(request_id=self._request_id()),
+                json=self._create_payload(),
+            )
 
         payload = response.json()
         self.assertEqual(response.status_code, 500)
@@ -195,7 +228,11 @@ class LoggingSanitizationTest(unittest.TestCase):
                 Exception("[SQL: DELETE FROM ly_schema.ly_apparel_bom] password=123"),
             ),
         ), self.assertLogs("app.routers.bom", level="ERROR") as log_ctx:
-            response = self.client.post("/api/bom/", headers=self._headers(), json=self._create_payload())
+            response = self.client.post(
+                "/api/bom/",
+                headers=self._headers(request_id=self._request_id()),
+                json=self._create_payload(),
+            )
 
         payload = response.json()
         self.assertEqual(response.status_code, 500)
@@ -225,7 +262,9 @@ class LoggingSanitizationTest(unittest.TestCase):
         ), patch.object(AuditService, "snapshot_resource", return_value={"bom": {"bom_no": "BOM-TEST"}}), patch(
             "sqlalchemy.orm.session.Session.commit",
             side_effect=SQLAlchemyError("[SQL: UPDATE ly_schema.ly_apparel_bom SET x=1]"),
-        ), self.assertLogs("app.routers.bom", level="ERROR") as log_ctx:
+        ), patch("app.routers.bom._validate_local_bom_request_gate", return_value=self.BOM_SCENARIO_TAG), self.assertLogs(
+            "app.routers.bom", level="ERROR"
+        ) as log_ctx:
             response = self.client.post(
                 "/api/bom/",
                 headers=self._headers(request_id=malicious_request_id),

@@ -35,6 +35,8 @@ from app.services.bom_service import BomService
 class RequestIdSanitizationTest(unittest.TestCase):
     """Validate request-id normalization and safe propagation."""
 
+    BOM_SCENARIO_TAG = "Z002-BOM-20260524-902"
+
     SENSITIVE_PATTERN = re.compile(
         r"(authorization|bearer|token|cookie|set-cookie|password|passwd|secret|session|sessionid|api[-_]?key|access[-_]?key|access[-_]?token|refresh[-_]?token)",
         re.IGNORECASE,
@@ -98,6 +100,18 @@ class RequestIdSanitizationTest(unittest.TestCase):
         if request_id is not None:
             headers["X-Request-ID"] = request_id
         return headers
+
+    @staticmethod
+    def _carrier_code(value: str) -> str:
+        hash_value = 2166136261
+        for byte in value.strip().encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-4:]
+
+    @classmethod
+    def _bom_source_ref(cls) -> str:
+        return f"{cls.BOM_SCENARIO_TAG}-SRC-ITEM-RID"
 
     def _latest_security_log(self) -> LySecurityAuditLog:
         with self.SessionLocal() as session:
@@ -183,7 +197,11 @@ class RequestIdSanitizationTest(unittest.TestCase):
 
     def test_sensitive_request_id_is_not_written_raw_into_operation_audit(self) -> None:
         raw_request_id = "Bearer.abc123_token_secret"
+        source_ref = self._bom_source_ref()
         payload = {
+            "scenario_tag": self.BOM_SCENARIO_TAG,
+            "idempotency_key": f"{self.BOM_SCENARIO_TAG}-IDEMP-RID-SANITIZE",
+            "source_ref": source_ref,
             "item_code": "ITEM-RID",
             "version_no": "V1",
             "bom_items": [
@@ -208,7 +226,10 @@ class RequestIdSanitizationTest(unittest.TestCase):
             BomService,
             "get_bom_by_no",
             return_value=SimpleNamespace(id=1, bom_no="BOM-RID"),
-        ), patch.object(AuditService, "snapshot_resource", return_value={"bom": {"bom_no": "BOM-RID"}}):
+        ), patch.object(AuditService, "snapshot_resource", return_value={"bom": {"bom_no": "BOM-RID"}}), patch(
+            "app.routers.bom._validate_local_bom_request_gate",
+            return_value=self.BOM_SCENARIO_TAG,
+        ):
             response = self.client.post(
                 "/api/bom/",
                 headers={"X-LY-Dev-User": "rid.editor", "X-LY-Dev-Roles": "BOM Editor", "X-Request-ID": raw_request_id},
