@@ -37,6 +37,7 @@ from app.models.bom import LyApparelBomItem  # noqa: E402
 from app.models.bom import LyBomOperation  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.master_data import Base as MasterDataBase  # noqa: E402
+from app.models.master_data import LyMasterDataRecord  # noqa: E402
 from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
@@ -616,6 +617,63 @@ def _ensure_local_production_material_uom_column() -> None:
 
 def _seed_local_bom() -> None:
     with main_module.SessionLocal() as session:
+        for code, name, payload in [
+            (
+                "FABRIC-COTTON",
+                "本地演示棉布",
+                {
+                    "material_kind": "fabric",
+                    "material_item_code": "FABRIC-COTTON",
+                    "material_name": "本地演示棉布",
+                    "fabric_name": "本地演示棉布",
+                    "color": "白色",
+                    "uom": "米",
+                    "status": "active",
+                },
+            ),
+            (
+                "TRIM-BUTTON",
+                "本地演示纽扣",
+                {
+                    "material_kind": "accessory",
+                    "material_item_code": "TRIM-BUTTON",
+                    "material_name": "本地演示纽扣",
+                    "accessory_name": "本地演示纽扣",
+                    "color": "白色",
+                    "uom": "粒",
+                    "status": "active",
+                },
+            ),
+        ]:
+            material = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == "默认公司",
+                    LyMasterDataRecord.code == code,
+                )
+                .first()
+            )
+            if material is None:
+                session.add(
+                    LyMasterDataRecord(
+                        entity_type="material",
+                        company="默认公司",
+                        code=code,
+                        name=name,
+                        status="active",
+                        payload=payload,
+                        version=1,
+                        created_by="local.dev",
+                        updated_by="local.dev",
+                    )
+                )
+            else:
+                material.name = material.name or name
+                material.status = "active"
+                material.payload = {**dict(material.payload or {}), **payload}
+                material.updated_by = "local.dev"
+
         for index, (dict_type, code, name) in enumerate(
             [
                 ("season", "SS", "春夏"),
