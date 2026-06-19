@@ -35,6 +35,7 @@ from app.schemas.style_master import StyleMaterialBomUpsertRequest
 from app.schemas.style_master import StyleMasterCreateRequest
 from app.schemas.style_master import StyleMasterDeactivateRequest
 from app.schemas.style_master import StyleMasterUpdateRequest
+from app.schemas.style_master import StyleSkuUpsertRequest
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
 from app.services.permission_service import PermissionService
@@ -395,6 +396,57 @@ def get_style_material_bom(
     except AppException as exc:
         return _err(exc)
     return _ok(data)
+
+
+@router.get("/styles/{style_id}/skus")
+def get_style_skus(
+    style_id: int,
+    request: Request,
+    company: str = Query(default="默认公司"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=STYLE_MASTER_READ,
+        resource_type="STYLE_SKU",
+        resource_id=style_id,
+    )
+    try:
+        data = StyleMasterService(session).list_style_skus(style_id=style_id, company=company)
+    except AppException as exc:
+        return _err(exc)
+    return _ok(data)
+
+
+@router.put("/styles/{style_id}/skus")
+def upsert_style_skus(
+    style_id: int,
+    payload: StyleSkuUpsertRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    try:
+        result = _mutate(
+            action="sku_upsert",
+            resource_type="STYLE_SKU",
+            resource_id=style_id,
+            resource_no=None,
+            request=request,
+            current_user=current_user,
+            session=session,
+            mutate=lambda service: service.upsert_style_skus(
+                style_id=style_id,
+                payload=payload,
+                actor=current_user.username,
+            ),
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(result.item)
 
 
 @router.put("/styles/{style_id}/material-bom")

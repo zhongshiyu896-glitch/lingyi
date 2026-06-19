@@ -34,6 +34,7 @@ from app.models.style_master import LyStyleDictionary
 from app.models.style_master import LyStyleGallery
 from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
+from app.models.style_master import LyStyleSku
 from app.schemas.style_master import StyleDictionaryCreateRequest
 from app.schemas.style_master import StyleDictionaryItem
 from app.schemas.style_master import StyleDictionaryListData
@@ -52,6 +53,9 @@ from app.schemas.style_master import StyleMasterCreateRequest
 from app.schemas.style_master import StyleMasterItem
 from app.schemas.style_master import StyleMasterListData
 from app.schemas.style_master import StyleMasterUpdateRequest
+from app.schemas.style_master import StyleSkuItem
+from app.schemas.style_master import StyleSkuListData
+from app.schemas.style_master import StyleSkuUpsertRequest
 
 STYLE_STATUSES = {"draft", "enabled", "disabled"}
 DICTIONARY_TYPES = {"season", "year", "brand", "color", "size"}
@@ -121,8 +125,16 @@ class StyleMasterService:
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
         summaries = self._style_gallery_summaries([int(row.id) for row in rows])
+        sku_counts = self._style_sku_counts([int(row.id) for row in rows])
         return StyleMasterListData(
-            items=[self._style_item(row, gallery_summary=summaries.get(int(row.id))) for row in rows],
+            items=[
+                self._style_item(
+                    row,
+                    gallery_summary=summaries.get(int(row.id)),
+                    sku_count=sku_counts.get(int(row.id), 0),
+                )
+                for row in rows
+            ],
             total=total,
             page=page,
             page_size=page_size,
@@ -420,6 +432,7 @@ class StyleMasterService:
             for key, value in values.items():
                 setattr(row, key, value)
             self._sync_style_bom_item_code(style_id=int(row.id), company=company, item_code=str(values["ys_style_no"]), actor=actor)
+            self._sync_style_sku_style_no(style_id=int(row.id), company=company, item_code=str(values["ys_style_no"]), actor=actor)
             row.updated_by = actor
             row.version = int(row.version or 0) + 1
             self._insert_idempotency(
@@ -480,6 +493,117 @@ class StyleMasterService:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
         after = self._snapshot_style(row)
         return self._style_result(row=row, before=before, after=after)
+
+    def list_style_skus(self, *, style_id: int, company: str | None) -> StyleSkuListData:
+        """Return the style color-size SKU matrix."""
+        normalized_company = self._require_text(company, "company")
+        style = self._get_style_for_read(style_id=style_id, company=normalized_company)
+        return self._style_sku_list_data(style=style)
+
+    def upsert_style_skus(
+        self,
+        *,
+        style_id: int,
+        payload: StyleSkuUpsertRequest,
+        actor: str,
+    ) -> StyleMasterMutationResult:
+        """Create or replace the style color-size SKU matrix."""
+        company = self._require_text(payload.company, "company")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        style = self._get_style_for_mutation(style_id=style_id, company=company)
+        if str(style.ys_style_status) == "disabled":
+            raise BusinessException(code=STYLE_MASTER_INVALID_STATUS, message="停用款式不允许维护 SKU 矩阵")
+        normalized_items = self._normalize_sku_payload(style=style, items=payload.items)
+        request_hash = self._request_hash(
+            operation="style_sku_upsert",
+            entity_type="sku",
+            company=company,
+            style_id=style_id,
+            values=normalized_items,
+        )
+        idem = self._get_idempotency(entity_type="sku", company=company, idempotency_key=idempotency_key)
+        if idem:
+            self._ensure_same_idempotency(idem, operation="update", request_hash=request_hash)
+            data = self._style_sku_list_data(style=style)
+            return StyleMasterMutationResult(
+                item=data,
+                before=data.model_dump(mode="json"),
+                after=data.model_dump(mode="json"),
+                resource_type="STYLE_SKU",
+                resource_id=int(style.id),
+                resource_no=str(style.ys_style_no),
+                idempotent=True,
+            )
+
+        before = self._style_sku_list_data(style=style).model_dump(mode="json")
+        now = datetime.now(UTC)
+        try:
+            existing_rows = (
+                self.session.query(LyStyleSku)
+                .filter(LyStyleSku.company == company, LyStyleSku.style_master_id == int(style.id))
+                .all()
+            )
+            existing_by_pair = {(str(row.color_code), str(row.size_code)): row for row in existing_rows}
+            active_pairs: set[tuple[str, str]] = set()
+            for item in normalized_items:
+                pair = (item["color_code"], item["size_code"])
+                active_pairs.add(pair)
+                row = existing_by_pair.get(pair)
+                if row is None:
+                    row = LyStyleSku(
+                        company=company,
+                        style_master_id=int(style.id),
+                        ys_style_no=str(style.ys_style_no),
+                        color_code=item["color_code"],
+                        color_name=item["color_name"],
+                        size_code=item["size_code"],
+                        size_name=item["size_name"],
+                        sku_code=item["sku_code"],
+                        barcode=item["barcode"],
+                        status=item["status"],
+                        sort_no=item["sort_no"],
+                        created_by=actor,
+                        updated_by=actor,
+                        updated_at=now,
+                    )
+                    self.session.add(row)
+                else:
+                    row.ys_style_no = str(style.ys_style_no)
+                    row.color_name = item["color_name"]
+                    row.size_name = item["size_name"]
+                    row.sku_code = item["sku_code"]
+                    row.barcode = item["barcode"]
+                    row.status = item["status"]
+                    row.sort_no = item["sort_no"]
+                    row.updated_by = actor
+                    row.updated_at = now
+            for pair, row in existing_by_pair.items():
+                if pair not in active_pairs:
+                    row.ys_style_no = str(style.ys_style_no)
+                    row.status = "inactive"
+                    row.updated_by = actor
+                    row.updated_at = now
+            self._insert_idempotency(
+                entity_type="sku",
+                company=company,
+                idempotency_key=idempotency_key,
+                operation="update",
+                request_hash=request_hash,
+                record_id=int(style.id),
+                actor=actor,
+            )
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._style_sku_list_data(style=style).model_dump(mode="json")
+        return StyleMasterMutationResult(
+            item=self._style_sku_list_data(style=style),
+            before=before,
+            after=after,
+            resource_type="STYLE_SKU",
+            resource_id=int(style.id),
+            resource_no=str(style.ys_style_no),
+        )
 
     def get_style_material_bom(self, *, style_id: int, company: str | None) -> StyleMaterialBomData:
         """Return the current material BOM snapshot for a style."""
@@ -966,6 +1090,83 @@ class StyleMasterService:
                 summary["primary_thumbnail_url"] = row.thumbnail_url or row.image_url
         return summaries
 
+    def _style_sku_counts(self, style_ids: list[int]) -> dict[int, int]:
+        if not style_ids:
+            return {}
+        try:
+            rows = (
+                self.session.query(LyStyleSku.style_master_id, func.count(LyStyleSku.id))
+                .filter(LyStyleSku.style_master_id.in_(style_ids), LyStyleSku.status == "active")
+                .group_by(LyStyleSku.style_master_id)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return {int(style_id): int(count or 0) for style_id, count in rows}
+
+    def _style_sku_list_data(self, *, style: LyStyleMaster) -> StyleSkuListData:
+        try:
+            rows = (
+                self.session.query(LyStyleSku)
+                .filter(LyStyleSku.company == style.company, LyStyleSku.style_master_id == int(style.id))
+                .order_by(LyStyleSku.status.asc(), LyStyleSku.sort_no.asc(), LyStyleSku.color_code.asc(), LyStyleSku.size_code.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return StyleSkuListData(
+            style_master_id=int(style.id),
+            ys_style_no=str(style.ys_style_no),
+            items=[self._sku_item(row) for row in rows],
+            total=len(rows),
+        )
+
+    def _normalize_sku_payload(self, *, style: LyStyleMaster, items: list[Any]) -> list[dict[str, Any]]:
+        colors = {
+            self._require_text(row.get("ys_color_code"), "ys_color_code"): self._require_text(row.get("ys_color_name"), "ys_color_name")
+            for row in list(style.colors or [])
+        }
+        sizes = {
+            self._require_text(row.get("ys_size_code"), "ys_size_code"): self._require_text(row.get("ys_size_name"), "ys_size_name")
+            for row in list(style.sizes or [])
+        }
+        if not colors or not sizes:
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="款式缺少颜色或尺码，无法维护 SKU 矩阵")
+        normalized: list[dict[str, Any]] = []
+        seen_pairs: set[tuple[str, str]] = set()
+        seen_sku_codes: set[str] = set()
+        for index, item in enumerate(items, start=1):
+            color_code = self._require_text(item.color_code, "color_code")
+            size_code = self._require_text(item.size_code, "size_code")
+            if color_code not in colors:
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"颜色 {color_code} 不在当前款式颜色中")
+            if size_code not in sizes:
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"尺码 {size_code} 不在当前款式尺码中")
+            pair = (color_code, size_code)
+            if pair in seen_pairs:
+                raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"SKU 款色码重复: {color_code}/{size_code}")
+            sku_code = self._require_text(item.sku_code, "sku_code")
+            if sku_code in seen_sku_codes:
+                raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"SKU 编码重复: {sku_code}")
+            status = self._require_text(item.status, "status")
+            if status not in {"active", "inactive"}:
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"SKU 状态非法: {status}")
+            normalized.append(
+                {
+                    "color_code": color_code,
+                    "color_name": self._optional_text(item.color_name) or colors[color_code],
+                    "size_code": size_code,
+                    "size_name": self._optional_text(item.size_name) or sizes[size_code],
+                    "sku_code": sku_code,
+                    "barcode": self._optional_text(item.barcode),
+                    "status": status,
+                    "sort_no": int(item.sort_no if item.sort_no is not None else index * 10),
+                }
+            )
+            seen_pairs.add(pair)
+            seen_sku_codes.add(sku_code)
+        return normalized
+
     def _find_style_material_bom(self, *, style: LyStyleMaster) -> LyApparelBom | None:
         return (
             self.session.query(LyApparelBom)
@@ -1077,6 +1278,21 @@ class StyleMasterService:
             bom.item_code = item_code
             bom.updated_by = actor
             bom.updated_at = now
+
+    def _sync_style_sku_style_no(self, *, style_id: int, company: str, item_code: str, actor: str) -> None:
+        now = datetime.now(UTC)
+        try:
+            rows = (
+                self.session.query(LyStyleSku)
+                .filter(LyStyleSku.company == company, LyStyleSku.style_master_id == int(style_id))
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        for row in rows:
+            row.ys_style_no = item_code
+            row.updated_by = actor
+            row.updated_at = now
 
     @staticmethod
     def _next_material_bom_no(*, item_code: str, version_no: str) -> str:
@@ -1221,7 +1437,12 @@ class StyleMasterService:
             idempotent=idempotent,
         )
 
-    def _style_item(self, row: LyStyleMaster, gallery_summary: dict[str, Any] | None = None) -> StyleMasterItem:
+    def _style_item(
+        self,
+        row: LyStyleMaster,
+        gallery_summary: dict[str, Any] | None = None,
+        sku_count: int | None = None,
+    ) -> StyleMasterItem:
         gallery_summary = gallery_summary or {}
         return StyleMasterItem(
             id=int(row.id),
@@ -1237,6 +1458,7 @@ class StyleMasterService:
             primary_image_url=gallery_summary.get("primary_image_url"),
             primary_thumbnail_url=gallery_summary.get("primary_thumbnail_url"),
             gallery_count=int(gallery_summary.get("gallery_count") or 0),
+            sku_count=int(sku_count or 0),
             version=int(row.version or 1),
             created_by=row.created_by,
             created_at=row.created_at,
@@ -1264,6 +1486,26 @@ class StyleMasterService:
             style_type=style.ys_brand,
             created_by=str(row.created_by),
             created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    def _sku_item(self, row: LyStyleSku) -> StyleSkuItem:
+        return StyleSkuItem(
+            id=int(row.id),
+            company=str(row.company),
+            style_master_id=int(row.style_master_id),
+            ys_style_no=str(row.ys_style_no),
+            color_code=str(row.color_code),
+            color_name=str(row.color_name),
+            size_code=str(row.size_code),
+            size_name=str(row.size_name),
+            sku_code=str(row.sku_code),
+            barcode=row.barcode,
+            status=row.status,
+            sort_no=int(row.sort_no or 0),
+            created_by=str(row.created_by),
+            created_at=row.created_at,
+            updated_by=row.updated_by,
             updated_at=row.updated_at,
         )
 

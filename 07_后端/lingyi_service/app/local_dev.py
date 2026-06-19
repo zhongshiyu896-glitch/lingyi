@@ -381,7 +381,7 @@ def _ensure_local_style_master_idempotency_supports_gallery() -> None:
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_style_master_idempotency'"
         ).fetchone()
         existing_sql = str(row[0]) if row else ""
-        if not row or "'gallery'" in existing_sql:
+        if not row or ("'gallery'" in existing_sql and "'sku'" in existing_sql):
             return
         conn.executescript(
             """
@@ -399,7 +399,7 @@ def _ensure_local_style_master_idempotency_supports_gallery() -> None:
                 created_by VARCHAR(140) NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 PRIMARY KEY (id),
-                CONSTRAINT ck_ly_style_master_idem_entity CHECK (entity_type IN ('style','dictionary','gallery')),
+                CONSTRAINT ck_ly_style_master_idem_entity CHECK (entity_type IN ('style','dictionary','gallery','sku')),
                 CONSTRAINT ck_ly_style_master_idem_operation CHECK (operation IN ('create','update','deactivate'))
             );
             INSERT INTO ly_style_master_idempotency_new (

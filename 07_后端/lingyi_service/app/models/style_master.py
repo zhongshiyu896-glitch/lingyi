@@ -112,6 +112,36 @@ class LyStyleGallery(Base):
     deactivate_reason = Column(Text, nullable=True)
 
 
+class LyStyleSku(Base):
+    """Style color-size SKU matrix managed from the style master page."""
+
+    __tablename__ = "ly_style_sku"
+    __table_args__ = (
+        Index("uk_ly_style_sku_company_style_pair", "company", "style_master_id", "color_code", "size_code", unique=True),
+        Index("uk_ly_style_sku_company_style_sku", "company", "style_master_id", "sku_code", unique=True),
+        Index("idx_ly_style_sku_company_style_status", "company", "style_master_id", "status"),
+        CheckConstraint("status IN ('active','inactive')", name="ck_ly_style_sku_status"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生款式款色码 SKU 矩阵"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    style_master_id = Column(IDType, nullable=False)
+    ys_style_no = Column(String(140), nullable=False)
+    color_code = Column(String(64), nullable=False)
+    color_name = Column(String(140), nullable=False)
+    size_code = Column(String(64), nullable=False)
+    size_name = Column(String(140), nullable=False)
+    sku_code = Column(String(180), nullable=False)
+    barcode = Column(String(180), nullable=True)
+    status = Column(String(16), nullable=False, server_default="active")
+    sort_no = Column(Integer, nullable=False, server_default="10")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
 class LyStyleMasterIdempotency(Base):
     """Idempotency ledger for style master and dictionary writes."""
 
@@ -119,7 +149,7 @@ class LyStyleMasterIdempotency(Base):
     __table_args__ = (
         Index("uk_ly_style_master_idem_key", "entity_type", "company", "idempotency_key", unique=True),
         Index("idx_ly_style_master_idem_record", "entity_type", "record_id"),
-        CheckConstraint("entity_type IN ('style','dictionary','gallery')", name="ck_ly_style_master_idem_entity"),
+        CheckConstraint("entity_type IN ('style','dictionary','gallery','sku')", name="ck_ly_style_master_idem_entity"),
         CheckConstraint(
             "operation IN ('create','update','deactivate')",
             name="ck_ly_style_master_idem_operation",

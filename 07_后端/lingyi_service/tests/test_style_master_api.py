@@ -20,6 +20,7 @@ from app.models.style_master import LyStyleDictionary
 from app.models.style_master import LyStyleGallery
 from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
+from app.models.style_master import LyStyleSku
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.style_master import get_db_session as style_master_db_dep
 
@@ -69,6 +70,7 @@ class StyleMasterApiTest(unittest.TestCase):
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.query(LyStyleMasterIdempotency).delete()
+            session.query(LyStyleSku).delete()
             session.query(LyStyleGallery).delete()
             session.query(LyStyleMaster).delete()
             session.query(LyStyleDictionary).delete()
@@ -259,6 +261,111 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         self.assertEqual(invalid_size_ref.status_code, 409)
         self.assertEqual(invalid_size_ref.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
+    def test_style_sku_matrix_upsert_validates_pairs_and_syncs_style_no(self) -> None:
+        self._seed_style_dictionaries()
+        created = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-SKU-STYLE-001"),
+            json=self._style_payload(style_no="ST-SKU-001", idempotency_key="IDEMP-ST-SKU-001-C"),
+        )
+        self.assertEqual(created.status_code, 201)
+        style_id = int(created.json()["data"]["id"])
+
+        empty = self.client.get(
+            f"/api/style-master/styles/{style_id}/skus?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SKU-LIST-000"),
+        )
+        self.assertEqual(empty.status_code, 200)
+        self.assertEqual(empty.json()["data"]["total"], 0)
+
+        payload = {
+            "operation": "upsert",
+            "company": "COMP-A",
+            "idempotency_key": "IDEMP-ST-SKU-001-U",
+            "items": [
+                {"color_code": "BLK", "size_code": "S", "sku_code": "ST-SKU-001-BLK-S", "barcode": "BC-BLK-S", "sort_no": 10},
+                {"color_code": "BLK", "size_code": "M", "sku_code": "ST-SKU-001-BLK-M", "sort_no": 20},
+                {"color_code": "WHT", "size_code": "S", "sku_code": "ST-SKU-001-WHT-S", "sort_no": 30},
+                {"color_code": "WHT", "size_code": "M", "sku_code": "ST-SKU-001-WHT-M", "sort_no": 40},
+            ],
+        }
+        upserted = self.client.put(
+            f"/api/style-master/styles/{style_id}/skus",
+            headers=self._headers(request_id="STYLE-SKU-UPSERT-001"),
+            json=payload,
+        )
+        self.assertEqual(upserted.status_code, 200)
+        body = upserted.json()["data"]
+        self.assertEqual(body["total"], 4)
+        self.assertEqual(body["items"][0]["color_name"], "黑色")
+        self.assertEqual(body["items"][0]["size_name"], "S")
+        self.assertEqual(body["items"][0]["barcode"], "BC-BLK-S")
+
+        retry = self.client.put(
+            f"/api/style-master/styles/{style_id}/skus",
+            headers=self._headers(request_id="STYLE-SKU-UPSERT-001-R"),
+            json=payload,
+        )
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(retry.json()["data"]["total"], 4)
+
+        conflict_payload = {**payload, "items": [{**payload["items"][0], "sku_code": "CHANGED-SKU"}]}
+        conflict = self.client.put(
+            f"/api/style-master/styles/{style_id}/skus",
+            headers=self._headers(request_id="STYLE-SKU-UPSERT-001-C"),
+            json=conflict_payload,
+        )
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(conflict.json()["code"], "STYLE_MASTER_IDEMPOTENCY_CONFLICT")
+
+        invalid_color = {**payload, "idempotency_key": "IDEMP-ST-SKU-INVALID", "items": [{**payload["items"][0], "color_code": "NAVY"}]}
+        invalid = self.client.put(
+            f"/api/style-master/styles/{style_id}/skus",
+            headers=self._headers(request_id="STYLE-SKU-INVALID-001"),
+            json=invalid_color,
+        )
+        self.assertEqual(invalid.status_code, 409)
+        self.assertEqual(invalid.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
+        reduced_payload = {
+            **payload,
+            "idempotency_key": "IDEMP-ST-SKU-001-U2",
+            "items": payload["items"][:3],
+        }
+        reduced = self.client.put(
+            f"/api/style-master/styles/{style_id}/skus",
+            headers=self._headers(request_id="STYLE-SKU-UPSERT-002"),
+            json=reduced_payload,
+        )
+        self.assertEqual(reduced.status_code, 200)
+        self.assertEqual(reduced.json()["data"]["total"], 4)
+        self.assertEqual(sum(1 for item in reduced.json()["data"]["items"] if item["status"] == "active"), 3)
+
+        styles = self.client.get(
+            "/api/style-master/styles?company=COMP-A&keyword=ST-SKU-001",
+            headers=self._headers(request_id="STYLE-SKU-STYLES-001"),
+        )
+        self.assertEqual(styles.status_code, 200)
+        self.assertEqual(styles.json()["data"]["items"][0]["sku_count"], 3)
+
+        renamed = self.client.patch(
+            f"/api/style-master/styles/{style_id}",
+            headers=self._headers(request_id="STYLE-SKU-STYLE-RENAME"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "ys_style_no": "ST-SKU-RENAMED",
+                "idempotency_key": "IDEMP-ST-SKU-RENAME",
+            },
+        )
+        self.assertEqual(renamed.status_code, 200)
+        listed = self.client.get(
+            f"/api/style-master/styles/{style_id}/skus?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SKU-LIST-001"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        self.assertTrue(all(item["ys_style_no"] == "ST-SKU-RENAMED" for item in listed.json()["data"]["items"]))
 
     def test_style_gallery_linked_to_style_and_visible_on_style_list(self) -> None:
         self._seed_style_dictionaries()

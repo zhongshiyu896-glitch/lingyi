@@ -13,6 +13,7 @@ StyleStatus = Literal["draft", "enabled", "disabled"]
 StyleDictionaryType = Literal["season", "year", "brand", "color", "size"]
 StyleDictionaryStatus = Literal["active", "inactive"]
 StyleGalleryImageType = Literal["main", "detail", "color", "process", "other"]
+StyleSkuStatus = Literal["active", "inactive"]
 
 
 class ApiResponse(BaseModel):
@@ -99,6 +100,7 @@ class StyleMasterItem(BaseModel):
     primary_image_url: str | None = None
     primary_thumbnail_url: str | None = None
     gallery_count: int = 0
+    sku_count: int = 0
     source: Literal["fastapi_style_master"] = "fastapi_style_master"
     version: int
     created_by: str
@@ -182,6 +184,58 @@ class StyleGalleryListData(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class StyleSkuPayload(BaseModel):
+    """One style color-size SKU matrix row payload."""
+
+    color_code: str = Field(..., min_length=1, max_length=64)
+    color_name: str | None = Field(default=None, max_length=140)
+    size_code: str = Field(..., min_length=1, max_length=64)
+    size_name: str | None = Field(default=None, max_length=140)
+    sku_code: str = Field(..., min_length=1, max_length=180)
+    barcode: str | None = Field(default=None, max_length=180)
+    status: StyleSkuStatus = "active"
+    sort_no: int = Field(default=10, ge=0)
+
+
+class StyleSkuUpsertRequest(BaseModel):
+    """Replace the style color-size SKU matrix."""
+
+    operation: Literal["upsert"] = "upsert"
+    company: str = Field(default="默认公司", min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    items: list[StyleSkuPayload] = Field(..., min_length=1)
+
+
+class StyleSkuItem(BaseModel):
+    """One style color-size SKU matrix row."""
+
+    id: int
+    company: str
+    style_master_id: int
+    ys_style_no: str
+    color_code: str
+    color_name: str
+    size_code: str
+    size_name: str
+    sku_code: str
+    barcode: str | None = None
+    status: StyleSkuStatus
+    sort_no: int
+    created_by: str
+    created_at: datetime | None = None
+    updated_by: str | None = None
+    updated_at: datetime | None = None
+
+
+class StyleSkuListData(BaseModel):
+    """Style color-size SKU matrix response."""
+
+    style_master_id: int
+    ys_style_no: str
+    items: list[StyleSkuItem]
+    total: int
 
 
 class StyleDictionaryCreateRequest(BaseModel):
