@@ -1384,11 +1384,14 @@ class WarehouseService:
                     "warehouse": warehouse_value,
                     "order": order,
                     "material_code": material_code,
+                    "uom": self._text(getattr(material, "uom", None)) or "米",
                     "required_qty": Decimal("0"),
                     "issued_qty": Decimal("0"),
                     "latest_created_at": getattr(material, "created_at", None),
                 },
             )
+            if not bucket.get("uom"):
+                bucket["uom"] = self._text(getattr(material, "uom", None)) or "米"
             bucket["required_qty"] = max(
                 Decimal(str(bucket["required_qty"])),
                 Decimal(str(getattr(material, "required_qty", 0) or 0)),
@@ -1455,6 +1458,7 @@ class WarehouseService:
                     planned_return_qty=planned_return_qty,
                     returned_qty=returned_qty,
                     pending_qty=pending_qty,
+                    uom=str(bucket.get("uom") or "米"),
                     report_date=report_date,
                     source_doc_no=subcontract_no,
                     operator="FastAPI 外发发料事实",
@@ -1555,6 +1559,7 @@ class WarehouseService:
             raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", "退料数量必须大于 0")
         if return_qty > pending_qty:
             raise WarehouseServiceError(409, "WAREHOUSE_RETURN_QTY_EXCEEDS_PENDING", "退料数量不能超过待退数量")
+        return_uom = self._text(payload.uom) or self._text(row.uom) or "米"
 
         source_id = self._require_text(payload.source_ref, "source_ref")
         source_report_no = self._factory_return_material_report_no_from_source(source_id)
@@ -1578,7 +1583,7 @@ class WarehouseService:
                 WarehouseStockEntryDraftItemCreateRequest(
                     item_code=row.material_code,
                     qty=return_qty,
-                    uom="米",
+                    uom=return_uom,
                     target_warehouse=row.warehouse,
                 )
             ],

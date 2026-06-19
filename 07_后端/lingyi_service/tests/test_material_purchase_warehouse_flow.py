@@ -384,6 +384,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["planned_return_qty"])), Decimal("40.0"))
         self.assertEqual(Decimal(str(row["returned_qty"])), Decimal("0.0"))
         self.assertEqual(Decimal(str(row["pending_qty"])), Decimal("40.0"))
+        self.assertEqual(row["uom"], "米")
         self.assertEqual(row["status"], "pending")
 
     def test_factory_return_material_draft_closes_report_and_updates_stock_ledger(self) -> None:
@@ -413,6 +414,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             "scenario_tag": self.SCENARIO_TAG,
             "source_ref": source_ref,
             "quantity": str(report_row["pending_qty"]),
+            "uom": report_row["uom"],
             "business_date": self.BUSINESS_DATE,
             "idempotency_key": idempotency_key,
         }
@@ -435,6 +437,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(data["draft"]["target_warehouse"], self.WAREHOUSE)
         self.assertEqual(data["draft"]["items"][0]["item_code"], "FAB-B5-FRR")
         self.assertEqual(Decimal(str(data["draft"]["items"][0]["qty"])), Decimal("40.000000"))
+        self.assertEqual(data["draft"]["items"][0]["uom"], "米")
         self.assertEqual(data["report_item"]["status"], "closed")
         self.assertEqual(Decimal(str(data["report_item"]["returned_qty"])), Decimal("40.0"))
         self.assertEqual(Decimal(str(data["report_item"]["pending_qty"])), Decimal("0.0"))

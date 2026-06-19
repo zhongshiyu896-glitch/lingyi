@@ -246,6 +246,7 @@ class WarehouseFactoryReturnMaterialReportItem(BaseModel):
     planned_return_qty: Decimal
     returned_qty: Decimal
     pending_qty: Decimal
+    uom: str = "米"
     report_date: date
     source_doc_no: str
     operator: str
@@ -270,6 +271,7 @@ class WarehouseFactoryReturnMaterialDraftRequest(BaseModel):
     scenario_tag: str = Field(..., min_length=1, max_length=140)
     source_ref: str = Field(..., min_length=1, max_length=140)
     quantity: Decimal | None = Field(default=None, gt=0)
+    uom: str | None = Field(default=None, min_length=1, max_length=32)
     business_date: date = Field(default_factory=date.today)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
 
