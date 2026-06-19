@@ -28,6 +28,9 @@ from app.models.production import LyProductionPlan
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
+from app.models.warehouse import Base as WarehouseBase
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.dashboard import get_db_session as dashboard_db_dep
 from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
@@ -49,6 +52,7 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         AuditBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
+        WarehouseBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -81,6 +85,8 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
             session.query(LyProductionPlan).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.commit()
 
     @staticmethod
@@ -230,6 +236,66 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertIn("PP-DASH-001", joined)
         self.assertIn("DASH-STYLE-001", joined)
         self.assertNotIn("SO-240601-001", joined)
+
+    def test_fastapi_dashboard_uses_local_stock_without_erpnext_adapters(self) -> None:
+        with self.SessionLocal() as session:
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="dashboard_seed",
+                source_id="DASH-STOCK-001",
+                source_warehouse=None,
+                target_warehouse="WH-DASH",
+                status="draft",
+                created_by="dash.seed",
+                idempotency_key="idem-dash-stock",
+                event_key="event-dash-stock",
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company="COMP-A",
+                    item_code="DASH-MAT-001",
+                    qty=Decimal("7"),
+                    uom="米",
+                    target_warehouse="WH-DASH",
+                )
+            )
+            session.commit()
+
+        with patch.dict(
+            os.environ,
+            {"LINGYI_PERMISSION_SOURCE": "fastapi", "LINGYI_ERPNEXT_BASE_URL": ""},
+            clear=False,
+        ), patch(
+            "app.services.quality_service.QualityService.statistics",
+            return_value=SimpleNamespace(
+                total_count=0,
+                total_inspected_qty=Decimal("0"),
+                total_accepted_qty=Decimal("0"),
+                total_rejected_qty=Decimal("0"),
+                total_defect_qty=Decimal("0"),
+            ),
+        ), patch(
+            "app.services.dashboard_service.ERPNextSalesInventoryAdapter",
+            side_effect=AssertionError("dashboard fastapi mode must not construct ERPNext sales adapter"),
+        ), patch(
+            "app.services.dashboard_service.ERPNextWarehouseAdapter",
+            side_effect=AssertionError("dashboard fastapi mode must not construct ERPNext warehouse adapter"),
+        ):
+            response = self.client.get(
+                "/api/dashboard/overview?company=COMP-A",
+                headers=self._headers_with_roles("System Manager"),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["sales_inventory"]["item_count"], 1)
+        self.assertEqual(Decimal(str(payload["sales_inventory"]["total_actual_qty"])), Decimal("7.000000"))
+        self.assertEqual(payload["warehouse"]["alert_count"], 0)
+        self.assertEqual([row["status"] for row in payload["source_status"]], ["ok", "ok", "ok"])
 
     def test_module_read_actions_cannot_replace_dashboard_read(self) -> None:
         for role in ("quality:read", "sales_inventory:read", "warehouse:read", "inventory:read"):
