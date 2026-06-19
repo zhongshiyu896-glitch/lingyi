@@ -135,6 +135,17 @@ class BomService:
 
         bom_no = self._build_bom_no(item_code=payload.item_code, version_no=payload.version_no)
         try:
+            same_version = (
+                self.session.query(LyApparelBom)
+                .filter(
+                    LyApparelBom.company == company,
+                    LyApparelBom.item_code == payload.item_code,
+                    LyApparelBom.version_no == payload.version_no,
+                )
+                .first()
+            )
+            if same_version is not None:
+                raise BomBusinessError(code=BOM_DEFAULT_CONFLICT, message="BOM 版本已存在")
             exists = self.session.query(LyApparelBom).filter(LyApparelBom.bom_no == bom_no).first()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
