@@ -480,6 +480,107 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             self.assertEqual(int(payment.docstatus), 2)
             self.assertEqual(session.query(LyMaterialPurchasePaymentOperation).count(), 1)
 
+    def test_purchase_payment_cancel_second_payment_reopens_paid_invoice_to_partly_paid(self) -> None:
+        self._create_received_purchase_order()
+        created_invoice = self.client.post(
+            "/api/material-purchase/purchase-invoices",
+            headers=self._headers(),
+            json=self._invoice_payload(),
+        )
+        self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+
+        first_payment = self.client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=self._headers(),
+            json=self._payment_payload(),
+        )
+        second_payment = self.client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=self._headers(),
+            json=self._payment_payload(
+                paid_amount="150",
+                payment_entry="PP-B2-002",
+                reference_no="BANK-B2-002",
+                source_ref="SRC-B2-PP-002",
+                idempotency_key="idem-b2-pp-002",
+                scenario_tag="B2-PURCHASE-PAYMENT-002",
+            ),
+        )
+        paid_invoices = self.client.get(
+            "/api/material-purchase/purchase-invoices?keyword=PINV-B2-001",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(first_payment.status_code, 201, first_payment.text)
+        self.assertEqual(second_payment.status_code, 201, second_payment.text)
+        self.assertEqual(Decimal(str(second_payment.json()["data"]["outstanding_before"])), Decimal("150.000000"))
+        self.assertEqual(Decimal(str(second_payment.json()["data"]["outstanding_after"])), Decimal("0.000000"))
+        paid_invoice = paid_invoices.json()["data"]["items"][0]
+        self.assertEqual(paid_invoice["status"], "paid")
+        self.assertEqual(Decimal(str(paid_invoice["paid_amount"])), Decimal("250.000000"))
+        self.assertEqual(Decimal(str(paid_invoice["outstanding_amount"])), Decimal("0.000000"))
+
+        second_payment_id = second_payment.json()["data"]["id"]
+        cancelled = self.client.post(
+            f"/api/material-purchase/purchase-payments/{second_payment_id}/cancel",
+            headers=self._headers(),
+            json=self._payment_cancel_payload(
+                reason="VOID-B2-PAYMENT-002",
+                idempotency_key="idem-b2-pp-cancel-002",
+                scenario_tag="B2-PURCHASE-PAYMENT-CANCEL-002",
+            ),
+        )
+        replay = self.client.post(
+            f"/api/material-purchase/purchase-payments/{second_payment_id}/cancel",
+            headers=self._headers(),
+            json=self._payment_cancel_payload(
+                reason="VOID-B2-PAYMENT-002",
+                idempotency_key="idem-b2-pp-cancel-002",
+                scenario_tag="B2-PURCHASE-PAYMENT-CANCEL-002",
+            ),
+        )
+        submitted_payments = self.client.get(
+            "/api/material-purchase/purchase-payments?status=submitted",
+            headers=self._headers(),
+        )
+        cancelled_payments = self.client.get(
+            "/api/material-purchase/purchase-payments?status=cancelled",
+            headers=self._headers(),
+        )
+        reopened_invoices = self.client.get(
+            "/api/material-purchase/purchase-invoices?keyword=PINV-B2-001",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(cancelled.status_code, 200, cancelled.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(cancelled.json()["data"]["id"], replay.json()["data"]["id"])
+        self.assertEqual(cancelled.json()["data"]["payment_entry"], "PP-B2-002")
+        self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(submitted_payments.status_code, 200)
+        self.assertEqual(submitted_payments.json()["data"]["total"], 1)
+        self.assertEqual(submitted_payments.json()["data"]["items"][0]["payment_entry"], "PP-B2-001")
+        self.assertEqual(cancelled_payments.status_code, 200)
+        self.assertEqual(cancelled_payments.json()["data"]["total"], 1)
+        self.assertEqual(cancelled_payments.json()["data"]["items"][0]["payment_entry"], "PP-B2-002")
+        reopened_invoice = reopened_invoices.json()["data"]["items"][0]
+        self.assertEqual(reopened_invoice["status"], "partly_paid")
+        self.assertEqual(Decimal(str(reopened_invoice["paid_amount"])), Decimal("100.000000"))
+        self.assertEqual(Decimal(str(reopened_invoice["outstanding_amount"])), Decimal("150.000000"))
+
+        with self.SessionLocal() as session:
+            invoice = session.query(LyMaterialPurchaseInvoice).one()
+            payments = {
+                row.payment_entry: row
+                for row in session.query(LyMaterialPurchasePayment).order_by(LyMaterialPurchasePayment.payment_entry).all()
+            }
+            self.assertEqual(str(invoice.status), "partly_paid")
+            self.assertEqual(Decimal(str(invoice.paid_amount)), Decimal("100.000000"))
+            self.assertEqual(Decimal(str(invoice.outstanding_amount)), Decimal("150.000000"))
+            self.assertEqual(str(payments["PP-B2-001"].status), "submitted")
+            self.assertEqual(str(payments["PP-B2-002"].status), "cancelled")
+            self.assertEqual(session.query(LyMaterialPurchasePaymentOperation).count(), 1)
+
     def test_purchase_payment_cancel_requires_write_permission(self) -> None:
         self._create_received_purchase_order()
         created_invoice = self.client.post(
