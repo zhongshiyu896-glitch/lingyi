@@ -81,7 +81,7 @@ class QualitySourceValidationSnapshot:
 
 
 class QualitySourceValidator:
-    """Read ERPNext master/source facts under fail-closed policy."""
+    """Validate quality master/source facts under the configured permission source."""
 
     def __init__(self, request_obj: Request | None = None):
         self.request_obj = request_obj
@@ -89,7 +89,8 @@ class QualitySourceValidator:
         app_env = os.getenv("APP_ENV", "").strip().lower()
         db_url = os.getenv("LINGYI_DB_URL", "").strip()
         self.local_dev_mode = app_env == "development" and db_url == QUALITY_LOCAL_DB_URL
-        self.adapter = ERPNextQualityAdapter(request_obj=request_obj, base_url=self.base_url)
+        self.fastapi_native_mode = os.getenv("LINGYI_PERMISSION_SOURCE", "").strip().lower() == "fastapi"
+        self.adapter = None if self.local_dev_mode or self.fastapi_native_mode else ERPNextQualityAdapter(request_obj=request_obj, base_url=self.base_url)
 
     def validate_for_payload(
         self,
@@ -101,8 +102,8 @@ class QualitySourceValidator:
         source_type: str,
         source_id: str | None,
     ) -> QualitySourceValidationSnapshot:
-        """Validate ERPNext master data and optional external source."""
-        if self.local_dev_mode:
+        """Validate master data and optional source without falling back to mock data."""
+        if self.local_dev_mode or getattr(self, "fastapi_native_mode", False):
             return self._validate_for_local_dev(
                 company=company,
                 item_code=item_code,
@@ -170,6 +171,8 @@ class QualitySourceValidator:
         return QualitySourceValidationSnapshot(master_data=master_data, source=source_snapshot)
 
     def _require_resource(self, doctype: str, name: str, *, require_submitted: bool) -> dict[str, Any]:
+        if self.adapter is None:
+            raise BusinessException(code=QUALITY_SOURCE_UNAVAILABLE)
         return self.adapter.require_resource(
             doctype=doctype,
             name=name,

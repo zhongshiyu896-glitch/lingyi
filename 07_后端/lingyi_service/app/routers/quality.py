@@ -342,6 +342,9 @@ def _raise_quality_gate_error(reason: str) -> None:
 def _ensure_local_dev_write_gate() -> None:
     app_env = os.getenv("APP_ENV", "").strip().lower()
     db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    permission_source = os.getenv("LINGYI_PERMISSION_SOURCE", "").strip().lower()
+    if permission_source == "fastapi":
+        return
     if app_env != "development" or db_url != QUALITY_LOCAL_DB_URL:
         _raise_quality_gate_error("non_local_dev")
 

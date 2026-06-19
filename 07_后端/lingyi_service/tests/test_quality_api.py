@@ -30,6 +30,8 @@ from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.quality import get_db_session as quality_db_dep
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
+from app.services.erpnext_quality_adapter import ERPNextQualityAdapter
+from app.services.permission_service import PermissionService
 from app.services.quality_service import QualitySourceValidationSnapshot
 
 
@@ -343,6 +345,44 @@ class QualityApiTest(QualityApiBase):
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyQualityInspection).count(), 1)
             self.assertEqual(session.query(LyQualityOperationLog).count(), 1)
+
+    def test_fastapi_source_create_uses_native_validator_without_erpnext(self) -> None:
+        payload = self._payload(idempotency_key=f"{self.QUALITY_SCENARIO_TAG}:quality-api-fastapi:create")
+        with patch.dict(
+            "os.environ",
+            {
+                "APP_ENV": "test",
+                "LINGYI_DB_URL": "sqlite:///not-local-quality.db",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ALLOW_DEV_AUTH": "true",
+            },
+        ), patch.object(
+            PermissionService,
+            "require_action",
+            return_value=None,
+        ), patch.object(
+            PermissionService,
+            "ensure_resource_scope_permission",
+            return_value=None,
+        ), patch.object(
+            ERPNextQualityAdapter,
+            "require_resource",
+            side_effect=AssertionError("quality create must not call ERPNext"),
+        ):
+            response = self.client.post(
+                "/api/quality/inspections",
+                headers=self._headers_for_payload(payload),
+                json=payload,
+            )
+
+        self.assertEqual(response.status_code, 201, response.text)
+        body = response.json()
+        self.assertEqual(body["code"], "0")
+        self.assertEqual(body["data"]["source_snapshot"]["master_data"]["company"]["name"], "COMP-A")
+        with self.SessionLocal() as session:
+            row = session.query(LyQualityInspection).one()
+            self.assertEqual(row.company, "COMP-A")
+            self.assertEqual(row.item_code, "ITEM-A")
 
     def test_cancelled_status_rejects_followup_writes(self) -> None:
         seeded = self._insert_inspection(
