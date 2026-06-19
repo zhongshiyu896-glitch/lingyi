@@ -448,6 +448,23 @@ class ProductionFollowupTemplateQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
+class ProductionFollowupTemplateNodeItem(BaseModel):
+    """Production follow-up template node row."""
+
+    id: int
+    template_id: int
+    company: str
+    node_name: str
+    owner: str
+    lead_time_hours: int
+    status: str
+    gate: str
+    output: str
+    reminder: str
+    sequence_no: int
+    updated_at: datetime
+
+
 class ProductionFollowupTemplateListItem(BaseModel):
     """Production follow-up template row."""
 
@@ -463,6 +480,7 @@ class ProductionFollowupTemplateListItem(BaseModel):
     company: str
     status: str
     updated_at: datetime
+    nodes: List[ProductionFollowupTemplateNodeItem] = Field(default_factory=list)
 
 
 class ProductionFollowupTemplateListData(BaseModel):
@@ -524,6 +542,22 @@ class ProductionFollowupTemplateActionRequest(BaseModel):
 
     company: str = Field(..., min_length=1, max_length=140)
     reason: Optional[str] = Field(default=None, max_length=255)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionFollowupTemplateNodeCreateRequest(BaseModel):
+    """Create one FastAPI-native production follow-up template node."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    node_name: str = Field(..., min_length=1, max_length=255)
+    owner: Optional[str] = Field(default="", max_length=140)
+    lead_time_hours: int = Field(default=0, ge=0, le=10000)
+    status: Optional[str] = Field(default="required", max_length=32)
+    gate: Optional[str] = Field(default="", max_length=1000)
+    output: Optional[str] = Field(default="", max_length=1000)
+    reminder: Optional[str] = Field(default="", max_length=1000)
+    sequence_no: int = Field(default=10, ge=0)
     operation: Optional[str] = Field(default=None, max_length=40)
     idempotency_key: str = Field(..., min_length=1, max_length=128)
 

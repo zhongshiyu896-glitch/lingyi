@@ -14,6 +14,7 @@ from sqlalchemy import JSON
 from sqlalchemy import Numeric
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import String
+from sqlalchemy import Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
@@ -284,6 +285,37 @@ class LyProductionFollowupTemplate(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
+class LyProductionFollowupTemplateNode(Base):
+    """FastAPI-native production follow-up template node."""
+
+    __tablename__ = "ly_production_followup_template_node"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_followup_template_node"),
+        Index("idx_ly_production_followup_template_node_template", "template_id", "sequence_no"),
+        Index("idx_ly_production_followup_template_node_company", "company", "template_id"),
+        CheckConstraint("status IN ('required','optional','locked')", name="ck_ly_production_followup_template_node_status"),
+        CheckConstraint("lead_time_hours >= 0", name="ck_ly_production_followup_template_node_lead_time"),
+        CheckConstraint("sequence_no >= 0", name="ck_ly_production_followup_template_node_sequence"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生大货跟进模板节点"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    template_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_followup_template.id"), nullable=False)
+    company = Column(String(140), nullable=False)
+    node_name = Column(String(255), nullable=False)
+    owner = Column(String(140), nullable=False, server_default="")
+    lead_time_hours = Column(Integer, nullable=False, server_default="0")
+    status = Column(String(32), nullable=False, server_default="required")
+    gate = Column(Text, nullable=False, server_default="")
+    output = Column(Text, nullable=False, server_default="")
+    reminder = Column(Text, nullable=False, server_default="")
+    sequence_no = Column(Integer, nullable=False, server_default="10")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
 class LyProductionFollowupTemplateOperation(Base):
     """Idempotency ledger for production follow-up template writes."""
 
@@ -301,6 +333,30 @@ class LyProductionFollowupTemplateOperation(Base):
 
     id = Column(IDType, autoincrement=True)
     template_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_followup_template.id"), nullable=True)
+    company = Column(String(140), nullable=False)
+    operation = Column(String(64), nullable=False)
+    idempotency_key = Column(String(128), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    response_json = Column(JSONType, nullable=False, default=dict)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class LyProductionFollowupTemplateNodeOperation(Base):
+    """Idempotency ledger for production follow-up template node writes."""
+
+    __tablename__ = "ly_production_followup_template_node_operation"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_followup_template_node_operation"),
+        Index("uk_ly_production_followup_template_node_operation_idem", "company", "operation", "idempotency_key", unique=True),
+        Index("idx_ly_production_followup_template_node_operation_node", "node_id", "operation"),
+        CheckConstraint("operation IN ('create_node')", name="ck_ly_production_followup_template_node_operation"),
+        {"schema": "ly_schema", "comment": "大货跟进模板节点写操作幂等账本"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    template_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_followup_template.id"), nullable=False)
+    node_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_followup_template_node.id"), nullable=True)
     company = Column(String(140), nullable=False)
     operation = Column(String(64), nullable=False)
     idempotency_key = Column(String(128), nullable=False)

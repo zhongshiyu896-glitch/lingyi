@@ -57,6 +57,8 @@ from app.schemas.production import ProductionFollowupTemplateCopyRequest
 from app.schemas.production import ProductionFollowupTemplateCreateRequest
 from app.schemas.production import ProductionFollowupTemplateQuery
 from app.schemas.production import ProductionFollowupTemplateListItem
+from app.schemas.production import ProductionFollowupTemplateNodeCreateRequest
+from app.schemas.production import ProductionFollowupTemplateNodeItem
 from app.schemas.production import ProductionFollowupTemplateUpdateRequest
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
@@ -1219,6 +1221,86 @@ def deactivate_production_followup_template(
         resource_no=None,
         mutate=lambda service: service.deactivate_followup_template(template_id=template_id, payload=payload, operator=current_user.username),
     )
+
+
+@router.post("/followup-templates/{template_id}/nodes", response_model=ApiResponse[ProductionFollowupTemplateNodeItem])
+def create_production_followup_template_node(
+    template_id: int,
+    payload: ProductionFollowupTemplateNodeCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_FOLLOWUP_TEMPLATE_WRITE
+    audit_action = "create_node"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_followup_template",
+            resource_id=template_id,
+        )
+        data = _service(session=session, request=request).create_followup_template_node(
+            template_id=template_id,
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_followup_template_node",
+            resource_id=int(data.id),
+            resource_no=str(data.id),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template_node",
+            resource_id=template_id,
+            resource_no=None,
+            before_data=None,
+            after_data={"node_name": payload.node_name},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_followup_template_node",
+            resource_id=template_id,
+            resource_no=None,
+            before_data=None,
+            after_data={"node_name": payload.node_name},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
 
 
 def _mutate_production_followup_template(
