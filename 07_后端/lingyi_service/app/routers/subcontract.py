@@ -69,6 +69,8 @@ from app.schemas.subcontract import ReceiveRequest
 from app.schemas.subcontract import SubcontractCreateRequest
 from app.schemas.subcontract import SubcontractDetailData
 from app.schemas.subcontract import SubcontractListQuery
+from app.schemas.subcontract import SubcontractMaterialIssueData
+from app.schemas.subcontract import SubcontractReceiptData
 from app.schemas.subcontract import SubcontractReturnMaterialData
 from app.schemas.subcontract import SubcontractSettlementLockRequest
 from app.schemas.subcontract import SubcontractSettlementPreviewRequest
@@ -886,6 +888,134 @@ def list_subcontract_order(
             readable_item_codes=readable_item_codes,
             readable_companies=readable_companies,
             readable_suppliers=readable_suppliers,
+        )
+        return _ok(result.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, SUBCONTRACT_READ, exc))
+
+
+@router.get("/material-issues")
+def list_subcontract_material_issues(
+    request: Request,
+    company: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询真实外发发料读回明细。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SUBCONTRACT_READ,
+        module="subcontract",
+        resource_type="subcontract_material_issue",
+    )
+
+    readable_item_codes: set[str] | None = None
+    readable_companies: set[str] | None = None
+    readable_suppliers: set[str] | None = None
+    readable_warehouses: set[str] | None = None
+    if get_permission_source() == "erpnext":
+        user_permissions = permission_service.get_subcontract_user_permissions(
+            current_user=current_user,
+            request_obj=request,
+            action=SUBCONTRACT_READ,
+            resource_type="subcontract_material_issue",
+        )
+        readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+            user_permissions=user_permissions
+        )
+        if user_permissions is not None and not user_permissions.unrestricted and user_permissions.allowed_warehouses:
+            readable_warehouses = set(user_permissions.allowed_warehouses)
+
+    service = SubcontractService(session=session)
+    try:
+        result: SubcontractMaterialIssueData = service.list_material_issues(
+            company=company,
+            supplier=supplier,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status,
+            keyword=keyword,
+            page=page,
+            page_size=page_size,
+            readable_item_codes=readable_item_codes,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+            readable_warehouses=readable_warehouses,
+        )
+        return _ok(result.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, SUBCONTRACT_READ, exc))
+
+
+@router.get("/receipts")
+def list_subcontract_receipts(
+    request: Request,
+    company: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询真实外发收货读回明细。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SUBCONTRACT_READ,
+        module="subcontract",
+        resource_type="subcontract_receipt",
+    )
+
+    readable_item_codes: set[str] | None = None
+    readable_companies: set[str] | None = None
+    readable_suppliers: set[str] | None = None
+    readable_warehouses: set[str] | None = None
+    if get_permission_source() == "erpnext":
+        user_permissions = permission_service.get_subcontract_user_permissions(
+            current_user=current_user,
+            request_obj=request,
+            action=SUBCONTRACT_READ,
+            resource_type="subcontract_receipt",
+        )
+        readable_item_codes, readable_companies, readable_suppliers = _resolve_subcontract_read_scope_sets(
+            user_permissions=user_permissions
+        )
+        if user_permissions is not None and not user_permissions.unrestricted and user_permissions.allowed_warehouses:
+            readable_warehouses = set(user_permissions.allowed_warehouses)
+
+    service = SubcontractService(session=session)
+    try:
+        result: SubcontractReceiptData = service.list_receipt_readbacks(
+            company=company,
+            supplier=supplier,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status,
+            keyword=keyword,
+            page=page,
+            page_size=page_size,
+            readable_item_codes=readable_item_codes,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+            readable_warehouses=readable_warehouses,
         )
         return _ok(result.model_dump())
     except AppException as exc:

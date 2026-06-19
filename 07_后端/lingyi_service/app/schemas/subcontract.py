@@ -155,6 +155,54 @@ class SubcontractReturnMaterialData(BaseModel):
     page_size: int
 
 
+class SubcontractMaterialIssueItem(BaseModel):
+    """Subcontract material issue projection for existing frontend pages."""
+
+    subcontract_no: str
+    company: str
+    supplier: str
+    item_code: str
+    material_item_code: str
+    warehouse: str
+    required_qty: Decimal
+    issued_qty: Decimal
+    pending_qty: Decimal
+    status: str
+
+
+class SubcontractMaterialIssueData(BaseModel):
+    """Paginated subcontract material issue payload."""
+
+    items: List[SubcontractMaterialIssueItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class SubcontractReceiptItem(BaseModel):
+    """Subcontract receipt projection for existing frontend pages."""
+
+    subcontract_no: str
+    company: str
+    supplier: str
+    item_code: str
+    receipt_batch_no: str
+    received_qty: Decimal
+    accepted_qty: Decimal
+    rejected_qty: Decimal
+    receipt_warehouse: str
+    status: str
+
+
+class SubcontractReceiptData(BaseModel):
+    """Paginated subcontract receipt payload."""
+
+    items: List[SubcontractReceiptItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class SubcontractSettlementSummary(BaseModel):
     """Settlement summary for candidates/preview/lock responses."""
 

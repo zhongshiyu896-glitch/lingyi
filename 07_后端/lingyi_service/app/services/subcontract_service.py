@@ -69,7 +69,11 @@ from app.schemas.subcontract import SubcontractInspectionDetailItem
 from app.schemas.subcontract import SubcontractListData
 from app.schemas.subcontract import SubcontractListItem
 from app.schemas.subcontract import SubcontractListQuery
+from app.schemas.subcontract import SubcontractMaterialIssueData
+from app.schemas.subcontract import SubcontractMaterialIssueItem
+from app.schemas.subcontract import SubcontractReceiptData
 from app.schemas.subcontract import SubcontractReceiptDetailItem
+from app.schemas.subcontract import SubcontractReceiptItem
 from app.schemas.subcontract import SubcontractReturnMaterialData
 from app.schemas.subcontract import SubcontractReturnMaterialItem
 from app.schemas.subcontract import SubcontractStockSyncRetryData
@@ -391,6 +395,241 @@ class SubcontractService:
             page=query.page,
             page_size=query.page_size,
         )
+
+    def list_material_issues(
+        self,
+        *,
+        company: str | None,
+        supplier: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+        readable_suppliers: set[str] | None = None,
+        readable_warehouses: set[str] | None = None,
+    ) -> SubcontractMaterialIssueData:
+        """List real subcontract material issue facts for frontend readback."""
+        normalized_company = self._normalize_company(company)
+        normalized_supplier = self._normalize_text(supplier)
+        normalized_warehouse = self._normalize_text(warehouse)
+        normalized_item_code = self._normalize_text(item_code)
+        normalized_status = self._normalize_text(status).lower()
+        normalized_keyword = self._normalize_text(keyword).lower()
+        page = max(1, int(page))
+        page_size = max(1, min(int(page_size), 100))
+
+        if readable_item_codes is not None and not readable_item_codes:
+            return SubcontractMaterialIssueData(items=[], total=0, page=page, page_size=page_size)
+        if readable_companies is not None and not readable_companies:
+            return SubcontractMaterialIssueData(items=[], total=0, page=page, page_size=page_size)
+        if readable_suppliers is not None and not readable_suppliers:
+            return SubcontractMaterialIssueData(items=[], total=0, page=page, page_size=page_size)
+        if readable_warehouses is not None and not readable_warehouses:
+            return SubcontractMaterialIssueData(items=[], total=0, page=page, page_size=page_size)
+
+        try:
+            query = (
+                self.session.query(LySubcontractMaterial, LySubcontractOrder, LySubcontractStockOutbox)
+                .join(LySubcontractOrder, LySubcontractOrder.id == LySubcontractMaterial.subcontract_id)
+                .outerjoin(LySubcontractStockOutbox, LySubcontractStockOutbox.id == LySubcontractMaterial.stock_outbox_id)
+            )
+            if normalized_supplier:
+                query = query.filter(LySubcontractOrder.supplier == normalized_supplier)
+            rows = query.order_by(LySubcontractMaterial.created_at.desc(), LySubcontractMaterial.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        items: list[SubcontractMaterialIssueItem] = []
+        for material, order, outbox in rows:
+            company_value = (
+                self._normalize_company(getattr(material, "company", None))
+                or self._normalize_company(getattr(order, "company", None))
+                or self._normalize_company(getattr(outbox, "company", None) if outbox is not None else None)
+                or ""
+            )
+            supplier_value = self._normalize_text(getattr(order, "supplier", None))
+            item_value = self._normalize_text(getattr(order, "item_code", None))
+            material_code = self._normalize_text(getattr(material, "material_item_code", None))
+            warehouse_value = self._normalize_text(getattr(outbox, "warehouse", None) if outbox is not None else None)
+            if normalized_company and company_value != normalized_company:
+                continue
+            if normalized_item_code and normalized_item_code not in {item_value, material_code}:
+                continue
+            if normalized_warehouse and warehouse_value != normalized_warehouse:
+                continue
+            if readable_companies is not None and company_value not in readable_companies:
+                continue
+            if readable_suppliers is not None and supplier_value not in readable_suppliers:
+                continue
+            if readable_item_codes is not None and item_value not in readable_item_codes and material_code not in readable_item_codes:
+                continue
+            if readable_warehouses is not None and warehouse_value not in readable_warehouses:
+                continue
+
+            required_qty = Decimal(str(getattr(material, "required_qty", 0) or 0))
+            issued_qty = Decimal(str(getattr(material, "issued_qty", 0) or 0))
+            pending_qty = max(required_qty - issued_qty, Decimal("0"))
+            if issued_qty <= 0:
+                status_value = "pending"
+            elif pending_qty > 0:
+                status_value = "partially_issued"
+            else:
+                status_value = "issued"
+            if normalized_status and normalized_status != "all" and status_value != normalized_status:
+                continue
+
+            row_text = " ".join(
+                [
+                    self._normalize_text(getattr(order, "subcontract_no", None)),
+                    company_value,
+                    supplier_value,
+                    item_value,
+                    material_code,
+                    warehouse_value,
+                    self._normalize_text(getattr(material, "issue_batch_no", None)),
+                ]
+            ).lower()
+            if normalized_keyword and normalized_keyword not in row_text:
+                continue
+
+            items.append(
+                SubcontractMaterialIssueItem(
+                    subcontract_no=self._normalize_text(getattr(order, "subcontract_no", None)),
+                    company=company_value,
+                    supplier=supplier_value,
+                    item_code=item_value,
+                    material_item_code=material_code,
+                    warehouse=warehouse_value,
+                    required_qty=required_qty,
+                    issued_qty=issued_qty,
+                    pending_qty=pending_qty,
+                    status=status_value,
+                )
+            )
+
+        total = len(items)
+        start = (page - 1) * page_size
+        return SubcontractMaterialIssueData(items=items[start : start + page_size], total=total, page=page, page_size=page_size)
+
+    def list_receipt_readbacks(
+        self,
+        *,
+        company: str | None,
+        supplier: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+        readable_suppliers: set[str] | None = None,
+        readable_warehouses: set[str] | None = None,
+    ) -> SubcontractReceiptData:
+        """List real subcontract receipt facts for frontend readback."""
+        normalized_company = self._normalize_company(company)
+        normalized_supplier = self._normalize_text(supplier)
+        normalized_warehouse = self._normalize_text(warehouse)
+        normalized_item_code = self._normalize_text(item_code)
+        normalized_status = self._normalize_text(status).lower()
+        normalized_keyword = self._normalize_text(keyword).lower()
+        page = max(1, int(page))
+        page_size = max(1, min(int(page_size), 100))
+
+        if readable_item_codes is not None and not readable_item_codes:
+            return SubcontractReceiptData(items=[], total=0, page=page, page_size=page_size)
+        if readable_companies is not None and not readable_companies:
+            return SubcontractReceiptData(items=[], total=0, page=page, page_size=page_size)
+        if readable_suppliers is not None and not readable_suppliers:
+            return SubcontractReceiptData(items=[], total=0, page=page, page_size=page_size)
+        if readable_warehouses is not None and not readable_warehouses:
+            return SubcontractReceiptData(items=[], total=0, page=page, page_size=page_size)
+
+        try:
+            query = (
+                self.session.query(LySubcontractReceipt, LySubcontractOrder)
+                .join(LySubcontractOrder, LySubcontractOrder.id == LySubcontractReceipt.subcontract_id)
+            )
+            if normalized_supplier:
+                query = query.filter(LySubcontractOrder.supplier == normalized_supplier)
+            if normalized_warehouse:
+                query = query.filter(LySubcontractReceipt.receipt_warehouse == normalized_warehouse)
+            rows = query.order_by(LySubcontractReceipt.created_at.desc(), LySubcontractReceipt.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        items: list[SubcontractReceiptItem] = []
+        for receipt, order in rows:
+            company_value = (
+                self._normalize_company(getattr(receipt, "company", None))
+                or self._normalize_company(getattr(order, "company", None))
+                or ""
+            )
+            supplier_value = self._normalize_text(getattr(order, "supplier", None))
+            item_value = self._normalize_text(getattr(receipt, "item_code", None)) or self._normalize_text(
+                getattr(order, "item_code", None)
+            )
+            warehouse_value = self._normalize_text(getattr(receipt, "receipt_warehouse", None))
+            if normalized_company and company_value != normalized_company:
+                continue
+            if normalized_item_code and item_value != normalized_item_code:
+                continue
+            if readable_companies is not None and company_value not in readable_companies:
+                continue
+            if readable_suppliers is not None and supplier_value not in readable_suppliers:
+                continue
+            if readable_item_codes is not None and item_value not in readable_item_codes:
+                continue
+            if readable_warehouses is not None and warehouse_value not in readable_warehouses:
+                continue
+
+            received_qty = Decimal(str(getattr(receipt, "received_qty", 0) or 0))
+            inspected_qty = Decimal(str(getattr(receipt, "inspected_qty", 0) or 0))
+            rejected_qty = Decimal(str(getattr(receipt, "rejected_qty", 0) or 0))
+            accepted_base = inspected_qty if inspected_qty > 0 else received_qty
+            accepted_qty = max(accepted_base - rejected_qty, Decimal("0"))
+            status_value = self._normalize_text(getattr(receipt, "inspect_status", None)) or self._normalize_text(
+                getattr(receipt, "sync_status", None)
+            )
+            if normalized_status and normalized_status != "all" and status_value.lower() != normalized_status:
+                continue
+
+            row_text = " ".join(
+                [
+                    self._normalize_text(getattr(order, "subcontract_no", None)),
+                    company_value,
+                    supplier_value,
+                    item_value,
+                    self._normalize_text(getattr(receipt, "receipt_batch_no", None)),
+                    warehouse_value,
+                ]
+            ).lower()
+            if normalized_keyword and normalized_keyword not in row_text:
+                continue
+
+            items.append(
+                SubcontractReceiptItem(
+                    subcontract_no=self._normalize_text(getattr(order, "subcontract_no", None)),
+                    company=company_value,
+                    supplier=supplier_value,
+                    item_code=item_value,
+                    receipt_batch_no=self._normalize_text(getattr(receipt, "receipt_batch_no", None)),
+                    received_qty=received_qty,
+                    accepted_qty=accepted_qty,
+                    rejected_qty=rejected_qty,
+                    receipt_warehouse=warehouse_value,
+                    status=status_value,
+                )
+            )
+
+        total = len(items)
+        start = (page - 1) * page_size
+        return SubcontractReceiptData(items=items[start : start + page_size], total=total, page=page, page_size=page_size)
 
     def list_return_materials(
         self,

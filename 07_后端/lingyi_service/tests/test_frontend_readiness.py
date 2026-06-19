@@ -42,6 +42,7 @@ from app.models.factory_statement import LyFactoryStatementPayment  # noqa: E402
 from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrder  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrderItem  # noqa: E402
+from app.models.material_purchase import LyMaterialPurchaseRequirement  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 from app.models.quality import LyQualityInspection  # noqa: E402
@@ -49,6 +50,11 @@ from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
 from app.models.sales_order import LyDeliveryInvoice  # noqa: E402
 from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.style_profit import LyStyleProfitSnapshot  # noqa: E402
+from app.models.subcontract import Base as SubcontractBase  # noqa: E402
+from app.models.subcontract import LySubcontractMaterial  # noqa: E402
+from app.models.subcontract import LySubcontractOrder  # noqa: E402
+from app.models.subcontract import LySubcontractReceipt  # noqa: E402
+from app.models.subcontract import LySubcontractStockOutbox  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCount  # noqa: E402
 from app.models.warehouse import LyWarehouseInventoryCountItem  # noqa: E402
 from app.models.warehouse import LyWarehouseStockEntryDraft  # noqa: E402
@@ -258,6 +264,7 @@ class FrontendReadinessTest(unittest.TestCase):
         AuditBase.metadata.create_all(bind=cls.engine)
         FactoryStatementBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        SubcontractBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
@@ -322,6 +329,11 @@ class FrontendReadinessTest(unittest.TestCase):
             session.query(LyFactoryStatementPayment).delete()
             session.query(LyFactoryStatementPayableOutbox).delete()
             session.query(LyFactoryStatement).delete()
+            session.query(LySubcontractReceipt).delete()
+            session.query(LySubcontractMaterial).delete()
+            session.query(LySubcontractStockOutbox).delete()
+            session.query(LySubcontractOrder).delete()
+            session.query(LyMaterialPurchaseRequirement).delete()
             session.query(LyMaterialPurchaseOrderItem).delete()
             session.query(LyMaterialPurchaseOrder).delete()
             session.query(LyStyleProfitSnapshot).delete()
@@ -596,7 +608,6 @@ class FrontendReadinessTest(unittest.TestCase):
 
     def test_six_module_supplement_fields_are_available(self) -> None:
         field_expectations = {
-            "/api/bom/material-requests": {"request_no", "material_item_code", "supplier_name", "qty", "status"},
             "/api/warehouse/purchase-receipts": {"receipt_no", "purchase_no", "material_item_code", "received_qty"},
             "/api/factory-statements/purchase-invoices": {
                 "purchase_invoice_name",
@@ -604,8 +615,6 @@ class FrontendReadinessTest(unittest.TestCase):
                 "grand_total",
                 "outstanding_amount",
             },
-            "/api/subcontract/material-issues": {"subcontract_no", "material_item_code", "issued_qty", "pending_qty"},
-            "/api/subcontract/receipts": {"subcontract_no", "receipt_batch_no", "received_qty", "accepted_qty"},
             "/api/warehouse/finished-goods-inbound": {
                 "reservation_no",
                 "item_code",
@@ -630,6 +639,164 @@ class FrontendReadinessTest(unittest.TestCase):
                 items = response.json()["data"]["items"]
                 self.assertTrue(items, f"{path} should include dev seed rows")
                 self.assertTrue(expected_fields.issubset(items[0].keys()), items[0])
+
+    def test_legacy_material_and_subcontract_readback_paths_use_real_tables(self) -> None:
+        real_paths = [
+            "/api/bom/material-requests",
+            "/api/subcontract/material-issues",
+            "/api/subcontract/receipts",
+        ]
+        for path in real_paths:
+            with self.subTest(path=f"{path}:empty"):
+                response = self.client.get(path, headers=self._headers())
+                self.assertEqual(response.status_code, 200, response.text)
+                data = response.json()["data"]
+                self.assertEqual(data["items"], [])
+                self.assertEqual(data["total"], 0)
+
+        with self.SessionLocal() as session:
+            session.add(
+                LyMaterialPurchaseRequirement(
+                    id=1001,
+                    company=DEFAULT_COMPANY,
+                    requirement_no="REQ-REAL-001",
+                    source_type="production_plan",
+                    source_id="PLAN-REAL-001",
+                    source_no="BOM-REAL-001",
+                    plan_id=901,
+                    bom_item_id=902,
+                    sales_order="SO-REAL-001",
+                    item_code="ITEM-REAL-001",
+                    material_item_code="MAT-REAL-001",
+                    material_name="真实面料",
+                    supplier_name="真实供应商",
+                    warehouse="WH-REAL-001",
+                    required_qty=Decimal("10"),
+                    available_qty=Decimal("2"),
+                    net_required_qty=Decimal("8"),
+                    purchased_qty=Decimal("0"),
+                    received_qty=Decimal("0"),
+                    uom="米",
+                    unit_price=Decimal("3.5"),
+                    status="pending",
+                    payload={},
+                    created_by="frontend.readback.test",
+                    created_at=datetime(2026, 6, 19, tzinfo=timezone.utc),
+                    updated_at=datetime(2026, 6, 19, tzinfo=timezone.utc),
+                )
+            )
+            session.add(
+                LySubcontractOrder(
+                    id=2001,
+                    subcontract_no="SC-REAL-001",
+                    supplier="真实加工厂",
+                    item_code="ITEM-REAL-001",
+                    company=DEFAULT_COMPANY,
+                    bom_id=902,
+                    process_name="车缝",
+                    planned_qty=Decimal("10"),
+                    subcontract_rate=Decimal("1.2"),
+                    issued_qty=Decimal("6"),
+                    received_qty=Decimal("8"),
+                    inspected_qty=Decimal("8"),
+                    rejected_qty=Decimal("1"),
+                    accepted_qty=Decimal("7"),
+                    status="received",
+                    settlement_status="unsettled",
+                    source_ref="SRC-SC-REAL-001",
+                    idempotency_key="IDEM-SC-REAL-001",
+                    request_hash="HASH-SC-REAL-001",
+                    created_at=datetime(2026, 6, 19, tzinfo=timezone.utc),
+                    updated_at=datetime(2026, 6, 19, tzinfo=timezone.utc),
+                )
+            )
+            session.add(
+                LySubcontractStockOutbox(
+                    id=2002,
+                    subcontract_id=2001,
+                    event_key="EVT-SC-REAL-ISSUE",
+                    stock_action="issue",
+                    idempotency_key="IDEM-SC-REAL-ISSUE",
+                    payload_hash="HASH-SC-REAL-ISSUE",
+                    payload_json={},
+                    company=DEFAULT_COMPANY,
+                    supplier="真实加工厂",
+                    item_code="ITEM-REAL-001",
+                    warehouse="WH-REAL-001",
+                    action="issue",
+                    status="succeeded",
+                    payload={},
+                    request_id="REQ-SC-REAL-ISSUE",
+                    created_by="frontend.readback.test",
+                )
+            )
+            session.add(
+                LySubcontractMaterial(
+                    id=2003,
+                    subcontract_id=2001,
+                    stock_outbox_id=2002,
+                    company=DEFAULT_COMPANY,
+                    issue_batch_no="IB-REAL-001",
+                    material_item_code="MAT-REAL-001",
+                    required_qty=Decimal("10"),
+                    issued_qty=Decimal("6"),
+                    sync_status="succeeded",
+                    stock_entry_name="STE-ISSUE-REAL-001",
+                    created_at=datetime(2026, 6, 19, tzinfo=timezone.utc),
+                )
+            )
+            session.add(
+                LySubcontractReceipt(
+                    id=2004,
+                    subcontract_id=2001,
+                    company=DEFAULT_COMPANY,
+                    receipt_batch_no="RB-REAL-001",
+                    receipt_warehouse="WH-REAL-001",
+                    item_code="ITEM-REAL-001",
+                    uom="件",
+                    received_qty=Decimal("8"),
+                    sync_status="succeeded",
+                    idempotency_key="IDEM-SC-REAL-RECEIPT",
+                    received_by="frontend.readback.test",
+                    received_at=datetime(2026, 6, 19, tzinfo=timezone.utc),
+                    stock_entry_name="STE-RECEIPT-REAL-001",
+                    inspected_qty=Decimal("8"),
+                    rejected_qty=Decimal("1"),
+                    rejected_rate=Decimal("0.125"),
+                    deduction_amount=Decimal("0"),
+                    net_amount=Decimal("8.4"),
+                    inspect_status="received",
+                    created_at=datetime(2026, 6, 19, tzinfo=timezone.utc),
+                )
+            )
+            session.commit()
+
+        material_requests = self.client.get("/api/bom/material-requests?keyword=REQ-REAL", headers=self._headers())
+        self.assertEqual(material_requests.status_code, 200, material_requests.text)
+        material_rows = material_requests.json()["data"]["items"]
+        self.assertEqual(len(material_rows), 1)
+        self.assertEqual(material_rows[0]["request_no"], "REQ-REAL-001")
+        self.assertEqual(material_rows[0]["material_item_code"], "MAT-REAL-001")
+        self.assertEqual(Decimal(str(material_rows[0]["qty"])), Decimal("8"))
+        self.assertNotEqual(material_rows[0]["request_no"], "MR-FR-001")
+
+        material_issues = self.client.get("/api/subcontract/material-issues?keyword=SC-REAL-001", headers=self._headers())
+        self.assertEqual(material_issues.status_code, 200, material_issues.text)
+        issue_rows = material_issues.json()["data"]["items"]
+        self.assertEqual(len(issue_rows), 1)
+        self.assertEqual(issue_rows[0]["subcontract_no"], "SC-REAL-001")
+        self.assertEqual(issue_rows[0]["material_item_code"], "MAT-REAL-001")
+        self.assertEqual(Decimal(str(issue_rows[0]["pending_qty"])), Decimal("4"))
+        self.assertNotEqual(issue_rows[0]["subcontract_no"], "SUB-FR-001")
+
+        receipts = self.client.get("/api/subcontract/receipts?keyword=RB-REAL-001", headers=self._headers())
+        self.assertEqual(receipts.status_code, 200, receipts.text)
+        receipt_rows = receipts.json()["data"]["items"]
+        self.assertEqual(len(receipt_rows), 1)
+        self.assertEqual(receipt_rows[0]["subcontract_no"], "SC-REAL-001")
+        self.assertEqual(receipt_rows[0]["receipt_batch_no"], "RB-REAL-001")
+        self.assertEqual(Decimal(str(receipt_rows[0]["accepted_qty"])), Decimal("7"))
+        self.assertNotEqual(receipt_rows[0]["subcontract_no"], "SUB-FR-001")
 
     def test_style_costs_without_scope_returns_empty_page(self) -> None:
         response = self.client.get("/api/style-profit/style-costs", headers=self._headers())

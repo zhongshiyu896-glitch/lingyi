@@ -58,6 +58,8 @@ from app.schemas.bom import BomMaterialGalleryQuery
 from app.schemas.bom import BomMaterialProcessingData
 from app.schemas.bom import BomMaterialDeductionData
 from app.schemas.bom import BomMaterialDeductionQuery
+from app.schemas.bom import BomMaterialRequestData
+from app.schemas.bom import BomMaterialRequestItem
 from app.schemas.bom import BomMaterialSalesOutboundData
 from app.schemas.bom import BomMaterialSalesOutboundQuery
 from app.schemas.bom import BomMaterialProcessingInboundData
@@ -87,6 +89,7 @@ from app.services.audit_service import AuditService
 from app.services.bom_service import BomService
 from app.services.foundation_template_service import FoundationTemplateMutationResult
 from app.services.foundation_template_service import FoundationTemplateService
+from app.services.material_purchase_service import MaterialPurchaseService
 from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/bom", tags=["bom"])
@@ -817,6 +820,62 @@ def list_bom_purchase_orders(
         data: BomPurchaseOrderData = service.list_purchase_orders(
             query=query,
             allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/material-requests")
+def list_bom_material_requests(
+    request: Request,
+    company: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    material_item_code: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """Read material purchase requirements through the legacy BOM path."""
+    PermissionService(session=session).require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+        resource_type="material_request",
+    )
+    try:
+        requirements = MaterialPurchaseService(session).list_requirements(
+            company=company,
+            keyword=keyword,
+            material_item_code=material_item_code,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+        data = BomMaterialRequestData(
+            items=[
+                BomMaterialRequestItem(
+                    request_no=row.requirement_no,
+                    company=row.company,
+                    item_code=row.item_code or row.source_no or "",
+                    material_item_code=row.material_item_code,
+                    supplier_name=row.supplier_name or "",
+                    qty=row.net_required_qty,
+                    uom=row.uom,
+                    expected_delivery_date=None,
+                    status=row.status,
+                    bom_no=row.source_no or (f"BOM-ITEM-{row.bom_item_id}" if row.bom_item_id is not None else ""),
+                )
+                for row in requirements.items
+            ],
+            total=requirements.total,
+            page=requirements.page,
+            page_size=requirements.page_size,
         )
         return _ok(data.model_dump())
     except AppException as exc:

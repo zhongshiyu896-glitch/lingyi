@@ -166,6 +166,30 @@ class BomPurchaseOrderQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
+class BomMaterialRequestItem(BaseModel):
+    """Material request projection backed by FastAPI purchase requirements."""
+
+    request_no: str
+    company: str
+    item_code: str
+    material_item_code: str
+    supplier_name: str
+    qty: Decimal
+    uom: str
+    expected_delivery_date: Optional[date] = None
+    status: str
+    bom_no: str
+
+
+class BomMaterialRequestData(BaseModel):
+    """Paginated material request payload."""
+
+    items: List[BomMaterialRequestItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class BomProcessingTypeQuery(BaseModel):
     """BOM processing-type query params."""
 
