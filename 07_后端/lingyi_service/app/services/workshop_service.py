@@ -7,6 +7,8 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from decimal import ROUND_HALF_UP
+import hashlib
+import json
 import logging
 import os
 import re
@@ -42,6 +44,10 @@ from app.core.error_codes import WORKSHOP_WAGE_RATE_COMPANY_UNRESOLVED
 from app.core.error_codes import WORKSHOP_WAGE_RATE_NOT_FOUND
 from app.core.error_codes import WORKSHOP_WAGE_RATE_OVERLAP
 from app.core.error_codes import WORKSHOP_WAGE_RATE_SCOPE_REQUIRED
+from app.core.error_codes import WORKSHOP_WAGE_PAYMENT_ALREADY_PAID
+from app.core.error_codes import WORKSHOP_WAGE_PAYMENT_AMOUNT_EXCEEDED
+from app.core.error_codes import WORKSHOP_WAGE_PAYMENT_CONFLICT
+from app.core.error_codes import WORKSHOP_DAILY_WAGE_NOT_FOUND
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.exceptions import AppException
 from app.core.exceptions import BusinessException
@@ -55,6 +61,7 @@ from app.models.workshop import YsWorkshopDailyWage
 from app.models.workshop import YsWorkshopJobCardSyncLog
 from app.models.workshop import YsWorkshopJobCardSyncOutbox
 from app.models.workshop import YsWorkshopTicket
+from app.models.workshop import YsWorkshopWagePayment
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.schemas.workshop import OperationWageRateCreateData
@@ -68,6 +75,9 @@ from app.schemas.workshop import WorkshopBatchResult
 from app.schemas.workshop import WorkshopDailyWageListData
 from app.schemas.workshop import WorkshopDailyWageQuery
 from app.schemas.workshop import WorkshopDailyWageRow
+from app.schemas.workshop import WorkshopWagePaymentCreateRequest
+from app.schemas.workshop import WorkshopWagePaymentData
+from app.schemas.workshop import WorkshopWagePaymentListData
 from app.schemas.workshop import WorkshopJobCardSummaryData
 from app.schemas.workshop import WorkshopJobCardSyncData
 from app.schemas.workshop import WorkshopTicketBatchItem
@@ -697,14 +707,37 @@ class WorkshopService:
 
             total = sql.with_entities(func.count(YsWorkshopDailyWage.id)).scalar() or 0
             total_amount = sql.with_entities(func.coalesce(func.sum(YsWorkshopDailyWage.wage_amount), 0)).scalar() or 0
+            all_rows = sql.all()
             rows = (
                 sql.order_by(YsWorkshopDailyWage.work_date.desc(), YsWorkshopDailyWage.id.desc())
                 .offset((query.page - 1) * query.page_size)
                 .limit(query.page_size)
                 .all()
             )
+            payment_summary = self._wage_payment_summary(
+                employee=query.employee,
+                from_date=query.from_date,
+                to_date=query.to_date,
+                process_name=query.process_name,
+                item_code=query.item_code,
+                allowed_item_codes=allowed_item_codes,
+            )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
+
+        total_paid_amount = Decimal("0")
+        total_outstanding_amount = Decimal("0")
+        for row in all_rows:
+            key = self._daily_wage_key(
+                employee=str(row.employee),
+                work_date=row.work_date,
+                process_name=str(row.process_name),
+                item_code=row.item_code,
+            )
+            paid_amount = payment_summary.get(key, {}).get("paid_amount", Decimal("0"))
+            outstanding_amount = self._round(max(Decimal(row.wage_amount) - paid_amount, Decimal("0")))
+            total_paid_amount += paid_amount
+            total_outstanding_amount += outstanding_amount
 
         return WorkshopDailyWageListData(
             items=[
@@ -717,14 +750,211 @@ class WorkshopService:
                     reversal_qty=self._round(Decimal(row.reversal_qty)),
                     net_qty=self._round(Decimal(row.net_qty)),
                     wage_amount=self._round(Decimal(row.wage_amount)),
+                    paid_amount=self._round(
+                        payment_summary.get(
+                            self._daily_wage_key(
+                                employee=str(row.employee),
+                                work_date=row.work_date,
+                                process_name=str(row.process_name),
+                                item_code=row.item_code,
+                            ),
+                            {},
+                        ).get("paid_amount", Decimal("0"))
+                    ),
+                    outstanding_amount=self._round(
+                        max(
+                            Decimal(row.wage_amount)
+                            - payment_summary.get(
+                                self._daily_wage_key(
+                                    employee=str(row.employee),
+                                    work_date=row.work_date,
+                                    process_name=str(row.process_name),
+                                    item_code=row.item_code,
+                                ),
+                                {},
+                            ).get("paid_amount", Decimal("0")),
+                            Decimal("0"),
+                        )
+                    ),
+                    payment_status=self._payment_status(
+                        wage_amount=Decimal(row.wage_amount),
+                        paid_amount=payment_summary.get(
+                            self._daily_wage_key(
+                                employee=str(row.employee),
+                                work_date=row.work_date,
+                                process_name=str(row.process_name),
+                                item_code=row.item_code,
+                            ),
+                            {},
+                        ).get("paid_amount", Decimal("0")),
+                    ),
+                    payment_count=int(
+                        payment_summary.get(
+                            self._daily_wage_key(
+                                employee=str(row.employee),
+                                work_date=row.work_date,
+                                process_name=str(row.process_name),
+                                item_code=row.item_code,
+                            ),
+                            {},
+                        ).get("payment_count", 0)
+                    ),
                 )
                 for row in rows
             ],
             total=int(total),
             total_amount=self._round(Decimal(total_amount)),
+            total_paid_amount=self._round(total_paid_amount),
+            total_outstanding_amount=self._round(total_outstanding_amount),
             page=query.page,
             page_size=query.page_size,
         )
+
+    def list_wage_payments(
+        self,
+        query: WorkshopDailyWageQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> WorkshopWagePaymentListData:
+        """List FastAPI-native wage payment facts."""
+        try:
+            sql = self.session.query(YsWorkshopWagePayment).filter(YsWorkshopWagePayment.status == "submitted")
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return WorkshopWagePaymentListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(
+                    or_(YsWorkshopWagePayment.item_code.is_(None), YsWorkshopWagePayment.item_code.in_(sorted(allowed_item_codes)))
+                )
+            if query.employee:
+                sql = sql.filter(YsWorkshopWagePayment.employee == query.employee)
+            if query.process_name:
+                sql = sql.filter(YsWorkshopWagePayment.process_name == query.process_name)
+            if query.item_code:
+                sql = sql.filter(YsWorkshopWagePayment.item_code == query.item_code)
+            if query.from_date:
+                sql = sql.filter(YsWorkshopWagePayment.work_date >= query.from_date)
+            if query.to_date:
+                sql = sql.filter(YsWorkshopWagePayment.work_date <= query.to_date)
+
+            total = sql.with_entities(func.count(YsWorkshopWagePayment.id)).scalar() or 0
+            rows = (
+                sql.order_by(YsWorkshopWagePayment.created_at.desc(), YsWorkshopWagePayment.id.desc())
+                .offset((query.page - 1) * query.page_size)
+                .limit(query.page_size)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        return WorkshopWagePaymentListData(
+            items=[self._to_wage_payment_data(row) for row in rows],
+            total=int(total),
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def create_wage_payment(
+        self,
+        *,
+        payload: WorkshopWagePaymentCreateRequest,
+        operator: str,
+    ) -> WorkshopWagePaymentData:
+        """Create one wage payment and close daily wage outstanding amount."""
+        paid_amount = self._round(payload.paid_amount)
+        if paid_amount <= Decimal("0"):
+            raise BusinessException(code=WORKSHOP_INVALID_QTY, message="发放金额必须大于 0")
+
+        item_code = self._normalize_text(payload.item_code)
+        payment_entry = self._normalize_text(payload.payment_entry)
+        source_ref = payload.source_ref.strip()
+        idempotency_key = payload.idempotency_key.strip()
+        mode_of_payment = payload.mode_of_payment.strip() or "Bank Transfer"
+        request_hash = self._build_wage_payment_request_hash(
+            {
+                "employee": payload.employee.strip(),
+                "work_date": payload.work_date.isoformat(),
+                "process_name": payload.process_name.strip(),
+                "item_code": item_code,
+                "paid_amount": str(paid_amount),
+                "mode_of_payment": mode_of_payment,
+                "reference_no": self._normalize_text(payload.reference_no),
+                "reference_date": payload.reference_date.isoformat() if payload.reference_date else None,
+                "payment_entry": payment_entry,
+                "source_ref": source_ref,
+                "idempotency_key": idempotency_key,
+                "scenario_tag": self._normalize_text(payload.scenario_tag),
+                "operation": payload.operation.strip(),
+            }
+        )
+
+        existing = self._find_wage_payment_by_idempotency(idempotency_key=idempotency_key)
+        if existing is not None:
+            if str(existing.request_hash) != request_hash:
+                raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_CONFLICT, message="幂等键冲突且请求内容不一致")
+            return self._to_wage_payment_data(existing)
+
+        existing_source = self._find_wage_payment_by_source_ref(source_ref=source_ref)
+        if existing_source is not None:
+            if str(existing_source.request_hash) != request_hash:
+                raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_CONFLICT, message="source_ref 已被不同请求使用")
+            return self._to_wage_payment_data(existing_source)
+
+        daily = self._find_daily_wage(
+            employee=payload.employee.strip(),
+            work_date=payload.work_date,
+            process_name=payload.process_name.strip(),
+            item_code=item_code,
+        )
+        if daily is None:
+            raise BusinessException(code=WORKSHOP_DAILY_WAGE_NOT_FOUND, message="计件日工资不存在")
+
+        paid_before = self._wage_paid_amount_for_daily(
+            employee=str(daily.employee),
+            work_date=daily.work_date,
+            process_name=str(daily.process_name),
+            item_code=daily.item_code,
+        )
+        wage_amount = self._round(Decimal(daily.wage_amount))
+        outstanding_before = self._round(max(wage_amount - paid_before, Decimal("0")))
+        if outstanding_before <= Decimal("0"):
+            raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_ALREADY_PAID, message="该日工资已无未付余额")
+        if paid_amount > outstanding_before:
+            raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_AMOUNT_EXCEEDED, message="发放金额超过未付余额")
+
+        if payment_entry is None:
+            payment_entry = self._next_wage_payment_entry(work_date=payload.work_date)
+        elif self._find_wage_payment_by_entry(payment_entry=payment_entry) is not None:
+            raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_CONFLICT, message="payment_entry 已存在")
+
+        row = YsWorkshopWagePayment(
+            payment_entry=payment_entry,
+            employee=str(daily.employee),
+            work_date=daily.work_date,
+            process_name=str(daily.process_name),
+            item_code=daily.item_code,
+            wage_amount=wage_amount,
+            paid_amount=paid_amount,
+            outstanding_before=outstanding_before,
+            outstanding_after=self._round(outstanding_before - paid_amount),
+            mode_of_payment=mode_of_payment,
+            reference_no=self._normalize_text(payload.reference_no),
+            reference_date=payload.reference_date,
+            status="submitted",
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            scenario_tag=self._normalize_text(payload.scenario_tag),
+            payload=payload.model_dump(mode="json"),
+            created_by=operator,
+            updated_by=operator,
+            updated_at=datetime.utcnow(),
+        )
+        try:
+            self.session.add(row)
+            self.session.flush()
+        except IntegrityError as exc:
+            raise BusinessException(code=WORKSHOP_WAGE_PAYMENT_CONFLICT, message="工资发放付款冲突") from exc
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return self._to_wage_payment_data(row)
 
     def get_job_card_summary(
         self,
@@ -2028,6 +2258,149 @@ class WorkshopService:
             wage_amount=WorkshopService._round(Decimal(ticket.wage_amount)),
             sync_status=ticket.sync_status,
             sync_outbox_id=sync_outbox_id,
+        )
+
+    @staticmethod
+    def _daily_wage_key(*, employee: str, work_date: date, process_name: str, item_code: str | None) -> tuple[str, date, str, str]:
+        return (employee, work_date, process_name, item_code or "")
+
+    def _wage_payment_summary(
+        self,
+        *,
+        employee: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        process_name: str | None,
+        item_code: str | None,
+        allowed_item_codes: set[str] | None,
+    ) -> dict[tuple[str, date, str, str], dict[str, Decimal | int]]:
+        sql = self.session.query(YsWorkshopWagePayment).filter(YsWorkshopWagePayment.status == "submitted")
+        if allowed_item_codes is not None:
+            if not allowed_item_codes:
+                return {}
+            sql = sql.filter(
+                or_(YsWorkshopWagePayment.item_code.is_(None), YsWorkshopWagePayment.item_code.in_(sorted(allowed_item_codes)))
+            )
+        if employee:
+            sql = sql.filter(YsWorkshopWagePayment.employee == employee)
+        if process_name:
+            sql = sql.filter(YsWorkshopWagePayment.process_name == process_name)
+        if item_code:
+            sql = sql.filter(YsWorkshopWagePayment.item_code == item_code)
+        if from_date:
+            sql = sql.filter(YsWorkshopWagePayment.work_date >= from_date)
+        if to_date:
+            sql = sql.filter(YsWorkshopWagePayment.work_date <= to_date)
+
+        summary: dict[tuple[str, date, str, str], dict[str, Decimal | int]] = {}
+        for row in sql.all():
+            key = self._daily_wage_key(
+                employee=str(row.employee),
+                work_date=row.work_date,
+                process_name=str(row.process_name),
+                item_code=row.item_code,
+            )
+            current = summary.setdefault(key, {"paid_amount": Decimal("0"), "payment_count": 0})
+            current["paid_amount"] = self._round(Decimal(str(current["paid_amount"])) + Decimal(row.paid_amount))
+            current["payment_count"] = int(current["payment_count"]) + 1
+        return summary
+
+    def _wage_paid_amount_for_daily(
+        self,
+        *,
+        employee: str,
+        work_date: date,
+        process_name: str,
+        item_code: str | None,
+    ) -> Decimal:
+        sql = self.session.query(func.coalesce(func.sum(YsWorkshopWagePayment.paid_amount), 0)).filter(
+            YsWorkshopWagePayment.employee == employee,
+            YsWorkshopWagePayment.work_date == work_date,
+            YsWorkshopWagePayment.process_name == process_name,
+            YsWorkshopWagePayment.status == "submitted",
+        )
+        if item_code is None:
+            sql = sql.filter(YsWorkshopWagePayment.item_code.is_(None))
+        else:
+            sql = sql.filter(YsWorkshopWagePayment.item_code == item_code)
+        return self._round(Decimal(sql.scalar() or 0))
+
+    def _find_daily_wage(
+        self,
+        *,
+        employee: str,
+        work_date: date,
+        process_name: str,
+        item_code: str | None,
+    ) -> YsWorkshopDailyWage | None:
+        sql = self.session.query(YsWorkshopDailyWage).filter(
+            YsWorkshopDailyWage.employee == employee,
+            YsWorkshopDailyWage.work_date == work_date,
+            YsWorkshopDailyWage.process_name == process_name,
+        )
+        if item_code is None:
+            sql = sql.filter(YsWorkshopDailyWage.item_code.is_(None))
+        else:
+            sql = sql.filter(YsWorkshopDailyWage.item_code == item_code)
+        return sql.first()
+
+    def _find_wage_payment_by_idempotency(self, *, idempotency_key: str) -> YsWorkshopWagePayment | None:
+        return self.session.query(YsWorkshopWagePayment).filter(YsWorkshopWagePayment.idempotency_key == idempotency_key).first()
+
+    def _find_wage_payment_by_source_ref(self, *, source_ref: str) -> YsWorkshopWagePayment | None:
+        return self.session.query(YsWorkshopWagePayment).filter(YsWorkshopWagePayment.source_ref == source_ref).first()
+
+    def _find_wage_payment_by_entry(self, *, payment_entry: str) -> YsWorkshopWagePayment | None:
+        return self.session.query(YsWorkshopWagePayment).filter(YsWorkshopWagePayment.payment_entry == payment_entry).first()
+
+    def _next_wage_payment_entry(self, *, work_date: date) -> str:
+        prefix = f"WP-{work_date.strftime('%Y%m%d')}-"
+        latest = (
+            self.session.query(YsWorkshopWagePayment)
+            .filter(YsWorkshopWagePayment.payment_entry.like(f"{prefix}%"))
+            .order_by(YsWorkshopWagePayment.payment_entry.desc())
+            .first()
+        )
+        tail = 1
+        if latest is not None:
+            try:
+                tail = int(str(latest.payment_entry).replace(prefix, "", 1)) + 1
+            except ValueError:
+                tail = 1
+        return f"{prefix}{tail:03d}"
+
+    @staticmethod
+    def _payment_status(*, wage_amount: Decimal, paid_amount: Decimal) -> str:
+        if paid_amount <= Decimal("0"):
+            return "unpaid"
+        if paid_amount >= wage_amount:
+            return "paid"
+        return "partly_paid"
+
+    @staticmethod
+    def _build_wage_payment_request_hash(payload: dict[str, object]) -> str:
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _to_wage_payment_data(row: YsWorkshopWagePayment) -> WorkshopWagePaymentData:
+        return WorkshopWagePaymentData(
+            id=int(row.id),
+            payment_entry=str(row.payment_entry),
+            employee=str(row.employee),
+            work_date=row.work_date,
+            process_name=str(row.process_name),
+            item_code=row.item_code,
+            wage_amount=WorkshopService._round(Decimal(row.wage_amount)),
+            paid_amount=WorkshopService._round(Decimal(row.paid_amount)),
+            outstanding_before=WorkshopService._round(Decimal(row.outstanding_before)),
+            outstanding_after=WorkshopService._round(Decimal(row.outstanding_after)),
+            mode_of_payment=str(row.mode_of_payment),
+            reference_no=row.reference_no,
+            reference_date=row.reference_date,
+            status=str(row.status),
+            source_ref=str(row.source_ref),
+            created_by=str(row.created_by),
+            created_at=row.created_at,
         )
 
     @staticmethod

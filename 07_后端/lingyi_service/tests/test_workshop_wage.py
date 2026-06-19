@@ -31,6 +31,9 @@ from app.models.audit import LySecurityAuditLog
 from app.models.workshop import Base as WorkshopBase
 from app.models.workshop import LyOperationWageRate
 from app.models.workshop import LyOperationWageRateCompanyBackfillLog
+from app.models.workshop import YsWorkshopDailyWage
+from app.models.workshop import YsWorkshopTicket
+from app.models.workshop import YsWorkshopWagePayment
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.workshop import get_db_session as workshop_db_dep
 from app.services.erpnext_job_card_adapter import EmployeeInfo
@@ -47,6 +50,7 @@ class WorkshopWageApiTest(unittest.TestCase):
 
     TICKET_SCENARIO_TAG = "Z003-WORKSHOP-TICKET-20260524-005"
     WAGE_SCENARIO_TAG = "Z002-WORKSHOP-WAGE-20260524-006"
+    PAYMENT_SCENARIO_TAG = "Z006-WORKSHOP-WAGE-PAYMENT-20260620-001"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -101,6 +105,9 @@ class WorkshopWageApiTest(unittest.TestCase):
     def setUp(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
+            session.query(YsWorkshopWagePayment).delete()
+            session.query(YsWorkshopTicket).delete()
+            session.query(YsWorkshopDailyWage).delete()
             session.query(LyOperationWageRateCompanyBackfillLog).delete()
             session.query(LyOperationWageRate).filter(LyOperationWageRate.id > 1).delete()
             base = session.query(LyOperationWageRate).filter(LyOperationWageRate.id == 1).first()
@@ -227,6 +234,30 @@ class WorkshopWageApiTest(unittest.TestCase):
         )
 
     @classmethod
+    def _payment_payload(
+        cls,
+        *,
+        row: dict[str, object],
+        paid_amount: str,
+        carrier_suffix: str,
+    ) -> dict[str, object]:
+        scenario_tag = cls.PAYMENT_SCENARIO_TAG
+        return {
+            "scenario_tag": scenario_tag,
+            "idempotency_key": cls._scenario_value(scenario_tag, f"IDEMP-{carrier_suffix}"),
+            "source_ref": cls._scenario_value(scenario_tag, f"SRC-{carrier_suffix}"),
+            "employee": str(row["employee"]),
+            "work_date": str(row["work_date"]),
+            "process_name": str(row["process_name"]),
+            "item_code": row.get("item_code"),
+            "paid_amount": paid_amount,
+            "mode_of_payment": "Bank Transfer",
+            "reference_no": cls._scenario_value(scenario_tag, f"REF-{carrier_suffix}"),
+            "reference_date": str(row["work_date"]),
+            "operation": "create_wage_payment",
+        }
+
+    @classmethod
     def _headers_for_ticket_payload(cls, payload: dict[str, object]) -> dict[str, str]:
         return cls._headers(request_id=cls._ticket_request_id(payload))
 
@@ -252,6 +283,42 @@ class WorkshopWageApiTest(unittest.TestCase):
             json=payload,
         )
         self.assertEqual(response.status_code, 200)
+
+    def _create_daily_wage_for_payment(self, *, ticket_key: str, qty: str, employee: str) -> dict[str, object]:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=EmployeeInfo(name=employee, status="Active", disabled=False),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_item",
+            return_value=ItemInfo(name="ITEM-A", item_code="ITEM-A", disabled=False, companies=("COMP-A",)),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_company",
+            return_value=CompanyInfo(name="COMP-A", disabled=False),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "update_job_card_completed_qty",
+            return_value={"message": "ok"},
+        ):
+            payload = self._ticket_payload(operation="register", ticket_key=ticket_key, qty=qty)
+            payload["employee"] = employee
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers_for_ticket_payload(payload),
+                json=payload,
+            )
+            self.assertEqual(response.status_code, 200)
+
+        daily = self.client.get(
+            f"/api/workshop/daily-wages?employee={employee}&from_date=2026-04-12&to_date=2026-04-12",
+            headers=self._headers(),
+        )
+        self.assertEqual(daily.status_code, 200)
+        rows = daily.json()["data"]["items"]
+        self.assertEqual(len(rows), 1)
+        return rows[0]
 
     def test_local_synthetic_ticket_uses_fastapi_wage_rate_table(self) -> None:
         create_payload = self._wage_payload(
@@ -348,6 +415,88 @@ class WorkshopWageApiTest(unittest.TestCase):
             self.assertEqual(tickets.status_code, 200)
             first_ticket = tickets.json()["data"]["items"][0]
             self.assertEqual(Decimal(str(first_ticket["unit_wage"])), Decimal("1.000000"))
+
+    def test_wage_payment_closes_daily_wage_and_replays_idempotently(self) -> None:
+        row = self._create_daily_wage_for_payment(ticket_key="PAY-RG-001", qty="8", employee="EMP-PAY-001")
+        wage_amount = Decimal(str(row["wage_amount"]))
+        payload = self._payment_payload(
+            row=row,
+            paid_amount=str(wage_amount),
+            carrier_suffix="PAY-001",
+        )
+
+        response = self.client.post(
+            "/api/workshop/wage-payments",
+            headers=self._headers(role="Workshop Wage Clerk"),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()["data"]
+        self.assertEqual(data["employee"], "EMP-PAY-001")
+        self.assertEqual(Decimal(str(data["paid_amount"])), wage_amount)
+        self.assertEqual(Decimal(str(data["outstanding_after"])), Decimal("0.000000"))
+
+        replay = self.client.post(
+            "/api/workshop/wage-payments",
+            headers=self._headers(role="Workshop Wage Clerk"),
+            json=payload,
+        )
+        self.assertEqual(replay.status_code, 200)
+        self.assertEqual(replay.json()["data"]["id"], data["id"])
+
+        daily = self.client.get(
+            "/api/workshop/daily-wages?employee=EMP-PAY-001&from_date=2026-04-12&to_date=2026-04-12",
+            headers=self._headers(role="Workshop Wage Clerk"),
+        )
+        self.assertEqual(daily.status_code, 200)
+        paid_row = daily.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(paid_row["paid_amount"])), wage_amount)
+        self.assertEqual(Decimal(str(paid_row["outstanding_amount"])), Decimal("0.000000"))
+        self.assertEqual(paid_row["payment_status"], "paid")
+        self.assertEqual(paid_row["payment_count"], 1)
+
+        payments = self.client.get(
+            "/api/workshop/wage-payments?employee=EMP-PAY-001&from_date=2026-04-12&to_date=2026-04-12",
+            headers=self._headers(role="Workshop Wage Clerk"),
+        )
+        self.assertEqual(payments.status_code, 200)
+        self.assertEqual(payments.json()["data"]["total"], 1)
+        self.assertEqual(payments.json()["data"]["items"][0]["payment_entry"], data["payment_entry"])
+
+    def test_wage_payment_over_amount_returns_409(self) -> None:
+        row = self._create_daily_wage_for_payment(ticket_key="PAY-RG-002", qty="4", employee="EMP-PAY-002")
+        over_amount = Decimal(str(row["wage_amount"])) + Decimal("0.010000")
+        payload = self._payment_payload(
+            row=row,
+            paid_amount=str(over_amount),
+            carrier_suffix="PAY-002",
+        )
+
+        response = self.client.post(
+            "/api/workshop/wage-payments",
+            headers=self._headers(role="Workshop Wage Clerk"),
+            json=payload,
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "WORKSHOP_WAGE_PAYMENT_AMOUNT_EXCEEDED")
+
+    def test_wage_payment_create_requires_payment_permission(self) -> None:
+        row = self._create_daily_wage_for_payment(ticket_key="PAY-RG-003", qty="6", employee="EMP-PAY-003")
+        payload = self._payment_payload(
+            row=row,
+            paid_amount=str(row["wage_amount"]),
+            carrier_suffix="PAY-003",
+        )
+
+        response = self.client.post(
+            "/api/workshop/wage-payments",
+            headers=self._headers(role="Workshop Clerk"),
+            json=payload,
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
 
     def test_wage_rate_overlap_returns_409(self) -> None:
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(

@@ -110,6 +110,55 @@ class YsWorkshopDailyWage(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
+class YsWorkshopWagePayment(Base):
+    """FastAPI-native workshop wage payment fact."""
+
+    __tablename__ = "ys_workshop_wage_payment"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ys_workshop_wage_payment"),
+        Index("uk_ys_workshop_wage_payment_entry", "payment_entry", unique=True),
+        Index("uk_ys_workshop_wage_payment_idem", "idempotency_key", unique=True),
+        Index("uk_ys_workshop_wage_payment_source", "source_ref", unique=True),
+        Index(
+            "idx_ys_workshop_wage_payment_daily",
+            "employee",
+            "work_date",
+            "process_name",
+            "item_code",
+        ),
+        Index("idx_ys_workshop_wage_payment_status", "status"),
+        CheckConstraint("paid_amount > 0", name="ck_ys_workshop_wage_payment_paid_positive"),
+        CheckConstraint("outstanding_before >= 0", name="ck_ys_workshop_wage_payment_before_nonnegative"),
+        CheckConstraint("outstanding_after >= 0", name="ck_ys_workshop_wage_payment_after_nonnegative"),
+        CheckConstraint("status IN ('submitted','cancelled')", name="ck_ys_workshop_wage_payment_status"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生车间工资发放付款事实表"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    payment_entry = Column(String(140), nullable=False)
+    employee = Column(String(140), nullable=False)
+    work_date = Column(Date, nullable=False)
+    process_name = Column(String(100), nullable=False)
+    item_code = Column(String(140), nullable=True)
+    wage_amount = Column(Numeric(18, 6), nullable=False)
+    paid_amount = Column(Numeric(18, 6), nullable=False)
+    outstanding_before = Column(Numeric(18, 6), nullable=False)
+    outstanding_after = Column(Numeric(18, 6), nullable=False)
+    mode_of_payment = Column(String(140), nullable=False, server_default="Bank Transfer")
+    reference_no = Column(String(140), nullable=True)
+    reference_date = Column(Date, nullable=True)
+    status = Column(String(32), nullable=False, server_default="submitted")
+    source_ref = Column(String(140), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    scenario_tag = Column(String(64), nullable=True)
+    payload = Column(JSONType, nullable=False, default=dict)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
 class LyOperationWageRate(Base):
     """工价档案。"""
 

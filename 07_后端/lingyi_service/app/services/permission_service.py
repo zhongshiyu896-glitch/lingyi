@@ -44,6 +44,7 @@ from app.core.permissions import WORKSHOP_WAGE_RATE_MANAGE_ALL
 from app.core.permissions import WORKSHOP_WAGE_RATE_MANAGE
 from app.core.permissions import WORKSHOP_WAGE_RATE_READ
 from app.core.permissions import WORKSHOP_WAGE_RATE_READ_ALL
+from app.core.permissions import WORKSHOP_WAGE_PAYMENT_CREATE
 from app.core.permissions import WORKSHOP_WAGE_READ
 from app.core.permissions import SUBCONTRACT_CANCEL
 from app.core.permissions import SUBCONTRACT_CREATE
@@ -241,6 +242,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         WORKSHOP_WAGE_RATE_READ_ALL,
         WORKSHOP_WAGE_RATE_MANAGE,
         WORKSHOP_WAGE_RATE_MANAGE_ALL,
+        WORKSHOP_WAGE_PAYMENT_CREATE,
         WORKSHOP_JOB_CARD_SYNC,
     },
     "Workshop Clerk": {
@@ -254,6 +256,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         WORKSHOP_WAGE_READ,
         WORKSHOP_WAGE_RATE_READ,
         WORKSHOP_WAGE_RATE_MANAGE,
+        WORKSHOP_WAGE_PAYMENT_CREATE,
     },
     "Production Manager": {
         WORKSHOP_READ,
@@ -265,6 +268,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         WORKSHOP_WAGE_RATE_READ_ALL,
         WORKSHOP_WAGE_RATE_MANAGE,
         WORKSHOP_WAGE_RATE_MANAGE_ALL,
+        WORKSHOP_WAGE_PAYMENT_CREATE,
         WORKSHOP_JOB_CARD_SYNC,
         PRODUCTION_READ,
         PRODUCTION_PLAN_CREATE,
@@ -2290,6 +2294,7 @@ class PermissionService:
             "wage_rate_read_all": False,
             "wage_rate_manage": False,
             "wage_rate_manage_all": False,
+            "wage_payment_create": False,
             "job_card_sync": False,
             "issue_material": False,
             "receive": False,
@@ -2385,6 +2390,8 @@ class PermissionService:
             base["wage_rate_read_all"] = WORKSHOP_WAGE_RATE_READ_ALL in actions
             base["wage_rate_manage"] = WORKSHOP_WAGE_RATE_MANAGE in actions
             base["wage_rate_manage_all"] = WORKSHOP_WAGE_RATE_MANAGE_ALL in actions
+            base["wage_payment_create"] = WORKSHOP_WAGE_PAYMENT_CREATE in actions
+            base["payment_create"] = WORKSHOP_WAGE_PAYMENT_CREATE in actions
             base["job_card_sync"] = WORKSHOP_JOB_CARD_SYNC in actions
             return base
         if module == "subcontract":

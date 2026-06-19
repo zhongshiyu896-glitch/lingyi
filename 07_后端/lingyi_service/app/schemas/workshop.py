@@ -194,6 +194,10 @@ class WorkshopDailyWageRow(BaseModel):
     reversal_qty: Decimal
     net_qty: Decimal
     wage_amount: Decimal
+    paid_amount: Decimal = Decimal("0")
+    outstanding_amount: Decimal = Decimal("0")
+    payment_status: str = "unpaid"
+    payment_count: int = 0
 
 
 class WorkshopDailyWageListData(BaseModel):
@@ -202,6 +206,57 @@ class WorkshopDailyWageListData(BaseModel):
     items: list[WorkshopDailyWageRow]
     total: int
     total_amount: Decimal
+    total_paid_amount: Decimal = Decimal("0")
+    total_outstanding_amount: Decimal = Decimal("0")
+    page: int
+    page_size: int
+
+
+class WorkshopWagePaymentCreateRequest(BaseModel):
+    """Create FastAPI-native wage payment request."""
+
+    employee: str = Field(..., min_length=1, max_length=140)
+    work_date: date
+    process_name: str = Field(..., min_length=1, max_length=100)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    paid_amount: Decimal
+    mode_of_payment: str = Field(default="Bank Transfer", min_length=1, max_length=140)
+    reference_no: Optional[str] = Field(default=None, max_length=140)
+    reference_date: Optional[date] = None
+    payment_entry: Optional[str] = Field(default=None, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: Optional[str] = Field(default=None, max_length=64)
+    operation: str = Field(default="create_wage_payment", max_length=64)
+
+
+class WorkshopWagePaymentData(BaseModel):
+    """FastAPI-native wage payment response."""
+
+    id: int
+    payment_entry: str
+    employee: str
+    work_date: date
+    process_name: str
+    item_code: Optional[str]
+    wage_amount: Decimal
+    paid_amount: Decimal
+    outstanding_before: Decimal
+    outstanding_after: Decimal
+    mode_of_payment: str
+    reference_no: Optional[str]
+    reference_date: Optional[date]
+    status: str
+    source_ref: str
+    created_by: str
+    created_at: datetime
+
+
+class WorkshopWagePaymentListData(BaseModel):
+    """Paginated wage payment response."""
+
+    items: list[WorkshopWagePaymentData]
+    total: int
     page: int
     page_size: int
 
