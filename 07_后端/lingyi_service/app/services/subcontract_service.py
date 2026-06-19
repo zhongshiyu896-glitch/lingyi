@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy import and_
 from sqlalchemy import func
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -41,6 +42,8 @@ from app.core.error_codes import SUBCONTRACT_SCOPE_BLOCKED
 from app.core.error_codes import SUBCONTRACT_SETTLEMENT_LOCKED
 from app.core.error_codes import SUBCONTRACT_STATUS_INVALID
 from app.core.error_codes import SUBCONTRACT_STOCK_OUTBOX_CONFLICT
+from app.core.error_codes import SUBCONTRACT_SUPPLIER_INVALID
+from app.core.error_codes import SUBCONTRACT_WAREHOUSE_INVALID
 from app.core.exceptions import BusinessException
 from app.core.exceptions import DatabaseReadFailed
 from app.core.exceptions import DatabaseWriteFailed
@@ -48,6 +51,7 @@ from app.core.exceptions import SubcontractInternalError
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
+from app.models.master_data import LyMasterDataRecord
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionWorkOrderLink
@@ -125,6 +129,7 @@ class SubcontractService:
         company = self._normalize_company(payload.company)
         if company is None:
             raise BusinessException(code=SUBCONTRACT_COMPANY_REQUIRED, message="外发单 company 不能为空")
+        supplier = payload.supplier.strip()
         idempotency_key = payload.idempotency_key.strip()
         source_ref = payload.source_ref.strip()
 
@@ -142,7 +147,7 @@ class SubcontractService:
             {
                 "operation": "create",
                 "company": company,
-                "supplier": payload.supplier.strip(),
+                "supplier": supplier,
                 "item_code": item_code,
                 "bom_id": payload.bom_id,
                 "planned_qty": payload.planned_qty,
@@ -172,11 +177,20 @@ class SubcontractService:
                 raise BusinessException(code=SUBCONTRACT_IDEMPOTENCY_CONFLICT, message="外发创建 source_ref 已存在但载荷不一致")
             return SubcontractCreateData(name=str(existing_source.subcontract_no), company=company)
 
+        self._ensure_active_master_records(
+            company=company,
+            entity_type="factory",
+            values=[supplier],
+            label="加工厂",
+            error_code=SUBCONTRACT_SUPPLIER_INVALID,
+            match_name=True,
+        )
+
         now = datetime.utcnow()
         subcontract_no = f"SC-{now.strftime('%Y%m%d%H%M%S%f')}"
         order = LySubcontractOrder(
             subcontract_no=subcontract_no,
-            supplier=payload.supplier.strip(),
+            supplier=supplier,
             item_code=item_code,
             company=company,
             bom_id=payload.bom_id,
@@ -843,6 +857,15 @@ class SubcontractService:
                 message="幂等键冲突，且请求内容不一致",
             )
 
+        self._ensure_active_master_records(
+            company=self._normalize_company(order.company) or "",
+            entity_type="warehouse",
+            values=[warehouse],
+            label="发料仓库",
+            error_code=SUBCONTRACT_WAREHOUSE_INVALID,
+            match_name=True,
+        )
+
         bom_plan = self._load_bom_material_plan(order=order)
         issued_summary = self._issued_qty_summary(order_id=order_id)
         issue_lines = self._resolve_issue_lines(
@@ -1008,6 +1031,15 @@ class SubcontractService:
                     ),
                 )
             raise BusinessException(code=SUBCONTRACT_IDEMPOTENCY_CONFLICT, message="幂等键冲突，且请求内容不一致")
+
+        self._ensure_active_master_records(
+            company=self._normalize_company(order.company) or "",
+            entity_type="warehouse",
+            values=[receipt_warehouse],
+            label="收货仓库",
+            error_code=SUBCONTRACT_WAREHOUSE_INVALID,
+            match_name=True,
+        )
 
         self._ensure_receive_allowed(order=order)
 
@@ -2448,6 +2480,65 @@ class SubcontractService:
         if self._is_sqlite:
             log_row.id = self._next_id(LySubcontractStatusLog)
         self.session.add(log_row)
+
+    def _master_data_table_available(self) -> bool:
+        bind = self.session.get_bind()
+        if bind is None:
+            if self._is_sqlite:
+                return False
+            raise DatabaseReadFailed()
+        try:
+            schema = None if bind.dialect.name == "sqlite" else "ly_schema"
+            available = bool(sa_inspect(bind).has_table("ly_master_data_record", schema=schema))
+        except SQLAlchemyError:
+            if self._is_sqlite:
+                return False
+            raise DatabaseReadFailed()
+        if not available and not self._is_sqlite:
+            raise DatabaseReadFailed()
+        return available
+
+    def _ensure_active_master_records(
+        self,
+        *,
+        company: str,
+        entity_type: str,
+        values: list[str],
+        label: str,
+        error_code: str,
+        match_name: bool,
+    ) -> None:
+        normalized_values: list[str] = []
+        for value in values:
+            normalized = self._normalize_text(value)
+            if normalized and normalized not in normalized_values:
+                normalized_values.append(normalized)
+        if not normalized_values or not self._master_data_table_available():
+            return
+
+        try:
+            query = self.session.query(LyMasterDataRecord.code, LyMasterDataRecord.name).filter(
+                LyMasterDataRecord.entity_type == entity_type,
+                LyMasterDataRecord.company == company,
+                LyMasterDataRecord.status == "active",
+            )
+            if match_name:
+                query = query.filter(
+                    (LyMasterDataRecord.code.in_(normalized_values))
+                    | (LyMasterDataRecord.name.in_(normalized_values))
+                )
+            else:
+                query = query.filter(LyMasterDataRecord.code.in_(normalized_values))
+            rows = query.all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        active_values = {self._normalize_text(row.code) for row in rows}
+        if match_name:
+            active_values.update(self._normalize_text(row.name) for row in rows)
+        invalid_values = [value for value in normalized_values if value not in active_values]
+        if invalid_values:
+            raise BusinessException(code=error_code, message=f"{label}不存在或已停用: {', '.join(invalid_values)}")
 
     def _next_id(self, model: type) -> int:
         try:
