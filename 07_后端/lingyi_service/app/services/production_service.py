@@ -131,6 +131,7 @@ from app.schemas.production import ProductionTrackingReconcileListItem
 from app.schemas.production import ProductionTrackingReconcileQuery
 from app.schemas.production import ProductionTrackingExceptionCreateRequest
 from app.schemas.production import ProductionTrackingExceptionItem
+from app.schemas.production import ProductionTrackingNodeItem
 from app.schemas.production import ProductionWorkOrderListData
 from app.schemas.production import ProductionWorkOrderListItem
 from app.schemas.production import ProductionWorkOrderQuery
@@ -3044,6 +3045,14 @@ class ProductionService:
                 erpnext_work_order=(str(latest.erpnext_work_order) if latest.erpnext_work_order else None),
                 error_code=(str(latest.last_error_code) if latest.last_error_code else None),
             )
+        tracking_nodes = self._production_tracking_nodes(
+            plan=plan,
+            materials=materials,
+            work_order_link=work_order_link,
+            cards=cards,
+            exceptions=exceptions,
+            latest_outbox=latest,
+        )
 
         return ProductionPlanDetailData(
             id=int(plan.id),
@@ -3086,6 +3095,7 @@ class ProductionService:
                 )
                 for row in materials
             ],
+            tracking_nodes=tracking_nodes,
             job_cards=[
                 ProductionJobCardLinkItem(
                     job_card=str(row.job_card),
@@ -3104,6 +3114,125 @@ class ProductionService:
             created_at=plan.created_at,
             updated_at=plan.updated_at,
         )
+
+    def _production_tracking_nodes(
+        self,
+        *,
+        plan: LyProductionPlan,
+        materials: list[LyProductionPlanMaterial],
+        work_order_link: LyProductionWorkOrderLink | None,
+        cards: list[LyProductionJobCardLink],
+        exceptions: list[LyProductionTrackingException],
+        latest_outbox: Any | None,
+    ) -> list[ProductionTrackingNodeItem]:
+        plan_status = str(plan.status or "").strip()
+        plan_progress = 100 if plan_status in {"planned", "material_checked", "work_order_created", "job_cards_synced"} else 30
+        required_total = sum((Decimal(str(getattr(row, "required_qty", 0) or 0)) for row in materials), Decimal("0"))
+        shortage_total = sum((Decimal(str(getattr(row, "shortage_qty", 0) or 0)) for row in materials), Decimal("0"))
+        material_status = "pending"
+        material_progress = 0
+        if materials:
+            if shortage_total > Decimal("0"):
+                material_status = "blocked"
+                material_progress = 60
+            else:
+                material_status = "done"
+                material_progress = 100
+        elif plan_status in {"material_checked", "work_order_created", "job_cards_synced"}:
+            material_status = "done"
+            material_progress = 100
+
+        work_order_status = "pending"
+        work_order_progress = 0
+        work_order_ref = None
+        work_order_updated = None
+        if work_order_link is not None:
+            work_order_ref = str(work_order_link.work_order) if work_order_link.work_order else None
+            work_order_updated = getattr(work_order_link, "last_synced_at", None)
+            work_order_status = "done" if work_order_ref else "in_progress"
+            work_order_progress = 100 if work_order_ref else 60
+        elif latest_outbox is not None:
+            outbox_status = str(getattr(latest_outbox, "status", "") or "")
+            work_order_status = "blocked" if outbox_status in {"failed", "dead"} else "in_progress"
+            work_order_progress = 40
+
+        completed_qty = sum((Decimal(str(getattr(row, "completed_qty", 0) or 0)) for row in cards), Decimal("0"))
+        expected_qty = sum((Decimal(str(getattr(row, "expected_qty", 0) or 0)) for row in cards), Decimal("0"))
+        if cards and expected_qty > Decimal("0"):
+            card_progress = int(min((completed_qty / expected_qty) * Decimal("100"), Decimal("100")))
+            card_status = "done" if card_progress >= 100 else "in_progress"
+        elif cards:
+            card_progress = 50
+            card_status = "in_progress"
+        else:
+            card_progress = 0
+            card_status = "pending"
+
+        open_exceptions = [
+            row
+            for row in exceptions
+            if str(getattr(row, "status", "") or "").strip().lower() not in {"resolved", "ignored", "closed"}
+        ]
+        material_times = [getattr(row, "checked_at", None) for row in materials if getattr(row, "checked_at", None) is not None]
+        card_times = [getattr(row, "synced_at", None) for row in cards if getattr(row, "synced_at", None) is not None]
+        blocker = any(str(getattr(row, "severity", "") or "").strip().lower() == "blocker" for row in open_exceptions)
+        exception_status = "blocked" if blocker else "in_progress" if open_exceptions else "done"
+        exception_progress = 30 if blocker else 60 if open_exceptions else 100
+        exception_ref = str(open_exceptions[0].exception_no) if open_exceptions else None
+        exception_updated = getattr(open_exceptions[0], "created_at", None) if open_exceptions else None
+
+        return [
+            ProductionTrackingNodeItem(
+                node_key="plan",
+                node_name="生产计划",
+                owner="生产计划",
+                status="done" if plan_progress >= 100 else "in_progress",
+                progress=plan_progress,
+                source_type="production_plan",
+                source_ref=str(plan.plan_no),
+                updated_at=plan.updated_at or plan.created_at,
+            ),
+            ProductionTrackingNodeItem(
+                node_key="material",
+                node_name="齐料检查",
+                owner="物料专员",
+                status=material_status,
+                progress=material_progress,
+                source_type="production_plan_material",
+                source_ref=f"{len(materials)}行 / 毛需求{required_total}",
+                updated_at=max(material_times) if material_times else None,
+            ),
+            ProductionTrackingNodeItem(
+                node_key="work_order",
+                node_name="生产工单",
+                owner="生产跟单",
+                status=work_order_status,
+                progress=work_order_progress,
+                source_type="production_work_order",
+                source_ref=work_order_ref,
+                updated_at=work_order_updated,
+            ),
+            ProductionTrackingNodeItem(
+                node_key="job_card",
+                node_name="工票进度",
+                owner="车间",
+                status=card_status,
+                progress=card_progress,
+                source_type="production_job_card",
+                source_ref=f"{len(cards)}张",
+                updated_at=max(card_times) if card_times else None,
+            ),
+            ProductionTrackingNodeItem(
+                node_key="exception",
+                node_name="异常处理",
+                owner="跟单",
+                status=exception_status,
+                progress=exception_progress,
+                source_type="production_tracking_exception",
+                source_ref=exception_ref,
+                updated_at=exception_updated,
+            ),
+        ]
 
     def register_tracking_exception(
         self,

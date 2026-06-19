@@ -731,6 +731,19 @@ class ProductionJobCardLinkItem(BaseModel):
     synced_at: Optional[datetime] = None
 
 
+class ProductionTrackingNodeItem(BaseModel):
+    """Derived production tracking node based on persisted plan facts."""
+
+    node_key: str
+    node_name: str
+    owner: str
+    status: str
+    progress: int
+    source_type: str
+    source_ref: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+
 class ProductionPlanDetailData(BaseModel):
     """Production plan detail result."""
 
@@ -761,6 +774,7 @@ class ProductionPlanDetailData(BaseModel):
     pending_requirement_count: int = 0
     purchase_status: str = "not_calculated"
     material_snapshots: List[ProductionPlanMaterialSnapshotItem] = Field(default_factory=list)
+    tracking_nodes: List[ProductionTrackingNodeItem] = Field(default_factory=list)
     job_cards: List[ProductionJobCardLinkItem] = Field(default_factory=list)
     tracking_exceptions: List[ProductionTrackingExceptionItem] = Field(default_factory=list)
     created_at: datetime

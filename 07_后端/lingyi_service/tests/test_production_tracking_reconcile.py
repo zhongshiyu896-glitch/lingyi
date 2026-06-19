@@ -340,6 +340,11 @@ class ProductionTrackingReconcileTest(unittest.TestCase):
         exceptions = detail.json()["data"]["tracking_exceptions"]
         self.assertEqual(len(exceptions), 1)
         self.assertEqual(exceptions[0]["exception_no"], data["exception_no"])
+        nodes = detail.json()["data"]["tracking_nodes"]
+        self.assertEqual([node["node_key"] for node in nodes], ["plan", "material", "work_order", "job_card", "exception"])
+        exception_node = next(node for node in nodes if node["node_key"] == "exception")
+        self.assertEqual(exception_node["status"], "in_progress")
+        self.assertEqual(exception_node["source_ref"], data["exception_no"])
 
         replay = self.client.post(
             f"/api/production/plans/{plan_id}/tracking-exceptions",
