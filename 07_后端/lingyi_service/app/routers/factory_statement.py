@@ -278,7 +278,8 @@ def _resolve_readable_scope(
     current_user: CurrentUser,
     request: Request,
 ) -> tuple[set[str] | None, set[str] | None]:
-    if get_permission_source() != "erpnext":
+    source = get_permission_source()
+    if source not in {"erpnext", "fastapi"}:
         return None, None
 
     permissions = permission_service.get_factory_statement_user_permissions(
@@ -292,8 +293,10 @@ def _resolve_readable_scope(
     if permissions is None or permissions.unrestricted:
         return None, None
 
-    readable_companies = set(permissions.allowed_companies) if permissions.allowed_companies else None
-    readable_suppliers = set(permissions.allowed_suppliers) if permissions.allowed_suppliers else None
+    readable_companies = {item.strip() for item in permissions.allowed_companies if item and item.strip()}
+    readable_suppliers = {item.strip() for item in permissions.allowed_suppliers if item and item.strip()}
+    if source == "erpnext":
+        return readable_companies or None, readable_suppliers or None
     return readable_companies, readable_suppliers
 
 
@@ -303,7 +306,7 @@ def _resolve_worker_scope(
     current_user: CurrentUser,
     request: Request,
 ) -> tuple[set[str] | None, set[str] | None]:
-    if get_permission_source() != "erpnext":
+    if get_permission_source() not in {"erpnext", "fastapi"}:
         return None, None
 
     permissions = permission_service.get_factory_statement_user_permissions(

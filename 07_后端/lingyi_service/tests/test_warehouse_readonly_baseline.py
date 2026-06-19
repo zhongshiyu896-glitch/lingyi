@@ -6,6 +6,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timezone
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -256,6 +257,30 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
             response = self.client.get("/api/warehouse/stock-summary?company=COMP-A", headers=self._headers())
 
         self.assertEqual(response.status_code, 200)
+        items = response.json()["data"]["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["warehouse"], "WH-A")
+
+    def test_warehouse_permission_filter_uses_fastapi_scope(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "warehouse.user": {
+                        "company": ["COMP-A"],
+                        "warehouse": ["WH-A"],
+                        "item_code": ["ITEM-A"],
+                    }
+                }
+            }
+        )
+        self._seed_stock_entry(warehouse="WH-A", item_code="ITEM-A", qty="2", event_key="EVT-WH-FASTAPI-SCOPE-A")
+        self._seed_stock_entry(warehouse="WH-B", item_code="ITEM-A", qty="2", event_key="EVT-WH-FASTAPI-SCOPE-B")
+
+        response = self.client.get("/api/warehouse/stock-summary?company=COMP-A", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
         items = response.json()["data"]["items"]
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["warehouse"], "WH-A")

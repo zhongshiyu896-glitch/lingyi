@@ -765,7 +765,7 @@ def _get_user_permissions(
     action: str,
     resource_type: str,
 ) -> UserPermissionResult | None:
-    if get_permission_source() != "erpnext":
+    if get_permission_source() not in {"erpnext", "fastapi"}:
         return None
     return permission_service.get_sales_inventory_user_permissions(
         current_user=current_user,
@@ -784,12 +784,28 @@ def _scope_allowed(
     item_code: str | None,
     permissions: UserPermissionResult | None,
 ) -> bool:
-    if get_permission_source() != "erpnext" or permissions is None or permissions.unrestricted:
+    source = get_permission_source()
+    if source not in {"erpnext", "fastapi"} or permissions is None or permissions.unrestricted:
         return True
 
     normalized_company = _scope_text(company)
     normalized_warehouse = _scope_text(warehouse)
     normalized_item_code = _scope_text(item_code)
+
+    if source == "fastapi":
+        if normalized_company and (
+            not permissions.allowed_companies or normalized_company not in permissions.allowed_companies
+        ):
+            return False
+        if normalized_warehouse and (
+            not permissions.allowed_warehouses or normalized_warehouse not in permissions.allowed_warehouses
+        ):
+            return False
+        if normalized_item_code and (
+            not permissions.allowed_items or normalized_item_code not in permissions.allowed_items
+        ):
+            return False
+        return True
 
     if normalized_company and not ERPNextPermissionAdapter.is_company_permitted(
         company=normalized_company,

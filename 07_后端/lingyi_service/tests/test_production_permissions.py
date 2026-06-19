@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -223,6 +224,46 @@ class ProductionPermissionTest(unittest.TestCase):
             self.assertEqual(row.module, "production")
             self.assertEqual(row.resource_type, "COMPANY")
             self.assertEqual(row.resource_no, "COMP-A")
+
+    def test_list_uses_fastapi_resource_scope(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "prod.permission.user": {
+                        "company": ["COMP-A"],
+                        "item_code": ["ITEM-A"],
+                    }
+                }
+            }
+        )
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionPlan(
+                    id=9002,
+                    plan_no="PP-PERM-9002",
+                    company="COMP-B",
+                    sales_order="SO-PERM-2",
+                    sales_order_item="SOI-PERM-2",
+                    customer="CUST-B",
+                    item_code="ITEM-B",
+                    bom_id=201,
+                    bom_version="v1",
+                    planned_qty=Decimal("10"),
+                    status="planned",
+                    idempotency_key="idem-9002",
+                    request_hash="h9002",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        response = self.client.get("/api/production/plans", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+        self.assertEqual(response.json()["data"]["total"], 1)
+        self.assertEqual(response.json()["data"]["items"][0]["plan_no"], "PP-PERM-9001")
 
     def test_material_issue_forbidden_when_warehouse_not_in_scope(self) -> None:
         with self.SessionLocal() as session:

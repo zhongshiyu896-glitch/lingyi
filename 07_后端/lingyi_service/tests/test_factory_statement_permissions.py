@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -129,6 +130,39 @@ class FactoryStatementPermissionTest(FactoryStatementApiBase):
                 "/api/factory-statements/",
                 headers=self._headers(role="Finance Manager"),
             )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+        self.assertEqual(response.json()["data"]["total"], 1)
+        self.assertEqual(response.json()["data"]["items"][0]["supplier"], "SUP-A")
+
+    def test_list_uses_fastapi_resource_scope(self) -> None:
+        self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(role="Finance Manager"),
+            json=self._create_payload(idempotency_key="idem-fastapi-list-scope-a", supplier="SUP-A"),
+        )
+        self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(role="Finance Manager"),
+            json=self._create_payload(idempotency_key="idem-fastapi-list-scope-b", supplier="SUP-B"),
+        )
+
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "factory.statement.user": {
+                        "company": ["COMP-A"],
+                        "supplier": ["SUP-A"],
+                    }
+                }
+            }
+        )
+        response = self.client.get(
+            "/api/factory-statements/",
+            headers=self._headers(role="Finance Manager"),
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")

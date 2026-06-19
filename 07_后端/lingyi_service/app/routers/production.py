@@ -331,7 +331,7 @@ def _resolve_read_scope(
     request: Request,
     action: str,
 ) -> tuple[set[str] | None, set[str] | None]:
-    if get_permission_source() != "erpnext":
+    if get_permission_source() not in {"erpnext", "fastapi"}:
         return None, None
 
     user_permissions = permission_service.get_production_user_permissions(
@@ -2176,7 +2176,7 @@ def run_work_order_sync_once(
 
         allowed_companies: set[str] | None = None
         allowed_items: set[str] | None = None
-        if get_permission_source() == "erpnext":
+        if get_permission_source() in {"erpnext", "fastapi"}:
             user_permissions = permission_service.get_production_user_permissions(
                 current_user=current_user,
                 request_obj=request,
