@@ -527,6 +527,128 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
                 1,
             )
 
+    def test_cancel_confirmed_inventory_count_creates_reversal_and_restores_balance(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=self._payload(),
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        count_id = int(create_resp.json()["data"]["id"])
+
+        submit_resp = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/submit",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(submit_resp.status_code, 200, submit_resp.text)
+
+        detail = self.client.get(
+            f"/api/warehouse/inventory-counts/{count_id}",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        variance_item_id = int(detail.json()["data"]["items"][0]["id"])
+
+        review_complete = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/variance-review",
+            headers=self._headers("warehouse:inventory_count"),
+            json={
+                "items": [
+                    {
+                        "item_id": variance_item_id,
+                        "review_status": "accepted",
+                        "variance_reason": "复核通过",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(review_complete.status_code, 200, review_complete.text)
+
+        confirm_ok = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/confirm",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(confirm_ok.status_code, 200, confirm_ok.text)
+        self.assertEqual(confirm_ok.json()["data"]["status"], "confirmed")
+
+        with self.SessionLocal() as session:
+            adjustment_draft = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment")
+                .one()
+            )
+            adjustment_outbox = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == adjustment_draft.id)
+                .one()
+            )
+            adjustment_outbox.status = "succeeded"
+            adjustment_outbox.external_ref = "STE-INV-ADJ-CANCEL"
+            session.commit()
+            original_source_id = str(adjustment_draft.source_id)
+
+        cancel_resp = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/cancel",
+            headers=self._headers("warehouse:inventory_count"),
+            json={"reason": f"{self.COUNT_SCENARIO_TAG} confirmed cancel"},
+        )
+        self.assertEqual(cancel_resp.status_code, 200, cancel_resp.text)
+        self.assertEqual(cancel_resp.json()["data"]["status"], "cancelled")
+
+        summary_after_cancel = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(summary_after_cancel.status_code, 200, summary_after_cancel.text)
+        summary_rows = summary_after_cancel.json()["data"]["items"]
+        self.assertEqual(Decimal(str(summary_rows[0]["actual_qty"])), Decimal("10.000000"))
+
+        ledger_after_cancel = self.client.get(
+            "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(ledger_after_cancel.status_code, 200, ledger_after_cancel.text)
+        ledger_rows = ledger_after_cancel.json()["data"]["items"]
+        self.assertEqual(
+            [Decimal(str(row["actual_qty"])) for row in ledger_rows],
+            [Decimal("10.000000"), Decimal("-2.000000"), Decimal("2.000000")],
+        )
+        self.assertEqual(Decimal(str(ledger_rows[-1]["qty_after_transaction"])), Decimal("10.000000"))
+        self.assertEqual(ledger_rows[-1]["voucher_type"], "Stock Entry Draft/Material Receipt")
+
+        with self.SessionLocal() as session:
+            reversal_draft = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment_reversal")
+                .one()
+            )
+            self.assertEqual(reversal_draft.purpose, "Material Receipt")
+            self.assertIsNone(reversal_draft.source_warehouse)
+            self.assertEqual(reversal_draft.target_warehouse, "WH-A")
+            reversal_item = (
+                session.query(LyWarehouseStockEntryDraftItem)
+                .filter(LyWarehouseStockEntryDraftItem.draft_id == reversal_draft.id)
+                .one()
+            )
+            self.assertEqual(reversal_item.item_code, "ITEM-A")
+            self.assertEqual(str(reversal_item.qty), "2.000000")
+            reversal_outbox = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == reversal_draft.id)
+                .one()
+            )
+            self.assertEqual(reversal_outbox.status, "in_pending")
+            self.assertEqual(reversal_outbox.payload["source_type"], "inventory_count_adjustment_reversal")
+            self.assertEqual(reversal_outbox.payload["reverses_source_id"], original_source_id)
+
+        cancel_again = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/cancel",
+            headers=self._headers("warehouse:inventory_count"),
+            json={"reason": f"{self.COUNT_SCENARIO_TAG} repeat confirmed cancel"},
+        )
+        self.assertEqual(cancel_again.status_code, 409)
+        self.assertEqual(cancel_again.json()["code"], "WAREHOUSE_INVENTORY_COUNT_ALREADY_CANCELLED")
+
     def test_confirm_adjustment_outbox_worker_succeeds(self) -> None:
         create_resp = self.client.post(
             "/api/warehouse/inventory-counts",

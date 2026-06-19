@@ -2973,6 +2973,12 @@ class WarehouseService:
         if status not in self._INVENTORY_ACTIVE_STATUSES and status != "confirmed":
             raise WarehouseServiceError(409, "WAREHOUSE_INVENTORY_COUNT_INVALID_STATUS", "当前状态不允许取消")
 
+        if status == "confirmed":
+            self._create_inventory_count_reversal_adjustments(
+                inventory_count=inventory_count,
+                cancelled_by=cancelled_by,
+            )
+
         inventory_count.status = "cancelled"
         inventory_count.cancel_reason = self._require_text(reason, "reason")
         inventory_count.cancelled_by = cancelled_by
@@ -3662,6 +3668,141 @@ class WarehouseService:
                                 "uom": uom,
                                 "batch_no": self._text(line.batch_no),
                                 "serial_no": self._text(line.serial_no),
+                                "source_warehouse": source_warehouse,
+                                "target_warehouse": target_warehouse,
+                            }
+                        ],
+                    },
+                    status="in_pending",
+                    retry_count=0,
+                    created_at=posting_at,
+                )
+            )
+
+    def _create_inventory_count_reversal_adjustments(
+        self,
+        *,
+        inventory_count: LyWarehouseInventoryCount,
+        cancelled_by: str,
+    ) -> None:
+        session = self._require_session()
+        company = str(inventory_count.company)
+        original_prefix = f"inventory_count:{int(inventory_count.id)}:item:"
+        posting_at = datetime.now(timezone.utc)
+
+        adjustment_rows = (
+            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment",
+                LyWarehouseStockEntryDraft.source_id.like(f"{original_prefix}%"),
+                LyWarehouseStockEntryDraft.status != "cancelled",
+            )
+            .order_by(LyWarehouseStockEntryDraft.id.asc(), LyWarehouseStockEntryDraftItem.id.asc())
+            .all()
+        )
+
+        for original_draft, original_item in adjustment_rows:
+            qty = Decimal(str(original_item.qty or 0))
+            if qty <= 0:
+                continue
+            source_id = f"inventory_count_reversal:{int(inventory_count.id)}:draft:{int(original_draft.id)}:item:{int(original_item.id)}"
+            existing = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(
+                    LyWarehouseStockEntryDraft.company == company,
+                    LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment_reversal",
+                    LyWarehouseStockEntryDraft.source_id == source_id,
+                    LyWarehouseStockEntryDraft.status != "cancelled",
+                )
+                .first()
+            )
+            if existing is not None:
+                continue
+
+            original_purpose = str(original_draft.purpose)
+            if original_purpose == "Material Issue":
+                purpose = "Material Receipt"
+                source_warehouse = None
+                target_warehouse = self._text(original_item.source_warehouse) or self._text(original_draft.source_warehouse)
+            elif original_purpose == "Material Receipt":
+                purpose = "Material Issue"
+                source_warehouse = self._text(original_item.target_warehouse) or self._text(original_draft.target_warehouse)
+                target_warehouse = None
+            elif original_purpose == "Material Transfer":
+                purpose = "Material Transfer"
+                source_warehouse = self._text(original_item.target_warehouse) or self._text(original_draft.target_warehouse)
+                target_warehouse = self._text(original_item.source_warehouse) or self._text(original_draft.source_warehouse)
+            else:
+                raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PURPOSE", "盘点调整单据类型非法，无法反审核")
+
+            self._validate_purpose_warehouses(
+                purpose=purpose,
+                source_warehouse=source_warehouse,
+                target_warehouse=target_warehouse,
+            )
+
+            idempotency_key = f"inv-count-reversal-{int(inventory_count.id)}-{int(original_draft.id)}-{int(original_item.id)}"
+            event_key = self._build_event_key(
+                company=company,
+                source_type="inventory_count_adjustment_reversal",
+                source_id=source_id,
+                idempotency_key=idempotency_key,
+            )
+            reversal_draft = LyWarehouseStockEntryDraft(
+                company=company,
+                purpose=purpose,
+                source_type="inventory_count_adjustment_reversal",
+                source_id=source_id,
+                source_warehouse=source_warehouse,
+                target_warehouse=target_warehouse,
+                status="pending_outbox",
+                created_by=cancelled_by,
+                created_at=posting_at,
+                idempotency_key=idempotency_key,
+                event_key=event_key,
+            )
+            session.add(reversal_draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=reversal_draft.id,
+                    company=company,
+                    item_code=str(original_item.item_code),
+                    qty=qty,
+                    uom=str(original_item.uom),
+                    batch_no=self._text(original_item.batch_no),
+                    serial_no=self._text(original_item.serial_no),
+                    source_warehouse=source_warehouse,
+                    target_warehouse=target_warehouse,
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryOutboxEvent(
+                    draft_id=reversal_draft.id,
+                    event_type="warehouse_stock_entry_sync",
+                    event_key=event_key,
+                    payload={
+                        "draft_id": int(reversal_draft.id),
+                        "company": company,
+                        "purpose": purpose,
+                        "source_type": "inventory_count_adjustment_reversal",
+                        "source_id": source_id,
+                        "business_date": posting_at.date().isoformat(),
+                        "source_warehouse": source_warehouse,
+                        "target_warehouse": target_warehouse,
+                        "reverses_source_id": str(original_draft.source_id),
+                        "items": [
+                            {
+                                "item_code": str(original_item.item_code),
+                                "qty": str(qty),
+                                "uom": str(original_item.uom),
+                                "batch_no": self._text(original_item.batch_no),
+                                "serial_no": self._text(original_item.serial_no),
                                 "source_warehouse": source_warehouse,
                                 "target_warehouse": target_warehouse,
                             }
