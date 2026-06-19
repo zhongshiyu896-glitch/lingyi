@@ -1778,7 +1778,7 @@ class ProductionService:
                 "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
                 "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
                 "报表行通过 sourceLabel/sourceStatus/hasSnapshot 显式标识实际快照、部分估算或纯估算口径",
-                "成品入库、发货开票、回款已接本地 FastAPI 闭环；报表只读披露来自当前本地单据与库存流水",
+                "A期报表是经营测算/快照披露：成品入库、发货开票、回款页已接 FastAPI 执行数据，但尚未在本报表合并为财务总账毛利闭环",
             ],
             pending_b_phase_fields=[
                 "实际工票工资归集、加工厂对账、财务总账仍按 B 期补齐口径披露",
@@ -2208,7 +2208,7 @@ class ProductionService:
             "grossMargin": gross_margin,
             "progress": Decimal("0"),
             "delayDays": Decimal("0"),
-            "remark": "A期现有页：利润按本地真实订单、BOM/利润快照计算；成品入库、发货开票、回款已接本地闭环，剩余执行端按待补口径披露。",
+            "remark": "A期现有页：利润按本地真实订单、BOM/利润快照测算；报表不声明真实毛利闭环完成，实际工票工资、加工厂对账、财务总账按待补口径披露。",
             "sourceType": "style_profit_snapshot" if has_snapshot else "bom_purchase_estimate",
             "sourceLabel": source_label,
             "sourceNote": source_note,
@@ -2402,8 +2402,8 @@ class ProductionService:
             pending_total = sum((ProductionService._dec(row.get("pendingAmount")) for row in rows), Decimal("0"))
             ordered_total = sum((ProductionService._dec(row.get("orderedQty")) for row in rows), Decimal("0"))
             return [
-                ProductionReportSuiteCompositionItem(label="已结算业绩", value=settled_total, color="#4E88F3"),
-                ProductionReportSuiteCompositionItem(label="待完成业绩", value=pending_total, color="#F5A623"),
+                ProductionReportSuiteCompositionItem(label="状态折算业绩", value=settled_total, color="#4E88F3"),
+                ProductionReportSuiteCompositionItem(label="预测待完成", value=pending_total, color="#F5A623"),
                 ProductionReportSuiteCompositionItem(label="订单件数", value=ordered_total, color="#27AE60"),
             ]
         material_total = sum((ProductionService._dec(row.get("materialCost")) for row in rows), Decimal("0"))

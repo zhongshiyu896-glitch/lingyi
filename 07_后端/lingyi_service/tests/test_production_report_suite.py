@@ -275,11 +275,14 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         basis_text = "；".join(payload["data_basis"])
         pending_text = "；".join(payload["pending_b_phase_fields"])
         self.assertIn("sourceLabel/sourceStatus/hasSnapshot", basis_text)
-        self.assertIn("成品入库、发货开票、回款已接本地 FastAPI 闭环", basis_text)
+        self.assertIn("A期报表是经营测算/快照披露", basis_text)
+        self.assertIn("尚未在本报表合并为财务总账毛利闭环", basis_text)
+        self.assertNotIn("真实毛利闭环已完成", basis_text)
+        self.assertNotIn("已接本地 FastAPI 闭环", basis_text)
         self.assertNotIn("已建页面的成品入库、发货开票、回款", pending_text)
         self.assertIn("实际工票工资归集", pending_text)
         self.assertNotIn("成品入库/发货开票未建页面", pending_text)
-        self.assertIn("成品入库、发货开票、回款已接本地闭环", row["remark"])
+        self.assertIn("不声明真实毛利闭环完成", row["remark"])
 
     def test_material_detail_report_uses_material_check_snapshot(self) -> None:
         response = self.client.get(
@@ -308,7 +311,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         payload = response.json()["data"]
         self.assertEqual(payload["report_key"], "productionCostMaterialDetailReport")
         self.assertEqual(payload["title"], "业务员业绩分析报表")
-        self.assertEqual([item["label"] for item in payload["composition"]], ["已结算业绩", "待完成业绩", "订单件数"])
+        self.assertEqual([item["label"] for item in payload["composition"]], ["状态折算业绩", "预测待完成", "订单件数"])
         row = payload["items"][0]
         self.assertNotIn("requiredQty", row)
         self.assertNotIn("availableQty", row)
