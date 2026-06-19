@@ -31,6 +31,7 @@ from app.models.sample import Base as SampleBase
 from app.models.sample import LySampleCostLine
 from app.models.sample import LySampleOrder
 from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.style_profit import Base as StyleProfitBase
@@ -82,6 +83,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             for model in (
                 LyStyleProfitSnapshot,
+                LyDeliveryInvoice,
                 LyMaterialPurchaseOrderItem,
                 LyMaterialPurchaseOrder,
                 LyProductionJobCardLink,
@@ -317,7 +319,8 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertIn("可生成款式利润快照", basis_text)
         self.assertIn("已生成快照的行纳入实际工票工资", basis_text)
         self.assertIn("B期报表继续披露经营测算/快照", basis_text)
-        self.assertIn("尚未在本报表合并为财务总账毛利闭环", basis_text)
+        self.assertIn("发货开票、回款已合并为报表收入", basis_text)
+        self.assertIn("工资发放、付款审批与财务总账归集仍按 B 期补齐", basis_text)
         self.assertNotIn("真实毛利闭环已完成", basis_text)
         self.assertNotIn("已接本地 FastAPI 闭环", basis_text)
         self.assertNotIn("已建页面的成品入库、发货开票、回款", pending_text)
@@ -352,6 +355,148 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertFalse(row["isEstimated"])
         self.assertEqual(row["revenueSourceStatus"], "actual")
         self.assertEqual(row["costSourceStatus"], "actual")
+
+    def test_profit_report_uses_delivery_invoice_revenue_without_snapshot(self) -> None:
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no="SO-RPT-INV",
+                source_order_ref="SO-RPT-INV",
+                company="COMP-A",
+                customer="杭州云澜服饰",
+                status="planned",
+                docstatus=0,
+                transaction_date=date(2026, 6, 5),
+                delivery_date=date(2026, 6, 25),
+                currency="CNY",
+                grand_total=Decimal("1000"),
+                idempotency_key="so-rpt-inv-idem",
+                request_hash="so-rpt-inv-hash",
+                created_by="sales.user",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-RPT-INV-001",
+                    item_code="STYLE-INV",
+                    item_name="开票实收款式",
+                    qty=Decimal("10"),
+                    planned_qty=Decimal("10"),
+                    delivered_qty=Decimal("6"),
+                    rate=Decimal("100"),
+                    amount=Decimal("1000"),
+                    uom="件",
+                    warehouse="FG-A",
+                    delivery_date=date(2026, 6, 25),
+                )
+            )
+            bom = LyApparelBom(
+                id=20,
+                bom_no="BOM-RPT-INV",
+                company="COMP-RPT",
+                item_code="STYLE-INV",
+                version_no="V1",
+                is_default=True,
+                status="active",
+                effective_date=date(2026, 5, 25),
+                created_by="bom.user",
+                updated_by="bom.user",
+            )
+            session.add(bom)
+            session.flush()
+            session.add(
+                LyApparelBomItem(
+                    id=20,
+                    bom_id=int(bom.id),
+                    material_item_code="FAB-INV",
+                    qty_per_piece=Decimal("1"),
+                    loss_rate=Decimal("0"),
+                    uom="米",
+                    remark="单价:20",
+                )
+            )
+            session.add(
+                LyBomOperation(
+                    id=20,
+                    bom_id=int(bom.id),
+                    process_name="车缝",
+                    sequence_no=1,
+                    is_subcontract=False,
+                    wage_rate=Decimal("5"),
+                )
+            )
+            plan = LyProductionPlan(
+                plan_no="PP-RPT-INV",
+                company="COMP-A",
+                sales_order="SO-RPT-INV",
+                sales_order_item="SO-RPT-INV-001",
+                customer="杭州云澜服饰",
+                item_code="STYLE-INV",
+                bom_id=int(bom.id),
+                bom_version="V1",
+                planned_qty=Decimal("10"),
+                planned_start_date=date(2026, 6, 8),
+                status="planned",
+                idempotency_key="plan-rpt-inv-idem",
+                request_hash="plan-rpt-inv-hash",
+                created_by="merch.user",
+            )
+            session.add(plan)
+            session.add(
+                LyDeliveryInvoice(
+                    company="COMP-A",
+                    delivery_note="DN-RPT-INV",
+                    sales_invoice="SI-RPT-INV",
+                    sales_order="SO-RPT-INV",
+                    customer="杭州云澜服饰",
+                    item_code="STYLE-INV",
+                    item_name="开票实收款式",
+                    warehouse="FG-A",
+                    delivered_qty=Decimal("6"),
+                    uom="件",
+                    rate=Decimal("150"),
+                    grand_total=Decimal("900"),
+                    paid_amount=Decimal("300"),
+                    outstanding_amount=Decimal("600"),
+                    posting_date=date(2026, 6, 18),
+                    due_date=date(2026, 7, 18),
+                    status="partly_paid",
+                    docstatus=1,
+                    source_ref="SRC-RPT-INV",
+                    idempotency_key="idem-rpt-inv",
+                    request_hash="hash-rpt-inv",
+                    created_by="sales.user",
+                )
+            )
+            session.commit()
+
+        response = self.client.get(
+            "/api/production/report-suite?report_key=productOrderProfitReport&company=COMP-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        rows = response.json()["data"]["items"]
+        row = next(item for item in rows if item["sales_order"] == "SO-RPT-INV")
+        self.assertEqual(Decimal(str(row["amount"])), Decimal("900.000000"))
+        self.assertEqual(Decimal(str(row["invoicedAmount"])), Decimal("900.000000"))
+        self.assertEqual(Decimal(str(row["receivedAmount"])), Decimal("300.000000"))
+        self.assertEqual(Decimal(str(row["receivableOutstanding"])), Decimal("600.000000"))
+        self.assertEqual(Decimal(str(row["deliveredQty"])), Decimal("6.000000"))
+        self.assertEqual(row["invoiceCount"], 1)
+        self.assertEqual(row["paymentStatus"], "partly_paid")
+        self.assertEqual(row["paymentStatusName"], "部分回款")
+        self.assertFalse(row["financialRevenueClosed"])
+        self.assertEqual(Decimal(str(row["totalCost"])), Decimal("250.000000"))
+        self.assertEqual(Decimal(str(row["profit"])), Decimal("650.000000"))
+        self.assertEqual(Decimal(str(row["grossMargin"])), Decimal("72.22"))
+        self.assertEqual(row["sourceType"], "delivery_invoice_actual")
+        self.assertEqual(row["sourceLabel"], "发货开票/BOM估算")
+        self.assertEqual(row["sourceStatus"], "mixed")
+        self.assertEqual(row["revenueSourceStatus"], "actual_invoice")
+        self.assertEqual(row["costSourceStatus"], "estimated")
 
     def test_material_detail_report_uses_material_check_snapshot(self) -> None:
         response = self.client.get(

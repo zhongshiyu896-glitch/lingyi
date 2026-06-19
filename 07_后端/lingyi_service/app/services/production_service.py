@@ -2888,14 +2888,15 @@ class ProductionService:
             composition=self._report_suite_composition(query.report_key, all_rows),
             data_basis=[
                 "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
-                "收入优先取销售订单行金额；成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
+                "收入优先取款式利润快照实际收入，其次取发货开票与回款实际口径；缺少实际收入时取销售订单行金额",
+                "发货开票、回款已合并为报表收入、已回款与未收款口径，成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
                 "订单利润报表可生成款式利润快照：后端从销售、BOM、库存、工票与外发真实来源收集，已生成快照的行纳入实际工票工资",
                 "样衣对比报表读取样板单成本归集；已转大货样板按 bulk_handoff_no 关联销售单并纳入样衣成本偏差",
                 "报表行通过 sourceLabel/sourceStatus/hasSnapshot 显式标识实际快照、部分估算或纯估算口径",
-                "B期报表继续披露经营测算/快照：成品入库、发货开票、回款页已接 FastAPI 执行数据，但尚未在本报表合并为财务总账毛利闭环",
+                "B期报表继续披露经营测算/快照：已建成品入库、发货开票、回款页接 FastAPI 执行数据；工资发放、付款审批与财务总账归集仍按 B 期补齐",
             ],
             pending_b_phase_fields=[
-                "未生成利润快照的行仍按工序工价预测；加工厂对账、财务总账仍按 B 期补齐口径披露",
+                "未生成利润快照的行仍按工序工价预测；工资发放、采购/加工厂付款审批、加工厂对账与财务总账成本归集仍按 B 期补齐口径披露",
             ],
         )
 
@@ -3035,6 +3036,23 @@ class ProductionService:
                     .filter(LySampleOrder.style_no.in_(item_codes))
                     .all()
                 )
+
+            delivery_invoice_rows = []
+            if (
+                companies
+                and sales_orders
+                and item_codes
+                and self._has_sqlite_tables({LyDeliveryInvoice.__tablename__})
+            ):
+                delivery_invoice_rows = (
+                    self.session.query(LyDeliveryInvoice)
+                    .filter(LyDeliveryInvoice.company.in_(companies))
+                    .filter(LyDeliveryInvoice.sales_order.in_(sales_orders))
+                    .filter(LyDeliveryInvoice.item_code.in_(item_codes))
+                    .filter(LyDeliveryInvoice.status != "cancelled")
+                    .order_by(LyDeliveryInvoice.posting_date.desc(), LyDeliveryInvoice.id.desc())
+                    .all()
+                )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -3078,6 +3096,36 @@ class ProductionService:
             sample_cost_map[key] = sample_cost_map.get(key, Decimal("0")) + self._dec(cost.amount)
             sample_cost_count_map[key] = sample_cost_count_map.get(key, 0) + 1
 
+        delivery_invoice_map: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for invoice in delivery_invoice_rows:
+            key = (str(invoice.company), str(invoice.sales_order), str(invoice.item_code))
+            summary = delivery_invoice_map.setdefault(
+                key,
+                {
+                    "invoice_count": 0,
+                    "delivery_note_count": 0,
+                    "invoiced_amount": Decimal("0"),
+                    "received_amount": Decimal("0"),
+                    "receivable_outstanding": Decimal("0"),
+                    "delivered_qty": Decimal("0"),
+                    "latest_sales_invoice": "",
+                    "latest_delivery_note": "",
+                    "latest_posting_date": None,
+                },
+            )
+            summary["invoice_count"] += 1
+            summary["delivery_note_count"] += 1
+            summary["invoiced_amount"] += self._dec(invoice.grand_total)
+            summary["received_amount"] += self._dec(invoice.paid_amount)
+            summary["receivable_outstanding"] += self._dec(invoice.outstanding_amount)
+            summary["delivered_qty"] += self._dec(invoice.delivered_qty)
+            if not summary["latest_sales_invoice"]:
+                summary["latest_sales_invoice"] = str(invoice.sales_invoice or "")
+            if not summary["latest_delivery_note"]:
+                summary["latest_delivery_note"] = str(invoice.delivery_note or "")
+            if summary["latest_posting_date"] is None:
+                summary["latest_posting_date"] = invoice.posting_date
+
         return {
             "sales_map": sales_map,
             "sales_header_map": sales_header_map,
@@ -3091,6 +3139,7 @@ class ProductionService:
             "purchase_unit_price_map": purchase_unit_price_map,
             "sample_cost_map": sample_cost_map,
             "sample_cost_count_map": sample_cost_count_map,
+            "delivery_invoice_map": delivery_invoice_map,
         }
 
     def _build_report_suite_rows(
@@ -3307,6 +3356,7 @@ class ProductionService:
         sales_item = context["sales_map"].get((company, sales_order, item_code))
         sales_header = context["sales_header_map"].get(sales_order)
         snapshot = context["snapshot_map"].get((company, sales_order, item_code))
+        invoice_summary = context["delivery_invoice_map"].get((company, sales_order, item_code), {})
         work_order_link = context["work_order_map"].get(int(plan.id))
         job_cards = context["job_card_map"].get(int(plan.id), [])
         work_order = str(work_order_link.work_order or "") if work_order_link is not None else ""
@@ -3314,8 +3364,21 @@ class ProductionService:
             work_order = str(job_cards[0].work_order or "")
         primary_job_card = str(job_cards[0].job_card or "") if job_cards else ""
         qty = self._dec(getattr(sales_item, "qty", None)) or self._dec(plan.planned_qty)
+        invoiced_amount = self._dec(invoice_summary.get("invoiced_amount"))
+        received_amount = self._dec(invoice_summary.get("received_amount"))
+        receivable_outstanding = self._dec(invoice_summary.get("receivable_outstanding"))
+        invoice_count = int(invoice_summary.get("invoice_count") or 0)
+        delivered_qty = self._dec(invoice_summary.get("delivered_qty"))
+        has_invoice_revenue = invoice_count > 0 and invoiced_amount > Decimal("0")
+        snapshot_revenue_status = (
+            str(getattr(snapshot, "revenue_status", "") or "").strip().lower() if snapshot is not None else ""
+        )
         if snapshot is not None:
             amount = self._dec(getattr(snapshot, "revenue_amount", None))
+            if snapshot_revenue_status != "actual" and has_invoice_revenue:
+                amount = invoiced_amount
+        elif has_invoice_revenue:
+            amount = invoiced_amount
         else:
             amount = self._dec(getattr(sales_item, "amount", None))
         if snapshot is None and amount == Decimal("0") and sales_item is not None:
@@ -3324,16 +3387,37 @@ class ProductionService:
         material_cost, labor_cost, outsource_cost = self._estimated_costs(plan=plan, context=context)
         has_snapshot = snapshot is not None
         snapshot_no = str(getattr(snapshot, "snapshot_no", "") or "") if has_snapshot else ""
-        revenue_source_status = str(getattr(snapshot, "revenue_status", "") or "").strip().lower() if has_snapshot else "sales_order_estimated"
+        if has_snapshot and snapshot_revenue_status == "actual":
+            revenue_source_status = "actual"
+        elif has_invoice_revenue:
+            revenue_source_status = "actual_invoice"
+        elif has_snapshot:
+            revenue_source_status = snapshot_revenue_status or "estimated"
+        else:
+            revenue_source_status = "sales_order_estimated"
         cost_source_status = "actual" if has_snapshot else "estimated"
         if has_snapshot and revenue_source_status == "actual":
             source_status = "actual"
             source_label = "利润快照"
             source_note = f"成本与收入来自款式利润快照 {snapshot_no}"
+        elif has_snapshot and has_invoice_revenue:
+            source_status = "actual"
+            source_label = "利润快照/发货开票"
+            source_note = (
+                f"成本来自款式利润快照 {snapshot_no}；收入来自发货开票 "
+                f"{invoice_summary.get('latest_sales_invoice') or '-'}"
+            )
         elif has_snapshot:
             source_status = "mixed"
             source_label = "利润快照/估算收入"
             source_note = f"成本来自款式利润快照 {snapshot_no}；收入状态 {revenue_source_status or 'unknown'}"
+        elif has_invoice_revenue:
+            source_status = "mixed"
+            source_label = "发货开票/BOM估算"
+            source_note = (
+                f"收入来自发货开票 {invoice_summary.get('latest_sales_invoice') or '-'}；"
+                "成本缺少款式利润快照，按 BOM/采购价估算"
+            )
         else:
             source_status = "estimated"
             source_label = "BOM/采购价估算"
@@ -3347,6 +3431,12 @@ class ProductionService:
             total_cost = material_cost + labor_cost + outsource_cost
         profit = amount - total_cost
         gross_margin = self._percent(profit, amount)
+        payment_status = self._report_suite_payment_status(
+            invoice_count=invoice_count,
+            invoiced_amount=invoiced_amount,
+            received_amount=received_amount,
+            receivable_outstanding=receivable_outstanding,
+        )
         created_at = plan.created_at or datetime.utcnow()
         order_date = getattr(sales_header, "transaction_date", None) or created_at.date()
 
@@ -3370,10 +3460,25 @@ class ProductionService:
             "totalCost": total_cost,
             "profit": profit,
             "grossMargin": gross_margin,
+            "invoicedAmount": invoiced_amount,
+            "receivedAmount": received_amount,
+            "receivableOutstanding": receivable_outstanding,
+            "invoiceCount": invoice_count,
+            "deliveryNoteCount": int(invoice_summary.get("delivery_note_count") or 0),
+            "deliveredQty": delivered_qty,
+            "latestSalesInvoice": str(invoice_summary.get("latest_sales_invoice") or ""),
+            "latestDeliveryNote": str(invoice_summary.get("latest_delivery_note") or ""),
+            "paymentStatus": payment_status,
+            "paymentStatusName": self._report_suite_payment_status_name(payment_status),
+            "financialRevenueClosed": payment_status == "paid",
             "progress": Decimal("0"),
             "delayDays": Decimal("0"),
-            "remark": "现有页：利润按本地真实订单、BOM/利润快照测算；生成利润快照后纳入实际工票工资，未生成快照及财务总账仍按待补口径披露。",
-            "sourceType": "style_profit_snapshot" if has_snapshot else "bom_purchase_estimate",
+            "remark": "现有页：利润按本地真实订单、发货开票/回款、BOM/利润快照测算；发货开票后以实际开票收入为准；生成利润快照后纳入实际工票工资，未生成快照的成本和财务总账仍按待补口径披露。",
+            "sourceType": (
+                "style_profit_snapshot"
+                if has_snapshot
+                else ("delivery_invoice_actual" if has_invoice_revenue else "bom_purchase_estimate")
+            ),
             "sourceLabel": source_label,
             "sourceNote": source_note,
             "sourceStatus": source_status,
@@ -3479,6 +3584,31 @@ class ProductionService:
     @classmethod
     def _completed_qty(cls, *, plan: LyProductionPlan, context: dict[str, Any]) -> Decimal:
         return sum((cls._dec(row.completed_qty) for row in context["job_card_map"].get(int(plan.id), [])), Decimal("0"))
+
+    @staticmethod
+    def _report_suite_payment_status(
+        *,
+        invoice_count: int,
+        invoiced_amount: Decimal,
+        received_amount: Decimal,
+        receivable_outstanding: Decimal,
+    ) -> str:
+        if invoice_count <= 0 or invoiced_amount <= Decimal("0"):
+            return "not_invoiced"
+        if receivable_outstanding <= Decimal("0"):
+            return "paid"
+        if received_amount > Decimal("0"):
+            return "partly_paid"
+        return "unpaid"
+
+    @staticmethod
+    def _report_suite_payment_status_name(status: str) -> str:
+        return {
+            "not_invoiced": "未开票",
+            "unpaid": "未回款",
+            "partly_paid": "部分回款",
+            "paid": "已回款",
+        }.get(status, status)
 
     @classmethod
     def _delivered_qty(cls, *, plan: LyProductionPlan, context: dict[str, Any]) -> Decimal:
