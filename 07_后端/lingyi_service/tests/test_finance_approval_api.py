@@ -222,12 +222,12 @@ class FinanceApprovalApiTest(unittest.TestCase):
             mode_of_payment="Bank Transfer",
             reference_no="BANK-FSP-001",
             reference_date=self.BUSINESS_DATE,
-            status="submitted",
-            docstatus=1,
+            status="pending_approval",
+            docstatus=0,
             source_ref="SRC-FSP-FIN-001",
             idempotency_key="idem-fsp-fin-001",
             request_hash="hash-fsp-fin-001",
-            payload={},
+            payload={"approval_effect": "pending"},
             created_by="seed",
         )
         session.add(factory_payment)
@@ -401,6 +401,89 @@ class FinanceApprovalApiTest(unittest.TestCase):
         payment_row = listed_payments.json()["data"]["items"][0]
         self.assertEqual(payment_row["approval_status"], "pending")
         self.assertEqual(payment_row["approval_no"], data["approval_no"])
+
+        statement_before = self.client.get(
+            "/api/factory-statements/",
+            params={"company": self.COMPANY, "keyword": "FS-FIN"},
+            headers=self._headers(request_id="req-fin-list-fsp-before-approve"),
+        )
+        self.assertEqual(statement_before.status_code, 200)
+        statement_row = statement_before.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(statement_row["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(statement_row["outstanding_amount"])), Decimal("600.000000"))
+        self.assertEqual(statement_row["payment_status"], "unpaid")
+
+        approved = self.client.post(
+            f"/api/finance/approval-tasks/{data['id']}/approve",
+            json={
+                "operation": "approve_task",
+                "company": self.COMPANY,
+                "idempotency_key": "idem-fin-approve-fsp",
+                "reason": "加工厂付款审批通过",
+            },
+            headers=self._headers(request_id="req-fin-approve-fsp"),
+        )
+        self.assertEqual(approved.status_code, 200, approved.text)
+        self.assertEqual(approved.json()["data"]["status"], "approved")
+        self.assertEqual(approved.json()["data"]["source_status"], "submitted")
+
+        statement_after = self.client.get(
+            "/api/factory-statements/",
+            params={"company": self.COMPANY, "keyword": "FS-FIN"},
+            headers=self._headers(request_id="req-fin-list-fsp-after-approve"),
+        )
+        self.assertEqual(statement_after.status_code, 200)
+        approved_statement = statement_after.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(approved_statement["paid_amount"])), Decimal("200.000000"))
+        self.assertEqual(Decimal(str(approved_statement["outstanding_amount"])), Decimal("400.000000"))
+        self.assertEqual(approved_statement["payment_status"], "partly_paid")
+
+    def test_reject_factory_statement_payment_keeps_payable_open(self) -> None:
+        created = self.client.post(
+            "/api/finance/approval-tasks",
+            json={
+                "operation": "create_task",
+                "company": self.COMPANY,
+                "source_type": "factory_statement_payment",
+                "source_id": self.factory_payment_id,
+                "idempotency_key": "idem-fin-task-fsp-reject",
+            },
+            headers=self._headers(request_id="req-fin-create-fsp-reject"),
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        task_id = created.json()["data"]["id"]
+
+        rejected = self.client.post(
+            f"/api/finance/approval-tasks/{task_id}/reject",
+            json={
+                "operation": "reject_task",
+                "company": self.COMPANY,
+                "idempotency_key": "idem-fin-reject-fsp",
+                "reason": "加工厂付款凭证需补充",
+            },
+            headers=self._headers(request_id="req-fin-reject-fsp"),
+        )
+        self.assertEqual(rejected.status_code, 200, rejected.text)
+        self.assertEqual(rejected.json()["data"]["status"], "rejected")
+        self.assertEqual(rejected.json()["data"]["source_status"], "cancelled")
+
+        with self.SessionLocal() as session:
+            payment = session.query(LyFactoryStatementPayment).filter_by(id=self.factory_payment_id).one()
+            self.assertEqual(payment.status, "cancelled")
+            self.assertEqual(payment.docstatus, 2)
+            self.assertEqual(payment.payload["finance_approval"]["status"], "rejected")
+            self.assertEqual(payment.payload["finance_approval"]["reject_reason"], "加工厂付款凭证需补充")
+
+        listed = self.client.get(
+            "/api/factory-statements/",
+            params={"company": self.COMPANY, "keyword": "FS-FIN"},
+            headers=self._headers(request_id="req-fin-list-fsp-after-reject"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        statement_row = listed.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(statement_row["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(statement_row["outstanding_amount"])), Decimal("600.000000"))
+        self.assertEqual(statement_row["payment_status"], "unpaid")
 
     def test_create_idempotency_conflict_is_explicit(self) -> None:
         payload = {

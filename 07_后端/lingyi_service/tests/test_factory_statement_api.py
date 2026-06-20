@@ -27,8 +27,12 @@ from app.models.factory_statement import LyFactoryStatementOperation
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
 from app.models.factory_statement import LyFactoryStatementPaymentOperation
+from app.models.finance_approval import Base as FinanceApprovalBase
+from app.models.finance_approval import LyFinanceApprovalOperation
+from app.models.finance_approval import LyFinanceApprovalTask
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.factory_statement import get_db_session as factory_statement_db_dep
+from app.routers.finance_approval import get_db_session as finance_approval_db_dep
 
 
 class FactoryStatementApiBase(unittest.TestCase):
@@ -51,6 +55,7 @@ class FactoryStatementApiBase(unittest.TestCase):
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
         SubcontractBase.metadata.create_all(bind=cls.engine)
         FactoryStatementBase.metadata.create_all(bind=cls.engine)
+        FinanceApprovalBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         with cls.SessionLocal() as session:
@@ -77,6 +82,7 @@ class FactoryStatementApiBase(unittest.TestCase):
 
         app.dependency_overrides[auth_db_dep] = _override_db
         app.dependency_overrides[factory_statement_db_dep] = _override_db
+        app.dependency_overrides[finance_approval_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
         main_module.SessionLocal = cls.SessionLocal
         cls.client = TestClient(app)
@@ -86,6 +92,7 @@ class FactoryStatementApiBase(unittest.TestCase):
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
         app.dependency_overrides.pop(factory_statement_db_dep, None)
+        app.dependency_overrides.pop(finance_approval_db_dep, None)
         cls.engine.dispose()
 
     def setUp(self) -> None:
@@ -96,6 +103,8 @@ class FactoryStatementApiBase(unittest.TestCase):
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
 
         with self.SessionLocal() as session:
+            session.query(LyFinanceApprovalOperation).delete()
+            session.query(LyFinanceApprovalTask).delete()
             session.query(LyFactoryStatementPaymentOperation).delete()
             session.query(LyFactoryStatementPayment).delete()
             session.query(LyFactoryStatementPayableOutbox).delete()

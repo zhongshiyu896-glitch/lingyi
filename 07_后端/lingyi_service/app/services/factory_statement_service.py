@@ -3536,10 +3536,14 @@ class FactoryStatementService:
                 raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="source_ref 已存在且请求内容不一致")
             return self._to_payment_data(existing_source)
 
-        outstanding_before = self._compute_outstanding_amount(
+        statement_outstanding_before = self._compute_outstanding_amount(
             net_amount=self._to_decimal(statement.net_amount),
             paid_amount=self._paid_amount_for_statement(statement_id=int(statement.id)),
         )
+        pending_amount = self._pending_payment_amount_for_statement(statement_id=int(statement.id))
+        outstanding_before = statement_outstanding_before - pending_amount
+        if outstanding_before < Decimal("0"):
+            outstanding_before = Decimal("0")
         if outstanding_before <= Decimal("0"):
             raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_ALREADY_PAID)
         if paid_amount > outstanding_before:
@@ -3568,8 +3572,8 @@ class FactoryStatementService:
             mode_of_payment=mode_of_payment,
             reference_no=reference_no,
             reference_date=payload.reference_date,
-            status="submitted",
-            docstatus=1,
+            status="pending_approval",
+            docstatus=0,
             source_ref=source_ref,
             idempotency_key=idempotency_key,
             request_hash=request_hash,
@@ -3578,6 +3582,10 @@ class FactoryStatementService:
                 "operation": operation,
                 "scenario_tag": self._normalize_text(payload.scenario_tag),
                 "statement_no": str(statement.statement_no),
+                "approval_effect": "pending",
+                "statement_outstanding_before": str(statement_outstanding_before),
+                "reserved_outstanding_before": str(outstanding_before),
+                "reserved_outstanding_after": str(outstanding_after),
             },
             created_by=self._normalize_text(operator) or "system",
         )
@@ -3599,6 +3607,131 @@ class FactoryStatementService:
             self.session.flush()
         except IntegrityError as exc:
             raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT) from exc
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
+        return self._to_payment_data(row)
+
+    def apply_payment_approval(
+        self,
+        *,
+        payment_id: int,
+        operator: str,
+        approved_at: datetime | None = None,
+    ) -> FactoryStatementPaymentData:
+        row = self._find_payment_by_id_for_update_optional(company=None, statement_id=None, payment_id=payment_id)
+        if row is None:
+            raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
+        if str(row.status) == "cancelled":
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="已取消付款不可生效")
+
+        statement = (
+            self.session.query(LyFactoryStatement)
+            .filter(
+                LyFactoryStatement.company == row.company,
+                LyFactoryStatement.id == int(row.statement_id),
+            )
+            .with_for_update()
+            .one_or_none()
+        )
+        if statement is None:
+            raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
+
+        if str(row.status) == "submitted":
+            return self._to_payment_data(row)
+
+        paid_amount = self._to_decimal(row.paid_amount)
+        outstanding_before = self._compute_outstanding_amount(
+            net_amount=self._to_decimal(statement.net_amount),
+            paid_amount=self._paid_amount_for_statement(statement_id=int(statement.id)),
+        )
+        if outstanding_before <= Decimal("0"):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_ALREADY_PAID)
+        if paid_amount > outstanding_before:
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_AMOUNT_EXCEEDED)
+
+        now = approved_at or datetime.utcnow()
+        outstanding_after = outstanding_before - paid_amount
+        row.outstanding_before = outstanding_before
+        row.outstanding_after = outstanding_after
+        row.status = "submitted"
+        row.docstatus = 1
+        row.updated_by = self._normalize_text(operator) or "system"
+        row.updated_at = now
+        payment_payload = row.payload if isinstance(row.payload, dict) else {}
+        row.payload = {
+            **payment_payload,
+            "approval_effect": "applied",
+            "applied_by": self._normalize_text(operator) or "system",
+            "applied_at": now.isoformat(),
+        }
+        self.session.add(
+            LyFactoryStatementLog(
+                statement_id=int(statement.id),
+                company=str(statement.company),
+                supplier=str(statement.supplier),
+                from_status="pending_approval",
+                to_status="submitted",
+                action="factory_statement:payment_approval_apply",
+                operator=self._normalize_text(operator) or "system",
+                request_id=None,
+                remark=f"payment:{row.payment_entry}",
+            )
+        )
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
+        return self._to_payment_data(row)
+
+    def reject_pending_payment_approval(
+        self,
+        *,
+        payment_id: int,
+        operator: str,
+        rejected_at: datetime | None = None,
+    ) -> FactoryStatementPaymentData:
+        row = self._find_payment_by_id_for_update_optional(company=None, statement_id=None, payment_id=payment_id)
+        if row is None:
+            raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
+        if str(row.status) != "pending_approval":
+            return self._to_payment_data(row)
+
+        now = rejected_at or datetime.utcnow()
+        row.status = "cancelled"
+        row.docstatus = 2
+        row.updated_by = self._normalize_text(operator) or "system"
+        row.updated_at = now
+        payment_payload = row.payload if isinstance(row.payload, dict) else {}
+        row.payload = {
+            **payment_payload,
+            "approval_effect": "rejected",
+            "rejected_by": self._normalize_text(operator) or "system",
+            "rejected_at": now.isoformat(),
+        }
+        statement = (
+            self.session.query(LyFactoryStatement)
+            .filter(
+                LyFactoryStatement.company == row.company,
+                LyFactoryStatement.id == int(row.statement_id),
+            )
+            .one_or_none()
+        )
+        if statement is not None:
+            self.session.add(
+                LyFactoryStatementLog(
+                    statement_id=int(statement.id),
+                    company=str(statement.company),
+                    supplier=str(statement.supplier),
+                    from_status="pending_approval",
+                    to_status="cancelled",
+                    action="factory_statement:payment_approval_reject",
+                    operator=self._normalize_text(operator) or "system",
+                    request_id=None,
+                    remark=f"payment:{row.payment_entry}",
+                )
+            )
+        try:
+            self.session.flush()
         except SQLAlchemyError as exc:
             raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
         return self._to_payment_data(row)
@@ -4029,6 +4162,20 @@ class FactoryStatementService:
             raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
         return self._to_decimal(amount)
 
+    def _pending_payment_amount_for_statement(self, *, statement_id: int) -> Decimal:
+        try:
+            amount = (
+                self.session.query(func.coalesce(func.sum(LyFactoryStatementPayment.paid_amount), 0))
+                .filter(
+                    LyFactoryStatementPayment.statement_id == statement_id,
+                    LyFactoryStatementPayment.status == "pending_approval",
+                )
+                .scalar()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+        return self._to_decimal(amount)
+
     def _find_payment_by_idempotency(
         self,
         *,
@@ -4121,6 +4268,23 @@ class FactoryStatementService:
                 .with_for_update()
                 .one_or_none()
             )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+    def _find_payment_by_id_for_update_optional(
+        self,
+        *,
+        company: str | None,
+        statement_id: int | None,
+        payment_id: int,
+    ) -> LyFactoryStatementPayment | None:
+        try:
+            query = self.session.query(LyFactoryStatementPayment).filter(LyFactoryStatementPayment.id == int(payment_id))
+            if company is not None:
+                query = query.filter(LyFactoryStatementPayment.company == company)
+            if statement_id is not None:
+                query = query.filter(LyFactoryStatementPayment.statement_id == int(statement_id))
+            return query.with_for_update().one_or_none()
         except SQLAlchemyError as exc:
             raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
 

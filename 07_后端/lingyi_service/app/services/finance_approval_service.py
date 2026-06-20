@@ -426,6 +426,22 @@ class FinanceApprovalService:
                 actor=actor,
                 rejected_at=when,
             )
+        if task.source_type == "factory_statement_payment" and approval_status == "approved":
+            from app.services.factory_statement_service import FactoryStatementService
+
+            FactoryStatementService(self.session).apply_payment_approval(
+                payment_id=int(row.id),
+                operator=actor,
+                approved_at=when,
+            )
+        if task.source_type == "factory_statement_payment" and approval_status == "rejected":
+            from app.services.factory_statement_service import FactoryStatementService
+
+            FactoryStatementService(self.session).reject_pending_payment_approval(
+                payment_id=int(row.id),
+                operator=actor,
+                rejected_at=when,
+            )
         if hasattr(row, "updated_by"):
             row.updated_by = actor
         if hasattr(row, "updated_at"):

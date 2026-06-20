@@ -80,6 +80,37 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         self.assertEqual(confirmed.status_code, 200)
         return statement_data
 
+    def _approve_payment(self, payment_id: int, *, suffix: str) -> dict[str, object]:
+        created = self.client.post(
+            "/api/finance/approval-tasks",
+            headers=self._headers(role="System Manager", user="factory.statement.approver"),
+            json={
+                "operation": "create_task",
+                "company": "COMP-A",
+                "source_type": "factory_statement_payment",
+                "source_id": payment_id,
+                "idempotency_key": self._scoped_value(f"idem-b6-fsp-approval-create-{suffix}"),
+                "scenario_tag": self._SCENARIO_TAG,
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        task = created.json()["data"]
+        approved = self.client.post(
+            f"/api/finance/approval-tasks/{task['id']}/approve",
+            headers=self._headers(role="System Manager", user="factory.statement.approver"),
+            json={
+                "operation": "approve_task",
+                "company": "COMP-A",
+                "idempotency_key": self._scoped_value(f"idem-b6-fsp-approval-approve-{suffix}"),
+                "reason": "加工厂付款审批通过",
+            },
+        )
+        self.assertEqual(approved.status_code, 200, approved.text)
+        data = approved.json()["data"]
+        self.assertEqual(data["status"], "approved")
+        self.assertEqual(data["source_status"], "submitted")
+        return data
+
     def test_payment_replay_and_payable_readbacks(self) -> None:
         statement_data = self._create_confirmed_statement()
         statement_id = int(statement_data["statement_id"])
@@ -127,12 +158,24 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         self.assertEqual(conflict.json()["code"], "FACTORY_STATEMENT_PAYMENT_CONFLICT")
         self.assertEqual(payment_list.status_code, 200)
         self.assertEqual(payment_list.json()["data"]["items"][0]["payment_entry"], "FSP-B6-001")
+        self.assertEqual(payment_list.json()["data"]["items"][0]["status"], "pending_approval")
         self.assertEqual(Decimal(str(created.json()["data"]["outstanding_before"])), Decimal("4700.000000"))
         self.assertEqual(Decimal(str(created.json()["data"]["outstanding_after"])), Decimal("3500.000000"))
         list_row = statement_list.json()["data"]["items"][0]
-        self.assertEqual(Decimal(str(list_row["paid_amount"])), Decimal("1200.000000"))
-        self.assertEqual(Decimal(str(list_row["outstanding_amount"])), Decimal("3500.000000"))
-        self.assertEqual(list_row["payment_status"], "partly_paid")
+        self.assertEqual(Decimal(str(list_row["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(list_row["outstanding_amount"])), Decimal("4700.000000"))
+        self.assertEqual(list_row["payment_status"], "unpaid")
+
+        self._approve_payment(int(created.json()["data"]["id"]), suffix="001")
+        approved_list = self.client.get(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            params={"company": "COMP-A", "supplier": "SUP-A"},
+        )
+        approved_row = approved_list.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(approved_row["paid_amount"])), Decimal("1200.000000"))
+        self.assertEqual(Decimal(str(approved_row["outstanding_amount"])), Decimal("3500.000000"))
+        self.assertEqual(approved_row["payment_status"], "partly_paid")
 
         closed = self.client.post(
             f"/api/factory-statements/{statement_id}/payments",
@@ -152,7 +195,18 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         )
 
         self.assertEqual(closed.status_code, 201)
+        self.assertEqual(closed.json()["data"]["status"], "pending_approval")
         self.assertEqual(Decimal(str(closed.json()["data"]["outstanding_after"])), Decimal("0.000000"))
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(Decimal(str(detail.json()["data"]["paid_amount"])), Decimal("1200.000000"))
+        self.assertEqual(Decimal(str(detail.json()["data"]["outstanding_amount"])), Decimal("3500.000000"))
+        self.assertEqual(detail.json()["data"]["payment_status"], "partly_paid")
+
+        self._approve_payment(int(closed.json()["data"]["id"]), suffix="002")
+        detail = self.client.get(
+            f"/api/factory-statements/{statement_id}",
+            headers=self._headers(),
+        )
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(Decimal(str(detail.json()["data"]["paid_amount"])), Decimal("4700.000000"))
         self.assertEqual(Decimal(str(detail.json()["data"]["outstanding_amount"])), Decimal("0.000000"))
@@ -224,6 +278,7 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         )
         self.assertEqual(created.status_code, 201)
         payment_id = int(created.json()["data"]["id"])
+        self._approve_payment(payment_id, suffix="cancel")
         cancel_payload = self._payment_cancel_payload(
             statement_data,
             idempotency_key="idem-b6-fsp-cancel",
@@ -326,9 +381,15 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         )
 
         self.assertEqual(first_payment.status_code, 201, first_payment.text)
+        self._approve_payment(int(first_payment.json()["data"]["id"]), suffix="close-a")
         self.assertEqual(second_payment.status_code, 201, second_payment.text)
         self.assertEqual(Decimal(str(second_payment.json()["data"]["outstanding_before"])), Decimal("3500.000000"))
         self.assertEqual(Decimal(str(second_payment.json()["data"]["outstanding_after"])), Decimal("0.000000"))
+        self._approve_payment(int(second_payment.json()["data"]["id"]), suffix="close-b")
+        closed_detail = self.client.get(
+            f"/api/factory-statements/{statement_id}",
+            headers=self._headers(),
+        )
         self.assertEqual(closed_detail.status_code, 200, closed_detail.text)
         self.assertEqual(closed_detail.json()["data"]["payment_status"], "paid")
         self.assertEqual(Decimal(str(closed_detail.json()["data"]["paid_amount"])), Decimal("4700.000000"))
@@ -414,6 +475,7 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         )
         self.assertEqual(created.status_code, 201)
         payment_id = int(created.json()["data"]["id"])
+        self._approve_payment(payment_id, suffix="cancel-perm")
 
         denied = self.client.post(
             f"/api/factory-statements/{statement_id}/payments/{payment_id}/cancel",

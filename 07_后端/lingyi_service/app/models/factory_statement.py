@@ -269,7 +269,7 @@ class LyFactoryStatementPayment(Base):
         Index("uk_ly_factory_statement_payment_company_source", "company", "source_ref", unique=True),
         Index("idx_ly_factory_statement_payment_statement", "company", "statement_id"),
         Index("idx_ly_factory_statement_payment_supplier", "company", "supplier"),
-        CheckConstraint("status IN ('submitted','cancelled')", name="ck_ly_factory_statement_payment_status"),
+        CheckConstraint("status IN ('pending_approval','submitted','cancelled')", name="ck_ly_factory_statement_payment_status"),
         CheckConstraint("paid_amount > 0", name="ck_ly_factory_statement_payment_amount_positive"),
         CheckConstraint("allocated_amount > 0", name="ck_ly_factory_statement_payment_allocated_positive"),
         CheckConstraint("outstanding_before >= 0", name="ck_ly_factory_statement_payment_before_nonnegative"),
