@@ -41,6 +41,8 @@ from app.core.permissions import WAREHOUSE_STOCK_HOLD_RELEASE
 from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import get_permission_source
 from app.models.audit import LyOperationAuditLog
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.schemas.warehouse import ApiResponse
 from app.schemas.warehouse import WarehouseAlertsData
 from app.schemas.warehouse import WarehouseBatchDetailData
@@ -732,6 +734,234 @@ def _build_local_batch_detail_fallback(
     )
 
 
+def _split_serial_values(value: str | None) -> list[str]:
+    text = _scope_text(value)
+    if text is None:
+        return []
+    normalized = text.replace("\n", ",").replace(";", ",")
+    return [part.strip() for part in normalized.split(",") if part.strip()]
+
+
+def _stock_entry_line_warehouse(*, purpose: str | None, draft: LyWarehouseStockEntryDraft, line: LyWarehouseStockEntryDraftItem) -> str:
+    normalized_purpose = _scope_text(purpose)
+    if normalized_purpose == "Material Issue":
+        return _scope_text(line.source_warehouse) or _scope_text(draft.source_warehouse) or ""
+    if normalized_purpose == "Material Receipt":
+        return _scope_text(line.target_warehouse) or _scope_text(draft.target_warehouse) or ""
+    return (
+        _scope_text(line.target_warehouse)
+        or _scope_text(draft.target_warehouse)
+        or _scope_text(line.source_warehouse)
+        or _scope_text(draft.source_warehouse)
+        or ""
+    )
+
+
+def _stock_entry_line_movements(
+    *,
+    draft: LyWarehouseStockEntryDraft,
+    line: LyWarehouseStockEntryDraftItem,
+) -> list[dict[str, Any]]:
+    purpose = _scope_text(draft.purpose)
+    qty = Decimal(str(line.qty or 0))
+    company = str(draft.company)
+    item_code = str(line.item_code)
+    posting_date = draft.created_at.date() if draft.created_at is not None else date.today()
+    voucher_no = _scope_text(draft.source_id) or _scope_text(draft.event_key) or f"WSE-{draft.id}"
+    common = {
+        "company": company,
+        "item_code": item_code,
+        "posting_date": posting_date,
+        "voucher_type": f"Stock Entry Draft/{purpose or 'Unknown'}",
+        "voucher_no": voucher_no,
+        "batch_no": _scope_text(line.batch_no),
+        "serial_no": _scope_text(line.serial_no),
+    }
+    if purpose == "Material Transfer":
+        source_warehouse = _scope_text(line.source_warehouse) or _scope_text(draft.source_warehouse) or ""
+        target_warehouse = _scope_text(line.target_warehouse) or _scope_text(draft.target_warehouse) or ""
+        rows: list[dict[str, Any]] = []
+        if source_warehouse:
+            rows.append({**common, "warehouse": source_warehouse, "actual_qty": -qty})
+        if target_warehouse:
+            rows.append({**common, "warehouse": target_warehouse, "actual_qty": qty})
+        return rows
+
+    warehouse = _stock_entry_line_warehouse(purpose=purpose, draft=draft, line=line)
+    if not warehouse:
+        return []
+    actual_qty = -qty if purpose == "Material Issue" else qty
+    return [{**common, "warehouse": warehouse, "actual_qty": actual_qty}]
+
+
+def _local_traceability_rows(
+    *,
+    session: Session,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+    batch_no: str | None,
+    serial_no: str | None,
+    from_date: date | None,
+    to_date: date | None,
+) -> list[dict[str, Any]]:
+    normalized_company = _scope_text(company)
+    normalized_warehouse = _scope_text(warehouse)
+    normalized_item_code = _scope_text(item_code)
+    normalized_batch = _scope_text(batch_no)
+    normalized_serial = _scope_text(serial_no)
+    query = (
+        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+        .join(LyWarehouseStockEntryDraftItem, LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id)
+        .filter(LyWarehouseStockEntryDraft.status != "cancelled")
+        .order_by(
+            LyWarehouseStockEntryDraft.created_at.asc(),
+            LyWarehouseStockEntryDraft.id.asc(),
+            LyWarehouseStockEntryDraftItem.id.asc(),
+        )
+    )
+    if normalized_company:
+        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+    if normalized_item_code:
+        query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
+
+    running_qty: dict[tuple[str, str, str], Decimal] = {}
+    rows: list[dict[str, Any]] = []
+    for draft, line in query.all():
+        for movement in _stock_entry_line_movements(draft=draft, line=line):
+            row_company = _scope_text(movement.get("company")) or ""
+            row_warehouse = _scope_text(movement.get("warehouse")) or ""
+            row_item = _scope_text(movement.get("item_code")) or ""
+            row_date = movement["posting_date"]
+            if normalized_warehouse and row_warehouse != normalized_warehouse:
+                continue
+            if normalized_batch and _scope_text(movement.get("batch_no")) != normalized_batch:
+                continue
+            if normalized_serial and not _serial_match(_scope_text(movement.get("serial_no")), normalized_serial):
+                continue
+            if from_date is not None and row_date < from_date:
+                continue
+            if to_date is not None and row_date > to_date:
+                continue
+            key = (row_company, row_warehouse, row_item)
+            next_balance = running_qty.get(key, Decimal("0")) + Decimal(str(movement["actual_qty"]))
+            running_qty[key] = next_balance
+            rows.append({**movement, "qty_after_transaction": next_balance})
+    return rows
+
+
+def _build_local_serial_numbers(
+    *,
+    session: Session,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+    batch_no: str | None,
+    serial_no: str | None,
+    page: int,
+    page_size: int,
+) -> WarehouseSerialNumberListData:
+    serial_rows: dict[str, dict[str, Any]] = {}
+    for row in _local_traceability_rows(
+        session=session,
+        company=company,
+        warehouse=warehouse,
+        item_code=item_code,
+        batch_no=batch_no,
+        serial_no=serial_no,
+        from_date=None,
+        to_date=None,
+    ):
+        for serial in _split_serial_values(_scope_text(row.get("serial_no"))):
+            actual_qty = Decimal(str(row.get("actual_qty") or 0))
+            serial_rows[serial] = {
+                "company": row["company"],
+                "serial_no": serial,
+                "item_code": row["item_code"],
+                "warehouse": row["warehouse"],
+                "batch_no": row.get("batch_no"),
+                "status": "Issued" if actual_qty < 0 else "Active",
+                "delivery_document_no": row.get("voucher_no") if actual_qty < 0 else None,
+                "purchase_document_no": row.get("voucher_no") if actual_qty >= 0 else None,
+            }
+    items = sorted(serial_rows.values(), key=lambda item: (str(item["serial_no"]), str(item["warehouse"])))
+    start = max(page - 1, 0) * page_size
+    return WarehouseSerialNumberListData(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+        batch_no=_scope_text(batch_no),
+        serial_no=_scope_text(serial_no),
+        total=len(items),
+        items=items[start : start + page_size],
+    )
+
+
+def _build_local_serial_detail(
+    *,
+    session: Session,
+    serial_no: str,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+) -> WarehouseSerialNumberDetailData:
+    list_data = _build_local_serial_numbers(
+        session=session,
+        company=company,
+        warehouse=warehouse,
+        item_code=item_code,
+        batch_no=None,
+        serial_no=serial_no,
+        page=1,
+        page_size=200,
+    )
+    return WarehouseSerialNumberDetailData(
+        serial_no=serial_no,
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+        total=list_data.total,
+        items=list_data.items,
+    )
+
+
+def _build_local_traceability(
+    *,
+    session: Session,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+    batch_no: str | None,
+    serial_no: str | None,
+    from_date: date | None,
+    to_date: date | None,
+    page: int,
+    page_size: int,
+) -> WarehouseTraceabilityData:
+    rows = _local_traceability_rows(
+        session=session,
+        company=company,
+        warehouse=warehouse,
+        item_code=item_code,
+        batch_no=batch_no,
+        serial_no=serial_no,
+        from_date=from_date,
+        to_date=to_date,
+    )
+    start = max(page - 1, 0) * page_size
+    return WarehouseTraceabilityData(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+        batch_no=_scope_text(batch_no),
+        serial_no=_scope_text(serial_no),
+        page=page,
+        page_size=page_size,
+        total=len(rows),
+        items=rows[start : start + page_size],
+    )
+
+
 def _handle_erpnext_error(
     *,
     exc: ERPNextAdapterException,
@@ -1170,6 +1400,7 @@ def _to_export_rows(items: list[Any]) -> list[dict[str, Any]]:
 def _collect_export_dataset_rows(
     *,
     request: Request,
+    session: Session,
     dataset: str,
     company: str | None,
     warehouse: str | None,
@@ -1181,6 +1412,70 @@ def _collect_export_dataset_rows(
     alert_type: str | None,
     limit: int,
 ) -> list[dict[str, Any]]:
+    if get_permission_source() == "fastapi":
+        if dataset == "stock_ledger":
+            data = _build_local_stock_ledger_fallback(
+                session=session,
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                from_date=from_date,
+                to_date=to_date,
+                page=1,
+                page_size=limit,
+            )
+            return _to_export_rows(data.items)
+        if dataset == "stock_summary":
+            data = _build_local_stock_summary_fallback(
+                session=session,
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+            )
+            return _to_export_rows(data.items)[:limit]
+        if dataset == "alerts":
+            data = WarehouseService(session=session).get_alerts(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                alert_type=alert_type,
+            )
+            return _to_export_rows(data.items)[:limit]
+        if dataset == "batches":
+            data = _build_local_batches_fallback(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                batch_no=batch_no,
+            )
+            return _to_export_rows(data.items)[:limit]
+        if dataset == "serial_numbers":
+            data = _build_local_serial_numbers(
+                session=session,
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                batch_no=batch_no,
+                serial_no=serial_no,
+                page=1,
+                page_size=limit,
+            )
+            return _to_export_rows(data.items)
+        if dataset == "traceability":
+            data = _build_local_traceability(
+                session=session,
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                batch_no=batch_no,
+                serial_no=serial_no,
+                from_date=from_date,
+                to_date=to_date,
+                page=1,
+                page_size=limit,
+            )
+            return _to_export_rows(data.items)
+
     read_service = _read_service(request)
     if dataset == "stock_ledger":
         data = read_service.list_stock_ledger(
@@ -2489,25 +2784,37 @@ def list_serial_numbers(
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
 
-    try:
-        data = _read_service(request).list_serial_numbers(
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
-            batch_no=_scope_text(batch_no),
-            serial_no=_scope_text(serial_no),
+    if get_permission_source() == "fastapi":
+        data = _build_local_serial_numbers(
+            session=session,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            batch_no=batch_no,
+            serial_no=serial_no,
             page=page,
             page_size=page_size,
         )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="SerialNo",
-        )
+    else:
+        try:
+            data = _read_service(request).list_serial_numbers(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+                batch_no=_scope_text(batch_no),
+                serial_no=_scope_text(serial_no),
+                page=page,
+                page_size=page_size,
+            )
+        except ERPNextAdapterException as exc:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="SerialNo",
+            )
 
     normalized_batch = _scope_text(batch_no)
     normalized_serial = _scope_text(serial_no)
@@ -2568,22 +2875,31 @@ def get_serial_number_detail(
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
 
-    try:
-        data = _read_service(request).get_serial_number_detail(
+    if get_permission_source() == "fastapi":
+        data = _build_local_serial_detail(
+            session=session,
             serial_no=serial_no,
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
         )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="SerialNo",
-        )
+    else:
+        try:
+            data = _read_service(request).get_serial_number_detail(
+                serial_no=serial_no,
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+            )
+        except ERPNextAdapterException as exc:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="SerialNo",
+            )
 
     filtered = [
         row
@@ -2655,27 +2971,41 @@ def list_traceability(
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
 
-    try:
-        data = _read_service(request).list_traceability(
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
-            batch_no=_scope_text(batch_no),
-            serial_no=_scope_text(serial_no),
+    if get_permission_source() == "fastapi":
+        data = _build_local_traceability(
+            session=session,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            batch_no=batch_no,
+            serial_no=serial_no,
             from_date=parsed_from_date,
             to_date=parsed_to_date,
             page=page,
             page_size=page_size,
         )
-    except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="StockLedgerEntry",
-        )
+    else:
+        try:
+            data = _read_service(request).list_traceability(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
+                batch_no=_scope_text(batch_no),
+                serial_no=_scope_text(serial_no),
+                from_date=parsed_from_date,
+                to_date=parsed_to_date,
+                page=page,
+                page_size=page_size,
+            )
+        except ERPNextAdapterException as exc:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="StockLedgerEntry",
+            )
 
     normalized_batch = _scope_text(batch_no)
     normalized_serial = _scope_text(serial_no)
@@ -2756,6 +3086,7 @@ def export_warehouse_readonly_csv(
     try:
         rows = _collect_export_dataset_rows(
             request=request,
+            session=session,
             dataset=normalized_dataset,
             company=_scope_text(company),
             warehouse=_scope_text(warehouse),
@@ -2806,7 +3137,9 @@ def get_warehouse_diagnostic(
         action=action,
         resource_type="warehouse_diagnostic",
     )
-    adapter_configured = bool(ERPNextWarehouseAdapter(request_obj=request).base_url)
+    adapter_configured = False
+    if get_permission_source() != "fastapi":
+        adapter_configured = bool(ERPNextWarehouseAdapter(request_obj=request).base_url)
     data: WarehouseDiagnosticData = WarehouseExportService.build_diagnostic_snapshot(
         adapter_configured=adapter_configured
     )

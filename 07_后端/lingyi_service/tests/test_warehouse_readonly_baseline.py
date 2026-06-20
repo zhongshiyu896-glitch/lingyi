@@ -119,6 +119,8 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
         status: str = "pending_outbox",
         event_key: str = "EVT-WH-READ-001",
         created_at: datetime | None = None,
+        batch_no: str | None = None,
+        serial_no: str | None = None,
     ) -> None:
         created = created_at or datetime(2026, 4, 20, tzinfo=timezone.utc)
         with self.SessionLocal() as session:
@@ -144,6 +146,8 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
                     item_code=item_code,
                     qty=Decimal(qty),
                     uom="PCS",
+                    batch_no=batch_no,
+                    serial_no=serial_no,
                     source_warehouse=warehouse if purpose in {"Material Issue", "Material Transfer"} else None,
                     target_warehouse=warehouse,
                 )

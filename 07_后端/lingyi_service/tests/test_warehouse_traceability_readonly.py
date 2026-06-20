@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -273,6 +274,65 @@ class WarehouseTraceabilityReadonlyApiTest(WarehouseReadonlyApiBase):
         for endpoint in endpoints:
             response = self.client.get(endpoint, headers=headers)
             self.assertEqual(response.status_code, 403, f"{endpoint} => {response.status_code}")
+
+    def test_fastapi_serial_traceability_export_and_diagnostic_do_not_construct_erpnext_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "warehouse.user": {
+                        "company": ["COMP-A"],
+                        "warehouse": ["WH-A"],
+                        "item_code": ["ITEM-A"],
+                    }
+                }
+            }
+        )
+        self._seed_stock_entry(
+            company="COMP-A",
+            warehouse="WH-A",
+            item_code="ITEM-A",
+            qty="3",
+            batch_no="BATCH-FASTAPI",
+            serial_no="SER-FASTAPI-001,SER-FASTAPI-002",
+            event_key="EVT-WH-FASTAPI-TRACE-001",
+        )
+
+        with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("erpnext adapter")):
+            serials = self.client.get(
+                "/api/warehouse/serial-numbers?company=COMP-A&warehouse=WH-A&item_code=ITEM-A&serial_no=SER-FASTAPI-001",
+                headers=self._headers(read_only=True),
+            )
+            serial_detail = self.client.get(
+                "/api/warehouse/serial-numbers/SER-FASTAPI-001?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+                headers=self._headers(read_only=True),
+            )
+            traceability = self.client.get(
+                "/api/warehouse/traceability?company=COMP-A&warehouse=WH-A&item_code=ITEM-A&serial_no=SER-FASTAPI-001",
+                headers=self._headers(read_only=True),
+            )
+            exported = self.client.get(
+                "/api/warehouse/export?dataset=traceability&company=COMP-A&warehouse=WH-A&item_code=ITEM-A&serial_no=SER-FASTAPI-001",
+                headers=self._headers_with_roles("warehouse:export"),
+            )
+            diagnostic = self.client.get(
+                "/api/warehouse/diagnostic",
+                headers=self._headers_with_roles("warehouse:diagnostic"),
+            )
+
+        self.assertEqual(serials.status_code, 200, serials.text)
+        self.assertEqual(serials.json()["data"]["total"], 1)
+        self.assertEqual(serials.json()["data"]["items"][0]["serial_no"], "SER-FASTAPI-001")
+        self.assertEqual(serial_detail.status_code, 200, serial_detail.text)
+        self.assertEqual(serial_detail.json()["data"]["total"], 1)
+        self.assertEqual(traceability.status_code, 200, traceability.text)
+        trace_row = traceability.json()["data"]["items"][0]
+        self.assertEqual(trace_row["batch_no"], "BATCH-FASTAPI")
+        self.assertIn("SER-FASTAPI-001", trace_row["serial_no"])
+        self.assertEqual(exported.status_code, 200, exported.text)
+        self.assertIn("SER-FASTAPI-001", exported.text)
+        self.assertEqual(diagnostic.status_code, 200, diagnostic.text)
+        self.assertFalse(diagnostic.json()["data"]["adapter_configured"])
 
 
 class ERPNextWarehouseAdapterBatchSerialContractTest(unittest.TestCase):
