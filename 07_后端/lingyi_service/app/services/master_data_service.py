@@ -47,6 +47,7 @@ ENTITY_PATH_TO_TYPE = {
     "bank-accounts": "bank_account",
 }
 ENTITY_TYPES = set(ENTITY_PATH_TO_TYPE.values())
+WAREHOUSE_LOCATION_KINDS = {"warehouse", "area"}
 
 
 @dataclass(frozen=True)
@@ -134,13 +135,21 @@ class MasterDataService:
         code = self._require_text(payload.code, "code")
         name = self._require_text(payload.name, "name")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        next_payload = self._clean_payload(payload.payload)
+        if normalized_entity_type == "warehouse":
+            next_payload = self._normalize_warehouse_payload(
+                company=company,
+                code=code,
+                payload=next_payload,
+                current_record_id=None,
+            )
         request_hash = self._request_hash(
             operation="create",
             entity_type=normalized_entity_type,
             company=company,
             code=code,
             name=name,
-            payload=payload.payload,
+            payload=next_payload,
         )
         existing_idem = self._get_idempotency(
             entity_type=normalized_entity_type,
@@ -168,7 +177,7 @@ class MasterDataService:
                 code=code,
                 name=name,
                 status="active",
-                payload=self._clean_payload(payload.payload),
+                payload=next_payload,
                 version=1,
                 created_by=actor,
                 updated_by=actor,
@@ -205,6 +214,13 @@ class MasterDataService:
         next_code = self._optional_text(payload.code) or row.code
         next_name = self._optional_text(payload.name) or row.name
         next_payload = self._clean_payload(payload.payload) if payload.payload is not None else dict(row.payload or {})
+        if normalized_entity_type == "warehouse":
+            next_payload = self._normalize_warehouse_payload(
+                company=company,
+                code=next_code,
+                payload=next_payload,
+                current_record_id=int(row.id),
+            )
         request_hash = self._request_hash(
             operation="update",
             entity_type=normalized_entity_type,
@@ -240,12 +256,20 @@ class MasterDataService:
                 raise BusinessException(code=MASTER_DATA_CONFLICT, message=f"{next_code} 已存在")
 
         before = self._snapshot(row)
+        old_code = str(row.code)
         try:
             row.code = next_code
             row.name = next_name
             row.payload = next_payload
             row.updated_by = actor
             row.version = int(row.version or 0) + 1
+            if normalized_entity_type == "warehouse" and next_code != old_code:
+                self._rename_warehouse_parent_references(
+                    company=company,
+                    old_code=old_code,
+                    new_code=next_code,
+                    actor=actor,
+                )
             self._insert_idempotency(
                 entity_type=normalized_entity_type,
                 company=company,
@@ -274,6 +298,8 @@ class MasterDataService:
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         reason = self._require_text(payload.reason, "reason")
         row = self._get_record_for_mutation(entity_type=normalized_entity_type, record_id=record_id, company=company)
+        if normalized_entity_type == "warehouse" and self._has_active_warehouse_children(company=company, parent_code=str(row.code)):
+            raise BusinessException(code=MASTER_DATA_CONFLICT, message="存在启用中的仓库子级，不能停用父级")
         request_hash = self._request_hash(
             operation="deactivate",
             entity_type=normalized_entity_type,
@@ -347,6 +373,115 @@ class MasterDataService:
         if not payload:
             return {}
         return json.loads(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str))
+
+    def _normalize_warehouse_payload(
+        self,
+        *,
+        company: str,
+        code: str,
+        payload: dict[str, Any],
+        current_record_id: int | None,
+    ) -> dict[str, Any]:
+        normalized = dict(payload)
+        parent_code = self._optional_text(normalized.get("parent_code")) or self._optional_text(normalized.get("parentCode"))
+        location_kind = (
+            self._optional_text(normalized.get("location_kind"))
+            or self._optional_text(normalized.get("locationKind"))
+            or ("area" if parent_code else "warehouse")
+        )
+        if location_kind not in WAREHOUSE_LOCATION_KINDS:
+            raise BusinessException(code=MASTER_DATA_CONFLICT, message="仓库节点类型必须是 warehouse 或 area")
+        if parent_code:
+            if parent_code == code:
+                raise BusinessException(code=MASTER_DATA_CONFLICT, message="仓库父级不能指向自身")
+            parent = self._get_record_by_code(entity_type="warehouse", company=company, code=parent_code)
+            if parent is None or parent.status != "active":
+                raise BusinessException(code=MASTER_DATA_CONFLICT, message="父级仓库不存在或已停用")
+            if current_record_id is not None:
+                self._ensure_no_warehouse_parent_cycle(
+                    company=company,
+                    current_record_id=current_record_id,
+                    parent=parent,
+                )
+            normalized["parent_code"] = parent_code
+        else:
+            normalized.pop("parent_code", None)
+        normalized.pop("parentCode", None)
+        normalized.pop("locationKind", None)
+        normalized["location_kind"] = location_kind
+        manager = self._optional_text(normalized.get("manager"))
+        if manager:
+            normalized["manager"] = manager
+        else:
+            normalized.pop("manager", None)
+        return self._clean_payload(normalized)
+
+    def _ensure_no_warehouse_parent_cycle(
+        self,
+        *,
+        company: str,
+        current_record_id: int,
+        parent: LyMasterDataRecord,
+    ) -> None:
+        seen_codes: set[str] = set()
+        current_parent: LyMasterDataRecord | None = parent
+        while current_parent is not None:
+            if int(current_parent.id) == int(current_record_id):
+                raise BusinessException(code=MASTER_DATA_CONFLICT, message="仓库父级不能形成循环")
+            parent_code = self._optional_text(dict(current_parent.payload or {}).get("parent_code")) or self._optional_text(
+                dict(current_parent.payload or {}).get("parentCode")
+            )
+            if not parent_code or parent_code in seen_codes:
+                return
+            seen_codes.add(parent_code)
+            current_parent = self._get_record_by_code(entity_type="warehouse", company=company, code=parent_code)
+
+    def _rename_warehouse_parent_references(
+        self,
+        *,
+        company: str,
+        old_code: str,
+        new_code: str,
+        actor: str,
+    ) -> None:
+        child_rows = (
+            self.session.query(LyMasterDataRecord)
+            .filter(
+                LyMasterDataRecord.entity_type == "warehouse",
+                LyMasterDataRecord.company == company,
+            )
+            .all()
+        )
+        for child in child_rows:
+            child_payload = dict(child.payload or {})
+            parent_code = self._optional_text(child_payload.get("parent_code")) or self._optional_text(child_payload.get("parentCode"))
+            if parent_code != old_code:
+                continue
+            child_payload["parent_code"] = new_code
+            child_payload.pop("parentCode", None)
+            child.payload = self._clean_payload(child_payload)
+            child.updated_by = actor
+            child.updated_at = datetime.now(UTC)
+            child.version = int(child.version or 0) + 1
+
+    def _has_active_warehouse_children(self, *, company: str, parent_code: str) -> bool:
+        rows = (
+            self.session.query(LyMasterDataRecord)
+            .filter(
+                LyMasterDataRecord.entity_type == "warehouse",
+                LyMasterDataRecord.company == company,
+                LyMasterDataRecord.status == "active",
+            )
+            .all()
+        )
+        return any(
+            (
+                self._optional_text(dict(row.payload or {}).get("parent_code"))
+                or self._optional_text(dict(row.payload or {}).get("parentCode"))
+            )
+            == parent_code
+            for row in rows
+        )
 
     @classmethod
     def _request_hash(cls, **payload: Any) -> str:

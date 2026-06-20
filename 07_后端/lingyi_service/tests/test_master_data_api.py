@@ -175,6 +175,170 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertEqual(duplicate.status_code, 409)
         self.assertEqual(duplicate.json()["code"], "MASTER_DATA_CONFLICT")
 
+    def test_warehouse_child_payload_persists_and_tracks_parent_rename(self) -> None:
+        parent = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-WH-TREE-001"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "WH-TREE-P",
+                "name": "仓库父级",
+                "idempotency_key": "IDEMP-WH-TREE-P-C",
+                "payload": {"location_kind": "warehouse", "manager": "王仓管"},
+            },
+        )
+        self.assertEqual(parent.status_code, 201, parent.text)
+        parent_id = int(parent.json()["data"]["id"])
+
+        child = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-WH-TREE-002"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "WH-TREE-A01",
+                "name": "A01 库位",
+                "idempotency_key": "IDEMP-WH-TREE-A01-C",
+                "payload": {"parent_code": "WH-TREE-P", "location_kind": "area", "manager": "李库位"},
+            },
+        )
+        self.assertEqual(child.status_code, 201, child.text)
+        self.assertEqual(child.json()["data"]["payload"]["parent_code"], "WH-TREE-P")
+        self.assertEqual(child.json()["data"]["payload"]["location_kind"], "area")
+
+        renamed = self.client.patch(
+            f"/api/master-data/warehouses/{parent_id}",
+            headers=self._headers(request_id="MASTER-DATA-WH-TREE-003"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "code": "WH-TREE-P2",
+                "name": "仓库父级改",
+                "idempotency_key": "IDEMP-WH-TREE-P-U",
+                "payload": {"location_kind": "warehouse", "manager": "王仓管"},
+            },
+        )
+        self.assertEqual(renamed.status_code, 200, renamed.text)
+
+        listed = self.client.get(
+            "/api/master-data/warehouses?company=COMP-A&keyword=WH-TREE-A01",
+            headers=self._headers(request_id="MASTER-DATA-WH-TREE-004"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["data"]["items"][0]["payload"]["parent_code"], "WH-TREE-P2")
+
+        blocked = self.client.post(
+            f"/api/master-data/warehouses/{parent_id}/deactivate",
+            headers=self._headers(request_id="MASTER-DATA-WH-TREE-005"),
+            json={
+                "operation": "deactivate",
+                "company": "COMP-A",
+                "reason": "父级仍有子级",
+                "idempotency_key": "IDEMP-WH-TREE-P-X",
+            },
+        )
+        self.assertEqual(blocked.status_code, 409)
+        self.assertEqual(blocked.json()["code"], "MASTER_DATA_CONFLICT")
+
+    def test_warehouse_parent_payload_rejects_missing_inactive_and_cycle(self) -> None:
+        parent = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-WH-VALID-001"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "WH-VALID-P",
+                "name": "有效父级",
+                "idempotency_key": "IDEMP-WH-VALID-P-C",
+                "payload": {"location_kind": "warehouse"},
+            },
+        )
+        self.assertEqual(parent.status_code, 201, parent.text)
+        parent_id = int(parent.json()["data"]["id"])
+
+        child = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-WH-VALID-002"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "WH-VALID-C",
+                "name": "有效子级",
+                "idempotency_key": "IDEMP-WH-VALID-C-C",
+                "payload": {"parent_code": "WH-VALID-P", "location_kind": "area"},
+            },
+        )
+        self.assertEqual(child.status_code, 201, child.text)
+
+        missing_parent = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-WH-VALID-003"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "WH-VALID-MISSING",
+                "name": "无父级子级",
+                "idempotency_key": "IDEMP-WH-VALID-MISSING-C",
+                "payload": {"parent_code": "WH-NOT-EXIST", "location_kind": "area"},
+            },
+        )
+        self.assertEqual(missing_parent.status_code, 409)
+        self.assertEqual(missing_parent.json()["code"], "MASTER_DATA_CONFLICT")
+
+        cycle = self.client.patch(
+            f"/api/master-data/warehouses/{parent_id}",
+            headers=self._headers(request_id="MASTER-DATA-WH-VALID-004"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-WH-VALID-P-CYCLE",
+                "payload": {"parent_code": "WH-VALID-C", "location_kind": "warehouse"},
+            },
+        )
+        self.assertEqual(cycle.status_code, 409)
+        self.assertEqual(cycle.json()["code"], "MASTER_DATA_CONFLICT")
+
+        inactive_parent = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-WH-VALID-005"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "WH-INACTIVE-P",
+                "name": "停用父级",
+                "idempotency_key": "IDEMP-WH-INACTIVE-P-C",
+                "payload": {"location_kind": "warehouse"},
+            },
+        )
+        self.assertEqual(inactive_parent.status_code, 201, inactive_parent.text)
+        inactive_parent_id = int(inactive_parent.json()["data"]["id"])
+        deactivated = self.client.post(
+            f"/api/master-data/warehouses/{inactive_parent_id}/deactivate",
+            headers=self._headers(request_id="MASTER-DATA-WH-VALID-006"),
+            json={
+                "operation": "deactivate",
+                "company": "COMP-A",
+                "reason": "停用父级",
+                "idempotency_key": "IDEMP-WH-INACTIVE-P-X",
+            },
+        )
+        self.assertEqual(deactivated.status_code, 200)
+        inactive_child = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-WH-VALID-007"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "WH-INACTIVE-C",
+                "name": "停用父级子级",
+                "idempotency_key": "IDEMP-WH-INACTIVE-C-C",
+                "payload": {"parent_code": "WH-INACTIVE-P", "location_kind": "area"},
+            },
+        )
+        self.assertEqual(inactive_child.status_code, 409)
+        self.assertEqual(inactive_child.json()["code"], "MASTER_DATA_CONFLICT")
+
     def test_update_and_deactivate_customer(self) -> None:
         created = self.client.post(
             "/api/master-data/customers",
