@@ -62,6 +62,7 @@ from app.core.permissions import PRODUCTION_READ
 from app.core.permissions import PRODUCTION_PLAN_CREATE
 from app.core.permissions import PRODUCTION_MATERIAL_CHECK
 from app.core.permissions import PRODUCTION_MATERIAL_ISSUE
+from app.core.permissions import PRODUCTION_TRACKING_NODE
 from app.core.permissions import PRODUCTION_WORK_ORDER_CREATE
 from app.core.permissions import PRODUCTION_JOB_CARD_SYNC
 from app.core.permissions import PRODUCTION_WORK_ORDER_WORKER
@@ -204,6 +205,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_PLAN_CREATE,
         PRODUCTION_MATERIAL_CHECK,
         PRODUCTION_MATERIAL_ISSUE,
+        PRODUCTION_TRACKING_NODE,
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
         PRODUCTION_WORK_ORDER_WORKER,
@@ -277,6 +279,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_READ,
         PRODUCTION_PLAN_CREATE,
         PRODUCTION_MATERIAL_CHECK,
+        PRODUCTION_TRACKING_NODE,
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
         STYLE_PROFIT_READ,

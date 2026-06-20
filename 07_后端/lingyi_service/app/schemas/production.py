@@ -808,6 +808,7 @@ class ProductionJobCardLinkItem(BaseModel):
 class ProductionTrackingNodeItem(BaseModel):
     """Derived production tracking node based on persisted plan facts."""
 
+    event_id: Optional[int] = None
     node_key: str
     node_name: str
     owner: str
@@ -815,7 +816,51 @@ class ProductionTrackingNodeItem(BaseModel):
     progress: int
     source_type: str
     source_ref: Optional[str] = None
+    remark: Optional[str] = None
     updated_at: Optional[datetime] = None
+
+
+class ProductionTrackingNodeEventRequest(BaseModel):
+    """Advance a production tracking node from the existing tracking page."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    node_key: str = Field(..., min_length=1, max_length=64)
+    node_name: Optional[str] = Field(default=None, max_length=140)
+    owner: Optional[str] = Field(default=None, max_length=140)
+    status: str = Field(..., min_length=1, max_length=32)
+    progress: int = Field(..., ge=0, le=100)
+    remark: Optional[str] = Field(default=None, max_length=1000)
+    operation: Optional[str] = Field(default="tracking_node", max_length=40)
+    scenario_tag: Optional[str] = Field(default=None, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    request_id: Optional[str] = Field(default=None, max_length=64)
+
+
+class ProductionTrackingNodeEventData(BaseModel):
+    """Persisted production tracking node event."""
+
+    id: int
+    event_no: str
+    plan_id: int
+    company: str
+    plan_no: str
+    sales_order: str
+    sales_order_item: str
+    item_code: str
+    node_key: str
+    node_name: str
+    owner: str
+    status: str
+    progress: int
+    remark: str
+    source_type: str
+    source_ref: Optional[str] = None
+    created_by: str
+    created_at: datetime
 
 
 class ProductionPlanDetailData(BaseModel):

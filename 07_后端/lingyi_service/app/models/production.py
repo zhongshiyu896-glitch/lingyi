@@ -254,6 +254,42 @@ class LyProductionTrackingException(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
+class LyProductionTrackingNodeEvent(Base):
+    """生产计划跟进节点推进事实。"""
+
+    __tablename__ = "ly_production_tracking_node_event"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_tracking_node_event"),
+        Index("uk_ly_production_tracking_node_event_no", "event_no", unique=True),
+        Index("idx_ly_production_tracking_node_event_plan_node", "plan_id", "node_key", "created_at"),
+        Index("idx_ly_production_tracking_node_event_company_status", "company", "node_key", "status"),
+        CheckConstraint("status IN ('pending','in_progress','done','blocked')", name="ck_ly_production_tracking_node_event_status"),
+        CheckConstraint("progress >= 0 AND progress <= 100", name="ck_ly_production_tracking_node_event_progress"),
+        {"schema": "ly_schema", "comment": "生产计划跟进节点推进事实"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    event_no = Column(String(64), nullable=False)
+    plan_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_plan.id"), nullable=False)
+    company = Column(String(140), nullable=False)
+    plan_no = Column(String(64), nullable=False)
+    sales_order = Column(String(140), nullable=False)
+    sales_order_item = Column(String(140), nullable=False)
+    item_code = Column(String(140), nullable=False)
+    node_key = Column(String(64), nullable=False)
+    node_name = Column(String(140), nullable=False)
+    owner = Column(String(140), nullable=False, server_default="")
+    status = Column(String(32), nullable=False, server_default="in_progress")
+    progress = Column(Integer, nullable=False, server_default="0")
+    remark = Column(String(1000), nullable=False, server_default="")
+    source_type = Column(String(64), nullable=False, server_default="production_tracking_node")
+    source_ref = Column(String(140), nullable=True)
+    idempotency_key = Column(String(128), nullable=False)
+    request_id = Column(String(64), nullable=True)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LyProductionFollowupTemplate(Base):
     """FastAPI-native production follow-up template used by the existing template page."""
 

@@ -8,6 +8,7 @@ from app.models.production import LyProductionQuote
 from app.models.production import LyProductionQuoteOperation
 from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionTrackingException
+from app.models.production import LyProductionTrackingNodeEvent
 from app.models.production import LyProductionTrackingReconcile
 from app.models.production import LyProductionTrackingReconcileBatch
 from app.models.production import LyProductionWorkOrderLink
@@ -37,6 +38,7 @@ __all__ = [
     "LyProductionJobCardLink",
     "LyProductionStatusLog",
     "LyProductionTrackingException",
+    "LyProductionTrackingNodeEvent",
     "LyProductionTrackingReconcile",
     "LyProductionTrackingReconcileBatch",
     "LyFactoryStatement",

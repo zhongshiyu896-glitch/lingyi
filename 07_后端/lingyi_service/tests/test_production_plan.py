@@ -31,6 +31,7 @@ from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
+from app.models.production import LyProductionTrackingNodeEvent
 from app.models.production import LyProductionWorkOrderLink
 from app.models.production import LyProductionWorkOrderOutbox
 from app.models.sales_order import Base as SalesOrderBase
@@ -133,6 +134,7 @@ class ProductionPlanTest(unittest.TestCase):
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LyProductionTrackingNodeEvent).delete()
             session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionWorkOrderOutbox).delete()
@@ -756,6 +758,70 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertIn("sync-job-cards", data["write_entry_frozen_reason"])
         self.assertIn("create-work-order", data["write_entry_frozen_reason"])
         self.assertNotIn("普通前端仍冻结 create-work-order / sync-job-cards", data["write_entry_frozen_reason"])
+
+    def test_tracking_node_event_persists_idempotently_and_overlays_detail_nodes(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-node-event", planned_qty="12"),
+            )
+        self.assertEqual(create_response.status_code, 200, create_response.text)
+        plan_id = int(create_response.json()["data"]["plan_id"])
+        request_id = "PTR-NODE-20260620-001"
+        payload = {
+            "company": "COMP-A",
+            "node_key": "work_order",
+            "node_name": "生产工单",
+            "owner": "生产跟单",
+            "status": "in_progress",
+            "progress": 60,
+            "remark": "工单已排入车间",
+            "operation": "tracking_node",
+            "scenario_tag": "production_tracking_node",
+            "idempotency_key": "node-event-idem-001",
+            "plan_id": plan_id,
+            "sales_order": "SO-TEST-001",
+            "sales_order_item": "SOI-001",
+            "item_code": "ITEM-A",
+            "request_id": request_id,
+        }
+
+        response_1 = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-nodes",
+            headers={**self._headers(role="Production Manager"), "X-Request-ID": request_id},
+            json=payload,
+        )
+        response_2 = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-nodes",
+            headers={**self._headers(role="Production Manager"), "X-Request-ID": request_id},
+            json=payload,
+        )
+        conflict = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-nodes",
+            headers={**self._headers(role="Production Manager"), "X-Request-ID": request_id},
+            json={**payload, "progress": 80},
+        )
+
+        self.assertEqual(response_1.status_code, 200, response_1.text)
+        self.assertEqual(response_2.status_code, 200, response_2.text)
+        self.assertEqual(response_1.json()["data"]["id"], response_2.json()["data"]["id"])
+        self.assertEqual(conflict.status_code, 409, conflict.text)
+        self.assertEqual(conflict.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
+
+        detail_response = self.client.get(
+            f"/api/production/plans/{plan_id}",
+            headers=self._headers(),
+        )
+        self.assertEqual(detail_response.status_code, 200, detail_response.text)
+        nodes = {row["node_key"]: row for row in detail_response.json()["data"]["tracking_nodes"]}
+        self.assertEqual(nodes["work_order"]["status"], "in_progress")
+        self.assertEqual(nodes["work_order"]["progress"], 60)
+        self.assertEqual(nodes["work_order"]["remark"], "工单已排入车间")
+        self.assertEqual(nodes["work_order"]["source_type"], "production_tracking_node")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionTrackingNodeEvent).count(), 1)
 
     def test_order_io_quantities_use_real_local_stock_and_delivery_facts(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
