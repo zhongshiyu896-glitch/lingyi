@@ -104,12 +104,20 @@ class SampleApiTest(unittest.TestCase):
             "X-Request-ID": request_id,
         }
 
-    @staticmethod
-    def _order_payload(sample_no: str = "SMP-A3-001", idempotency_key: str = "IDEMP-SMP-A3-001-C") -> dict:
+    def _style_id(self, style_no: str = "ST-A3-001") -> int:
+        with self.SessionLocal() as session:
+            return int(
+                session.query(LyStyleMaster.id)
+                .filter(LyStyleMaster.company == "COMP-A", LyStyleMaster.ys_style_no == style_no)
+                .scalar()
+            )
+
+    def _order_payload(self, sample_no: str = "SMP-A3-001", idempotency_key: str = "IDEMP-SMP-A3-001-C") -> dict:
         return {
             "operation": "create",
             "company": "COMP-A",
             "sample_no": sample_no,
+            "style_master_id": self._style_id("ST-A3-001"),
             "style_no": "ST-A3-001",
             "style_name": "A3 样衣款",
             "customer": "A3 客户",
@@ -182,7 +190,7 @@ class SampleApiTest(unittest.TestCase):
             json={
                 "operation": "update",
                 "company": "COMP-A",
-                "style_no": "ST-A3-002",
+                "style_master_id": second_style_id,
                 "style_name": "前端传入款名不作为准",
                 "stage": "打版中",
                 "progress": 30,
@@ -438,8 +446,23 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(valid_by_id_response.status_code, 201)
         self.assertEqual(valid_by_id_response.json()["data"]["style_master_id"], enabled_style_id)
+        valid_by_id_order_id = int(valid_by_id_response.json()["data"]["id"])
+
+        legacy_update = self.client.patch(
+            f"/api/sample/orders/{valid_by_id_order_id}",
+            headers=self._headers(request_id="SAMPLE-STYLE-LEGACY-UPDATE"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "style_no": "ST-A3-002",
+                "idempotency_key": "IDEMP-SMP-A3-LEGACY-U",
+            },
+        )
+        self.assertEqual(legacy_update.status_code, 409)
+        self.assertEqual(legacy_update.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
 
         missing = self._order_payload(sample_no="SMP-A3-MISSING", idempotency_key="IDEMP-SMP-A3-MISSING")
+        del missing["style_master_id"]
         missing["style_no"] = "ST-A3-MISSING"
         missing_response = self.client.post(
             "/api/sample/orders",
@@ -450,6 +473,7 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(missing_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
 
         disabled = self._order_payload(sample_no="SMP-A3-DISABLED", idempotency_key="IDEMP-SMP-A3-DISABLED")
+        disabled["style_master_id"] = disabled_style_id
         disabled["style_no"] = "ST-A3-DISABLED"
         disabled_response = self.client.post(
             "/api/sample/orders",
@@ -460,8 +484,9 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(disabled_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
 
         disabled_by_id = self._order_payload(sample_no="SMP-A3-DISABLED-ID", idempotency_key="IDEMP-SMP-A3-DISABLED-ID")
-        disabled_by_id["style_no"] = "ST-A3-DISABLED"
         disabled_by_id["style_master_id"] = disabled_style_id
+        del disabled_by_id["style_no"]
+        del disabled_by_id["style_name"]
         disabled_by_id_response = self.client.post(
             "/api/sample/orders",
             headers=self._headers(request_id="SAMPLE-STYLE-DISABLED-ID"),

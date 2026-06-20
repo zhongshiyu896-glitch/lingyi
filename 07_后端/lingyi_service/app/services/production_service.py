@@ -554,7 +554,7 @@ class ProductionService:
             return None
         sample_no = source_ref.removeprefix("SAMPLE-").strip()
         if not sample_no:
-            return None
+            return []
         try:
             sample = (
                 self.session.query(LySampleOrder)
@@ -565,9 +565,9 @@ class ProductionService:
                 .first()
             )
             if sample is None:
-                return None
+                return []
             if sample.bulk_handoff_no and str(sample.bulk_handoff_no) != str(plan.sales_order):
-                return None
+                return []
             bom = (
                 self.session.query(LySampleMaterialBom)
                 .filter(
@@ -579,7 +579,7 @@ class ProductionService:
                 .first()
             )
             if bom is None:
-                return None
+                return []
             return (
                 self.session.query(LySampleMaterialBomItem)
                 .filter(LySampleMaterialBomItem.bom_id == int(bom.id))

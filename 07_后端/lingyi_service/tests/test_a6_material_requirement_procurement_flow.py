@@ -1020,6 +1020,18 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         order_id = int(created.json()["data"]["id"])
         self.assertEqual(created.json()["data"]["style_master_id"], style_id)
 
+        copied_bom = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/copy-from-style",
+            headers=self._headers("req-a6-sample-copy-bom"),
+            json={
+                "operation": "copy_from_style",
+                "company": self.COMPANY,
+                "idempotency_key": "idem-a6-sample-copy-bom",
+            },
+        )
+        self.assertEqual(copied_bom.status_code, 200, copied_bom.text)
+        self.assertEqual(copied_bom.json()["data"]["items"][0]["material_item_code"], self.MATERIAL)
+
         submitted = self.client.post(
             f"/api/sample/orders/{order_id}/submit",
             headers=self._headers("req-a6-sample-submit"),

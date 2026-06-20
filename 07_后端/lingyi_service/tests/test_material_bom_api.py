@@ -910,6 +910,112 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
             self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
 
+    def test_missing_sample_material_bom_header_does_not_fallback_to_style_bom(self) -> None:
+        style_id = self._seed_style()
+        seeded = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-MISSING-HEADER-FALLBACK-SEED"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-MISSING-HEADER-FALLBACK-SEED"),
+        )
+        self.assertEqual(seeded.status_code, 200, seeded.text)
+        style_bom_id = int(seeded.json()["data"]["bom"]["id"])
+
+        sample_no = "SMP-MB-NO-BOM-001"
+        bulk_no = "SO-MB-NO-BOM-SAMPLE"
+        sales_order_item = "SOI-MB-NO-BOM-SAMPLE"
+        with self.SessionLocal() as session:
+            sample = LySampleOrder(
+                company="COMP-MB",
+                sample_no=sample_no,
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="封样",
+                progress=100,
+                status="converted",
+                bulk_handoff_no=bulk_no,
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(sample)
+            sales_order = LySalesOrder(
+                company="COMP-MB",
+                sales_order_no=bulk_no,
+                source_order_ref=f"SAMPLE-{sample_no}",
+                customer="BOM 客户",
+                status="draft",
+                docstatus=0,
+                currency="CNY",
+                grand_total=Decimal("0"),
+                idempotency_key=f"seed-{bulk_no}",
+                request_hash=f"seed-{bulk_no}",
+                payload={},
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(sales_order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(sales_order.id),
+                    company="COMP-MB",
+                    line_no=1,
+                    sales_order_item=sales_order_item,
+                    item_code="ST-MB-001",
+                    item_name="BOM 测试款",
+                    qty=Decimal("1"),
+                    planned_qty=Decimal("0"),
+                    delivered_qty=Decimal("0"),
+                    ys_material_calc_state="待算料",
+                    uom="件",
+                )
+            )
+            plan = LyProductionPlan(
+                plan_no="PP-MB-NO-BOM-SAMPLE",
+                company="COMP-MB",
+                sales_order=bulk_no,
+                sales_order_item=sales_order_item,
+                item_code="ST-MB-001",
+                bom_id=style_bom_id,
+                bom_version="V1",
+                planned_qty=Decimal("1"),
+                status="planned",
+                idempotency_key="NO-BOM-SAMPLE-PLAN",
+                request_hash="NO-BOM-SAMPLE-HASH",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.commit()
+            plan_id = int(plan.id)
+
+        scenario = "Z003-PROD-PLAN-DETAIL-20260618-706"
+        checked = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(role="Production Manager", request_id=f"req-{scenario}"),
+            json={
+                "operation": "material_check",
+                "idempotency_key": f"{scenario}-check",
+                "scenario_tag": scenario,
+                "plan_id": plan_id,
+                "sales_order": bulk_no,
+                "sales_order_item": sales_order_item,
+                "item_code": "ST-MB-001",
+                "bom_id": style_bom_id,
+                "warehouse": "WH-MB",
+                "request_id": f"req-{scenario}",
+            },
+        )
+        self.assertEqual(checked.status_code, 404, checked.text)
+        self.assertEqual(checked.json()["code"], "PRODUCTION_BOM_NOT_FOUND")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
+
     def test_sample_material_bom_rejects_missing_or_inactive_material(self) -> None:
         style_id = self._seed_style()
         with self.SessionLocal() as session:

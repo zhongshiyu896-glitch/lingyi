@@ -1596,26 +1596,17 @@ class SampleService:
         style_master_id: int | None = None,
     ) -> LyStyleMaster:
         normalized_style_no = self._optional_text(style_no)
-        if style_master_id is not None:
-            row = (
-                self.session.query(LyStyleMaster)
-                .filter(LyStyleMaster.id == int(style_master_id), LyStyleMaster.company == company)
-                .first()
-            )
-            if not row or row.ys_style_status != "enabled":
-                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{style_master_id} 款式主档不存在或未启用")
-            if normalized_style_no and normalized_style_no != str(row.ys_style_no):
-                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="样板单款式主档与款号不一致")
-            return row
-
-        normalized_style_no = self._require_text(normalized_style_no, "style_no")
+        if style_master_id is None:
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="样板单必须引用已启用款式资料 style_master_id，不能手输款号")
         row = (
             self.session.query(LyStyleMaster)
-            .filter(LyStyleMaster.company == company, LyStyleMaster.ys_style_no == normalized_style_no)
+            .filter(LyStyleMaster.id == int(style_master_id), LyStyleMaster.company == company)
             .first()
         )
         if not row or row.ys_style_status != "enabled":
-            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{normalized_style_no} 款式不存在或未启用")
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"{style_master_id} 款式主档不存在或未启用")
+        if normalized_style_no and normalized_style_no != str(row.ys_style_no):
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="样板单款式主档与款号不一致")
         return row
 
     def _get_template_by_id(self, template_id: int) -> LySampleTrackingTemplate:

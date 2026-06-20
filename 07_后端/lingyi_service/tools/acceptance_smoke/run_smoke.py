@@ -1646,6 +1646,7 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
             )
             .one()
         )
+        style_master_id = int(style.id)
         for code, name in (
             (material_code, "Smoke 样衣面料"),
             (alternative_material_code, "Smoke 样衣替代料"),
@@ -1701,6 +1702,7 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
         "operation": "create",
         "company": company,
         "sample_no": sample_no,
+        "style_master_id": style_master_id,
         "style_no": style_no,
         "style_name": "Smoke 样衣款",
         "customer": "CUST-SAMPLE-SMOKE",
