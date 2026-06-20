@@ -52,6 +52,7 @@ from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.subcontract import Base as SubcontractBase  # noqa: E402
 import app.models.warehouse  # noqa: E402,F401
 from app.models.workshop import Base as WorkshopBase  # noqa: E402
+from app.services.finance_approval_service import FinanceApprovalService  # noqa: E402
 
 
 def _local_engine():
@@ -107,6 +108,19 @@ def _create_local_tables() -> None:
     _ensure_local_production_material_uom_column()
     _ensure_local_production_quote_operation_supports_quote_actions()
     _ensure_local_production_followup_node_operation_supports_edit()
+    _seed_local_finance_approval_templates()
+
+
+def _seed_local_finance_approval_templates() -> None:
+    db = main_module.SessionLocal()
+    try:
+        FinanceApprovalService(db).ensure_default_templates(company="默认公司", actor="local-dev-seed")
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 def _ensure_local_master_data_config_entities() -> None:

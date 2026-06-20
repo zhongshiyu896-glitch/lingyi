@@ -23,6 +23,8 @@ from app.models.factory_statement import LyFactoryStatementPayment
 from app.models.finance_approval import Base as FinanceApprovalBase
 from app.models.finance_approval import LyFinanceApprovalOperation
 from app.models.finance_approval import LyFinanceApprovalTask
+from app.models.finance_approval import LyFinanceApprovalTemplate
+from app.models.finance_approval import LyFinanceApprovalTemplateNode
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchaseOrder
@@ -89,6 +91,8 @@ class FinanceApprovalApiTest(unittest.TestCase):
             session.query(LySecurityAuditLog).delete()
             session.query(LyFinanceApprovalOperation).delete()
             session.query(LyFinanceApprovalTask).delete()
+            session.query(LyFinanceApprovalTemplateNode).delete()
+            session.query(LyFinanceApprovalTemplate).delete()
             session.query(LyFactoryStatementPayment).delete()
             session.query(LyFactoryStatement).delete()
             session.query(LyMaterialPurchasePayment).delete()
@@ -254,10 +258,18 @@ class FinanceApprovalApiTest(unittest.TestCase):
         self.assertEqual(created_data["source_no"], "PINV-FIN-001")
         self.assertEqual(created_data["amount"], "150.000000")
         self.assertEqual(created_data["status"], "pending")
+        self.assertEqual(created_data["template_code"], "FAP-TPL-PINV")
+        self.assertEqual(created_data["template_name"], "采购发票审批")
+        self.assertEqual(created_data["template_version"], 1)
+        self.assertEqual(created_data["template_steps"][0]["approver_role"], "Finance Manager")
         with self.SessionLocal() as session:
             invoice = session.query(LyMaterialPurchaseInvoice).filter_by(id=self.invoice_id).one()
             self.assertEqual(invoice.payload["finance_approval"]["status"], "pending")
             self.assertEqual(invoice.payload["finance_approval"]["approval_no"], created_data["approval_no"])
+            self.assertEqual(invoice.payload["finance_approval"]["template_code"], "FAP-TPL-PINV")
+            template = session.query(LyFinanceApprovalTemplate).filter_by(company=self.COMPANY, template_code="FAP-TPL-PINV").one()
+            self.assertEqual(template.source_type, "purchase_invoice")
+            self.assertEqual(session.query(LyFinanceApprovalTemplateNode).filter_by(template_id=template.id).count(), 1)
 
         replayed = self.client.post(
             "/api/finance/approval-tasks",
@@ -275,10 +287,21 @@ class FinanceApprovalApiTest(unittest.TestCase):
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json()["data"]["total"], 1)
 
+        listed_templates = self.client.get(
+            "/api/finance/approval-tasks/templates",
+            params={"company": self.COMPANY, "source_type": "purchase_invoice"},
+            headers=self._headers(request_id="req-fin-list-templates-pinv"),
+        )
+        self.assertEqual(listed_templates.status_code, 200)
+        template_data = listed_templates.json()["data"]
+        self.assertEqual(template_data["total"], 1)
+        self.assertEqual(template_data["items"][0]["template_code"], "FAP-TPL-PINV")
+        self.assertEqual(template_data["items"][0]["nodes"][0]["approver_role"], "Finance Manager")
+
         approved = self.client.post(
             f"/api/finance/approval-tasks/{created_data['id']}/approve",
             json={"operation": "approve_task", "company": self.COMPANY, "idempotency_key": "idem-fin-approve-pinv"},
-            headers=self._headers(request_id="req-fin-approve-pinv"),
+            headers=self._headers(role="Finance Manager", request_id="req-fin-approve-pinv"),
         )
         self.assertEqual(approved.status_code, 200)
         self.assertEqual(approved.json()["data"]["status"], "approved")

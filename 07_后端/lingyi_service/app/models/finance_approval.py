@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from sqlalchemy import CheckConstraint
+from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
+from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import Numeric
 from sqlalchemy import String
@@ -17,6 +19,66 @@ from sqlalchemy.sql import func
 from app.models.quality import IDType
 
 Base = declarative_base()
+
+
+class LyFinanceApprovalTemplate(Base):
+    """Finance approval template header for source-specific approval rules."""
+
+    __tablename__ = "ly_finance_approval_template"
+    __table_args__ = (
+        UniqueConstraint("company", "template_code", name="uk_ly_finance_approval_template_code"),
+        Index("idx_ly_finance_approval_template_source", "company", "source_type", "status"),
+        CheckConstraint(
+            "source_type IN ('purchase_invoice','purchase_payment','factory_statement_payment')",
+            name="ck_ly_finance_approval_template_source_type",
+        ),
+        CheckConstraint("status IN ('active','inactive')", name="ck_ly_finance_approval_template_status"),
+        CheckConstraint("min_amount >= 0", name="ck_ly_finance_approval_template_min_amount"),
+        CheckConstraint("max_amount IS NULL OR max_amount >= min_amount", name="ck_ly_finance_approval_template_amount_range"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生财务审批模板"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    template_code = Column(String(140), nullable=False)
+    template_name = Column(String(255), nullable=False)
+    source_type = Column(String(64), nullable=False)
+    min_amount = Column(Numeric(18, 6), nullable=False, default=0)
+    max_amount = Column(Numeric(18, 6), nullable=True)
+    status = Column(String(16), nullable=False, default="active")
+    version = Column(Integer, nullable=False, default=1)
+    remark = Column(String(500), nullable=True)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class LyFinanceApprovalTemplateNode(Base):
+    """Finance approval template node defining the role matrix."""
+
+    __tablename__ = "ly_finance_approval_template_node"
+    __table_args__ = (
+        UniqueConstraint("template_id", "sequence_no", name="uk_ly_finance_approval_template_node_seq"),
+        Index("idx_ly_finance_approval_template_node_template", "template_id", "status", "sequence_no"),
+        CheckConstraint("status IN ('active','inactive')", name="ck_ly_finance_approval_template_node_status"),
+        CheckConstraint("sequence_no >= 0", name="ck_ly_finance_approval_template_node_sequence"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生财务审批模板节点"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    template_id = Column(IDType, ForeignKey("ly_schema.ly_finance_approval_template.id"), nullable=False)
+    sequence_no = Column(Integer, nullable=False)
+    step_name = Column(String(140), nullable=False)
+    approver_role = Column(String(140), nullable=False)
+    required = Column(Boolean, nullable=False, default=True)
+    decision_type = Column(String(64), nullable=False, default="approve_or_reject")
+    status = Column(String(16), nullable=False, default="active")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 class LyFinanceApprovalTask(Base):

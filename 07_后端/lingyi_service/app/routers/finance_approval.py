@@ -93,6 +93,31 @@ def list_finance_approval_tasks(
     return _ok(data)
 
 
+@router.get("/templates")
+def list_finance_approval_templates(
+    request: Request,
+    company: str | None = Query(default="默认公司"),
+    source_type: str | None = Query(default=None),
+    status: str | None = Query(default="active"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _require_action(session=session, request=request, current_user=current_user, action=FINANCE_APPROVAL_READ)
+    try:
+        data = FinanceApprovalService(session).list_templates(
+            company=company,
+            source_type=source_type,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(data)
+
+
 @router.post("")
 @router.post("/")
 def create_finance_approval_task(
@@ -158,7 +183,12 @@ def approve_finance_approval_task(
     )
     audit = AuditService(session)
     try:
-        result = FinanceApprovalService(session).approve_task(task_id=task_id, payload=payload, actor=current_user.username)
+        result = FinanceApprovalService(session).approve_task(
+            task_id=task_id,
+            payload=payload,
+            actor=current_user.username,
+            actor_roles=current_user.roles,
+        )
         audit.record_success(
             module="finance_approval",
             action="approve_task",
@@ -212,7 +242,12 @@ def reject_finance_approval_task(
     )
     audit = AuditService(session)
     try:
-        result = FinanceApprovalService(session).reject_task(task_id=task_id, payload=payload, actor=current_user.username)
+        result = FinanceApprovalService(session).reject_task(
+            task_id=task_id,
+            payload=payload,
+            actor=current_user.username,
+            actor_roles=current_user.roles,
+        )
         audit.record_success(
             module="finance_approval",
             action="reject_task",

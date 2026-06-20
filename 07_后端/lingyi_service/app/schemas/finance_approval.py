@@ -20,6 +20,7 @@ class FinanceApprovalTaskCreateRequest(BaseModel):
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     source_type: FinanceApprovalSourceType
     source_id: int = Field(..., gt=0)
+    template_id: int | None = Field(default=None, gt=0)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     scenario_tag: str | None = Field(default=None, max_length=64)
 
@@ -31,6 +32,47 @@ class FinanceApprovalDecisionRequest(BaseModel):
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     reason: str | None = Field(default=None, max_length=500)
+
+
+class FinanceApprovalTemplateNodeItem(BaseModel):
+    """Approval template node visible to the approval page."""
+
+    id: int
+    sequence_no: int
+    step_name: str
+    approver_role: str
+    required: bool = True
+    decision_type: str = "approve_or_reject"
+    status: str = "active"
+
+
+class FinanceApprovalTemplateItem(BaseModel):
+    """Approval template header with role matrix nodes."""
+
+    id: int
+    company: str
+    template_code: str
+    template_name: str
+    source_type: FinanceApprovalSourceType
+    min_amount: Decimal
+    max_amount: Decimal | None = None
+    status: str
+    version: int
+    remark: str | None = None
+    nodes: list[FinanceApprovalTemplateNodeItem] = Field(default_factory=list)
+    created_by: str
+    created_at: datetime | None = None
+    updated_by: str | None = None
+    updated_at: datetime | None = None
+
+
+class FinanceApprovalTemplateListData(BaseModel):
+    """Paginated approval templates."""
+
+    items: list[FinanceApprovalTemplateItem]
+    total: int
+    page: int
+    page_size: int
 
 
 class FinanceApprovalTaskItem(BaseModel):
@@ -47,6 +89,11 @@ class FinanceApprovalTaskItem(BaseModel):
     amount: Decimal
     currency: str
     status: FinanceApprovalStatus
+    template_id: int | None = None
+    template_code: str | None = None
+    template_name: str | None = None
+    template_version: int | None = None
+    template_steps: list["FinanceApprovalTemplateNodeItem"] = Field(default_factory=list)
     scenario_tag: str | None = None
     submitted_by: str
     submitted_at: datetime | None = None
