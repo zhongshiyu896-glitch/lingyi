@@ -155,6 +155,23 @@ class PermissionAggregationTest(unittest.TestCase):
         self.assertTrue(agg.button_permissions["stock_entry_cancel"])
         self.assertTrue(agg.button_permissions["inventory_count"])
 
+    def test_subcontract_manager_can_open_factory_return_material_stock_actions(self) -> None:
+        agg = self._service().get_actions(
+            current_user=CurrentUser(
+                username="subcontract.manager",
+                roles=["Subcontract Manager"],
+                is_service_account=False,
+                source="dev_header",
+            ),
+            request_obj=_build_request(),
+            module="warehouse",
+        )
+        self.assertIn("warehouse:read", agg.actions)
+        self.assertIn("warehouse:stock_entry_draft", agg.actions)
+        self.assertTrue(agg.button_permissions["read"])
+        self.assertTrue(agg.button_permissions["stock_entry_draft"])
+        self.assertFalse(agg.button_permissions["stock_entry_cancel"])
+
     def test_business_module_button_permissions_are_projected(self) -> None:
         cases = [
             (

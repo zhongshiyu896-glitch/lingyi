@@ -348,6 +348,8 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_CONFIRM,
         FACTORY_STATEMENT_CANCEL,
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
+        WAREHOUSE_READ,
+        WAREHOUSE_STOCK_ENTRY_DRAFT,
     },
     "Subcontract Operator": {
         SUBCONTRACT_READ,

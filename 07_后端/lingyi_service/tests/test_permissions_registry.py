@@ -219,6 +219,12 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
         self.assertNotIn(SYSTEM_DICTIONARY_READ, actions)
         self.assertNotIn(SYSTEM_DIAGNOSTIC, actions)
 
+    def test_subcontract_manager_can_use_factory_return_material_warehouse_actions(self) -> None:
+        actions = get_static_actions_for_roles(["Subcontract Manager"])
+        self.assertIn(SUBCONTRACT_READ, actions)
+        self.assertIn(WAREHOUSE_READ, actions)
+        self.assertIn(WAREHOUSE_STOCK_ENTRY_DRAFT, actions)
+
     def test_legacy_actions_not_lost(self) -> None:
         flattened = {action for actions in MODULE_ACTION_REGISTRY.values() for action in actions}
         self.assertIn(BOM_READ, flattened)
