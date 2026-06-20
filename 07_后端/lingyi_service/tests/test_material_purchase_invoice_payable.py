@@ -344,6 +344,35 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         payload.update(overrides)
         return payload
 
+    def _approve_purchase_invoice(self, invoice_id: int, *, suffix: str = "001") -> dict[str, object]:
+        created = self.client.post(
+            "/api/finance/approval-tasks",
+            headers=self._headers(request_id=f"req-b2-invoice-approval-create-{suffix}"),
+            json={
+                "operation": "create_task",
+                "company": self.COMPANY,
+                "source_type": "purchase_invoice",
+                "source_id": invoice_id,
+                "idempotency_key": f"idem-b2-invoice-approval-create-{suffix}",
+                "scenario_tag": f"B2-PURCHASE-INVOICE-APPROVAL-{suffix}",
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        task = created.json()["data"]
+        approved = self.client.post(
+            f"/api/finance/approval-tasks/{task['id']}/approve",
+            headers=self._headers(role="Finance Manager", request_id=f"req-b2-invoice-approval-approve-{suffix}"),
+            json={
+                "operation": "approve_task",
+                "company": self.COMPANY,
+                "idempotency_key": f"idem-b2-invoice-approval-approve-{suffix}",
+                "reason": "测试采购发票审批通过",
+            },
+        )
+        self.assertEqual(approved.status_code, 200, approved.text)
+        self.assertEqual(approved.json()["data"]["status"], "approved")
+        return approved.json()["data"]
+
     def _approve_purchase_payment(self, payment_id: int, *, suffix: str = "001") -> dict[str, object]:
         created = self.client.post(
             "/api/finance/approval-tasks",
@@ -410,6 +439,16 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(created_invoice.json()["data"]["financial_ledger_payable_amount"])), Decimal("250.000000"))
         self.assertEqual(Decimal(str(created_invoice.json()["data"]["financial_ledger_cash_out_amount"])), Decimal("0"))
         self.assertFalse(created_invoice.json()["data"]["financial_ledger_closed"])
+
+        blocked_payment = self.client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=self._headers(request_id="req-b2-payment-before-invoice-approval"),
+            json=self._payment_payload(),
+        )
+        self.assertEqual(blocked_payment.status_code, 409)
+        self.assertEqual(blocked_payment.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("审批", blocked_payment.json()["message"])
+        self._approve_purchase_invoice(created_invoice.json()["data"]["id"], suffix="payable-001")
 
         created_payment = self.client.post(
             "/api/material-purchase/purchase-payments",
@@ -513,6 +552,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             json=self._invoice_payload(),
         )
         self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+        self._approve_purchase_invoice(created_invoice.json()["data"]["id"], suffix="cancel-001")
         created_payment = self.client.post(
             "/api/material-purchase/purchase-payments",
             headers=self._headers(),
@@ -588,6 +628,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             json=self._invoice_payload(),
         )
         self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+        self._approve_purchase_invoice(created_invoice.json()["data"]["id"], suffix="second-001")
 
         first_payment = self.client.post(
             "/api/material-purchase/purchase-payments",
@@ -693,6 +734,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             json=self._invoice_payload(),
         )
         self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+        self._approve_purchase_invoice(created_invoice.json()["data"]["id"], suffix="permission-001")
         created_payment = self.client.post(
             "/api/material-purchase/purchase-payments",
             headers=self._headers(),

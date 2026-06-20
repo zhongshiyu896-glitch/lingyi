@@ -231,6 +231,36 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             "X-Request-ID": request_id,
         }
 
+    def _approve_purchase_invoice(self, invoice_id: int, *, suffix: str) -> dict[str, object]:
+        created = self.client.post(
+            "/api/finance/approval-tasks",
+            headers=self._headers(f"req-a6-invoice-approval-create-{suffix}"),
+            json={
+                "operation": "create_task",
+                "company": self.COMPANY,
+                "source_type": "purchase_invoice",
+                "source_id": invoice_id,
+                "idempotency_key": f"idem-a6-invoice-approval-create-{suffix}",
+                "scenario_tag": f"A6-PURCHASE-INVOICE-APPROVAL-{suffix}",
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        task = created.json()["data"]
+        approved = self.client.post(
+            f"/api/finance/approval-tasks/{task['id']}/approve",
+            headers=self._headers(f"req-a6-invoice-approval-approve-{suffix}"),
+            json={
+                "operation": "approve_task",
+                "company": self.COMPANY,
+                "idempotency_key": f"idem-a6-invoice-approval-approve-{suffix}",
+                "reason": "A6 采购发票审批通过",
+            },
+        )
+        self.assertEqual(approved.status_code, 200, approved.text)
+        data = approved.json()["data"]
+        self.assertEqual(data["status"], "approved")
+        return data
+
     def _approve_purchase_payment(self, payment_id: int, *, suffix: str) -> dict[str, object]:
         created = self.client.post(
             "/api/finance/approval-tasks",
@@ -1592,6 +1622,10 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(invoice_data["material_item_code"], self.MATERIAL)
         self.assertEqual(Decimal(str(invoice_data["grand_total"])), Decimal("675.000000"))
         self.assertEqual(Decimal(str(invoice_data["outstanding_amount"])), Decimal("675.000000"))
+        self._approve_purchase_invoice(
+            int(invoice_data["id"]),
+            suffix=str(purchase_no).replace("/", "-"),
+        )
 
         purchase_payment = self.client.post(
             "/api/material-purchase/purchase-payments",

@@ -1148,6 +1148,8 @@ class MaterialPurchaseService:
             raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购发票不存在")
         if str(invoice.status) == "cancelled":
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="已取消采购发票不可付款")
+        if self._finance_approval_status(invoice) != "approved":
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购发票财务审批通过后才能创建付款")
         if supplier_name is not None and supplier_name != str(invoice.supplier_name):
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="供应商与采购发票不一致")
         invoice_outstanding_before = Decimal(str(invoice.outstanding_amount or 0))
