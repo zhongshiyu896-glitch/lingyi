@@ -17,6 +17,9 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.finance_approval import Base as FinanceApprovalBase
+from app.models.finance_approval import LyFinanceApprovalOperation
+from app.models.finance_approval import LyFinanceApprovalTask
 from app.models.master_data import Base as MasterDataBase
 from app.models.master_data import LyMasterDataRecord
 from app.models.material_purchase import Base as MaterialPurchaseBase
@@ -31,6 +34,7 @@ from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
+from app.routers.finance_approval import get_db_session as finance_approval_db_dep
 from app.routers.material_purchase import get_db_session as material_purchase_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
 
@@ -58,6 +62,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         MasterDataBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        FinanceApprovalBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -67,6 +72,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
                 db.close()
 
         app.dependency_overrides[auth_db_dep] = _override_db
+        app.dependency_overrides[finance_approval_db_dep] = _override_db
         app.dependency_overrides[material_purchase_db_dep] = _override_db
         app.dependency_overrides[warehouse_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
@@ -77,6 +83,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
     def tearDownClass(cls) -> None:
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
+        app.dependency_overrides.pop(finance_approval_db_dep, None)
         app.dependency_overrides.pop(material_purchase_db_dep, None)
         app.dependency_overrides.pop(warehouse_db_dep, None)
         cls.engine.dispose()
@@ -90,6 +97,8 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyFinanceApprovalOperation).delete()
+            session.query(LyFinanceApprovalTask).delete()
             session.query(LyMaterialPurchasePaymentOperation).delete()
             session.query(LyMaterialPurchasePayment).delete()
             session.query(LyMaterialPurchaseInvoice).delete()
@@ -335,6 +344,35 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         payload.update(overrides)
         return payload
 
+    def _approve_purchase_payment(self, payment_id: int, *, suffix: str = "001") -> dict[str, object]:
+        created = self.client.post(
+            "/api/finance/approval-tasks",
+            headers=self._headers(request_id=f"req-b2-approval-create-{suffix}"),
+            json={
+                "operation": "create_task",
+                "company": self.COMPANY,
+                "source_type": "purchase_payment",
+                "source_id": payment_id,
+                "idempotency_key": f"idem-b2-approval-create-{suffix}",
+                "scenario_tag": f"B2-PURCHASE-PAYMENT-APPROVAL-{suffix}",
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        task = created.json()["data"]
+        approved = self.client.post(
+            f"/api/finance/approval-tasks/{task['id']}/approve",
+            headers=self._headers(request_id=f"req-b2-approval-approve-{suffix}"),
+            json={
+                "operation": "approve_task",
+                "company": self.COMPANY,
+                "idempotency_key": f"idem-b2-approval-approve-{suffix}",
+                "reason": "测试审批通过",
+            },
+        )
+        self.assertEqual(approved.status_code, 200, approved.text)
+        self.assertEqual(approved.json()["data"]["status"], "approved")
+        return approved.json()["data"]
+
     def test_purchase_invoice_and_payment_reduce_payable(self) -> None:
         self._create_received_purchase_order()
 
@@ -404,10 +442,23 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(overpayment.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
         self.assertEqual(Decimal(str(created_payment.json()["data"]["outstanding_before"])), Decimal("250.000000"))
         self.assertEqual(Decimal(str(created_payment.json()["data"]["outstanding_after"])), Decimal("150.000000"))
+        self.assertEqual(created_payment.json()["data"]["status"], "pending_approval")
+        self.assertEqual(created_payment.json()["data"]["docstatus"], 0)
         self.assertEqual(list_payments.status_code, 200)
         self.assertEqual(list_payments.json()["data"]["items"][0]["payment_entry"], "PP-B2-001")
         self.assertEqual(refreshed_invoices.status_code, 200)
         invoice_row = refreshed_invoices.json()["data"]["items"][0]
+        self.assertEqual(invoice_row["status"], "submitted")
+        self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("250.000000"))
+
+        approved = self._approve_purchase_payment(created_payment.json()["data"]["id"])
+        self.assertEqual(approved["source_status"], "submitted")
+        approved_invoices = self.client.get(
+            "/api/material-purchase/purchase-invoices?keyword=PINV-B2-001",
+            headers=self._headers(request_id="req-b2-approved-invoices"),
+        )
+        invoice_row = approved_invoices.json()["data"]["items"][0]
         self.assertEqual(invoice_row["status"], "partly_paid")
         self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("100.000000"))
         self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("150.000000"))
@@ -421,6 +472,8 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(line.received_qty)), Decimal("20.000000"))
             self.assertEqual(str(invoice.status), "partly_paid")
             self.assertEqual(str(payment.payment_entry), "PP-B2-001")
+            self.assertEqual(str(payment.status), "submitted")
+            self.assertEqual(payment.payload["finance_approval"]["status"], "approved")
             audit_actions = [row.action for row in session.query(LyOperationAuditLog).all()]
             self.assertGreaterEqual(audit_actions.count("material_purchase:write"), 3)
 
@@ -454,6 +507,8 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         )
         self.assertEqual(created_payment.status_code, 201, created_payment.text)
         payment_id = created_payment.json()["data"]["id"]
+        self.assertEqual(created_payment.json()["data"]["status"], "pending_approval")
+        self._approve_purchase_payment(payment_id, suffix="cancel-001")
 
         cancelled = self.client.post(
             f"/api/material-purchase/purchase-payments/{payment_id}/cancel",
@@ -535,15 +590,19 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
                 scenario_tag="B2-PURCHASE-PAYMENT-002",
             ),
         )
-        paid_invoices = self.client.get(
-            "/api/material-purchase/purchase-invoices?keyword=PINV-B2-001",
-            headers=self._headers(),
-        )
 
         self.assertEqual(first_payment.status_code, 201, first_payment.text)
         self.assertEqual(second_payment.status_code, 201, second_payment.text)
+        self.assertEqual(first_payment.json()["data"]["status"], "pending_approval")
+        self.assertEqual(second_payment.json()["data"]["status"], "pending_approval")
         self.assertEqual(Decimal(str(second_payment.json()["data"]["outstanding_before"])), Decimal("150.000000"))
         self.assertEqual(Decimal(str(second_payment.json()["data"]["outstanding_after"])), Decimal("0.000000"))
+        self._approve_purchase_payment(first_payment.json()["data"]["id"], suffix="second-first")
+        self._approve_purchase_payment(second_payment.json()["data"]["id"], suffix="second-second")
+        paid_invoices = self.client.get(
+            "/api/material-purchase/purchase-invoices?keyword=PINV-B2-001",
+            headers=self._headers(request_id="req-b2-paid-invoices"),
+        )
         paid_invoice = paid_invoices.json()["data"]["items"][0]
         self.assertEqual(paid_invoice["status"], "paid")
         self.assertEqual(Decimal(str(paid_invoice["paid_amount"])), Decimal("250.000000"))
@@ -625,6 +684,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         )
         self.assertEqual(created_payment.status_code, 201, created_payment.text)
         payment_id = created_payment.json()["data"]["id"]
+        self._approve_purchase_payment(payment_id, suffix="permission-001")
 
         blocked = self.client.post(
             f"/api/material-purchase/purchase-payments/{payment_id}/cancel",

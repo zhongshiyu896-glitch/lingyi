@@ -21,12 +21,16 @@ from app.models.audit import LySecurityAuditLog
 from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
+from app.models.finance_approval import Base as FinanceApprovalBase
+from app.models.finance_approval import LyFinanceApprovalOperation
+from app.models.finance_approval import LyFinanceApprovalTask
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchasePayment
+from app.models.material_purchase import LyMaterialPurchasePaymentOperation
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.master_data import Base as MasterDataBase
 from app.models.master_data import LyMasterDataRecord
@@ -55,6 +59,7 @@ from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
+from app.routers.finance_approval import get_db_session as finance_approval_db_dep
 from app.routers.material_purchase import get_db_session as material_purchase_db_dep
 from app.routers.production import get_db_session as production_db_dep
 from app.routers.sample import get_db_session as sample_db_dep
@@ -90,6 +95,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         BomBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        FinanceApprovalBase.metadata.create_all(bind=cls.engine)
         MasterDataBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
@@ -106,6 +112,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         app.dependency_overrides[sales_inventory_db_dep] = _override_db
         app.dependency_overrides[production_db_dep] = _override_db
         app.dependency_overrides[material_purchase_db_dep] = _override_db
+        app.dependency_overrides[finance_approval_db_dep] = _override_db
         app.dependency_overrides[warehouse_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
         main_module.SessionLocal = cls.SessionLocal
@@ -119,6 +126,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         app.dependency_overrides.pop(sales_inventory_db_dep, None)
         app.dependency_overrides.pop(production_db_dep, None)
         app.dependency_overrides.pop(material_purchase_db_dep, None)
+        app.dependency_overrides.pop(finance_approval_db_dep, None)
         app.dependency_overrides.pop(warehouse_db_dep, None)
         cls.engine.dispose()
 
@@ -132,9 +140,12 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyFinanceApprovalOperation).delete()
+            session.query(LyFinanceApprovalTask).delete()
             session.query(LySalesPaymentEntry).delete()
             session.query(LyDeliveryInvoiceOperation).delete()
             session.query(LyDeliveryInvoice).delete()
+            session.query(LyMaterialPurchasePaymentOperation).delete()
             session.query(LyMaterialPurchasePayment).delete()
             session.query(LyMaterialPurchaseInvoice).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
@@ -219,6 +230,36 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             "X-LY-Dev-Roles": "Purchasing Manager",
             "X-Request-ID": request_id,
         }
+
+    def _approve_purchase_payment(self, payment_id: int, *, suffix: str) -> dict[str, object]:
+        created = self.client.post(
+            "/api/finance/approval-tasks",
+            headers=self._headers(f"req-a6-approval-create-{suffix}"),
+            json={
+                "operation": "create_task",
+                "company": self.COMPANY,
+                "source_type": "purchase_payment",
+                "source_id": payment_id,
+                "idempotency_key": f"idem-a6-approval-create-{suffix}",
+                "scenario_tag": f"A6-PURCHASE-PAYMENT-APPROVAL-{suffix}",
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        task = created.json()["data"]
+        approved = self.client.post(
+            f"/api/finance/approval-tasks/{task['id']}/approve",
+            headers=self._headers(f"req-a6-approval-approve-{suffix}"),
+            json={
+                "operation": "approve_task",
+                "company": self.COMPANY,
+                "idempotency_key": f"idem-a6-approval-approve-{suffix}",
+                "reason": "A6 采购付款审批通过",
+            },
+        )
+        self.assertEqual(approved.status_code, 200, approved.text)
+        data = approved.json()["data"]
+        self.assertEqual(data["status"], "approved")
+        return data
 
     def _style_id(self) -> int:
         with self.SessionLocal() as session:
@@ -1574,8 +1615,24 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(purchase_payment.status_code, 201, purchase_payment.text)
         payment_data = purchase_payment.json()["data"]
         self.assertEqual(payment_data["purchase_no"], purchase_no)
+        self.assertEqual(payment_data["status"], "pending_approval")
         self.assertEqual(Decimal(str(payment_data["outstanding_before"])), Decimal("675.000000"))
         self.assertEqual(Decimal(str(payment_data["outstanding_after"])), Decimal("0.000000"))
+
+        pending_invoices = self.client.get(
+            f"/api/material-purchase/purchase-invoices?keyword={purchase_invoice_no}",
+            headers=self._headers("req-a6-same-chain-pinv-pending"),
+        )
+        self.assertEqual(pending_invoices.status_code, 200, pending_invoices.text)
+        pending_invoice = pending_invoices.json()["data"]["items"][0]
+        self.assertEqual(pending_invoice["status"], "submitted")
+        self.assertEqual(Decimal(str(pending_invoice["outstanding_amount"])), Decimal("675.000000"))
+
+        approval_data = self._approve_purchase_payment(
+            int(payment_data["id"]),
+            suffix=str(purchase_no).replace("/", "-"),
+        )
+        self.assertEqual(approval_data["source_status"], "submitted")
 
         paid_invoices = self.client.get(
             f"/api/material-purchase/purchase-invoices?keyword={purchase_invoice_no}",

@@ -410,6 +410,22 @@ class FinanceApprovalService:
             approval_payload["reject_reason"] = reason or task.reject_reason or "审批驳回"
         payload["finance_approval"] = approval_payload
         row.payload = payload
+        if task.source_type == "purchase_payment" and approval_status == "approved":
+            from app.services.material_purchase_service import MaterialPurchaseService
+
+            MaterialPurchaseService(self.session).apply_purchase_payment_approval(
+                payment_id=int(row.id),
+                actor=actor,
+                approved_at=when,
+            )
+        if task.source_type == "purchase_payment" and approval_status == "rejected":
+            from app.services.material_purchase_service import MaterialPurchaseService
+
+            MaterialPurchaseService(self.session).reject_pending_purchase_payment(
+                payment_id=int(row.id),
+                actor=actor,
+                rejected_at=when,
+            )
         if hasattr(row, "updated_by"):
             row.updated_by = actor
         if hasattr(row, "updated_at"):

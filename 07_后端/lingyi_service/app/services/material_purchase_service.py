@@ -1150,7 +1150,11 @@ class MaterialPurchaseService:
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="已取消采购发票不可付款")
         if supplier_name is not None and supplier_name != str(invoice.supplier_name):
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="供应商与采购发票不一致")
-        outstanding_before = Decimal(str(invoice.outstanding_amount or 0))
+        invoice_outstanding_before = Decimal(str(invoice.outstanding_amount or 0))
+        pending_amount = self._pending_purchase_payment_amount(company=company, purchase_invoice=purchase_invoice)
+        outstanding_before = invoice_outstanding_before - pending_amount
+        if outstanding_before < Decimal("0"):
+            outstanding_before = Decimal("0")
         if outstanding_before <= Decimal("0"):
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购发票无未付款余额")
         if paid_amount > outstanding_before:
@@ -1163,12 +1167,6 @@ class MaterialPurchaseService:
         outstanding_after = outstanding_before - paid_amount
         before = self._invoice_data(invoice).model_dump(mode="json")
         try:
-            invoice.paid_amount = Decimal(str(invoice.paid_amount or 0)) + paid_amount
-            invoice.outstanding_amount = outstanding_after
-            invoice.status = "paid" if outstanding_after == Decimal("0") else "partly_paid"
-            invoice.updated_by = actor
-            invoice.updated_at = datetime.now(UTC)
-
             row = LyMaterialPurchasePayment(
                 company=company,
                 payment_entry=payment_entry,
@@ -1184,8 +1182,8 @@ class MaterialPurchaseService:
                 mode_of_payment=mode_of_payment,
                 reference_no=self._optional_text(payload.reference_no),
                 reference_date=payload.reference_date,
-                status="submitted",
-                docstatus=1,
+                status="pending_approval",
+                docstatus=0,
                 source_ref=source_ref,
                 idempotency_key=idempotency_key,
                 request_hash=request_hash,
@@ -1193,6 +1191,10 @@ class MaterialPurchaseService:
                 payload={
                     "operation": "create_purchase_payment",
                     "purchase_invoice": purchase_invoice,
+                    "approval_effect": "pending",
+                    "invoice_outstanding_before": str(invoice_outstanding_before),
+                    "reserved_outstanding_before": str(outstanding_before),
+                    "reserved_outstanding_after": str(outstanding_after),
                 },
                 created_by=actor,
                 updated_by=actor,
@@ -1210,6 +1212,143 @@ class MaterialPurchaseService:
                 "payment": data.model_dump(mode="json"),
                 "invoice": self._invoice_data(invoice).model_dump(mode="json"),
             },
+            resource_id=int(row.id),
+                resource_no=str(row.payment_entry),
+        )
+
+    def apply_purchase_payment_approval(
+        self,
+        *,
+        payment_id: int,
+        actor: str,
+        approved_at: datetime | None = None,
+    ) -> PurchasePaymentMutationResult:
+        row = self._get_purchase_payment_by_id_for_update(company=None, payment_id=payment_id)
+        if row is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购付款单不存在")
+        if str(row.status) == "cancelled":
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="已取消采购付款不可生效")
+
+        invoice = (
+            self.session.query(LyMaterialPurchaseInvoice)
+            .filter(
+                LyMaterialPurchaseInvoice.company == row.company,
+                LyMaterialPurchaseInvoice.purchase_invoice == row.purchase_invoice,
+            )
+            .with_for_update()
+            .first()
+        )
+        if invoice is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购发票不存在")
+        if str(invoice.status) == "cancelled":
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="已取消采购发票不可付款")
+
+        if str(row.status) == "submitted":
+            data = self._payment_data(row)
+            snapshot = data.model_dump(mode="json")
+            return PurchasePaymentMutationResult(
+                item=data,
+                before=snapshot,
+                after=snapshot,
+                resource_id=int(row.id),
+                resource_no=str(row.payment_entry),
+                idempotent=True,
+            )
+
+        paid_amount = Decimal(str(row.paid_amount or 0))
+        outstanding_before = Decimal(str(invoice.outstanding_amount or 0))
+        if outstanding_before <= Decimal("0"):
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购发票无未付款余额")
+        if paid_amount > outstanding_before:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="付款金额超过未付款余额")
+
+        outstanding_after = outstanding_before - paid_amount
+        now = approved_at or datetime.now(UTC)
+        before = {
+            "payment": self._payment_data(row).model_dump(mode="json"),
+            "invoice": self._invoice_data(invoice).model_dump(mode="json"),
+        }
+        try:
+            invoice.paid_amount = Decimal(str(invoice.paid_amount or 0)) + paid_amount
+            invoice.outstanding_amount = outstanding_after
+            invoice.status = "paid" if outstanding_after == Decimal("0") else "partly_paid"
+            invoice.updated_by = actor
+            invoice.updated_at = now
+
+            row.outstanding_before = outstanding_before
+            row.outstanding_after = outstanding_after
+            row.status = "submitted"
+            row.docstatus = 1
+            row.updated_by = actor
+            row.updated_at = now
+            payment_payload = row.payload if isinstance(row.payload, dict) else {}
+            row.payload = {
+                **payment_payload,
+                "approval_effect": "applied",
+                "applied_by": actor,
+                "applied_at": now.isoformat(),
+            }
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+
+        data = self._payment_data(row)
+        return PurchasePaymentMutationResult(
+            item=data,
+            before=before,
+            after={
+                "payment": data.model_dump(mode="json"),
+                "invoice": self._invoice_data(invoice).model_dump(mode="json"),
+            },
+            resource_id=int(row.id),
+            resource_no=str(row.payment_entry),
+        )
+
+    def reject_pending_purchase_payment(
+        self,
+        *,
+        payment_id: int,
+        actor: str,
+        rejected_at: datetime | None = None,
+    ) -> PurchasePaymentMutationResult:
+        row = self._get_purchase_payment_by_id_for_update(company=None, payment_id=payment_id)
+        if row is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购付款单不存在")
+        if str(row.status) != "pending_approval":
+            data = self._payment_data(row)
+            snapshot = data.model_dump(mode="json")
+            return PurchasePaymentMutationResult(
+                item=data,
+                before=snapshot,
+                after=snapshot,
+                resource_id=int(row.id),
+                resource_no=str(row.payment_entry),
+                idempotent=True,
+            )
+
+        now = rejected_at or datetime.now(UTC)
+        before = self._payment_data(row).model_dump(mode="json")
+        try:
+            row.status = "cancelled"
+            row.docstatus = 2
+            row.updated_by = actor
+            row.updated_at = now
+            payment_payload = row.payload if isinstance(row.payload, dict) else {}
+            row.payload = {
+                **payment_payload,
+                "approval_effect": "rejected",
+                "rejected_by": actor,
+                "rejected_at": now.isoformat(),
+            }
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+
+        data = self._payment_data(row)
+        return PurchasePaymentMutationResult(
+            item=data,
+            before=before,
+            after=data.model_dump(mode="json"),
             resource_id=int(row.id),
             resource_no=str(row.payment_entry),
         )
@@ -1958,26 +2097,32 @@ class MaterialPurchaseService:
             .first()
         )
 
-    def _get_purchase_payment_by_id(self, *, company: str, payment_id: int) -> LyMaterialPurchasePayment | None:
-        return (
-            self.session.query(LyMaterialPurchasePayment)
-            .filter(
-                LyMaterialPurchasePayment.company == company,
-                LyMaterialPurchasePayment.id == int(payment_id),
-            )
-            .first()
-        )
+    def _get_purchase_payment_by_id(self, *, company: str | None, payment_id: int) -> LyMaterialPurchasePayment | None:
+        query = self.session.query(LyMaterialPurchasePayment).filter(LyMaterialPurchasePayment.id == int(payment_id))
+        if company is not None:
+            query = query.filter(LyMaterialPurchasePayment.company == company)
+        return query.first()
 
-    def _get_purchase_payment_by_id_for_update(self, *, company: str, payment_id: int) -> LyMaterialPurchasePayment | None:
-        return (
-            self.session.query(LyMaterialPurchasePayment)
-            .filter(
-                LyMaterialPurchasePayment.company == company,
-                LyMaterialPurchasePayment.id == int(payment_id),
+    def _get_purchase_payment_by_id_for_update(self, *, company: str | None, payment_id: int) -> LyMaterialPurchasePayment | None:
+        query = self.session.query(LyMaterialPurchasePayment).filter(LyMaterialPurchasePayment.id == int(payment_id))
+        if company is not None:
+            query = query.filter(LyMaterialPurchasePayment.company == company)
+        return query.with_for_update().first()
+
+    def _pending_purchase_payment_amount(self, *, company: str, purchase_invoice: str) -> Decimal:
+        try:
+            value = (
+                self.session.query(func.coalesce(func.sum(LyMaterialPurchasePayment.paid_amount), 0))
+                .filter(
+                    LyMaterialPurchasePayment.company == company,
+                    LyMaterialPurchasePayment.purchase_invoice == purchase_invoice,
+                    LyMaterialPurchasePayment.status == "pending_approval",
+                )
+                .scalar()
             )
-            .with_for_update()
-            .first()
-        )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return Decimal(str(value or 0))
 
     def _get_purchase_payment_by_idempotency(
         self,

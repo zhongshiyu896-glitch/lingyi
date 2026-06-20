@@ -101,6 +101,7 @@ def _create_local_tables() -> None:
     _ensure_local_material_bom_size_columns()
     _ensure_local_subcontract_create_idempotency_columns()
     _ensure_local_inventory_count_idempotency_columns()
+    _ensure_local_material_purchase_payment_pending_approval_status()
     _ensure_local_bom_company_style_columns()
     _ensure_local_production_material_uom_column()
     _ensure_local_production_quote_operation_supports_quote_actions()
@@ -535,6 +536,91 @@ def _ensure_local_inventory_count_idempotency_columns() -> None:
         )
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_whse_inv_count_company_source_ref ON ly_warehouse_inventory_count(company, source_ref)"
+        )
+
+
+def _ensure_local_material_purchase_payment_pending_approval_status() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_material_purchase_payment'"
+        ).fetchone()
+        existing_sql = str(row[0]) if row else ""
+        if not row or "'pending_approval'" in existing_sql:
+            return
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            DROP INDEX IF EXISTS uk_ly_material_purchase_payment_company_no;
+            DROP INDEX IF EXISTS uk_ly_material_purchase_payment_company_idem;
+            DROP INDEX IF EXISTS uk_ly_material_purchase_payment_company_source;
+            DROP INDEX IF EXISTS idx_ly_material_purchase_payment_invoice;
+            DROP INDEX IF EXISTS idx_ly_material_purchase_payment_supplier;
+            CREATE TABLE ly_material_purchase_payment_new (
+                id INTEGER NOT NULL,
+                company VARCHAR(140) NOT NULL,
+                payment_entry VARCHAR(140) NOT NULL,
+                purchase_invoice_id INTEGER NOT NULL,
+                purchase_invoice VARCHAR(140) NOT NULL,
+                purchase_no VARCHAR(140) NOT NULL,
+                supplier_name VARCHAR(255) NOT NULL,
+                posting_date DATE NOT NULL,
+                paid_amount NUMERIC(18, 6) NOT NULL,
+                allocated_amount NUMERIC(18, 6) NOT NULL,
+                outstanding_before NUMERIC(18, 6) NOT NULL,
+                outstanding_after NUMERIC(18, 6) NOT NULL,
+                mode_of_payment VARCHAR(140) DEFAULT 'Bank Transfer' NOT NULL,
+                reference_no VARCHAR(140),
+                reference_date DATE,
+                status VARCHAR(32) DEFAULT 'submitted' NOT NULL,
+                docstatus INTEGER DEFAULT '1' NOT NULL,
+                source_ref VARCHAR(140) NOT NULL,
+                idempotency_key VARCHAR(140) NOT NULL,
+                request_hash VARCHAR(64) NOT NULL,
+                scenario_tag VARCHAR(64),
+                payload JSON NOT NULL,
+                created_by VARCHAR(140) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                updated_by VARCHAR(140),
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                PRIMARY KEY (id),
+                CONSTRAINT ck_ly_material_purchase_payment_status CHECK (status IN ('pending_approval','submitted','cancelled')),
+                CONSTRAINT ck_ly_material_purchase_payment_amount_positive CHECK (paid_amount > 0),
+                CONSTRAINT ck_ly_material_purchase_payment_allocated_positive CHECK (allocated_amount > 0),
+                CONSTRAINT ck_ly_material_purchase_payment_before_nonnegative CHECK (outstanding_before >= 0),
+                CONSTRAINT ck_ly_material_purchase_payment_after_nonnegative CHECK (outstanding_after >= 0),
+                FOREIGN KEY(purchase_invoice_id) REFERENCES ly_material_purchase_invoice (id)
+            );
+            INSERT INTO ly_material_purchase_payment_new (
+                id, company, payment_entry, purchase_invoice_id, purchase_invoice, purchase_no,
+                supplier_name, posting_date, paid_amount, allocated_amount, outstanding_before,
+                outstanding_after, mode_of_payment, reference_no, reference_date, status, docstatus,
+                source_ref, idempotency_key, request_hash, scenario_tag, payload, created_by,
+                created_at, updated_by, updated_at
+            )
+            SELECT
+                id, company, payment_entry, purchase_invoice_id, purchase_invoice, purchase_no,
+                supplier_name, posting_date, paid_amount, allocated_amount, outstanding_before,
+                outstanding_after, mode_of_payment, reference_no, reference_date, status, docstatus,
+                source_ref, idempotency_key, request_hash, scenario_tag, payload, created_by,
+                created_at, updated_by, updated_at
+            FROM ly_material_purchase_payment;
+            DROP TABLE ly_material_purchase_payment;
+            ALTER TABLE ly_material_purchase_payment_new RENAME TO ly_material_purchase_payment;
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_material_purchase_payment_company_no
+                ON ly_material_purchase_payment (company, payment_entry);
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_material_purchase_payment_company_idem
+                ON ly_material_purchase_payment (company, idempotency_key);
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ly_material_purchase_payment_company_source
+                ON ly_material_purchase_payment (company, source_ref);
+            CREATE INDEX IF NOT EXISTS idx_ly_material_purchase_payment_invoice
+                ON ly_material_purchase_payment (company, purchase_invoice);
+            CREATE INDEX IF NOT EXISTS idx_ly_material_purchase_payment_supplier
+                ON ly_material_purchase_payment (company, supplier_name);
+            PRAGMA foreign_keys=on;
+            """
         )
 
 

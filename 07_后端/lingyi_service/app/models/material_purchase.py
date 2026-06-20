@@ -202,7 +202,10 @@ class LyMaterialPurchasePayment(Base):
         Index("uk_ly_material_purchase_payment_company_source", "company", "source_ref", unique=True),
         Index("idx_ly_material_purchase_payment_invoice", "company", "purchase_invoice"),
         Index("idx_ly_material_purchase_payment_supplier", "company", "supplier_name"),
-        CheckConstraint("status IN ('submitted','cancelled')", name="ck_ly_material_purchase_payment_status"),
+        CheckConstraint(
+            "status IN ('pending_approval','submitted','cancelled')",
+            name="ck_ly_material_purchase_payment_status",
+        ),
         CheckConstraint("paid_amount > 0", name="ck_ly_material_purchase_payment_amount_positive"),
         CheckConstraint("allocated_amount > 0", name="ck_ly_material_purchase_payment_allocated_positive"),
         CheckConstraint("outstanding_before >= 0", name="ck_ly_material_purchase_payment_before_nonnegative"),

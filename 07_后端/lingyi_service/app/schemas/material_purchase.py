@@ -14,7 +14,7 @@ from pydantic import Field
 PurchaseOrderStatus = Literal["draft", "partially_received", "received", "cancelled"]
 PurchaseRequirementStatus = Literal["pending", "purchased", "completed", "cancelled"]
 PurchaseInvoiceStatus = Literal["submitted", "partly_paid", "paid", "cancelled"]
-PurchasePaymentStatus = Literal["submitted", "cancelled"]
+PurchasePaymentStatus = Literal["pending_approval", "submitted", "cancelled"]
 
 
 class MaterialPurchaseOrderLineCreate(BaseModel):
