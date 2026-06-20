@@ -20,8 +20,11 @@ from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
 from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
+from app.models.material_purchase import LyMaterialPurchasePayment
+from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
@@ -34,6 +37,7 @@ from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
+from app.models.sales_order import LySalesPaymentEntry
 from app.models.style_profit import Base as StyleProfitBase
 from app.models.style_profit import LyStyleProfitSnapshot
 from app.routers.auth import get_db_session as auth_db_dep
@@ -83,7 +87,11 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             for model in (
                 LyStyleProfitSnapshot,
+                LySalesPaymentEntry,
                 LyDeliveryInvoice,
+                LyMaterialPurchasePayment,
+                LyMaterialPurchaseInvoice,
+                LyMaterialPurchaseRequirement,
                 LyMaterialPurchaseOrderItem,
                 LyMaterialPurchaseOrder,
                 LyProductionJobCardLink,
@@ -313,6 +321,13 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(row["snapshotNo"], "SP-RPT-001")
         self.assertEqual(row["revenueSourceStatus"], "estimated")
         self.assertEqual(row["costSourceStatus"], "actual")
+        self.assertEqual(Decimal(str(row["financialLedgerRevenueAmount"])), Decimal("0"))
+        self.assertEqual(Decimal(str(row["financialLedgerCostAmount"])), Decimal("1140"))
+        self.assertEqual(Decimal(str(row["financialLedgerGrossProfit"])), Decimal("-1140"))
+        self.assertEqual(row["financialLedgerStatus"], "partial")
+        self.assertEqual(row["financialLedgerStatusName"], "部分归集")
+        self.assertFalse(row["financialLedgerClosed"])
+        self.assertIn("利润快照 SP-RPT-001", row["financialLedgerSourceNote"])
         basis_text = "；".join(payload["data_basis"])
         pending_text = "；".join(payload["pending_b_phase_fields"])
         self.assertIn("sourceLabel/sourceStatus/hasSnapshot", basis_text)
@@ -321,15 +336,16 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertIn("B期报表继续披露经营测算/快照", basis_text)
         self.assertIn("发货开票、回款已合并为报表收入", basis_text)
         self.assertIn("工资发放、付款审批与审批模板/角色矩阵接 FastAPI 执行数据", basis_text)
-        self.assertIn("财务总账归集仍按 B 期补齐", basis_text)
+        self.assertIn("财务总账按当前可追溯来源归集为 financialLedger* 字段", basis_text)
+        self.assertNotIn("财务总账归集仍按 B 期补齐", basis_text)
         self.assertNotIn("真实毛利闭环已完成", basis_text)
         self.assertNotIn("已接本地 FastAPI 闭环", basis_text)
         self.assertNotIn("已建页面的成品入库、发货开票、回款", pending_text)
         self.assertNotIn("工资发放、采购/加工厂付款审批", pending_text)
-        self.assertIn("未生成利润快照的行仍按工序工价预测", pending_text)
+        self.assertNotIn("未生成利润快照的行仍按工序工价预测", pending_text)
         self.assertNotIn("正式多级审批模板与权限矩阵", pending_text)
         self.assertNotIn("成品入库/发货开票未建页面", pending_text)
-        self.assertIn("生成利润快照后纳入实际工票工资", row["remark"])
+        self.assertIn("financialLedger* 字段按可追溯财务来源归集", row["remark"])
 
     def test_profit_report_uses_snapshot_revenue_when_invoice_differs_from_order_amount(self) -> None:
         with self.SessionLocal() as session:
@@ -358,6 +374,10 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertFalse(row["isEstimated"])
         self.assertEqual(row["revenueSourceStatus"], "actual")
         self.assertEqual(row["costSourceStatus"], "actual")
+        self.assertEqual(Decimal(str(row["financialLedgerRevenueAmount"])), Decimal("1800"))
+        self.assertEqual(Decimal(str(row["financialLedgerCostAmount"])), Decimal("1140"))
+        self.assertEqual(Decimal(str(row["financialLedgerGrossProfit"])), Decimal("660"))
+        self.assertEqual(row["financialLedgerStatus"], "posted")
 
     def test_profit_report_uses_delivery_invoice_revenue_without_snapshot(self) -> None:
         with self.SessionLocal() as session:
@@ -448,30 +468,159 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
                 created_by="merch.user",
             )
             session.add(plan)
+            session.flush()
+            delivery_invoice = LyDeliveryInvoice(
+                company="COMP-A",
+                delivery_note="DN-RPT-INV",
+                sales_invoice="SI-RPT-INV",
+                sales_order="SO-RPT-INV",
+                customer="杭州云澜服饰",
+                item_code="STYLE-INV",
+                item_name="开票实收款式",
+                warehouse="FG-A",
+                delivered_qty=Decimal("6"),
+                uom="件",
+                rate=Decimal("150"),
+                grand_total=Decimal("900"),
+                paid_amount=Decimal("300"),
+                outstanding_amount=Decimal("600"),
+                posting_date=date(2026, 6, 18),
+                due_date=date(2026, 7, 18),
+                status="partly_paid",
+                docstatus=1,
+                source_ref="SRC-RPT-INV",
+                idempotency_key="idem-rpt-inv",
+                request_hash="hash-rpt-inv",
+                created_by="sales.user",
+            )
+            session.add(delivery_invoice)
+            session.flush()
             session.add(
-                LyDeliveryInvoice(
+                LySalesPaymentEntry(
                     company="COMP-A",
+                    payment_entry="PAY-RPT-INV",
+                    delivery_invoice_id=int(delivery_invoice.id),
                     delivery_note="DN-RPT-INV",
                     sales_invoice="SI-RPT-INV",
                     sales_order="SO-RPT-INV",
                     customer="杭州云澜服饰",
-                    item_code="STYLE-INV",
-                    item_name="开票实收款式",
-                    warehouse="FG-A",
-                    delivered_qty=Decimal("6"),
-                    uom="件",
-                    rate=Decimal("150"),
-                    grand_total=Decimal("900"),
+                    posting_date=date(2026, 6, 19),
                     paid_amount=Decimal("300"),
-                    outstanding_amount=Decimal("600"),
-                    posting_date=date(2026, 6, 18),
-                    due_date=date(2026, 7, 18),
-                    status="partly_paid",
-                    docstatus=1,
-                    source_ref="SRC-RPT-INV",
-                    idempotency_key="idem-rpt-inv",
-                    request_hash="hash-rpt-inv",
-                    created_by="sales.user",
+                    allocated_amount=Decimal("300"),
+                    outstanding_before=Decimal("900"),
+                    outstanding_after=Decimal("600"),
+                    mode_of_payment="Bank Transfer",
+                    source_ref="PAY-SRC-RPT-INV",
+                    idempotency_key="pay-idem-rpt-inv",
+                    request_hash="pay-hash-rpt-inv",
+                    created_by="cashier.user",
+                )
+            )
+            purchase_order = LyMaterialPurchaseOrder(
+                company="COMP-A",
+                purchase_no="PO-RPT-INV",
+                supplier_name="瑞兴纺织",
+                transaction_date=date(2026, 6, 9),
+                expected_delivery_date=date(2026, 6, 15),
+                status="received",
+                total_qty=Decimal("10"),
+                received_qty=Decimal("10"),
+                total_amount=Decimal("200"),
+                currency="CNY",
+                created_by="buyer.user",
+            )
+            session.add(purchase_order)
+            session.flush()
+            purchase_item = LyMaterialPurchaseOrderItem(
+                order_id=int(purchase_order.id),
+                company="COMP-A",
+                item_code="PO-RPT-INV-001",
+                material_item_code="FAB-INV",
+                material_name="开票面料",
+                qty=Decimal("10"),
+                received_qty=Decimal("10"),
+                uom="米",
+                unit_price=Decimal("20"),
+                amount=Decimal("200"),
+                warehouse="WH-A",
+            )
+            session.add(purchase_item)
+            session.flush()
+            session.add(
+                LyMaterialPurchaseRequirement(
+                    company="COMP-A",
+                    requirement_no="REQ-RPT-INV",
+                    source_type="production_plan",
+                    source_id=str(plan.id),
+                    source_no="PP-RPT-INV",
+                    plan_id=int(plan.id),
+                    bom_item_id=int(20),
+                    sales_order="SO-RPT-INV",
+                    sales_order_item="SO-RPT-INV-001",
+                    item_code="STYLE-INV",
+                    material_item_code="FAB-INV",
+                    material_name="开票面料",
+                    supplier_name="瑞兴纺织",
+                    warehouse="WH-A",
+                    required_qty=Decimal("10"),
+                    available_qty=Decimal("0"),
+                    net_required_qty=Decimal("10"),
+                    purchased_qty=Decimal("10"),
+                    received_qty=Decimal("10"),
+                    uom="米",
+                    unit_price=Decimal("20"),
+                    status="completed",
+                    purchase_order_id=int(purchase_order.id),
+                    purchase_order_item_id=int(purchase_item.id),
+                    purchase_no="PO-RPT-INV",
+                    payload={},
+                    created_by="planner.user",
+                )
+            )
+            purchase_invoice = LyMaterialPurchaseInvoice(
+                company="COMP-A",
+                purchase_invoice="PI-RPT-INV",
+                purchase_order_id=int(purchase_order.id),
+                purchase_no="PO-RPT-INV",
+                supplier_name="瑞兴纺织",
+                material_item_code="FAB-INV",
+                material_name="开票面料",
+                warehouse="WH-A",
+                qty=Decimal("10"),
+                uom="米",
+                rate=Decimal("20"),
+                grand_total=Decimal("200"),
+                paid_amount=Decimal("50"),
+                outstanding_amount=Decimal("150"),
+                posting_date=date(2026, 6, 20),
+                due_date=date(2026, 7, 20),
+                status="partly_paid",
+                docstatus=1,
+                source_ref="PI-SRC-RPT-INV",
+                idempotency_key="pi-idem-rpt-inv",
+                request_hash="pi-hash-rpt-inv",
+                created_by="buyer.user",
+            )
+            session.add(purchase_invoice)
+            session.flush()
+            session.add(
+                LyMaterialPurchasePayment(
+                    company="COMP-A",
+                    payment_entry="PPE-RPT-INV",
+                    purchase_invoice_id=int(purchase_invoice.id),
+                    purchase_invoice="PI-RPT-INV",
+                    purchase_no="PO-RPT-INV",
+                    supplier_name="瑞兴纺织",
+                    posting_date=date(2026, 6, 21),
+                    paid_amount=Decimal("50"),
+                    allocated_amount=Decimal("50"),
+                    outstanding_before=Decimal("200"),
+                    outstanding_after=Decimal("150"),
+                    mode_of_payment="Bank Transfer",
+                    source_ref="PPE-SRC-RPT-INV",
+                    idempotency_key="ppe-idem-rpt-inv",
+                    request_hash="ppe-hash-rpt-inv",
+                    created_by="cashier.user",
                 )
             )
             session.commit()
@@ -495,6 +644,16 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["totalCost"])), Decimal("250.000000"))
         self.assertEqual(Decimal(str(row["profit"])), Decimal("650.000000"))
         self.assertEqual(Decimal(str(row["grossMargin"])), Decimal("72.22"))
+        self.assertEqual(Decimal(str(row["financialLedgerRevenueAmount"])), Decimal("900.000000"))
+        self.assertEqual(Decimal(str(row["financialLedgerCostAmount"])), Decimal("200.0000000000000000000000000"))
+        self.assertEqual(Decimal(str(row["financialLedgerMaterialCostAmount"])), Decimal("200.0000000000000000000000000"))
+        self.assertEqual(Decimal(str(row["financialLedgerPayableAmount"])), Decimal("200.0000000000000000000000000"))
+        self.assertEqual(Decimal(str(row["financialLedgerCashInAmount"])), Decimal("300.000000"))
+        self.assertEqual(Decimal(str(row["financialLedgerCashOutAmount"])), Decimal("50.00000000000000000000000000"))
+        self.assertEqual(Decimal(str(row["financialLedgerGrossProfit"])), Decimal("700.0000000000000000000000000"))
+        self.assertEqual(row["financialLedgerStatus"], "posted")
+        self.assertEqual(row["financialLedgerStatusName"], "总账已归集")
+        self.assertIn("采购需求池回溯", row["financialLedgerSourceNote"])
         self.assertEqual(row["sourceType"], "delivery_invoice_actual")
         self.assertEqual(row["sourceLabel"], "发货开票/BOM估算")
         self.assertEqual(row["sourceStatus"], "mixed")

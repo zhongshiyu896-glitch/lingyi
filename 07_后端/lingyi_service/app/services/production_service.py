@@ -49,6 +49,8 @@ from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
+from app.models.material_purchase import LyMaterialPurchaseInvoice
+from app.models.material_purchase import LyMaterialPurchasePayment
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.master_data import LyMasterDataRecord
 from app.models.production import LyProductionJobCardLink
@@ -74,6 +76,7 @@ from app.models.sample import LySampleOrder
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
+from app.models.sales_order import LySalesPaymentEntry
 from app.models.style_profit import LyStyleProfitSnapshot
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
@@ -2921,11 +2924,10 @@ class ProductionService:
                 "订单利润报表可生成款式利润快照：后端从销售、BOM、库存、工票与外发真实来源收集，已生成快照的行纳入实际工票工资",
                 "样衣对比报表读取样板单成本归集；已转大货样板按 bulk_handoff_no 关联销售单并纳入样衣成本偏差",
                 "报表行通过 sourceLabel/sourceStatus/hasSnapshot 显式标识实际快照、部分估算或纯估算口径",
-                "B期报表继续披露经营测算/快照：已建成品入库、发货开票、回款、工资发放、付款审批与审批模板/角色矩阵接 FastAPI 执行数据；财务总账归集仍按 B 期补齐",
+                "B期报表继续披露经营测算/快照：已建成品入库、发货开票、回款、工资发放、付款审批与审批模板/角色矩阵接 FastAPI 执行数据",
+                "财务总账按当前可追溯来源归集为 financialLedger* 字段：收入取利润快照实际收入或发货开票，回款取销售回款，成本取利润快照实际成本，采购应付/付款按待采购需求池回溯到订单款式",
             ],
-            pending_b_phase_fields=[
-                "未生成利润快照的行仍按工序工价预测；财务总账成本归集仍按 B 期补齐口径披露",
-            ],
+            pending_b_phase_fields=[],
         )
 
     def _empty_report_suite(self, *, query: ProductionReportSuiteQuery) -> ProductionReportSuiteData:
@@ -3081,6 +3083,74 @@ class ProductionService:
                     .order_by(LyDeliveryInvoice.posting_date.desc(), LyDeliveryInvoice.id.desc())
                     .all()
                 )
+
+            sales_payment_rows = []
+            if (
+                companies
+                and sales_orders
+                and self._has_sqlite_tables({LySalesPaymentEntry.__tablename__})
+            ):
+                sales_payment_rows = (
+                    self.session.query(LySalesPaymentEntry)
+                    .filter(LySalesPaymentEntry.company.in_(companies))
+                    .filter(LySalesPaymentEntry.sales_order.in_(sales_orders))
+                    .filter(LySalesPaymentEntry.status != "cancelled")
+                    .order_by(LySalesPaymentEntry.posting_date.desc(), LySalesPaymentEntry.id.desc())
+                    .all()
+                )
+
+            purchase_requirement_rows = []
+            purchase_invoice_rows = []
+            purchase_payment_rows = []
+            if (
+                companies
+                and sales_orders
+                and item_codes
+                and self._has_sqlite_tables({LyMaterialPurchaseRequirement.__tablename__})
+            ):
+                purchase_requirement_rows = (
+                    self.session.query(LyMaterialPurchaseRequirement)
+                    .filter(LyMaterialPurchaseRequirement.company.in_(companies))
+                    .filter(LyMaterialPurchaseRequirement.sales_order.in_(sales_orders))
+                    .filter(LyMaterialPurchaseRequirement.item_code.in_(item_codes))
+                    .filter(LyMaterialPurchaseRequirement.status != "cancelled")
+                    .filter(LyMaterialPurchaseRequirement.purchase_no.isnot(None))
+                    .order_by(LyMaterialPurchaseRequirement.id.asc())
+                    .all()
+                )
+                purchase_nos = sorted({str(row.purchase_no) for row in purchase_requirement_rows if row.purchase_no})
+                purchase_material_codes = sorted(
+                    {str(row.material_item_code) for row in purchase_requirement_rows if row.material_item_code}
+                )
+                if (
+                    purchase_nos
+                    and purchase_material_codes
+                    and self._has_sqlite_tables({LyMaterialPurchaseInvoice.__tablename__})
+                ):
+                    purchase_invoice_rows = (
+                        self.session.query(LyMaterialPurchaseInvoice)
+                        .filter(LyMaterialPurchaseInvoice.company.in_(companies))
+                        .filter(LyMaterialPurchaseInvoice.purchase_no.in_(purchase_nos))
+                        .filter(LyMaterialPurchaseInvoice.material_item_code.in_(purchase_material_codes))
+                        .filter(LyMaterialPurchaseInvoice.status != "cancelled")
+                        .order_by(LyMaterialPurchaseInvoice.posting_date.desc(), LyMaterialPurchaseInvoice.id.desc())
+                        .all()
+                    )
+                purchase_invoice_nos = sorted(
+                    {str(row.purchase_invoice) for row in purchase_invoice_rows if row.purchase_invoice}
+                )
+                if (
+                    purchase_invoice_nos
+                    and self._has_sqlite_tables({LyMaterialPurchasePayment.__tablename__})
+                ):
+                    purchase_payment_rows = (
+                        self.session.query(LyMaterialPurchasePayment)
+                        .filter(LyMaterialPurchasePayment.company.in_(companies))
+                        .filter(LyMaterialPurchasePayment.purchase_invoice.in_(purchase_invoice_nos))
+                        .filter(LyMaterialPurchasePayment.status != "cancelled")
+                        .order_by(LyMaterialPurchasePayment.posting_date.desc(), LyMaterialPurchasePayment.id.desc())
+                        .all()
+                    )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -3154,6 +3224,51 @@ class ProductionService:
             if summary["latest_posting_date"] is None:
                 summary["latest_posting_date"] = invoice.posting_date
 
+        sales_order_invoice_amount_map: dict[tuple[str, str], Decimal] = {}
+        for (company, sales_order, _item_code), summary in delivery_invoice_map.items():
+            order_key = (company, sales_order)
+            sales_order_invoice_amount_map[order_key] = sales_order_invoice_amount_map.get(order_key, Decimal("0")) + self._dec(
+                summary.get("invoiced_amount")
+            )
+
+        sales_payment_amount_map: dict[tuple[str, str], Decimal] = {}
+        for payment in sales_payment_rows:
+            key = (str(payment.company), str(payment.sales_order))
+            sales_payment_amount_map[key] = sales_payment_amount_map.get(key, Decimal("0")) + self._dec(
+                payment.allocated_amount
+            )
+
+        purchase_requirement_map: dict[tuple[str, str, str], list[LyMaterialPurchaseRequirement]] = {}
+        purchase_requirement_by_purchase: dict[tuple[str, str, str], list[LyMaterialPurchaseRequirement]] = {}
+        for requirement in purchase_requirement_rows:
+            source_key = (str(requirement.company), str(requirement.sales_order or ""), str(requirement.item_code or ""))
+            purchase_key = (str(requirement.company), str(requirement.purchase_no or ""), str(requirement.material_item_code))
+            purchase_requirement_map.setdefault(source_key, []).append(requirement)
+            purchase_requirement_by_purchase.setdefault(purchase_key, []).append(requirement)
+
+        purchase_invoice_by_no: dict[tuple[str, str], LyMaterialPurchaseInvoice] = {}
+        purchase_invoice_amount_map: dict[tuple[str, str, str], Decimal] = {}
+        for invoice in purchase_invoice_rows:
+            purchase_invoice_by_no[(str(invoice.company), str(invoice.purchase_invoice))] = invoice
+            purchase_key = (str(invoice.company), str(invoice.purchase_no), str(invoice.material_item_code))
+            self._allocate_purchase_ledger_amount(
+                target=purchase_invoice_amount_map,
+                amount=self._dec(invoice.grand_total),
+                requirements=purchase_requirement_by_purchase.get(purchase_key, []),
+            )
+
+        purchase_payment_amount_map: dict[tuple[str, str, str], Decimal] = {}
+        for payment in purchase_payment_rows:
+            invoice = purchase_invoice_by_no.get((str(payment.company), str(payment.purchase_invoice)))
+            if invoice is None:
+                continue
+            purchase_key = (str(invoice.company), str(invoice.purchase_no), str(invoice.material_item_code))
+            self._allocate_purchase_ledger_amount(
+                target=purchase_payment_amount_map,
+                amount=self._dec(payment.allocated_amount),
+                requirements=purchase_requirement_by_purchase.get(purchase_key, []),
+            )
+
         return {
             "sales_map": sales_map,
             "sales_header_map": sales_header_map,
@@ -3168,7 +3283,42 @@ class ProductionService:
             "sample_cost_map": sample_cost_map,
             "sample_cost_count_map": sample_cost_count_map,
             "delivery_invoice_map": delivery_invoice_map,
+            "sales_order_invoice_amount_map": sales_order_invoice_amount_map,
+            "sales_payment_amount_map": sales_payment_amount_map,
+            "purchase_requirement_map": purchase_requirement_map,
+            "purchase_invoice_amount_map": purchase_invoice_amount_map,
+            "purchase_payment_amount_map": purchase_payment_amount_map,
         }
+
+    def _allocate_purchase_ledger_amount(
+        self,
+        *,
+        target: dict[tuple[str, str, str], Decimal],
+        amount: Decimal,
+        requirements: list[LyMaterialPurchaseRequirement],
+    ) -> None:
+        if amount <= Decimal("0") or not requirements:
+            return
+        basis_rows: list[tuple[LyMaterialPurchaseRequirement, Decimal]] = []
+        for requirement in requirements:
+            basis = self._dec(requirement.net_required_qty)
+            if basis <= Decimal("0"):
+                basis = self._dec(requirement.required_qty)
+            if basis <= Decimal("0"):
+                continue
+            basis_rows.append((requirement, basis))
+        if not basis_rows:
+            share = amount / Decimal(str(len(requirements)))
+            for requirement in requirements:
+                key = (str(requirement.company), str(requirement.sales_order or ""), str(requirement.item_code or ""))
+                target[key] = target.get(key, Decimal("0")) + share
+            return
+        total_basis = sum((basis for _requirement, basis in basis_rows), Decimal("0"))
+        if total_basis <= Decimal("0"):
+            return
+        for requirement, basis in basis_rows:
+            key = (str(requirement.company), str(requirement.sales_order or ""), str(requirement.item_code or ""))
+            target[key] = target.get(key, Decimal("0")) + (amount * basis / total_basis)
 
     def _build_report_suite_rows(
         self,
@@ -3465,6 +3615,22 @@ class ProductionService:
             received_amount=received_amount,
             receivable_outstanding=receivable_outstanding,
         )
+        financial_ledger = self._build_financial_ledger_summary(
+            company=company,
+            sales_order=sales_order,
+            item_code=item_code,
+            context=context,
+            amount=amount,
+            total_cost=total_cost,
+            material_cost=material_cost,
+            has_snapshot=has_snapshot,
+            snapshot_no=snapshot_no,
+            revenue_source_status=revenue_source_status,
+            invoiced_amount=invoiced_amount,
+            received_amount=received_amount,
+            receivable_outstanding=receivable_outstanding,
+            invoice_count=invoice_count,
+        )
         created_at = plan.created_at or datetime.utcnow()
         order_date = getattr(sales_header, "transaction_date", None) or created_at.date()
 
@@ -3491,6 +3657,7 @@ class ProductionService:
             "invoicedAmount": invoiced_amount,
             "receivedAmount": received_amount,
             "receivableOutstanding": receivable_outstanding,
+            **financial_ledger,
             "invoiceCount": invoice_count,
             "deliveryNoteCount": int(invoice_summary.get("delivery_note_count") or 0),
             "deliveredQty": delivered_qty,
@@ -3501,7 +3668,7 @@ class ProductionService:
             "financialRevenueClosed": payment_status == "paid",
             "progress": Decimal("0"),
             "delayDays": Decimal("0"),
-            "remark": "现有页：利润按本地真实订单、发货开票/回款、BOM/利润快照测算；发货开票后以实际开票收入为准；生成利润快照后纳入实际工票工资，未生成快照的成本和财务总账仍按待补口径披露。",
+            "remark": "现有页：利润按本地真实订单、发货开票/回款、BOM/利润快照测算；发货开票后以实际开票收入为准；生成利润快照后纳入实际工票工资，financialLedger* 字段按可追溯财务来源归集。",
             "sourceType": (
                 "style_profit_snapshot"
                 if has_snapshot
@@ -3519,6 +3686,97 @@ class ProductionService:
             "primaryJobCard": primary_job_card,
             "jobCardCount": len(job_cards),
         }
+
+    def _build_financial_ledger_summary(
+        self,
+        *,
+        company: str,
+        sales_order: str,
+        item_code: str,
+        context: dict[str, Any],
+        amount: Decimal,
+        total_cost: Decimal,
+        material_cost: Decimal,
+        has_snapshot: bool,
+        snapshot_no: str,
+        revenue_source_status: str,
+        invoiced_amount: Decimal,
+        received_amount: Decimal,
+        receivable_outstanding: Decimal,
+        invoice_count: int,
+    ) -> dict[str, Any]:
+        row_key = (company, sales_order, item_code)
+        order_key = (company, sales_order)
+        order_invoice_amount = self._dec(context.get("sales_order_invoice_amount_map", {}).get(order_key))
+        order_payment_amount = self._dec(context.get("sales_payment_amount_map", {}).get(order_key))
+        if order_payment_amount > Decimal("0"):
+            cash_in_amount = self._allocate_order_amount(
+                amount=order_payment_amount,
+                row_basis=invoiced_amount,
+                total_basis=order_invoice_amount,
+            )
+        else:
+            cash_in_amount = received_amount
+
+        purchase_payable_amount = self._dec(context.get("purchase_invoice_amount_map", {}).get(row_key))
+        purchase_cash_out_amount = self._dec(context.get("purchase_payment_amount_map", {}).get(row_key))
+        revenue_posted_amount = Decimal("0")
+        if revenue_source_status == "actual":
+            revenue_posted_amount = amount
+        elif invoice_count > 0:
+            revenue_posted_amount = invoiced_amount
+
+        cost_posted_amount = total_cost if has_snapshot else purchase_payable_amount
+        gross_profit_amount = revenue_posted_amount - cost_posted_amount
+        source_count = (
+            int(invoice_count)
+            + (1 if has_snapshot else 0)
+            + (1 if purchase_payable_amount > Decimal("0") else 0)
+            + (1 if purchase_cash_out_amount > Decimal("0") else 0)
+            + (1 if cash_in_amount > Decimal("0") else 0)
+        )
+        if revenue_posted_amount > Decimal("0") and cost_posted_amount > Decimal("0"):
+            payable_closed = purchase_payable_amount <= Decimal("0") or purchase_cash_out_amount >= purchase_payable_amount
+            revenue_closed = cash_in_amount >= revenue_posted_amount and receivable_outstanding <= Decimal("0")
+            ledger_status = "closed" if payable_closed and revenue_closed else "posted"
+        elif any(
+            value > Decimal("0")
+            for value in (revenue_posted_amount, cost_posted_amount, purchase_payable_amount, purchase_cash_out_amount, cash_in_amount)
+        ):
+            ledger_status = "partial"
+        else:
+            ledger_status = "estimated"
+
+        ledger_status_name = {
+            "closed": "总账已闭合",
+            "posted": "总账已归集",
+            "partial": "部分归集",
+            "estimated": "估算待归集",
+        }[ledger_status]
+        revenue_note = "利润快照实际收入" if revenue_source_status == "actual" else ("发货开票" if invoice_count > 0 else "待实际收入")
+        cost_note = f"利润快照 {snapshot_no}" if has_snapshot else ("采购应付回溯" if purchase_payable_amount > Decimal("0") else "待利润快照")
+        payable_note = "采购需求池回溯" if purchase_payable_amount > Decimal("0") else "无可追溯采购应付"
+        return {
+            "financialLedgerRevenueAmount": revenue_posted_amount,
+            "financialLedgerCostAmount": cost_posted_amount,
+            "financialLedgerMaterialCostAmount": material_cost if has_snapshot else purchase_payable_amount,
+            "financialLedgerPayableAmount": purchase_payable_amount,
+            "financialLedgerCashInAmount": cash_in_amount,
+            "financialLedgerCashOutAmount": purchase_cash_out_amount,
+            "financialLedgerGrossProfit": gross_profit_amount,
+            "financialLedgerStatus": ledger_status,
+            "financialLedgerStatusName": ledger_status_name,
+            "financialLedgerClosed": ledger_status == "closed",
+            "financialLedgerSourceCount": source_count,
+            "financialLedgerSourceNote": f"收入：{revenue_note}；成本：{cost_note}；采购应付/付款：{payable_note}",
+        }
+
+    def _allocate_order_amount(self, *, amount: Decimal, row_basis: Decimal, total_basis: Decimal) -> Decimal:
+        if amount <= Decimal("0"):
+            return Decimal("0")
+        if row_basis > Decimal("0") and total_basis > Decimal("0"):
+            return amount * row_basis / total_basis
+        return amount
 
     def _estimated_costs(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> tuple[Decimal, Decimal, Decimal]:
         planned_qty = self._dec(plan.planned_qty)
