@@ -84,6 +84,7 @@ from app.schemas.subcontract import SubcontractStockSyncRetryData
 from app.services.subcontract_migration_service import SubcontractCompanyBackfillReport
 from app.services.subcontract_migration_service import SubcontractMigrationService
 from app.services.subcontract_stock_outbox_service import SubcontractStockOutboxService
+from app.services.warehouse_service import WarehouseService
 
 
 class SubcontractService:
@@ -660,7 +661,7 @@ class SubcontractService:
         readable_suppliers: set[str] | None = None,
         readable_warehouses: set[str] | None = None,
     ) -> SubcontractReturnMaterialData:
-        """List return-material obligations inferred from real subcontract issue facts."""
+        """List return-material obligations using the warehouse return-material ledger view."""
         normalized_company = self._normalize_company(company)
         normalized_supplier = self._normalize_text(supplier)
         normalized_warehouse = self._normalize_text(warehouse)
@@ -677,43 +678,49 @@ class SubcontractService:
             return SubcontractReturnMaterialData(items=[], total=0, page=page, page_size=page_size)
 
         try:
-            query = (
-                self.session.query(LySubcontractMaterial, LySubcontractOrder, LySubcontractStockOutbox)
-                .join(LySubcontractOrder, LySubcontractOrder.id == LySubcontractMaterial.subcontract_id)
-                .outerjoin(LySubcontractStockOutbox, LySubcontractStockOutbox.id == LySubcontractMaterial.stock_outbox_id)
+            report = WarehouseService(session=self.session).list_local_factory_return_material_report(
+                company=normalized_company,
+                warehouse=normalized_warehouse,
+                item_code=normalized_item_code,
+                status=normalized_status or None,
             )
-            if normalized_supplier:
-                query = query.filter(LySubcontractOrder.supplier == normalized_supplier)
-            if normalized_item_code:
-                query = query.filter(LySubcontractMaterial.material_item_code == normalized_item_code)
-            source_rows = query.order_by(
-                LySubcontractOrder.subcontract_no.asc(),
-                LySubcontractMaterial.material_item_code.asc(),
-                LySubcontractMaterial.id.asc(),
-            ).all()
+            subcontract_nos = sorted(
+                {
+                    self._normalize_text(getattr(row, "subcontract_no", None))
+                    for row in report.items
+                    if self._normalize_text(getattr(row, "subcontract_no", None))
+                }
+            )
+            orders = (
+                self.session.query(LySubcontractOrder)
+                .filter(LySubcontractOrder.subcontract_no.in_(subcontract_nos))
+                .all()
+                if subcontract_nos
+                else []
+            )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
-        grouped: dict[tuple[str, str, int, str], dict[str, Any]] = {}
-        for material, order, outbox in source_rows:
+        order_by_no = {str(order.subcontract_no): order for order in orders}
+        items: list[SubcontractReturnMaterialItem] = []
+        for row in report.items:
+            subcontract_no = self._normalize_text(row.subcontract_no)
+            order = order_by_no.get(subcontract_no)
+            supplier_value = (
+                self._normalize_text(getattr(order, "supplier", None))
+                if order is not None
+                else self._normalize_text(row.factory_name)
+            )
             company_value = (
                 self._normalize_company(getattr(order, "company", None))
-                or self._normalize_company(getattr(material, "company", None))
-                or self._normalize_company(getattr(outbox, "company", None) if outbox is not None else None)
-                or ""
+                if order is not None
+                else normalized_company
             )
-            supplier_value = self._normalize_text(getattr(order, "supplier", None))
-            warehouse_value = (
-                self._normalize_text(getattr(outbox, "warehouse", None) if outbox is not None else None)
-                or "未指定仓库"
-            )
-            material_code = self._normalize_text(getattr(material, "material_item_code", None))
-            item_value = self._normalize_text(getattr(order, "item_code", None))
-            if not material_code:
-                continue
-            if normalized_company and company_value != normalized_company:
-                continue
-            if normalized_warehouse and warehouse_value != normalized_warehouse:
+            item_value = self._normalize_text(getattr(order, "item_code", None)) if order is not None else ""
+            material_code = self._normalize_text(row.material_code)
+            warehouse_value = self._normalize_text(row.warehouse)
+
+            if normalized_supplier and supplier_value != normalized_supplier:
                 continue
             if readable_item_codes is not None and item_value not in readable_item_codes and material_code not in readable_item_codes:
                 continue
@@ -724,76 +731,23 @@ class SubcontractService:
             if readable_warehouses is not None and warehouse_value not in readable_warehouses:
                 continue
 
-            key = (company_value, warehouse_value, int(order.id), material_code)
-            bucket = grouped.setdefault(
-                key,
-                {
-                    "company": company_value,
-                    "warehouse": warehouse_value,
-                    "order": order,
-                    "material_code": material_code,
-                    "required_qty": Decimal("0"),
-                    "issued_qty": Decimal("0"),
-                    "latest_created_at": getattr(material, "created_at", None),
-                },
-            )
-            bucket["required_qty"] = max(
-                Decimal(str(bucket["required_qty"])),
-                Decimal(str(getattr(material, "required_qty", 0) or 0)),
-            )
-            bucket["issued_qty"] = Decimal(str(bucket["issued_qty"])) + Decimal(str(getattr(material, "issued_qty", 0) or 0))
-            material_created_at = getattr(material, "created_at", None)
-            if material_created_at is not None:
-                latest_created_at = bucket.get("latest_created_at")
-                if latest_created_at is None or material_created_at > latest_created_at:
-                    bucket["latest_created_at"] = material_created_at
-
-        items: list[SubcontractReturnMaterialItem] = []
-        for index, bucket in enumerate(grouped.values(), start=1):
-            order = bucket["order"]
-            issued_qty = Decimal(str(bucket["issued_qty"])).quantize(Decimal("0.01"))
-            required_qty = Decimal(str(bucket["required_qty"]))
-            planned_qty = Decimal(str(getattr(order, "planned_qty", 0) or 0))
-            accepted_qty = Decimal(str(getattr(order, "accepted_qty", 0) or 0))
-            received_qty = Decimal(str(getattr(order, "received_qty", 0) or 0))
-            output_qty = accepted_qty if accepted_qty > Decimal("0") else received_qty
-            if planned_qty > Decimal("0") and required_qty > Decimal("0") and output_qty > Decimal("0"):
-                effective_output_qty = min(output_qty, planned_qty)
-                theoretical_usage_qty = (required_qty * effective_output_qty / planned_qty).quantize(Decimal("0.01"))
-            else:
-                theoretical_usage_qty = Decimal("0.00")
-            planned_return_qty = max((issued_qty - theoretical_usage_qty).quantize(Decimal("0.01")), Decimal("0.00"))
-            returned_qty = Decimal("0.00")
-            pending_qty = max((planned_return_qty - returned_qty).quantize(Decimal("0.01")), Decimal("0.00"))
-            if pending_qty == Decimal("0.00"):
-                status_value = "closed"
-            elif returned_qty > Decimal("0.00"):
-                status_value = "confirmed"
-            else:
-                status_value = "pending"
-            if normalized_status and status_value != normalized_status:
-                continue
-
-            created_at = bucket.get("latest_created_at")
-            report_date = created_at.date() if created_at is not None else datetime.utcnow().date()
-            subcontract_no = self._normalize_text(getattr(order, "subcontract_no", None))
             items.append(
                 SubcontractReturnMaterialItem(
-                    report_no=f"SRM-{subcontract_no}-{index:03d}",
+                    report_no=str(row.report_no),
                     subcontract_no=subcontract_no,
-                    company=str(bucket["company"]) or None,
-                    supplier=self._normalize_text(getattr(order, "supplier", None)),
-                    item_code=self._normalize_text(getattr(order, "item_code", None)),
-                    material_item_code=str(bucket["material_code"]),
-                    warehouse=str(bucket["warehouse"]),
-                    issued_qty=issued_qty,
-                    theoretical_usage_qty=theoretical_usage_qty,
-                    planned_return_qty=planned_return_qty,
-                    returned_qty=returned_qty,
-                    pending_qty=pending_qty,
-                    report_date=report_date,
-                    source_doc_no=subcontract_no,
-                    status=status_value,
+                    company=company_value,
+                    supplier=supplier_value,
+                    item_code=item_value,
+                    material_item_code=material_code,
+                    warehouse=warehouse_value,
+                    issued_qty=Decimal(str(row.issued_qty or "0")).quantize(Decimal("0.01")),
+                    theoretical_usage_qty=Decimal(str(row.theoretical_usage_qty or "0")).quantize(Decimal("0.01")),
+                    planned_return_qty=Decimal(str(row.planned_return_qty)).quantize(Decimal("0.01")),
+                    returned_qty=Decimal(str(row.returned_qty)).quantize(Decimal("0.01")),
+                    pending_qty=Decimal(str(row.pending_qty)).quantize(Decimal("0.01")),
+                    report_date=row.report_date,
+                    source_doc_no=str(row.source_doc_no),
+                    status=str(row.status),
                 )
             )
 

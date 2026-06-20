@@ -799,8 +799,25 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             headers=self._headers(request_id=request_id),
             json=payload,
         )
+        conflict_quantity = Decimal("1")
+        conflict = self.client.post(
+            f"/api/warehouse/factory-return-material-report/{report_no}/return-draft",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_ref,
+                    quantity=conflict_quantity,
+                    warehouse="WH-A",
+                    item_code="FAB-B5-FRR",
+                    business_date=self.BUSINESS_DATE,
+                )
+            ),
+            json={**payload, "quantity": str(conflict_quantity)},
+        )
         self.assertEqual(created.status_code, 201, created.text)
         self.assertEqual(replay.status_code, 201, replay.text)
+        self.assertEqual(conflict.status_code, 409, conflict.text)
+        self.assertEqual(conflict.json()["code"], "WAREHOUSE_IDEMPOTENCY_CONFLICT")
         data = created.json()["data"]
         self.assertEqual(data["draft"]["id"], replay.json()["data"]["draft"]["id"])
         self.assertEqual(data["draft"]["source_type"], "factory_return_material")

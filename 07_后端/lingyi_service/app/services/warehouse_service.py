@@ -1548,6 +1548,42 @@ class WarehouseService:
         row = next((item for item in report.items if item.report_no == normalized_report_no), None)
         if row is None:
             raise WarehouseServiceError(404, "WAREHOUSE_RETURN_REPORT_NOT_FOUND", "应退料报表记录不存在")
+        pending_qty = Decimal(str(row.pending_qty)).quantize(Decimal("0.01"))
+        return_qty = (
+            Decimal(str(payload.quantity)).quantize(Decimal("0.01"))
+            if payload.quantity is not None
+            else pending_qty
+        )
+        return_uom = self._text(payload.uom) or self._text(row.uom) or "米"
+        source_id = self._require_text(payload.source_ref, "source_ref")
+        source_report_no = self._factory_return_material_report_no_from_source(source_id)
+        if source_report_no != normalized_report_no:
+            raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", "source_ref 与应退料记录不一致")
+        expected_item_rows = [
+            {
+                "item_code": row.material_code,
+                "qty": return_qty,
+                "uom": return_uom,
+                "batch_no": None,
+                "serial_no": None,
+                "source_warehouse": None,
+                "target_warehouse": row.warehouse,
+            }
+        ]
+        expected_replay_payload = self._build_stock_entry_replay_payload(
+            company=company,
+            purpose="Material Receipt",
+            source_type=self.FACTORY_RETURN_MATERIAL_SOURCE_TYPE,
+            source_id=source_id,
+            business_date=payload.business_date,
+            source_warehouse=None,
+            target_warehouse=row.warehouse,
+            item_rows=expected_item_rows,
+            allocation_mode=None,
+            strict_failure_reason=None,
+            show_completed_forced=None,
+            finished_goods_source_id=None,
+        )
         session = self._require_session()
         existing_draft = (
             session.query(LyWarehouseStockEntryDraft)
@@ -1563,25 +1599,18 @@ class WarehouseService:
             existing_report_no = self._factory_return_material_report_no_from_source(str(existing_draft.source_id))
             if existing_report_no != normalized_report_no:
                 raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", "幂等键已用于其他应退料记录")
+            self._ensure_stock_entry_replay_matches(
+                existing_draft,
+                expected_payload=expected_replay_payload,
+                message="幂等键冲突且请求内容不一致",
+            )
             return WarehouseFactoryReturnMaterialDraftData(draft=self._build_draft_data(existing_draft), report_item=row)
-        pending_qty = Decimal(str(row.pending_qty)).quantize(Decimal("0.01"))
         if pending_qty <= Decimal("0.00"):
             raise WarehouseServiceError(409, "WAREHOUSE_RETURN_REPORT_CLOSED", "当前应退料已关闭，无需生成退料单")
-        return_qty = (
-            Decimal(str(payload.quantity)).quantize(Decimal("0.01"))
-            if payload.quantity is not None
-            else pending_qty
-        )
         if return_qty <= Decimal("0.00"):
             raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", "退料数量必须大于 0")
         if return_qty > pending_qty:
             raise WarehouseServiceError(409, "WAREHOUSE_RETURN_QTY_EXCEEDS_PENDING", "退料数量不能超过待退数量")
-        return_uom = self._text(payload.uom) or self._text(row.uom) or "米"
-
-        source_id = self._require_text(payload.source_ref, "source_ref")
-        source_report_no = self._factory_return_material_report_no_from_source(source_id)
-        if source_report_no != normalized_report_no:
-            raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", "source_ref 与应退料记录不一致")
         draft_payload = WarehouseStockEntryDraftCreateRequest(
             company=company,
             purpose="Material Receipt",

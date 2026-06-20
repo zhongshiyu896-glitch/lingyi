@@ -21,6 +21,9 @@ from app.models.subcontract import Base as SubcontractBase
 from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractOrder
 from app.models.subcontract import LySubcontractStockOutbox
+from app.models.warehouse import Base as WarehouseBase
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.subcontract import get_db_session as subcontract_db_dep
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
@@ -44,6 +47,7 @@ class SubcontractReturnMaterialsTest(unittest.TestCase):
         BomBase.metadata.create_all(bind=cls.engine)
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
         SubcontractBase.metadata.create_all(bind=cls.engine)
+        WarehouseBase.metadata.create_all(bind=cls.engine)
         with cls.SessionLocal() as session:
             session.add(
                 LyApparelBom(
@@ -86,6 +90,8 @@ class SubcontractReturnMaterialsTest(unittest.TestCase):
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_FRONTEND_READINESS_ENABLED"] = "true"
         with self.SessionLocal() as session:
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LySubcontractMaterial).delete()
             session.query(LySubcontractStockOutbox).delete()
             session.query(LySubcontractOrder).delete()
@@ -122,6 +128,7 @@ class SubcontractReturnMaterialsTest(unittest.TestCase):
                 item_code="ITEM-A",
                 warehouse="WH-ISSUE-A",
                 status="succeeded",
+                stock_entry_name="STE-RETURN-001",
                 request_id="req-return-001",
                 created_by="seed",
             )
@@ -138,6 +145,32 @@ class SubcontractReturnMaterialsTest(unittest.TestCase):
                 stock_entry_name="STE-RETURN-001",
             )
             session.add_all([order, outbox, material])
+            session.commit()
+
+    def _seed_return_draft(self, *, report_no: str, qty: Decimal) -> None:
+        with self.SessionLocal() as session:
+            draft = LyWarehouseStockEntryDraft(
+                id=100,
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="factory_return_material",
+                source_id=f"{report_no}:return:001",
+                target_warehouse="WH-ISSUE-A",
+                status="draft",
+                created_by="seed",
+                idempotency_key="idem-return-material-001",
+                event_key="event-return-material-001",
+            )
+            item = LyWarehouseStockEntryDraftItem(
+                id=101,
+                draft_id=100,
+                company="COMP-A",
+                item_code="MAT-A",
+                qty=qty,
+                uom="米",
+                target_warehouse="WH-ISSUE-A",
+            )
+            session.add_all([draft, item])
             session.commit()
 
     def test_return_materials_are_inferred_from_real_issue_facts(self) -> None:
@@ -165,6 +198,30 @@ class SubcontractReturnMaterialsTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["returned_qty"])), Decimal("0.00"))
         self.assertEqual(Decimal(str(row["pending_qty"])), Decimal("26.00"))
         self.assertEqual(row["status"], "pending")
+        self.assertTrue(str(row["report_no"]).startswith("FRR-1-"))
+
+    def test_return_materials_share_returned_qty_with_factory_return_drafts(self) -> None:
+        self._seed_issue_fact()
+        initial = self.client.get(
+            "/api/subcontract/return-materials?company=COMP-A&warehouse=WH-ISSUE-A&item_code=MAT-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(initial.status_code, 200, initial.text)
+        report_no = initial.json()["data"]["items"][0]["report_no"]
+
+        self._seed_return_draft(report_no=report_no, qty=Decimal("10"))
+        response = self.client.get(
+            "/api/subcontract/return-materials?company=COMP-A&warehouse=WH-ISSUE-A&item_code=MAT-A&status=confirmed",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        row = response.json()["data"]["items"][0]
+        self.assertEqual(row["report_no"], report_no)
+        self.assertEqual(Decimal(str(row["planned_return_qty"])), Decimal("26.00"))
+        self.assertEqual(Decimal(str(row["returned_qty"])), Decimal("10.00"))
+        self.assertEqual(Decimal(str(row["pending_qty"])), Decimal("16.00"))
+        self.assertEqual(row["status"], "confirmed")
 
     def test_empty_real_table_does_not_fall_back_to_readiness_seed(self) -> None:
         response = self.client.get("/api/subcontract/return-materials", headers=self._headers())
