@@ -43,6 +43,7 @@ from app.models.bom import LyFoundationTemplate  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.factory_statement import LyFactoryStatement  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
+from app.models.finance_approval import Base as FinanceApprovalBase  # noqa: E402
 from app.models.master_data import Base as MasterDataBase  # noqa: E402
 from app.models.master_data import LyMasterDataRecord  # noqa: E402
 from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
@@ -82,6 +83,7 @@ from app.routers.bom import get_db_session as bom_db_dep  # noqa: E402
 from app.routers.cross_module_view import get_db_session as cross_module_db_dep  # noqa: E402
 from app.routers.dashboard import get_db_session as dashboard_db_dep  # noqa: E402
 from app.routers.factory_statement import get_db_session as factory_statement_db_dep  # noqa: E402
+from app.routers.finance_approval import get_db_session as finance_approval_db_dep  # noqa: E402
 from app.routers.master_data import get_db_session as master_data_db_dep  # noqa: E402
 from app.routers.material_purchase import get_db_session as material_purchase_db_dep  # noqa: E402
 from app.routers.production import get_db_session as production_db_dep  # noqa: E402
@@ -2748,7 +2750,45 @@ def _exercise_factory_statement_payment_smoke(client: TestClient, session_local)
         headers=_headers(),
     )
     _assert(payments.status_code == 200, payments.text)
-    _assert(payments.json()["data"]["items"][0]["payment_entry"] == "FSP-SMOKE-001", "factory payment readback missing")
+    payment_row = payments.json()["data"]["items"][0]
+    payment_id = int(payment_row["id"])
+    _assert(payment_row["payment_entry"] == "FSP-SMOKE-001", "factory payment readback missing")
+    _assert(payment_row["status"] == "pending_approval", "factory payment should wait for approval before ledger impact")
+
+    approval_task = client.post(
+        "/api/finance/approval-tasks",
+        headers={
+            **_headers(),
+            "X-LY-Dev-User": "factory.statement.approver",
+            "X-LY-Dev-Roles": "System Manager",
+        },
+        json={
+            "operation": "create_task",
+            "company": company,
+            "source_type": "factory_statement_payment",
+            "source_id": payment_id,
+            "idempotency_key": f"{scenario}-IDEMP-APPROVAL-CREATE",
+            "scenario_tag": scenario,
+        },
+    )
+    _assert(approval_task.status_code == 201, approval_task.text)
+    approval_data = approval_task.json()["data"]
+    approved = client.post(
+        f"/api/finance/approval-tasks/{approval_data['id']}/approve",
+        headers={
+            **_headers(),
+            "X-LY-Dev-User": "factory.statement.approver",
+            "X-LY-Dev-Roles": "System Manager",
+        },
+        json={
+            "operation": "approve_task",
+            "company": company,
+            "idempotency_key": f"{scenario}-IDEMP-APPROVAL-APPROVE",
+            "reason": "acceptance-smoke approve factory statement payment",
+        },
+    )
+    _assert(approved.status_code == 200, approved.text)
+    _assert(approved.json()["data"]["source_status"] == "submitted", "factory payment approval source status mismatch")
 
     statements = client.get(
         f"/api/factory-statements/?company={company}&supplier={supplier}&page=1&page_size=10",
@@ -2777,6 +2817,7 @@ def main() -> int:
     QualityBase.metadata.create_all(bind=engine)
     StyleProfitBase.metadata.create_all(bind=engine)
     FactoryStatementBase.metadata.create_all(bind=engine)
+    FinanceApprovalBase.metadata.create_all(bind=engine)
     MasterDataBase.metadata.create_all(bind=engine)
     MaterialPurchaseBase.metadata.create_all(bind=engine)
     StyleMasterBase.metadata.create_all(bind=engine)
@@ -2800,6 +2841,7 @@ def main() -> int:
     app.dependency_overrides[dashboard_db_dep] = _override_db
     app.dependency_overrides[production_db_dep] = _override_db
     app.dependency_overrides[factory_statement_db_dep] = _override_db
+    app.dependency_overrides[finance_approval_db_dep] = _override_db
     app.dependency_overrides[master_data_db_dep] = _override_db
     app.dependency_overrides[material_purchase_db_dep] = _override_db
     app.dependency_overrides[quality_db_dep] = _override_db
@@ -3366,10 +3408,46 @@ def main() -> int:
             },
         )
         _assert(purchase_invoice.status_code == 201, purchase_invoice.text)
+        purchase_invoice_data = purchase_invoice.json()["data"]
+        purchase_invoice_id = int(purchase_invoice_data["id"])
         _assert(
-            Decimal(str(purchase_invoice.json()["data"]["outstanding_amount"])) == Decimal("250.000000"),
+            Decimal(str(purchase_invoice_data["outstanding_amount"])) == Decimal("250.000000"),
             "purchase invoice outstanding mismatch",
         )
+
+        purchase_invoice_approval = client.post(
+            "/api/finance/approval-tasks",
+            headers={
+                **_headers(request_id="req-material-purchase-invoice-approval-create-smoke-001"),
+                "X-LY-Dev-User": "material.purchase.approver",
+                "X-LY-Dev-Roles": "System Manager",
+            },
+            json={
+                "operation": "create_task",
+                "company": purchase_company,
+                "source_type": "purchase_invoice",
+                "source_id": purchase_invoice_id,
+                "idempotency_key": "material-purchase-invoice-approval:smoke:create:001",
+                "scenario_tag": purchase_scenario,
+            },
+        )
+        _assert(purchase_invoice_approval.status_code == 201, purchase_invoice_approval.text)
+        purchase_invoice_approval_data = purchase_invoice_approval.json()["data"]
+        approved_purchase_invoice = client.post(
+            f"/api/finance/approval-tasks/{purchase_invoice_approval_data['id']}/approve",
+            headers={
+                **_headers(request_id="req-material-purchase-invoice-approval-approve-smoke-001"),
+                "X-LY-Dev-User": "material.purchase.approver",
+                "X-LY-Dev-Roles": "System Manager",
+            },
+            json={
+                "operation": "approve_task",
+                "company": purchase_company,
+                "idempotency_key": "material-purchase-invoice-approval:smoke:approve:001",
+                "reason": "acceptance-smoke approve purchase invoice",
+            },
+        )
+        _assert(approved_purchase_invoice.status_code == 200, approved_purchase_invoice.text)
 
         purchase_payment = client.post(
             "/api/material-purchase/purchase-payments",
@@ -3391,9 +3469,50 @@ def main() -> int:
             },
         )
         _assert(purchase_payment.status_code == 201, purchase_payment.text)
+        purchase_payment_data = purchase_payment.json()["data"]
+        purchase_payment_id = int(purchase_payment_data["id"])
+        _assert(purchase_payment_data["status"] == "pending_approval", "purchase payment should wait for approval before ledger impact")
         _assert(
-            Decimal(str(purchase_payment.json()["data"]["outstanding_after"])) == Decimal("150.000000"),
+            Decimal(str(purchase_payment_data["outstanding_after"])) == Decimal("150.000000"),
             "purchase payment outstanding_after mismatch",
+        )
+
+        purchase_payment_approval = client.post(
+            "/api/finance/approval-tasks",
+            headers={
+                **_headers(request_id="req-material-purchase-payment-approval-create-smoke-001"),
+                "X-LY-Dev-User": "material.purchase.approver",
+                "X-LY-Dev-Roles": "System Manager",
+            },
+            json={
+                "operation": "create_task",
+                "company": purchase_company,
+                "source_type": "purchase_payment",
+                "source_id": purchase_payment_id,
+                "idempotency_key": "material-purchase-payment-approval:smoke:create:001",
+                "scenario_tag": purchase_scenario,
+            },
+        )
+        _assert(purchase_payment_approval.status_code == 201, purchase_payment_approval.text)
+        purchase_payment_approval_data = purchase_payment_approval.json()["data"]
+        approved_purchase_payment = client.post(
+            f"/api/finance/approval-tasks/{purchase_payment_approval_data['id']}/approve",
+            headers={
+                **_headers(request_id="req-material-purchase-payment-approval-approve-smoke-001"),
+                "X-LY-Dev-User": "material.purchase.approver",
+                "X-LY-Dev-Roles": "System Manager",
+            },
+            json={
+                "operation": "approve_task",
+                "company": purchase_company,
+                "idempotency_key": "material-purchase-payment-approval:smoke:approve:001",
+                "reason": "acceptance-smoke approve purchase payment",
+            },
+        )
+        _assert(approved_purchase_payment.status_code == 200, approved_purchase_payment.text)
+        _assert(
+            approved_purchase_payment.json()["data"]["source_status"] == "submitted",
+            "purchase payment approval source status mismatch",
         )
 
         refreshed_invoice = client.get(
@@ -3427,6 +3546,7 @@ def main() -> int:
         app.dependency_overrides.pop(dashboard_db_dep, None)
         app.dependency_overrides.pop(production_db_dep, None)
         app.dependency_overrides.pop(factory_statement_db_dep, None)
+        app.dependency_overrides.pop(finance_approval_db_dep, None)
         app.dependency_overrides.pop(master_data_db_dep, None)
         app.dependency_overrides.pop(material_purchase_db_dep, None)
         app.dependency_overrides.pop(quality_db_dep, None)
