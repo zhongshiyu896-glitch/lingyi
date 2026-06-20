@@ -1370,6 +1370,7 @@ class SalesInventoryService:
                     outstanding_amount=Decimal(str(row.outstanding_amount or 0)),
                     posting_date=row.posting_date,
                     status=str(row.status),
+                    **self._delivery_invoice_financial_ledger(row),
                 )
                 for row in rows[start : start + page_size]
             ],
@@ -5497,6 +5498,7 @@ class SalesInventoryService:
             idempotency_key=str(row.idempotency_key),
             scenario_tag=self._text(row.scenario_tag),
             warehouse_draft_id=int(row.warehouse_draft_id) if row.warehouse_draft_id is not None else None,
+            **self._delivery_invoice_financial_ledger(row),
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
@@ -5524,9 +5526,72 @@ class SalesInventoryService:
             source_ref=str(row.source_ref),
             idempotency_key=str(row.idempotency_key),
             scenario_tag=self._text(row.scenario_tag),
+            **self._sales_payment_financial_ledger(row),
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
+
+    def _delivery_invoice_financial_ledger(self, row: LyDeliveryInvoice) -> dict[str, Decimal | bool | str]:
+        revenue = Decimal(str(row.grand_total or 0))
+        cash_in = Decimal(str(row.paid_amount or 0))
+        outstanding = Decimal(str(row.outstanding_amount or 0))
+        status = str(row.status or "")
+        if status == "cancelled":
+            ledger_status = "cancelled"
+            ledger_status_name = "已取消"
+            revenue = Decimal("0")
+            cash_in = Decimal("0")
+            outstanding = Decimal("0")
+        elif outstanding <= Decimal("0"):
+            ledger_status = "closed"
+            ledger_status_name = "总账已闭合"
+        elif cash_in > Decimal("0"):
+            ledger_status = "partial"
+            ledger_status_name = "部分归集"
+        else:
+            ledger_status = "posted"
+            ledger_status_name = "总账已归集"
+        return {
+            "financial_ledger_status": ledger_status,
+            "financial_ledger_status_name": ledger_status_name,
+            "financial_ledger_revenue_amount": revenue,
+            "financial_ledger_cash_in_amount": cash_in,
+            "financial_ledger_outstanding_amount": outstanding,
+            "financial_ledger_closed": ledger_status == "closed",
+            "financial_ledger_source_note": (
+                f"销售发票 {row.sales_invoice}；应收 {revenue}；已收 {cash_in}；未收 {outstanding}"
+                if status != "cancelled"
+                else f"销售发票 {row.sales_invoice} 已取消，不计入应收总账"
+            ),
+        }
+
+    def _sales_payment_financial_ledger(self, row: LySalesPaymentEntry) -> dict[str, Decimal | bool | str]:
+        cash_in = Decimal(str(row.paid_amount or 0))
+        outstanding = Decimal(str(row.outstanding_after or 0))
+        status = str(row.status or "")
+        if status == "cancelled":
+            ledger_status = "cancelled"
+            ledger_status_name = "已取消"
+            cash_in = Decimal("0")
+            outstanding = Decimal("0")
+        elif outstanding <= Decimal("0"):
+            ledger_status = "closed"
+            ledger_status_name = "总账已闭合"
+        else:
+            ledger_status = "partial"
+            ledger_status_name = "部分归集"
+        return {
+            "financial_ledger_status": ledger_status,
+            "financial_ledger_status_name": ledger_status_name,
+            "financial_ledger_cash_in_amount": cash_in,
+            "financial_ledger_outstanding_amount": outstanding,
+            "financial_ledger_closed": ledger_status == "closed",
+            "financial_ledger_source_note": (
+                f"销售回款 {row.payment_entry}；销售发票 {row.sales_invoice}；入账 {cash_in}；回款后未收 {outstanding}"
+                if status != "cancelled"
+                else f"销售回款 {row.payment_entry} 已作废，不计入现金入账"
+            ),
+        }
 
     def _assert_local_stock_available(
         self,

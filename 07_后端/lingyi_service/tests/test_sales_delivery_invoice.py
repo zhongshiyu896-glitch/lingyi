@@ -245,17 +245,26 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         self.assertEqual(created.status_code, 201)
         self.assertEqual(replay.status_code, 201)
         self.assertEqual(created.json()["data"]["id"], replay.json()["data"]["id"])
+        self.assertEqual(created.json()["data"]["financial_ledger_status"], "posted")
+        self.assertEqual(created.json()["data"]["financial_ledger_status_name"], "总账已归集")
+        self.assertEqual(Decimal(str(created.json()["data"]["financial_ledger_revenue_amount"])), Decimal("320.000000"))
+        self.assertEqual(Decimal(str(created.json()["data"]["financial_ledger_cash_in_amount"])), Decimal("0"))
+        self.assertEqual(Decimal(str(created.json()["data"]["financial_ledger_outstanding_amount"])), Decimal("320.000000"))
+        self.assertFalse(created.json()["data"]["financial_ledger_closed"])
         self.assertEqual(conflict.status_code, 409)
         self.assertEqual(conflict.json()["code"], "SALES_DELIVERY_INVOICE_CONFLICT")
         self.assertEqual(delivery_notes.status_code, 200)
         self.assertEqual(delivery_notes.json()["data"]["items"][0]["delivery_note"], "DN-B4-001")
         self.assertEqual(sales_invoices.status_code, 200)
-        self.assertEqual(sales_invoices.json()["data"]["items"][0]["sales_invoice"], "SI-B4-001")
+        sales_invoice_row = sales_invoices.json()["data"]["items"][0]
+        self.assertEqual(sales_invoice_row["sales_invoice"], "SI-B4-001")
+        self.assertEqual(sales_invoice_row["financial_ledger_status"], "posted")
+        self.assertEqual(Decimal(str(sales_invoice_row["financial_ledger_revenue_amount"])), Decimal("320.000000"))
         self.assertEqual(delivery_invoices.status_code, 200)
-        self.assertEqual(
-            Decimal(str(delivery_invoices.json()["data"]["items"][0]["outstanding_amount"])),
-            Decimal("320.000000"),
-        )
+        delivery_invoice_row = delivery_invoices.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(delivery_invoice_row["outstanding_amount"])), Decimal("320.000000"))
+        self.assertEqual(delivery_invoice_row["financial_ledger_status"], "posted")
+        self.assertIn("销售发票 SI-B4-001", delivery_invoice_row["financial_ledger_source_note"])
         self.assertEqual(fulfillment.status_code, 200, fulfillment.text)
         fulfillment_item = fulfillment.json()["data"]["items"][0]
         self.assertEqual(fulfillment_item["sales_order"], "SO-B4-001")

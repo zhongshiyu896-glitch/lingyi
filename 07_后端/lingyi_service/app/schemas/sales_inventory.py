@@ -67,6 +67,13 @@ class SalesInvoiceItem(BaseModel):
     outstanding_amount: Decimal
     posting_date: date
     status: str
+    financial_ledger_status: str = "posted"
+    financial_ledger_status_name: str = "总账已归集"
+    financial_ledger_revenue_amount: Decimal = Decimal("0")
+    financial_ledger_cash_in_amount: Decimal = Decimal("0")
+    financial_ledger_outstanding_amount: Decimal = Decimal("0")
+    financial_ledger_closed: bool = False
+    financial_ledger_source_note: str = ""
 
 
 class SalesInvoiceListData(BaseModel):
@@ -139,6 +146,13 @@ class DeliveryInvoiceData(BaseModel):
     idempotency_key: str
     scenario_tag: str | None = None
     warehouse_draft_id: int | None = None
+    financial_ledger_status: str = "posted"
+    financial_ledger_status_name: str = "总账已归集"
+    financial_ledger_revenue_amount: Decimal = Decimal("0")
+    financial_ledger_cash_in_amount: Decimal = Decimal("0")
+    financial_ledger_outstanding_amount: Decimal = Decimal("0")
+    financial_ledger_closed: bool = False
+    financial_ledger_source_note: str = ""
     created_by: str
     created_at: datetime
 
@@ -205,6 +219,12 @@ class SalesPaymentEntryData(BaseModel):
     source_ref: str
     idempotency_key: str
     scenario_tag: str | None = None
+    financial_ledger_status: str = "partial"
+    financial_ledger_status_name: str = "部分归集"
+    financial_ledger_cash_in_amount: Decimal = Decimal("0")
+    financial_ledger_outstanding_amount: Decimal = Decimal("0")
+    financial_ledger_closed: bool = False
+    financial_ledger_source_note: str = ""
     created_by: str
     created_at: datetime
 

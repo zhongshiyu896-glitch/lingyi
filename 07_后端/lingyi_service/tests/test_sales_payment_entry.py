@@ -175,14 +175,27 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         self.assertEqual(conflict.status_code, 409)
         self.assertEqual(conflict.json()["code"], "SALES_PAYMENT_ENTRY_CONFLICT")
         self.assertEqual(payments.status_code, 200)
-        self.assertEqual(payments.json()["data"]["items"][0]["payment_entry"], "PE-B5-001")
+        payment_row = payments.json()["data"]["items"][0]
+        self.assertEqual(payment_row["payment_entry"], "PE-B5-001")
+        self.assertEqual(payment_row["financial_ledger_status"], "partial")
+        self.assertEqual(payment_row["financial_ledger_status_name"], "部分归集")
+        self.assertEqual(Decimal(str(payment_row["financial_ledger_cash_in_amount"])), Decimal("150.000000"))
+        self.assertEqual(Decimal(str(payment_row["financial_ledger_outstanding_amount"])), Decimal("250.000000"))
+        self.assertFalse(payment_row["financial_ledger_closed"])
         self.assertEqual(Decimal(str(created.json()["data"]["outstanding_before"])), Decimal("400.000000"))
         self.assertEqual(Decimal(str(created.json()["data"]["outstanding_after"])), Decimal("250.000000"))
+        self.assertEqual(created.json()["data"]["financial_ledger_status"], "partial")
         self.assertEqual(sales_invoices.status_code, 200)
         invoice_row = sales_invoices.json()["data"]["items"][0]
         self.assertEqual(invoice_row["status"], "partly_paid")
         self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("150.000000"))
         self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("250.000000"))
+        self.assertEqual(invoice_row["financial_ledger_status"], "partial")
+        self.assertEqual(invoice_row["financial_ledger_status_name"], "部分归集")
+        self.assertEqual(Decimal(str(invoice_row["financial_ledger_revenue_amount"])), Decimal("400.000000"))
+        self.assertEqual(Decimal(str(invoice_row["financial_ledger_cash_in_amount"])), Decimal("150.000000"))
+        self.assertEqual(Decimal(str(invoice_row["financial_ledger_outstanding_amount"])), Decimal("250.000000"))
+        self.assertFalse(invoice_row["financial_ledger_closed"])
 
         closed = self.client.post(
             "/api/sales-inventory/payment-entries",
@@ -197,6 +210,20 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         )
         self.assertEqual(closed.status_code, 201)
         self.assertEqual(Decimal(str(closed.json()["data"]["outstanding_after"])), Decimal("0.000000"))
+        self.assertEqual(closed.json()["data"]["financial_ledger_status"], "closed")
+        self.assertEqual(closed.json()["data"]["financial_ledger_status_name"], "总账已闭合")
+        self.assertTrue(closed.json()["data"]["financial_ledger_closed"])
+
+        closed_invoices = self.client.get(
+            "/api/sales-inventory/sales-invoices?sales_order=SO-B5-001",
+            headers=self._headers(),
+        )
+        closed_invoice_row = closed_invoices.json()["data"]["items"][0]
+        self.assertEqual(closed_invoice_row["financial_ledger_status"], "closed")
+        self.assertEqual(closed_invoice_row["financial_ledger_status_name"], "总账已闭合")
+        self.assertEqual(Decimal(str(closed_invoice_row["financial_ledger_cash_in_amount"])), Decimal("400.000000"))
+        self.assertEqual(Decimal(str(closed_invoice_row["financial_ledger_outstanding_amount"])), Decimal("0.000000"))
+        self.assertTrue(closed_invoice_row["financial_ledger_closed"])
 
         with self.SessionLocal() as session:
             invoice = session.query(LyDeliveryInvoice).one()
@@ -258,6 +285,10 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         self.assertEqual(cancelled.json()["data"]["id"], replay.json()["data"]["id"])
         self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
         self.assertEqual(cancelled.json()["data"]["docstatus"], 2)
+        self.assertEqual(cancelled.json()["data"]["financial_ledger_status"], "cancelled")
+        self.assertEqual(cancelled.json()["data"]["financial_ledger_status_name"], "已取消")
+        self.assertEqual(Decimal(str(cancelled.json()["data"]["financial_ledger_cash_in_amount"])), Decimal("0"))
+        self.assertEqual(Decimal(str(cancelled.json()["data"]["financial_ledger_outstanding_amount"])), Decimal("0"))
         self.assertEqual(conflict.status_code, 409)
         self.assertEqual(conflict.json()["code"], "SALES_PAYMENT_ENTRY_CONFLICT")
         self.assertEqual(submitted_payments.status_code, 200)
@@ -268,6 +299,8 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         self.assertEqual(invoice_row["status"], "submitted")
         self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("0.000000"))
         self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("400.000000"))
+        self.assertEqual(invoice_row["financial_ledger_status"], "posted")
+        self.assertEqual(invoice_row["financial_ledger_status_name"], "总账已归集")
 
         with self.SessionLocal() as session:
             invoice = session.query(LyDeliveryInvoice).one()
