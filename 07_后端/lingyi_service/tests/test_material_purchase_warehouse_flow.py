@@ -680,6 +680,167 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             )
             self.assertEqual(audit_count, 1)
 
+    def test_purchase_order_receipt_cancel_reverses_received_qty_and_stock(self) -> None:
+        purchase_no = "PO-A5-CANCEL-001"
+        purchase_payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "purchase_no": purchase_no,
+            "supplier_name": "SUP-A",
+            "transaction_date": "2026-06-16",
+            "expected_delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "idempotency_key": "idem-po-a5-cancel-001",
+            "items": [
+                {
+                    "material_item_code": self.ITEM_CODE,
+                    "material_name": "棉布",
+                    "qty": "50",
+                    "uom": "米",
+                    "unit_price": "12.5",
+                    "warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+        create_po = self.client.post("/api/material-purchase/orders", headers=self._headers(), json=purchase_payload)
+        self.assertEqual(create_po.status_code, 201, create_po.text)
+
+        receipt_idem = f"{self.SCENARIO_TAG}:idem-whse-po-a5-cancel-001"
+        receipt_source_ref = f"{self.SCENARIO_TAG}:purchase:{purchase_no}"
+        receipt_payload = {
+            "company": "COMP-A",
+            "purpose": "Material Receipt",
+            "source_type": "material_purchase_order",
+            "source_id": receipt_source_ref,
+            "source_ref": receipt_source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "create_stock_entry_draft",
+            "quantity": "20",
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "create",
+            "scenario_tag": self.SCENARIO_TAG,
+            "target_warehouse": self.WAREHOUSE,
+            "idempotency_key": receipt_idem,
+            "items": [
+                {
+                    "item_code": self.ITEM_CODE,
+                    "qty": "20",
+                    "uom": "米",
+                    "target_warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+        receipt = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                )
+            ),
+            json=receipt_payload,
+        )
+        self.assertEqual(receipt.status_code, 201, receipt.text)
+        draft_id = int(receipt.json()["data"]["id"])
+
+        audit_payload = {
+            "reason": "采购入库审核后准备反审核",
+            "idempotency_key": receipt_idem,
+            "source_ref": receipt_source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "audit_stock_entry_draft",
+            "quantity": "20",
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "audit",
+            "scenario_tag": self.SCENARIO_TAG,
+        }
+        audit_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                    operation="audit_stock_entry_draft",
+                    status_action="audit",
+                )
+            ),
+            json=audit_payload,
+        )
+        self.assertEqual(audit_response.status_code, 200, audit_response.text)
+        self.assertEqual(audit_response.json()["data"]["status"], "pending_outbox")
+
+        before_cancel_receipts = self.client.get(
+            f"/api/warehouse/purchase-receipts?company=COMP-A&purchase_no={purchase_no}",
+            headers=self._headers(),
+        )
+        self.assertEqual(before_cancel_receipts.status_code, 200, before_cancel_receipts.text)
+        self.assertEqual(before_cancel_receipts.json()["data"]["total"], 1)
+
+        cancel_payload = {
+            "reason": "采购入库反审核回退",
+            "idempotency_key": receipt_idem,
+            "source_ref": receipt_source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "cancel_stock_entry_draft",
+            "quantity": "20",
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "cancel",
+            "scenario_tag": self.SCENARIO_TAG,
+        }
+        cancel_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                    operation="cancel_stock_entry_draft",
+                    status_action="cancel",
+                )
+            ),
+            json=cancel_payload,
+        )
+        purchase_receipts = self.client.get(
+            f"/api/warehouse/purchase-receipts?company=COMP-A&purchase_no={purchase_no}",
+            headers=self._headers(),
+        )
+        stock_ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company=COMP-A&item_code={self.ITEM_CODE}&warehouse={self.WAREHOUSE}",
+            headers=self._headers(),
+        )
+        stock_summary = self.client.get(
+            f"/api/warehouse/stock-summary?company=COMP-A&item_code={self.ITEM_CODE}&warehouse={self.WAREHOUSE}",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(cancel_response.status_code, 200, cancel_response.text)
+        self.assertEqual(cancel_response.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancel_response.json()["data"]["outbox"]["status"], "cancelled")
+        self.assertEqual(purchase_receipts.status_code, 200, purchase_receipts.text)
+        self.assertEqual(purchase_receipts.json()["data"]["total"], 0)
+        self.assertEqual(purchase_receipts.json()["data"]["items"], [])
+        self.assertEqual(stock_ledger.status_code, 200, stock_ledger.text)
+        self.assertEqual(stock_ledger.json()["data"]["items"], [])
+        self.assertEqual(stock_ledger.json()["data"]["total"], 0)
+        self.assertEqual(stock_summary.status_code, 200, stock_summary.text)
+        self.assertEqual(stock_summary.json()["data"]["items"], [])
+
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).one()
+            line = session.query(LyMaterialPurchaseOrderItem).one()
+            draft = session.query(LyWarehouseStockEntryDraft).one()
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).one()
+            self.assertEqual(str(order.status), "draft")
+            self.assertEqual(Decimal(str(order.received_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("0.000000"))
+            self.assertEqual(str(draft.status), "cancelled")
+            self.assertEqual(str(outbox.status), "cancelled")
+
     def test_factory_return_material_report_does_not_estimate_without_subcontract_issue_fact(self) -> None:
         receipt_idem = f"{self.SCENARIO_TAG}:receipt:FRR-LOCAL-IDEM"
         receipt_source_ref = f"{self.SCENARIO_TAG}:receipt:FRR-LOCAL-SRC"
