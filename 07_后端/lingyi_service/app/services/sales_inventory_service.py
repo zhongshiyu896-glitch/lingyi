@@ -1709,7 +1709,14 @@ class SalesInventoryService:
                 if item_name and not self._contains_like(line.item_name, item_name):
                     continue
                 ordered_qty = self._decimal_or_zero(line.qty)
-                actual_qty = Decimal("0")
+                line_delivered_qty = self._decimal_or_zero(line.delivered_qty)
+                invoice_delivered_qty = self._local_delivery_invoice_delivered_qty(
+                    company=detail.company,
+                    sales_order=detail.name,
+                    item_code=line.item_code,
+                    warehouse=line.warehouse,
+                )
+                actual_qty = line_delivered_qty if line_delivered_qty >= invoice_delivered_qty else invoice_delivered_qty
                 rows.append(
                     SalesOrderFulfillmentItem(
                         company=detail.company,
@@ -1723,6 +1730,35 @@ class SalesInventoryService:
                 )
         rows.sort(key=lambda row: (row.sales_order, row.item_code, row.warehouse or ""))
         return SalesOrderFulfillmentData(company=company, items=rows)
+
+    def _local_delivery_invoice_delivered_qty(
+        self,
+        *,
+        company: str | None,
+        sales_order: str,
+        item_code: str,
+        warehouse: str | None,
+    ) -> Decimal:
+        session = self._require_session()
+        query = session.query(LyDeliveryInvoice).filter(
+            LyDeliveryInvoice.sales_order == sales_order,
+            LyDeliveryInvoice.item_code == item_code,
+            LyDeliveryInvoice.status != "cancelled",
+        )
+        if company:
+            query = query.filter(LyDeliveryInvoice.company == company)
+        if warehouse:
+            query = query.filter(LyDeliveryInvoice.warehouse == warehouse)
+        total = Decimal("0")
+        try:
+            rows = query.all()
+        except Exception as exc:
+            if self._is_missing_delivery_invoice_table(exc):
+                return total
+            raise
+        for row in rows:
+            total += Decimal(str(row.delivered_qty or 0))
+        return total
 
     def get_stock_summary(
         self,
@@ -5719,6 +5755,11 @@ class SalesInventoryService:
     def _is_missing_legacy_sales_order_table(exc: BaseException) -> bool:
         message = str(exc).lower()
         return "ly_warehouse_stock_entry" in message and ("no such table" in message or "does not exist" in message)
+
+    @staticmethod
+    def _is_missing_delivery_invoice_table(exc: BaseException) -> bool:
+        message = str(exc).lower()
+        return "ly_delivery_invoice" in message and ("no such table" in message or "does not exist" in message)
 
     @classmethod
     def _normalize_reference_type(cls, value: str) -> str:

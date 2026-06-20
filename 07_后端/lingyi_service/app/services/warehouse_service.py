@@ -3423,7 +3423,7 @@ class WarehouseService:
             )
             .filter(
                 LyWarehouseStockEntryOutboxEvent.status.in_(["in_pending", "failed"]),
-                LyWarehouseStockEntryDraft.status == "pending_outbox",
+                LyWarehouseStockEntryDraft.status.in_(["pending_outbox", "cancelled"]),
             )
             .order_by(LyWarehouseStockEntryOutboxEvent.id.asc())
             .limit(max(1, int(batch_size)))

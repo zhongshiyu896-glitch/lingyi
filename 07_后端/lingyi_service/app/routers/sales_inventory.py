@@ -3576,7 +3576,14 @@ def get_sales_order_fulfillment(
                 item_name=_scope_text(item_name),
             )
         except ERPNextAdapterException as exc:
-            if (_local_read_fallback_enabled(exc) or _is_local_sales_order_write_enabled()) and local_fulfillment is not None:
+            if _local_read_fallback_enabled(exc) or _is_local_sales_order_write_enabled():
+                if local_fulfillment is None:
+                    local_fulfillment = _write_service(session).get_local_sales_order_fulfillment(
+                        company=company,
+                        item_code=_scope_text(item_code),
+                        warehouse=_scope_text(warehouse),
+                        item_name=_scope_text(item_name),
+                    )
                 data = local_fulfillment
             else:
                 _handle_erpnext_error(

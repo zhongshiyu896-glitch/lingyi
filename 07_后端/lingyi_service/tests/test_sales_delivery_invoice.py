@@ -237,6 +237,10 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
             "/api/sales-inventory/delivery-invoices?keyword=SI-B4-001",
             headers=self._headers(),
         )
+        fulfillment = self.client.get(
+            "/api/sales-inventory/sales-order-fulfillment?company=COMP-A&item_code=DEMO-TEE&warehouse=WH-FG",
+            headers=self._headers(),
+        )
 
         self.assertEqual(created.status_code, 201)
         self.assertEqual(replay.status_code, 201)
@@ -252,6 +256,12 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
             Decimal(str(delivery_invoices.json()["data"]["items"][0]["outstanding_amount"])),
             Decimal("320.000000"),
         )
+        self.assertEqual(fulfillment.status_code, 200, fulfillment.text)
+        fulfillment_item = fulfillment.json()["data"]["items"][0]
+        self.assertEqual(fulfillment_item["sales_order"], "SO-B4-001")
+        self.assertEqual(Decimal(str(fulfillment_item["ordered_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(fulfillment_item["actual_qty"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(fulfillment_item["fulfillment_rate"])), Decimal("0.4"))
 
         with self.SessionLocal() as session:
             order_item = session.query(LySalesOrderItem).one()
