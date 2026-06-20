@@ -25,6 +25,7 @@ from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
+from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
@@ -33,7 +34,6 @@ from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.dashboard import get_db_session as dashboard_db_dep
-from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 
 
 class DashboardOverviewReadonlyApiTest(unittest.TestCase):
@@ -52,6 +52,7 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         AuditBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
+        QualityBase.metadata.create_all(bind=cls.engine)
         WarehouseBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -97,6 +98,43 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         }
 
     def test_dashboard_read_can_access_overview(self) -> None:
+        with self.SessionLocal() as session:
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="dashboard_seed",
+                source_id="DASH-STOCK-READ",
+                source_warehouse=None,
+                target_warehouse="WH-DASH",
+                status="draft",
+                created_by="dash.seed",
+                idempotency_key="idem-dash-stock-read",
+                event_key="event-dash-stock-read",
+            )
+            session.add(draft)
+            session.flush()
+            session.add_all(
+                [
+                    LyWarehouseStockEntryDraftItem(
+                        draft_id=int(draft.id),
+                        company="COMP-A",
+                        item_code="DASH-MAT-001",
+                        qty=Decimal("10"),
+                        uom="米",
+                        target_warehouse="WH-DASH",
+                    ),
+                    LyWarehouseStockEntryDraftItem(
+                        draft_id=int(draft.id),
+                        company="COMP-A",
+                        item_code="DASH-MAT-002",
+                        qty=Decimal("20"),
+                        uom="米",
+                        target_warehouse="WH-DASH",
+                    ),
+                ]
+            )
+            session.commit()
+
         with patch(
             "app.services.quality_service.QualityService.statistics",
             return_value=SimpleNamespace(
@@ -105,23 +143,6 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
                 total_accepted_qty=Decimal("95"),
                 total_rejected_qty=Decimal("5"),
                 total_defect_qty=Decimal("2"),
-            ),
-        ), patch(
-            "app.services.sales_inventory_service.SalesInventoryService.get_inventory_aggregation",
-            return_value=SimpleNamespace(
-                items=[
-                    SimpleNamespace(actual_qty=Decimal("10"), is_below_safety=True, is_below_reorder=False),
-                    SimpleNamespace(actual_qty=Decimal("20"), is_below_safety=False, is_below_reorder=True),
-                ]
-            ),
-        ), patch(
-            "app.services.warehouse_service.WarehouseService.get_alerts",
-            return_value=SimpleNamespace(
-                items=[
-                    SimpleNamespace(severity="high"),
-                    SimpleNamespace(severity="medium"),
-                    SimpleNamespace(severity="medium"),
-                ]
             ),
         ):
             response = self.client.get(
@@ -134,12 +155,14 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(payload["company"], "COMP-A")
         self.assertEqual(payload["quality"]["inspection_count"], 3)
         self.assertEqual(payload["sales_inventory"]["item_count"], 2)
-        self.assertEqual(payload["sales_inventory"]["below_safety_count"], 1)
-        self.assertEqual(payload["sales_inventory"]["below_reorder_count"], 1)
-        self.assertEqual(payload["warehouse"]["alert_count"], 3)
-        self.assertEqual(payload["warehouse"]["critical_alert_count"], 1)
-        self.assertEqual(payload["warehouse"]["warning_alert_count"], 2)
+        self.assertEqual(Decimal(str(payload["sales_inventory"]["total_actual_qty"])), Decimal("30.000000"))
+        self.assertEqual(payload["sales_inventory"]["below_safety_count"], 0)
+        self.assertEqual(payload["sales_inventory"]["below_reorder_count"], 0)
+        self.assertEqual(payload["warehouse"]["alert_count"], 0)
+        self.assertEqual(payload["warehouse"]["critical_alert_count"], 0)
+        self.assertEqual(payload["warehouse"]["warning_alert_count"], 0)
         self.assertEqual([row["module"] for row in payload["source_status"]], ["quality", "sales_inventory", "warehouse"])
+        self.assertNotIn("local_dev_static_fallback", response.text)
         self.assertIn("home_overview", payload)
         self.assertGreaterEqual(len(payload["home_overview"]["metric_cards"]), 4)
         self.assertGreaterEqual(len(payload["home_overview"]["todo_items"]), 3)
@@ -217,12 +240,6 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
                 total_rejected_qty=Decimal("0"),
                 total_defect_qty=Decimal("0"),
             ),
-        ), patch(
-            "app.services.sales_inventory_service.SalesInventoryService.get_inventory_aggregation",
-            return_value=SimpleNamespace(items=[]),
-        ), patch(
-            "app.services.warehouse_service.WarehouseService.get_alerts",
-            return_value=SimpleNamespace(items=[]),
         ):
             response = self.client.get(
                 "/api/dashboard/overview?company=COMP-A",
@@ -278,12 +295,6 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
                 total_rejected_qty=Decimal("0"),
                 total_defect_qty=Decimal("0"),
             ),
-        ), patch(
-            "app.services.dashboard_service.ERPNextSalesInventoryAdapter",
-            side_effect=AssertionError("dashboard fastapi mode must not construct ERPNext sales adapter"),
-        ), patch(
-            "app.services.dashboard_service.ERPNextWarehouseAdapter",
-            side_effect=AssertionError("dashboard fastapi mode must not construct ERPNext warehouse adapter"),
         ):
             response = self.client.get(
                 "/api/dashboard/overview?company=COMP-A",
@@ -352,12 +363,8 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
                 total_defect_qty=Decimal("0"),
             ),
         ), patch(
-            "app.services.sales_inventory_service.SalesInventoryService.get_inventory_aggregation",
-            side_effect=ERPNextAdapterException(
-                error_code="EXTERNAL_SERVICE_UNAVAILABLE",
-                http_status=503,
-                safe_message="sales source unavailable",
-            ),
+            "app.services.warehouse_service.WarehouseService.get_local_stock_summary",
+            side_effect=RuntimeError("local stock source unavailable"),
         ):
             response = self.client.get(
                 "/api/dashboard/overview?company=COMP-A",

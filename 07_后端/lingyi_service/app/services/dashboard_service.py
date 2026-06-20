@@ -30,12 +30,7 @@ from app.schemas.dashboard import DashboardQualityOverviewData
 from app.schemas.dashboard import DashboardSalesInventoryOverviewData
 from app.schemas.dashboard import DashboardSourceStatusData
 from app.schemas.dashboard import DashboardWarehouseOverviewData
-from app.core.permissions import get_permission_source
-from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
-from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
-from app.services.erpnext_warehouse_adapter import ERPNextWarehouseAdapter
 from app.services.quality_service import QualityService
-from app.services.sales_inventory_service import SalesInventoryService
 from app.services.warehouse_service import WarehouseService
 
 
@@ -54,14 +49,8 @@ class DashboardService:
     def __init__(self, *, session: Session, request_obj: Request):
         self.session = session
         self.request_obj = request_obj
-        self.use_fastapi_sources = get_permission_source() == "fastapi"
         self.quality_service = QualityService(session=session)
-        if self.use_fastapi_sources:
-            self.sales_inventory_service = SalesInventoryService(session=session)
-            self.warehouse_service = WarehouseService(session=session)
-        else:
-            self.sales_inventory_service = SalesInventoryService(adapter=ERPNextSalesInventoryAdapter(request_obj=request_obj))
-            self.warehouse_service = WarehouseService(adapter=ERPNextWarehouseAdapter(request_obj=request_obj))
+        self.warehouse_service = WarehouseService(session=session)
 
     def get_overview(
         self,
@@ -490,18 +479,11 @@ class DashboardService:
         warehouse: str | None,
     ) -> DashboardSalesInventoryOverviewData:
         try:
-            if self.use_fastapi_sources:
-                aggregation = self.warehouse_service.get_local_stock_summary(
-                    company=company,
-                    item_code=item_code,
-                    warehouse=warehouse,
-                )
-            else:
-                aggregation = self.sales_inventory_service.get_inventory_aggregation(
-                    company=company,
-                    item_code=item_code,
-                    warehouse=warehouse,
-                )
+            aggregation = self.warehouse_service.get_local_stock_summary(
+                company=company,
+                item_code=item_code,
+                warehouse=warehouse,
+            )
         except Exception as exc:  # noqa: BLE001 - fail-closed on any sales-inventory source failure.
             raise self._source_unavailable(module="sales_inventory", exc=exc) from exc
 
@@ -524,25 +506,16 @@ class DashboardService:
         warehouse: str | None,
     ) -> DashboardWarehouseOverviewData:
         try:
-            if self.use_fastapi_sources:
-                summary = self.warehouse_service.get_local_stock_summary(
-                    company=company,
-                    warehouse=warehouse,
-                    item_code=item_code,
-                )
-                rows = [
-                    self._local_stock_alert_proxy(row)
-                    for row in summary.items
-                    if bool(getattr(row, "is_below_reorder", False)) or bool(getattr(row, "is_below_safety", False))
-                ]
-            else:
-                alerts = self.warehouse_service.get_alerts(
-                    company=company,
-                    warehouse=warehouse,
-                    item_code=item_code,
-                    alert_type=None,
-                )
-                rows = list(getattr(alerts, "items", []) or [])
+            summary = self.warehouse_service.get_local_stock_summary(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+            )
+            rows = [
+                self._local_stock_alert_proxy(row)
+                for row in summary.items
+                if bool(getattr(row, "is_below_reorder", False)) or bool(getattr(row, "is_below_safety", False))
+            ]
         except Exception as exc:  # noqa: BLE001 - fail-closed on any warehouse source failure.
             raise self._source_unavailable(module="warehouse", exc=exc) from exc
 
@@ -570,12 +543,6 @@ class DashboardService:
     def _source_unavailable(*, module: str, exc: Exception) -> DashboardSourceUnavailableError:
         if isinstance(exc, DashboardSourceUnavailableError):
             return exc
-        if isinstance(exc, ERPNextAdapterException):
-            return DashboardSourceUnavailableError(
-                module=module,
-                message=f"{module} 来源不可用: {exc.safe_message or 'unknown'}",
-                status_code=int(exc.http_status or 503),
-            )
         return DashboardSourceUnavailableError(
             module=module,
             message=f"{module} 来源不可用",

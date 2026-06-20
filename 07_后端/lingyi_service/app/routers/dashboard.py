@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from datetime import date
-from datetime import datetime
-from datetime import UTC
-from decimal import Decimal
 import os
 from typing import Any
 
@@ -98,72 +95,6 @@ def _dev_dashboard_company_fallback_enabled() -> bool:
     return env in {"development", "dev", "local", "test"} and allow_dev_auth == "true" and get_permission_source() == "static"
 
 
-def _local_dashboard_read_fallback_enabled() -> bool:
-    env = os.getenv("APP_ENV", "").strip().lower()
-    allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
-    return env in {"development", "dev", "local"} and allow_dev_auth == "true" and get_permission_source() == "static"
-
-
-def _build_local_dashboard_read_fallback(
-    *,
-    company: str,
-    from_date: date | None,
-    to_date: date | None,
-) -> dict[str, Any]:
-    now = datetime.now(UTC)
-    return {
-        "company": company,
-        "from_date": from_date,
-        "to_date": to_date,
-        "generated_at": now,
-        "quality": {
-            "inspection_count": 0,
-            "accepted_qty": Decimal("0"),
-            "rejected_qty": Decimal("0"),
-            "defect_count": 0,
-            "pass_rate": Decimal("0"),
-        },
-        "sales_inventory": {
-            "item_count": 0,
-            "total_actual_qty": Decimal("0"),
-            "below_safety_count": 0,
-            "below_reorder_count": 0,
-        },
-        "warehouse": {
-            "alert_count": 0,
-            "critical_alert_count": 0,
-            "warning_alert_count": 0,
-        },
-        "source_status": [
-            {"module": "quality", "status": "local_dev_static_fallback"},
-            {"module": "sales_inventory", "status": "local_dev_static_fallback"},
-            {"module": "warehouse", "status": "local_dev_static_fallback"},
-        ],
-        "kanban": {
-            "board_name": "大货看板",
-            "quick_filters": [],
-            "flow_nodes": [],
-            "flow_links": [],
-            "messages": [],
-        },
-        "home_overview": {
-            "summary_title": "首页经营总览",
-            "metric_cards": [
-                {"key": "inspection_count", "label": "质检单量", "value": "0", "unit": "单", "trend": "local_dev_static_fallback"},
-                {"key": "inventory_qty", "label": "库存总量", "value": "0", "unit": "件", "trend": "local_dev_static_fallback"},
-                {"key": "quality_pass_rate", "label": "质检通过率", "value": "0", "unit": "%", "trend": "local_dev_static_fallback"},
-                {"key": "warehouse_alerts", "label": "仓储预警", "value": "0", "unit": "条", "trend": "local_dev_static_fallback"},
-            ],
-            "todo_items": [],
-            "warnings": [],
-            "business_summary": [],
-            "recent_activities": [],
-            "trend_points": [],
-            "primary_actions": [],
-        },
-    }
-
-
 @router.get("/overview")
 def get_dashboard_overview(
     request: Request,
@@ -187,7 +118,6 @@ def get_dashboard_overview(
     )
 
     normalized_company = _require_company(company)
-    is_dev_default_company = _scope_text(company) is None and _dev_dashboard_company_fallback_enabled()
     normalized_item_code = _scope_text(item_code)
     normalized_warehouse = _scope_text(warehouse)
 
@@ -210,15 +140,6 @@ def get_dashboard_overview(
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
 
-    if is_dev_default_company:
-        return _ok(
-            _build_local_dashboard_read_fallback(
-                company=normalized_company,
-                from_date=parsed_from_date,
-                to_date=parsed_to_date,
-            )
-        )
-
     try:
         data = DashboardService(session=session, request_obj=request).get_overview(
             company=normalized_company,
@@ -229,13 +150,6 @@ def get_dashboard_overview(
             keyword=_scope_text(keyword),
         )
     except DashboardSourceUnavailableError as exc:
-        if _local_dashboard_read_fallback_enabled():
-            data = _build_local_dashboard_read_fallback(
-                company=normalized_company,
-                from_date=parsed_from_date,
-                to_date=parsed_to_date,
-            )
-            return _ok(data)
         raise HTTPException(
             status_code=int(exc.status_code),
             detail={

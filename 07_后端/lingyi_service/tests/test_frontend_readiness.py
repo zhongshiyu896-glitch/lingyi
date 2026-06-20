@@ -1192,7 +1192,7 @@ class FrontendReadinessTest(unittest.TestCase):
         self.assertLessEqual(len(customers.json()["data"]["items"]), 2)
         self.assertEqual(customers.json()["data"]["page_size"], 2)
 
-    def test_dashboard_overview_without_company_uses_dev_fallback(self) -> None:
+    def test_dashboard_overview_without_company_uses_default_company_real_overview(self) -> None:
         response = self.client.get("/api/dashboard/overview", headers=self._headers())
 
         self.assertEqual(response.status_code, 200, response.text)
@@ -1200,6 +1200,7 @@ class FrontendReadinessTest(unittest.TestCase):
         self.assertEqual(payload["code"], "0")
         self.assertEqual(payload["data"]["company"], "LY-FRONTEND-DEV")
         self.assertIn("home_overview", payload["data"])
+        self.assertNotIn("local_dev_static_fallback", response.text)
 
 
 if __name__ == "__main__":
