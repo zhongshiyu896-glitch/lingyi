@@ -1425,7 +1425,7 @@ class WarehouseService:
             .order_by(LySubcontractOrder.subcontract_no.asc(), LySubcontractMaterial.material_item_code.asc())
         )
         source_rows = query.all()
-        returned_by_report = self._factory_return_material_returned_qty_by_report(
+        return_qty_by_report = self._factory_return_material_qty_by_report(
             company=normalized_company,
             warehouse=normalized_warehouse,
             item_code=normalized_item_code,
@@ -1508,14 +1508,25 @@ class WarehouseService:
                 material_code=material_code,
                 warehouse=warehouse_value,
             )
+            posted_returned_qty, pending_outbox_qty = return_qty_by_report.get(
+                report_no,
+                (Decimal("0.00"), Decimal("0.00")),
+            )
             returned_qty = min(
-                Decimal(str(returned_by_report.get(report_no, Decimal("0")))).quantize(Decimal("0.01")),
+                Decimal(str(posted_returned_qty)).quantize(Decimal("0.01")),
                 planned_return_qty,
             )
-            pending_qty = max((planned_return_qty - returned_qty).quantize(Decimal("0.01")), Decimal("0.00"))
-            if pending_qty == Decimal("0.00"):
+            pending_outbox_qty = min(
+                Decimal(str(pending_outbox_qty)).quantize(Decimal("0.01")),
+                max((planned_return_qty - returned_qty).quantize(Decimal("0.01")), Decimal("0.00")),
+            )
+            pending_qty = max(
+                (planned_return_qty - returned_qty - pending_outbox_qty).quantize(Decimal("0.01")),
+                Decimal("0.00"),
+            )
+            if returned_qty >= planned_return_qty and planned_return_qty > Decimal("0.00"):
                 status_value = "closed"
-            elif returned_qty > Decimal("0.00"):
+            elif returned_qty > Decimal("0.00") or pending_outbox_qty > Decimal("0.00"):
                 status_value = "confirmed"
             else:
                 status_value = "pending"
@@ -1534,6 +1545,8 @@ class WarehouseService:
                     theoretical_usage_qty=theoretical_usage_qty,
                     planned_return_qty=planned_return_qty,
                     returned_qty=returned_qty,
+                    posted_returned_qty=returned_qty,
+                    pending_outbox_qty=pending_outbox_qty,
                     pending_qty=pending_qty,
                     uom=str(bucket.get("uom") or "米"),
                     report_date=report_date,
@@ -1552,13 +1565,13 @@ class WarehouseService:
             items=rows,
         )
 
-    def _factory_return_material_returned_qty_by_report(
+    def _factory_return_material_qty_by_report(
         self,
         *,
         company: str | None,
         warehouse: str | None,
         item_code: str | None,
-    ) -> dict[str, Decimal]:
+    ) -> dict[str, tuple[Decimal, Decimal]]:
         session = self._require_session()
         query = (
             session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
@@ -1577,8 +1590,19 @@ class WarehouseService:
         if item_code:
             query = query.filter(LyWarehouseStockEntryDraftItem.item_code == item_code)
 
-        returned_by_report: dict[str, Decimal] = {}
-        for draft, item in query.all():
+        draft_item_rows = list(query.all())
+        draft_ids = {int(draft.id) for draft, _item in draft_item_rows}
+        succeeded_draft_ids: set[int] = set()
+        if draft_ids:
+            outbox_rows = (
+                session.query(LyWarehouseStockEntryOutboxEvent.draft_id, LyWarehouseStockEntryOutboxEvent.status)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id.in_(sorted(draft_ids)))
+                .all()
+            )
+            succeeded_draft_ids = {int(draft_id) for draft_id, status in outbox_rows if str(status) == "succeeded"}
+
+        qty_by_report: dict[str, tuple[Decimal, Decimal]] = {}
+        for draft, item in draft_item_rows:
             report_no = self._factory_return_material_report_no_from_source(str(draft.source_id))
             if report_no is None:
                 continue
@@ -1586,8 +1610,13 @@ class WarehouseService:
             if warehouse and warehouse_value != warehouse:
                 continue
             qty = Decimal(str(item.qty or 0)).quantize(Decimal("0.01"))
-            returned_by_report[report_no] = returned_by_report.get(report_no, Decimal("0.00")) + qty
-        return returned_by_report
+            posted_qty, pending_outbox_qty = qty_by_report.get(report_no, (Decimal("0.00"), Decimal("0.00")))
+            if int(draft.id) in succeeded_draft_ids:
+                posted_qty += qty
+            else:
+                pending_outbox_qty += qty
+            qty_by_report[report_no] = (posted_qty, pending_outbox_qty)
+        return qty_by_report
 
     def create_factory_return_material_draft(
         self,
@@ -1696,23 +1725,29 @@ class WarehouseService:
             idempotency_key=idempotency_key,
         )
         draft = self.create_stock_entry_draft(payload=draft_payload, current_user=current_user)
-        updated_returned_qty = min(
-            (Decimal(str(row.returned_qty)) + return_qty).quantize(Decimal("0.01")),
-            Decimal(str(row.planned_return_qty)).quantize(Decimal("0.01")),
+        updated_returned_qty = Decimal(str(row.returned_qty)).quantize(Decimal("0.01"))
+        updated_pending_outbox_qty = min(
+            (Decimal(str(row.pending_outbox_qty)) + return_qty).quantize(Decimal("0.01")),
+            max(
+                (Decimal(str(row.planned_return_qty)) - updated_returned_qty).quantize(Decimal("0.01")),
+                Decimal("0.00"),
+            ),
         )
         updated_pending_qty = max(
-            (Decimal(str(row.planned_return_qty)) - updated_returned_qty).quantize(Decimal("0.01")),
+            (Decimal(str(row.planned_return_qty)) - updated_returned_qty - updated_pending_outbox_qty).quantize(Decimal("0.01")),
             Decimal("0.00"),
         )
-        if updated_pending_qty == Decimal("0.00"):
+        if updated_returned_qty >= Decimal(str(row.planned_return_qty)).quantize(Decimal("0.01")):
             updated_status: Literal["pending", "confirmed", "closed"] = "closed"
-        elif updated_returned_qty > Decimal("0.00"):
+        elif updated_returned_qty > Decimal("0.00") or updated_pending_outbox_qty > Decimal("0.00"):
             updated_status = "confirmed"
         else:
             updated_status = "pending"
         updated_row = row.model_copy(
             update={
                 "returned_qty": updated_returned_qty,
+                "posted_returned_qty": updated_returned_qty,
+                "pending_outbox_qty": updated_pending_outbox_qty,
                 "pending_qty": updated_pending_qty,
                 "status": updated_status,
             }

@@ -200,7 +200,7 @@ class SubcontractReturnMaterialsTest(unittest.TestCase):
         self.assertEqual(row["status"], "pending")
         self.assertTrue(str(row["report_no"]).startswith("FRR-1-"))
 
-    def test_return_materials_share_returned_qty_with_factory_return_drafts(self) -> None:
+    def test_return_materials_keep_pending_drafts_out_of_returned_qty(self) -> None:
         self._seed_issue_fact()
         initial = self.client.get(
             "/api/subcontract/return-materials?company=COMP-A&warehouse=WH-ISSUE-A&item_code=MAT-A",
@@ -219,7 +219,7 @@ class SubcontractReturnMaterialsTest(unittest.TestCase):
         row = response.json()["data"]["items"][0]
         self.assertEqual(row["report_no"], report_no)
         self.assertEqual(Decimal(str(row["planned_return_qty"])), Decimal("26.00"))
-        self.assertEqual(Decimal(str(row["returned_qty"])), Decimal("10.00"))
+        self.assertEqual(Decimal(str(row["returned_qty"])), Decimal("0.00"))
         self.assertEqual(Decimal(str(row["pending_qty"])), Decimal("16.00"))
         self.assertEqual(row["status"], "confirmed")
 

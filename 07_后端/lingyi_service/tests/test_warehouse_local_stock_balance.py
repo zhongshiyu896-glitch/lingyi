@@ -546,7 +546,9 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         self.assertEqual(created.draft.id, replayed.draft.id)
         self.assertEqual(created.draft.source_type, "factory_return_material")
         self.assertEqual(created.draft.purpose, "Material Receipt")
-        self.assertEqual(Decimal(str(created.report_item.returned_qty)), Decimal("2.00"))
+        self.assertEqual(Decimal(str(created.report_item.returned_qty)), Decimal("0.00"))
+        self.assertEqual(Decimal(str(created.report_item.posted_returned_qty)), Decimal("0.00"))
+        self.assertEqual(Decimal(str(created.report_item.pending_outbox_qty)), Decimal("2.00"))
         self.assertEqual(Decimal(str(created.report_item.pending_qty)), Decimal("2.00"))
         self.assertEqual(created.report_item.status, "confirmed")
         self.assertEqual(
@@ -560,7 +562,9 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
             [(row.company, row.warehouse, row.item_code, Decimal(str(row.actual_qty))) for row in summary.items],
             [("COMP-A", "WH-RET", "FAB-RET", Decimal("-6.000000"))],
         )
-        self.assertEqual(Decimal(str(refreshed.items[0].returned_qty)), Decimal("2.00"))
+        self.assertEqual(Decimal(str(refreshed.items[0].returned_qty)), Decimal("0.00"))
+        self.assertEqual(Decimal(str(refreshed.items[0].posted_returned_qty)), Decimal("0.00"))
+        self.assertEqual(Decimal(str(refreshed.items[0].pending_outbox_qty)), Decimal("2.00"))
         self.assertEqual(Decimal(str(refreshed.items[0].pending_qty)), Decimal("2.00"))
 
     def test_pending_subcontract_outbox_is_excluded_from_unified_stock_balance(self) -> None:

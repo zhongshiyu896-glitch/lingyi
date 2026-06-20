@@ -826,11 +826,13 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(data["draft"]["items"][0]["item_code"], "FAB-B5-FRR")
         self.assertEqual(Decimal(str(data["draft"]["items"][0]["qty"])), Decimal("40.000000"))
         self.assertEqual(data["draft"]["items"][0]["uom"], "米")
-        self.assertEqual(data["report_item"]["status"], "closed")
-        self.assertEqual(Decimal(str(data["report_item"]["returned_qty"])), Decimal("40.0"))
+        self.assertEqual(data["report_item"]["status"], "confirmed")
+        self.assertEqual(Decimal(str(data["report_item"]["returned_qty"])), Decimal("0.0"))
+        self.assertEqual(Decimal(str(data["report_item"]["posted_returned_qty"])), Decimal("0.0"))
+        self.assertEqual(Decimal(str(data["report_item"]["pending_outbox_qty"])), Decimal("40.0"))
         self.assertEqual(Decimal(str(data["report_item"]["pending_qty"])), Decimal("0.0"))
 
-        closed_report = self.client.get(
+        pending_sync_closed_report = self.client.get(
             "/api/warehouse/factory-return-material-report?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR&status=closed",
             headers=self._headers(request_id="req-factory-return-draft-closed"),
         )
@@ -838,11 +840,8 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR",
             headers=self._headers(request_id="req-factory-return-draft-ledger"),
         )
-        self.assertEqual(closed_report.status_code, 200, closed_report.text)
-        closed_row = closed_report.json()["data"]["items"][0]
-        self.assertEqual(closed_row["report_no"], report_no)
-        self.assertEqual(Decimal(str(closed_row["returned_qty"])), Decimal("40.0"))
-        self.assertEqual(Decimal(str(closed_row["pending_qty"])), Decimal("0.0"))
+        self.assertEqual(pending_sync_closed_report.status_code, 200, pending_sync_closed_report.text)
+        self.assertEqual(pending_sync_closed_report.json()["data"]["items"], [])
         self.assertEqual(stock_ledger.status_code, 200, stock_ledger.text)
         ledger_items = stock_ledger.json()["data"]["items"]
         self.assertTrue(any(Decimal(str(row["actual_qty"])) == Decimal("40.0") for row in ledger_items))
@@ -850,9 +849,25 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_type="factory_return_material").one()
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).filter_by(draft_id=int(draft.id)).one()
+            outbox.status = "succeeded"
+            outbox.external_ref = "LOCAL-RETURN-FRR-001"
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertEqual(str(draft.source_id), source_ref)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
+            session.commit()
+
+        closed_report = self.client.get(
+            "/api/warehouse/factory-return-material-report?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR&status=closed",
+            headers=self._headers(request_id="req-factory-return-draft-closed-after-success"),
+        )
+        self.assertEqual(closed_report.status_code, 200, closed_report.text)
+        closed_row = closed_report.json()["data"]["items"][0]
+        self.assertEqual(closed_row["report_no"], report_no)
+        self.assertEqual(Decimal(str(closed_row["returned_qty"])), Decimal("40.0"))
+        self.assertEqual(Decimal(str(closed_row["posted_returned_qty"])), Decimal("40.0"))
+        self.assertEqual(Decimal(str(closed_row["pending_outbox_qty"])), Decimal("0.0"))
+        self.assertEqual(Decimal(str(closed_row["pending_qty"])), Decimal("0.0"))
 
         worker = self.client.post(
             "/api/warehouse/internal/stock-entry-sync/run-once?dry_run=true",

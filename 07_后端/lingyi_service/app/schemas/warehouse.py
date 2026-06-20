@@ -245,6 +245,8 @@ class WarehouseFactoryReturnMaterialReportItem(BaseModel):
     theoretical_usage_qty: Decimal | None = None
     planned_return_qty: Decimal
     returned_qty: Decimal
+    posted_returned_qty: Decimal = Decimal("0")
+    pending_outbox_qty: Decimal = Decimal("0")
     pending_qty: Decimal
     uom: str = "米"
     report_date: date
