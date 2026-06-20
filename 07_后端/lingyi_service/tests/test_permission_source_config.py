@@ -49,6 +49,33 @@ class PermissionSourceConfigTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "LINGYI_ERPNEXT_BASE_URL"):
                 main_module._validate_permission_source_config()
 
+    def test_production_rejects_erpnext_api_credentials(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+                "LINGYI_ERPNEXT_API_KEY": "service-key",
+                "LINGYI_ERPNEXT_API_SECRET": "",
+            },
+        ):
+            with self.assertRaisesRegex(RuntimeError, "ERPNext API"):
+                main_module._validate_permission_source_config()
+
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+                "LINGYI_ERPNEXT_API_KEY": "",
+                "LINGYI_ERPNEXT_API_SECRET": "service-secret",
+            },
+        ):
+            with self.assertRaisesRegex(RuntimeError, "ERPNext API"):
+                main_module._validate_permission_source_config()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -180,6 +180,8 @@ def _validate_permission_source_config() -> None:
         raise RuntimeError("APP_ENV=production 时 LINGYI_PERMISSION_SOURCE 必须为 fastapi")
     if os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip():
         raise RuntimeError("APP_ENV=production 时不得配置 LINGYI_ERPNEXT_BASE_URL")
+    if os.getenv("LINGYI_ERPNEXT_API_KEY", "").strip() or os.getenv("LINGYI_ERPNEXT_API_SECRET", "").strip():
+        raise RuntimeError("APP_ENV=production 时不得配置 ERPNext API 凭据")
 
 
 def get_db_session() -> Generator[Session, None, None]:
