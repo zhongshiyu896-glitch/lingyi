@@ -1041,7 +1041,7 @@ class WarehouseService:
         bind = session.get_bind()
         if bind.dialect.name != "sqlite":
             return True
-        table_names = set(inspect(bind).get_table_names())
+        table_names = set(inspect(session.connection()).get_table_names())
         required_tables = {
             LySubcontractMaterial.__tablename__,
             LySubcontractOrder.__tablename__,
@@ -1055,7 +1055,7 @@ class WarehouseService:
         bind = session.get_bind()
         if bind.dialect.name != "sqlite":
             return True
-        table_names = set(inspect(bind).get_table_names())
+        table_names = set(inspect(session.connection()).get_table_names())
         return LyQualityOutbox.__tablename__ in table_names
 
     def _has_sqlite_master_data_table(self) -> bool:
@@ -1063,7 +1063,7 @@ class WarehouseService:
         bind = session.get_bind()
         if bind.dialect.name != "sqlite":
             return True
-        table_names = set(inspect(bind).get_table_names())
+        table_names = set(inspect(session.connection()).get_table_names())
         return LyMasterDataRecord.__tablename__ in table_names
 
     def _is_succeeded_subcontract_stock_fact(self, *, fact_row: Any, outbox: LySubcontractStockOutbox | None) -> bool:

@@ -347,6 +347,123 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                 0,
             )
 
+    def test_sales_order_material_check_auto_creates_plans_and_purchase_requirements(self) -> None:
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-BATCH-MAT-001",
+            "source_order_ref": "SO-A4-BATCH-MAT-001",
+            "idempotency_key": "idem-so-a4-batch-mat-001",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Ignored Name",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 30,
+                    "rate": 80,
+                    "uom": "件",
+                },
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Ignored Name",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 20,
+                    "rate": 80,
+                    "uom": "件",
+                },
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+
+        material_check_payload = {
+            "warehouse": "WH-BATCH",
+            "company": "COMP-A",
+            "planned_start_date": "2026-06-18",
+            "operation": "sales_order_material_check",
+            "idempotency_key": "idem-sales-order-material-check-a4-batch-001",
+        }
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            material_check = self.client.post(
+                "/api/production/sales-orders/SO-A4-BATCH-MAT-001/material-check",
+                headers={**self._headers(), "X-Request-ID": "req-a4-order-material-check"},
+                json=material_check_payload,
+            )
+            material_check_replay = self.client.post(
+                "/api/production/sales-orders/SO-A4-BATCH-MAT-001/material-check",
+                headers={**self._headers(), "X-Request-ID": "req-a4-order-material-check"},
+                json=material_check_payload,
+            )
+
+        self.assertEqual(material_check.status_code, 200, material_check.text)
+        self.assertEqual(material_check_replay.status_code, 200, material_check_replay.text)
+        data = material_check.json()["data"]
+        replay_data = material_check_replay.json()["data"]
+        self.assertEqual(data["sales_order"], "SO-A4-BATCH-MAT-001")
+        self.assertEqual(data["plan_count"], 2)
+        self.assertEqual(data["created_plan_count"], 2)
+        self.assertEqual(data["snapshot_count"], 2)
+        self.assertEqual(Decimal(str(data["required_qty_total"])), Decimal("105.000000"))
+        self.assertEqual(Decimal(str(data["available_qty_total"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(data["shortage_qty_total"])), Decimal("105.000000"))
+        self.assertEqual(replay_data["plan_count"], 2)
+        self.assertEqual(replay_data["created_plan_count"], 2)
+        self.assertEqual(replay_data["snapshot_count"], 2)
+        self.assertEqual(Decimal(str(replay_data["shortage_qty_total"])), Decimal("105.000000"))
+        self.assertEqual(replay_data["items"], data["items"])
+        self.assertEqual(
+            [Decimal(str(item["planned_qty"])) for item in data["items"]],
+            [Decimal("30.000000"), Decimal("20.000000")],
+        )
+        self.assertTrue(all(item["created_plan"] for item in data["items"]))
+
+        list_after_material_check = self.client.get(
+            "/api/sales-inventory/sales-orders?keyword=SO-A4-BATCH-MAT-001",
+            headers=self._headers(),
+        )
+        detail_after_material_check = self.client.get(
+            "/api/sales-inventory/sales-orders/SO-A4-BATCH-MAT-001",
+            headers=self._headers(),
+        )
+        self.assertEqual(list_after_material_check.status_code, 200, list_after_material_check.text)
+        self.assertEqual(detail_after_material_check.status_code, 200, detail_after_material_check.text)
+        self.assertEqual(list_after_material_check.json()["data"]["items"][0]["ys_material_calc_state"], "已算料")
+        self.assertEqual(detail_after_material_check.json()["data"]["ys_material_calc_state"], "已算料")
+        self.assertEqual(
+            [row["ys_material_calc_state"] for row in detail_after_material_check.json()["data"]["items"]],
+            ["已算料", "已算料"],
+        )
+
+        with self.SessionLocal() as session:
+            plans = session.query(LyProductionPlan).order_by(LyProductionPlan.id.asc()).all()
+            snapshots = session.query(LyProductionPlanMaterial).order_by(LyProductionPlanMaterial.id.asc()).all()
+            requirements = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.id.asc()).all()
+            sales_items = session.query(LySalesOrderItem).order_by(LySalesOrderItem.id.asc()).all()
+            audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
+
+            self.assertEqual(len(plans), 2)
+            self.assertEqual(len(snapshots), 2)
+            self.assertEqual(len(requirements), 2)
+            self.assertEqual([str(plan.status) for plan in plans], ["material_checked", "material_checked"])
+            self.assertEqual([item.ys_material_calc_state for item in sales_items], ["已算料", "已算料"])
+            self.assertEqual(sum(Decimal(str(row.required_qty)) for row in snapshots), Decimal("105.000000"))
+            self.assertEqual(sum(Decimal(str(row.net_required_qty)) for row in requirements), Decimal("105.000000"))
+            self.assertEqual({row.status for row in requirements}, {"pending"})
+            self.assertEqual({row.sales_order for row in requirements}, {"SO-A4-BATCH-MAT-001"})
+            self.assertEqual(session.query(LyProductionPlanOperation).filter(LyProductionPlanOperation.operation == "material_check").count(), 2)
+            self.assertEqual(session.query(LyProductionPlanOperation).filter(LyProductionPlanOperation.operation == "sales_order_material_check").count(), 1)
+            self.assertIn("production:material_check", audit_actions)
+
     def test_sales_order_draft_can_create_plan_and_blocks_overplanning(self) -> None:
         order_payload = {
             "company": "COMP-A",

@@ -132,6 +132,9 @@ from app.schemas.production import ProductionReportSuiteTrendPoint
 from app.schemas.production import ProductionSalesForecastListData
 from app.schemas.production import ProductionSalesForecastListItem
 from app.schemas.production import ProductionSalesForecastQuery
+from app.schemas.production import ProductionSalesOrderMaterialCheckData
+from app.schemas.production import ProductionSalesOrderMaterialCheckPlanItem
+from app.schemas.production import ProductionSalesOrderMaterialCheckRequest
 from app.schemas.production import ProductionSalespersonPerformanceListData
 from app.schemas.production import ProductionSalespersonPerformanceListItem
 from app.schemas.production import ProductionSalespersonPerformanceQuery
@@ -284,6 +287,10 @@ class ProductionService:
             planned_qty=planned_qty,
             operator=operator,
         )
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
 
         return ProductionPlanCreateData(
             plan_id=int(row.id),
@@ -3843,7 +3850,7 @@ class ProductionService:
         bind = self.session.get_bind()
         if bind.dialect.name != "sqlite":
             return True
-        existing_tables = set(inspect(bind).get_table_names())
+        existing_tables = set(inspect(self.session.connection()).get_table_names())
         return table_names.issubset(existing_tables)
 
     @staticmethod
@@ -4753,6 +4760,189 @@ class ProductionService:
         self.session.flush()
         return response
 
+    def resolve_sales_order_material_check_scope(
+        self,
+        *,
+        sales_order: str,
+        company: str | None = None,
+    ) -> tuple[str, list[str]]:
+        """Resolve all company/item scopes before order-level material check."""
+        order, lines = self._load_native_sales_order_with_items(sales_order=sales_order, company=company)
+        item_codes = sorted({str(line.item_code) for line in lines if str(line.item_code or "").strip()})
+        return str(order.company), item_codes
+
+    def material_check_sales_order(
+        self,
+        *,
+        sales_order: str,
+        operator: str,
+        payload: ProductionSalesOrderMaterialCheckRequest,
+        request_id: str | None = None,
+    ) -> ProductionSalesOrderMaterialCheckData:
+        operation = str(payload.operation or "sales_order_material_check").strip()
+        if operation != "sales_order_material_check":
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="operation 非法")
+
+        order, lines = self._load_native_sales_order_with_items(sales_order=sales_order, company=payload.company)
+        company = str(order.company)
+        warehouse = self._require_non_blank(
+            payload.warehouse,
+            code=PRODUCTION_WAREHOUSE_REQUIRED,
+            message="warehouse 不能为空",
+        )
+        parent_idempotency = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        self._ensure_warehouse_master_active(company=company, warehouse=warehouse)
+        parent_request_hash = self._production_operation_request_hash(
+            {
+                "sales_order": str(order.sales_order_no),
+                "company": company,
+                "operation": operation,
+                "warehouse": warehouse,
+                "planned_start_date": payload.planned_start_date.isoformat() if payload.planned_start_date else None,
+                "lines": [
+                    {
+                        "sales_order_item": str(line.sales_order_item),
+                        "item_code": str(line.item_code),
+                        "qty": str(Decimal(str(line.qty or 0))),
+                    }
+                    for line in lines
+                ],
+            }
+        )
+        existing_parent_operation = self._get_plan_operation(
+            company=company,
+            operation="sales_order_material_check",
+            idempotency_key=parent_idempotency,
+        )
+        if existing_parent_operation is not None:
+            if str(existing_parent_operation.request_hash) != parent_request_hash:
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+            return self._production_sales_order_material_check_data_from_json(existing_parent_operation.response_json)
+
+        existing_plan_map = self._production_plans_by_sales_order_item(company=company, sales_order=str(order.sales_order_no))
+        result_items: list[ProductionSalesOrderMaterialCheckPlanItem] = []
+        totals = {
+            "snapshot_count": 0,
+            "required_qty_total": Decimal("0"),
+            "available_qty_total": Decimal("0"),
+            "shortage_qty_total": Decimal("0"),
+            "created_plan_count": 0,
+        }
+        parent_digest = hashlib.sha1(parent_idempotency.encode("utf-8")).hexdigest()[:16].upper()
+
+        for line_index, line in enumerate(lines, start=1):
+            sales_order_item = str(line.sales_order_item)
+            plans = list(existing_plan_map.get(sales_order_item, []))
+            created_plan_ids: set[int] = set()
+            planned_qty = sum((Decimal(str(plan.planned_qty or 0)) for plan in plans), Decimal("0"))
+            line_qty = Decimal(str(line.qty or 0))
+            remaining_qty = line_qty - planned_qty
+            if remaining_qty > Decimal("0"):
+                line_digest = hashlib.sha1(sales_order_item.encode("utf-8")).hexdigest()[:12].upper()
+                create_result = self.create_plan(
+                    payload=ProductionPlanCreateRequest(
+                        sales_order=str(order.sales_order_no),
+                        sales_order_item=sales_order_item,
+                        item_code=str(line.item_code),
+                        bom_id=None,
+                        planned_qty=remaining_qty,
+                        planned_start_date=payload.planned_start_date,
+                        scenario_tag=None,
+                        operation="create_plan",
+                        idempotency_key=f"order-material-check-plan-{parent_digest}-{line_digest}",
+                        company=company,
+                    ),
+                    operator=operator,
+                    request_id=request_id,
+                )
+                created_plan = self._must_get_plan(plan_id=int(create_result.plan_id))
+                plans.append(created_plan)
+                created_plan_ids.add(int(created_plan.id))
+                existing_plan_map.setdefault(sales_order_item, []).append(created_plan)
+                totals["created_plan_count"] = int(totals["created_plan_count"]) + 1
+
+            for plan_index, plan in enumerate(plans, start=1):
+                scenario_tag = self._sales_order_material_check_scenario_tag(
+                    payload=payload,
+                    business_date=payload.planned_start_date or getattr(order, "transaction_date", None) or date.today(),
+                    line_index=line_index,
+                    plan_index=plan_index,
+                )
+                sub_request_id = f"req-{scenario_tag}-{int(plan.id)}"
+                sub_digest = hashlib.sha1(f"{parent_digest}:{plan.id}:{line_index}:{plan_index}".encode("utf-8")).hexdigest()[:16].upper()
+                check_result = self.material_check(
+                    plan_id=int(plan.id),
+                    operator=operator,
+                    payload=ProductionMaterialCheckRequest(
+                        warehouse=warehouse,
+                        operation="material_check",
+                        idempotency_key=f"{scenario_tag}:idem-order-material-check-{sub_digest}",
+                        scenario_tag=scenario_tag,
+                        plan_id=int(plan.id),
+                        sales_order=str(plan.sales_order),
+                        sales_order_item=str(plan.sales_order_item),
+                        item_code=str(plan.item_code),
+                        bom_id=int(plan.bom_id),
+                        request_id=sub_request_id,
+                    ),
+                    request_id=sub_request_id,
+                )
+                required_qty_total = sum((Decimal(str(item.required_qty)) for item in check_result.items), Decimal("0"))
+                available_qty_total = sum((Decimal(str(item.available_qty)) for item in check_result.items), Decimal("0"))
+                shortage_qty_total = sum((Decimal(str(item.shortage_qty)) for item in check_result.items), Decimal("0"))
+                totals["snapshot_count"] = int(totals["snapshot_count"]) + int(check_result.snapshot_count)
+                totals["required_qty_total"] = Decimal(str(totals["required_qty_total"])) + required_qty_total
+                totals["available_qty_total"] = Decimal(str(totals["available_qty_total"])) + available_qty_total
+                totals["shortage_qty_total"] = Decimal(str(totals["shortage_qty_total"])) + shortage_qty_total
+                result_items.append(
+                    ProductionSalesOrderMaterialCheckPlanItem(
+                        plan_id=int(plan.id),
+                        plan_no=str(plan.plan_no),
+                        sales_order_item=str(plan.sales_order_item),
+                        item_code=str(plan.item_code),
+                        planned_qty=Decimal(str(plan.planned_qty)),
+                        created_plan=int(plan.id) in created_plan_ids,
+                        snapshot_count=int(check_result.snapshot_count),
+                        required_qty_total=required_qty_total,
+                        available_qty_total=available_qty_total,
+                        shortage_qty_total=shortage_qty_total,
+                    )
+                )
+
+        response = ProductionSalesOrderMaterialCheckData(
+            sales_order=str(order.sales_order_no),
+            company=company,
+            warehouse=warehouse,
+            plan_count=len(result_items),
+            created_plan_count=int(totals["created_plan_count"]),
+            snapshot_count=int(totals["snapshot_count"]),
+            required_qty_total=Decimal(str(totals["required_qty_total"])).quantize(Decimal("0.000001")),
+            available_qty_total=Decimal(str(totals["available_qty_total"])).quantize(Decimal("0.000001")),
+            shortage_qty_total=Decimal(str(totals["shortage_qty_total"])).quantize(Decimal("0.000001")),
+            items=result_items,
+        )
+        if result_items:
+            self.session.add(
+                LyProductionPlanOperation(
+                    plan_id=int(result_items[0].plan_id),
+                    company=company,
+                    operation="sales_order_material_check",
+                    idempotency_key=parent_idempotency,
+                    request_hash=parent_request_hash,
+                    response_json=self._production_model_to_json(response),
+                    created_by=operator,
+                )
+            )
+            try:
+                self.session.flush()
+            except SQLAlchemyError as exc:
+                raise DatabaseWriteFailed() from exc
+        return response
+
     def list_material_issues(
         self,
         *,
@@ -5455,6 +5645,79 @@ class ProductionService:
             raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="生产计划关联的 Sales Order 行物料不匹配")
         return order, line
 
+    def _load_native_sales_order_with_items(
+        self,
+        *,
+        sales_order: str,
+        company: str | None = None,
+    ) -> tuple[LySalesOrder, list[LySalesOrderItem]]:
+        sales_order_no = str(sales_order or "").strip()
+        if not sales_order_no:
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order 不能为空")
+        normalized_company = str(company or "").strip()
+        try:
+            order_query = self.session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == sales_order_no)
+            if normalized_company:
+                order_query = order_query.filter(LySalesOrder.company == normalized_company)
+            order = order_query.first()
+            if order is None:
+                raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message=f"Sales Order 不存在: {sales_order_no}")
+            if str(order.status or "").strip().lower() == "cancelled" or int(order.docstatus or 0) == 2:
+                raise BusinessException(code=PRODUCTION_SO_CLOSED_OR_CANCELLED, message="Sales Order 已关闭或已取消")
+            lines = (
+                self.session.query(LySalesOrderItem)
+                .filter(LySalesOrderItem.sales_order_id == int(order.id))
+                .order_by(LySalesOrderItem.line_no.asc(), LySalesOrderItem.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            if self._is_missing_native_sales_order_table(exc):
+                raise DatabaseReadFailed() from exc
+            raise DatabaseReadFailed() from exc
+        if not lines:
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="Sales Order 行不存在")
+        return order, lines
+
+    def _production_plans_by_sales_order_item(
+        self,
+        *,
+        company: str,
+        sales_order: str,
+    ) -> dict[str, list[LyProductionPlan]]:
+        try:
+            plans = (
+                self.session.query(LyProductionPlan)
+                .filter(
+                    LyProductionPlan.company == company,
+                    LyProductionPlan.sales_order == sales_order,
+                    LyProductionPlan.status != "cancelled",
+                )
+                .order_by(LyProductionPlan.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        grouped: dict[str, list[LyProductionPlan]] = {}
+        for plan in plans:
+            grouped.setdefault(str(plan.sales_order_item), []).append(plan)
+        return grouped
+
+    @staticmethod
+    def _sales_order_material_check_scenario_tag(
+        *,
+        payload: ProductionSalesOrderMaterialCheckRequest,
+        business_date: date,
+        line_index: int,
+        plan_index: int,
+    ) -> str:
+        provided = str(payload.scenario_tag or "").strip()
+        if provided:
+            if not PRODUCTION_PLAN_DETAIL_SCENARIO_TAG_PATTERN.fullmatch(provided):
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="scenario_tag 非法")
+            return provided
+        sequence = ((line_index - 1) * 10 + plan_index - 1) % 900 + 100
+        return f"Z003-PROD-PLAN-DETAIL-{business_date.strftime('%Y%m%d')}-{sequence:03d}"
+
     @staticmethod
     def _mark_native_sales_order_item_material_checked(
         *,
@@ -5682,6 +5945,12 @@ class ProductionService:
         if hasattr(ProductionMaterialCheckData, "model_validate"):
             return ProductionMaterialCheckData.model_validate(payload)
         return ProductionMaterialCheckData.parse_obj(payload)
+
+    @classmethod
+    def _production_sales_order_material_check_data_from_json(cls, payload: dict[str, Any]) -> ProductionSalesOrderMaterialCheckData:
+        if hasattr(ProductionSalesOrderMaterialCheckData, "model_validate"):
+            return ProductionSalesOrderMaterialCheckData.model_validate(payload)
+        return ProductionSalesOrderMaterialCheckData.parse_obj(payload)
 
     @staticmethod
     def _ensure_material_check_status_allowed(*, plan: LyProductionPlan) -> str:

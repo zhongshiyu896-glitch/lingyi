@@ -921,6 +921,48 @@ class ProductionMaterialCheckData(BaseModel):
     items: List[ProductionPlanMaterialSnapshotItem]
 
 
+class ProductionSalesOrderMaterialCheckRequest(BaseModel):
+    """Material-check all sales-order lines through existing production plans."""
+
+    warehouse: str = Field(..., min_length=1, max_length=140)
+    company: Optional[str] = Field(default=None, max_length=140)
+    planned_start_date: Optional[date] = None
+    operation: Optional[str] = Field(default="sales_order_material_check", max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+    scenario_tag: Optional[str] = Field(default=None, max_length=40)
+    request_id: Optional[str] = Field(default=None, max_length=64)
+
+
+class ProductionSalesOrderMaterialCheckPlanItem(BaseModel):
+    """Per-plan material-check result under a sales order."""
+
+    plan_id: int
+    plan_no: str
+    sales_order_item: str
+    item_code: str
+    planned_qty: Decimal
+    created_plan: bool = False
+    snapshot_count: int
+    required_qty_total: Decimal = Decimal("0")
+    available_qty_total: Decimal = Decimal("0")
+    shortage_qty_total: Decimal = Decimal("0")
+
+
+class ProductionSalesOrderMaterialCheckData(BaseModel):
+    """Order-level material-check result."""
+
+    sales_order: str
+    company: str
+    warehouse: str
+    plan_count: int
+    created_plan_count: int
+    snapshot_count: int
+    required_qty_total: Decimal = Decimal("0")
+    available_qty_total: Decimal = Decimal("0")
+    shortage_qty_total: Decimal = Decimal("0")
+    items: List[ProductionSalesOrderMaterialCheckPlanItem]
+
+
 class ProductionMaterialIssueItem(BaseModel):
     """Production material issue draft line."""
 
