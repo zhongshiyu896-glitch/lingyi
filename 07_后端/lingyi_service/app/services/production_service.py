@@ -4671,6 +4671,7 @@ class ProductionService:
             payload_bom_id=payload.bom_id,
         )
         native_order, native_item = self._ensure_plan_native_sales_order_link(plan=plan)
+        self._ensure_native_sales_order_approved(order=native_order)
         warehouse = self._require_non_blank(
             payload.warehouse,
             code=PRODUCTION_WAREHOUSE_REQUIRED,
@@ -4835,6 +4836,7 @@ class ProductionService:
 
         order, lines = self._load_native_sales_order_with_items(sales_order=sales_order, company=payload.company)
         company = str(order.company)
+        self._ensure_native_sales_order_approved(order=order)
         warehouse = self._require_non_blank(
             payload.warehouse,
             code=PRODUCTION_WAREHOUSE_REQUIRED,
@@ -5694,6 +5696,11 @@ class ProductionService:
         if str(line.item_code or "").strip() != str(plan.item_code or "").strip():
             raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="生产计划关联的 Sales Order 行物料不匹配")
         return order, line
+
+    @staticmethod
+    def _ensure_native_sales_order_approved(*, order: LySalesOrder) -> None:
+        if int(order.docstatus or 0) != 1:
+            raise BusinessException(code=PRODUCTION_SO_NOT_APPROVED, message="Sales Order 未提交审核，不能算料")
 
     def _load_native_sales_order_with_items(
         self,

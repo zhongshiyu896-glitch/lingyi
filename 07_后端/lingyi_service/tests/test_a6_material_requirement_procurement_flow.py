@@ -231,6 +231,25 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             "X-Request-ID": request_id,
         }
 
+    def _submit_sales_order(self, *, draft_id: int, sales_order_no: str, suffix: str) -> None:
+        submitted = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/submit",
+            headers=self._headers(f"req-a6-submit-{suffix}"),
+            json={
+                "operation": "submit_draft",
+                "company": self.COMPANY,
+                "sales_order_no_or_source_order_ref": sales_order_no,
+                "idempotency_key": f"idem-a6-submit-{suffix}",
+            },
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        self.assertEqual(submitted.json()["data"]["docstatus"], 1)
+
+    def _submit_sales_order_by_no(self, *, sales_order_no: str, suffix: str) -> None:
+        with self.SessionLocal() as session:
+            order_id = int(session.query(LySalesOrder.id).filter(LySalesOrder.sales_order_no == sales_order_no).scalar())
+        self._submit_sales_order(draft_id=order_id, sales_order_no=sales_order_no, suffix=suffix)
+
     def _approve_purchase_invoice(self, invoice_id: int, *, suffix: str) -> dict[str, object]:
         created = self.client.post(
             "/api/finance/approval-tasks",
@@ -1061,6 +1080,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(sealed.status_code, 200, sealed.text)
         self.assertEqual(converted.status_code, 200, converted.text)
         bulk_no = converted.json()["data"]["bulk_handoff_no"]
+        self._submit_sales_order_by_no(sales_order_no=bulk_no, suffix="sample-bom")
 
         detail = self.client.get(f"/api/sales-inventory/sales-orders/{bulk_no}", headers=self._headers("req-a6-bulk-detail"))
         self.assertEqual(detail.status_code, 200, detail.text)
@@ -1211,6 +1231,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(sealed.status_code, 200, sealed.text)
         self.assertEqual(converted.status_code, 200, converted.text)
         bulk_no = converted.json()["data"]["bulk_handoff_no"]
+        self._submit_sales_order_by_no(sales_order_no=bulk_no, suffix="sample-edit-bom")
 
         detail = self.client.get(f"/api/sales-inventory/sales-orders/{bulk_no}", headers=self._headers("req-a6-sample-edit-bulk-detail"))
         self.assertEqual(detail.status_code, 200, detail.text)
@@ -1400,6 +1421,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             },
         )
         self.assertEqual(order.status_code, 201, order.text)
+        self._submit_sales_order(draft_id=int(order.json()["data"]["id"]), sales_order_no="SO-A6-001", suffix="mat-check-main")
         detail = self.client.get("/api/sales-inventory/sales-orders/SO-A6-001", headers=self._headers())
         sales_order_item = detail.json()["data"]["items"][0]["name"]
 
@@ -1502,6 +1524,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             },
         )
         self.assertEqual(reset_update.status_code, 200, reset_update.text)
+        self.assertEqual(reset_update.json()["data"]["docstatus"], 0)
         self.assertEqual(reset_update.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
         requirements_after_reset_update = self.client.get(
             f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending",
@@ -1524,6 +1547,29 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 "item_code": self.STYLE,
                 "bom_id": 601,
                 "request_id": f"{request_id}-after-edit",
+            },
+        )
+        self.assertEqual(material_check_after_update.status_code, 409, material_check_after_update.text)
+        self.assertEqual(material_check_after_update.json()["code"], "PRODUCTION_SO_NOT_APPROVED")
+        self._submit_sales_order(
+            draft_id=int(order.json()["data"]["id"]),
+            sales_order_no="SO-A6-001",
+            suffix="mat-check-after-edit",
+        )
+        material_check_after_update = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers={**self._headers(), "X-Request-ID": f"{request_id}-after-edit-approved"},
+            json={
+                "warehouse": self.WAREHOUSE,
+                "operation": "material_check",
+                "idempotency_key": f"{self.MATERIAL_CHECK_SCENARIO}:idem-material-check-after-edit-approved",
+                "scenario_tag": self.MATERIAL_CHECK_SCENARIO,
+                "plan_id": plan_id,
+                "sales_order": "SO-A6-001",
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "request_id": f"{request_id}-after-edit-approved",
             },
         )
         self.assertEqual(material_check_after_update.status_code, 200, material_check_after_update.text)
@@ -1929,6 +1975,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             },
         )
         self.assertEqual(order.status_code, 201, order.text)
+        self._submit_sales_order(draft_id=int(order.json()["data"]["id"]), sales_order_no="SO-A6-MATRIX-001", suffix="matrix")
         detail = self.client.get("/api/sales-inventory/sales-orders/SO-A6-MATRIX-001", headers=self._headers())
         sales_order_item = detail.json()["data"]["items"][0]["name"]
 
@@ -2026,6 +2073,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 },
             )
             self.assertEqual(order.status_code, 201, order.text)
+            self._submit_sales_order(draft_id=int(order.json()["data"]["id"]), sales_order_no=sales_order_no, suffix=f"cross-plan-{sequence}")
             detail = self.client.get(f"/api/sales-inventory/sales-orders/{sales_order_no}", headers=self._headers())
             sales_order_item = detail.json()["data"]["items"][0]["name"]
             plan = self.client.post(
@@ -2163,6 +2211,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             },
         )
         self.assertEqual(order.status_code, 201, order.text)
+        self._submit_sales_order(draft_id=int(order.json()["data"]["id"]), sales_order_no="SO-A6-STOCK-BUDGET-001", suffix="stock-budget")
         detail = self.client.get("/api/sales-inventory/sales-orders/SO-A6-STOCK-BUDGET-001", headers=self._headers())
         sales_order_item = detail.json()["data"]["items"][0]["name"]
 

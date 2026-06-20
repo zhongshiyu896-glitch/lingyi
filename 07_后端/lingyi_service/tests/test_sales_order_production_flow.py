@@ -106,6 +106,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlan).delete()
+            session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
             session.query(LyStyleMaster).delete()
@@ -181,6 +182,20 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             row = session.query(LyStyleMaster).filter(LyStyleMaster.ys_style_no == style_no).one()
             return int(row.id)
+
+    def _submit_sales_order(self, *, draft_id: int, sales_order_no: str, key: str) -> None:
+        submitted = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/submit",
+            headers=self._headers(),
+            json={
+                "operation": "submit_draft",
+                "company": "COMP-A",
+                "sales_order_no_or_source_order_ref": sales_order_no,
+                "idempotency_key": key,
+            },
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        self.assertEqual(submitted.json()["data"]["docstatus"], 1)
 
     def _add_stock_entry(
         self,
@@ -284,6 +299,11 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         )
         self.assertEqual(create_plan.status_code, 200, create_plan.text)
         plan_id = int(create_plan.json()["data"]["plan_id"])
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-RESET-001",
+            key="idem-so-a4-reset-001-submit",
+        )
 
         material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260617-903"
         material_check_request_id = f"req-{material_check_scenario}"
@@ -385,6 +405,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             json=order_payload,
         )
         self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
 
         material_check_payload = {
             "warehouse": "WH-BATCH",
@@ -393,6 +414,26 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             "operation": "sales_order_material_check",
             "idempotency_key": "idem-sales-order-material-check-a4-batch-001",
         }
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            material_check = self.client.post(
+                "/api/production/sales-orders/SO-A4-BATCH-MAT-001/material-check",
+                headers={**self._headers(), "X-Request-ID": "req-a4-order-material-check"},
+                json=material_check_payload,
+            )
+            material_check_replay = self.client.post(
+                "/api/production/sales-orders/SO-A4-BATCH-MAT-001/material-check",
+                headers={**self._headers(), "X-Request-ID": "req-a4-order-material-check"},
+                json=material_check_payload,
+            )
+
+        self.assertEqual(material_check.status_code, 409, material_check.text)
+        self.assertEqual(material_check.json()["code"], "PRODUCTION_SO_NOT_APPROVED")
+        self.assertEqual(material_check_replay.status_code, 409, material_check_replay.text)
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-BATCH-MAT-001",
+            key="idem-so-a4-batch-mat-001-submit",
+        )
         with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
             material_check = self.client.post(
                 "/api/production/sales-orders/SO-A4-BATCH-MAT-001/material-check",
@@ -619,6 +660,11 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(over_reduce_update.json()["code"], "SALES_ORDER_QTY_BELOW_PLANNED")
         self.assertEqual(update_order.json()["data"]["items"][0]["ys_material_calc_state"], "待算料")
         self.assertEqual(Decimal(str(update_order.json()["data"]["items"][0]["qty"])), Decimal("120.000000"))
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-001",
+            key="idem-so-a4-001-submit-after-update",
+        )
 
         material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260617-901"
         material_check_request_id = f"req-{material_check_scenario}"

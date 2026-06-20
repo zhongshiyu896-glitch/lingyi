@@ -330,6 +330,16 @@ class SalesOrderDraftCancelRequest(BaseModel):
     reason: str
 
 
+class SalesOrderDraftSubmitRequest(BaseModel):
+    """Submit local sales-order draft for production material calculation."""
+
+    operation: str
+    scenario_tag: str | None = None
+    idempotency_key: str | None = None
+    sales_order_no_or_source_order_ref: str | None = None
+    company: str
+
+
 class SalesOrderDraftUpdateRequest(BaseModel):
     """Update local sales-order draft payload."""
 
@@ -372,6 +382,7 @@ class SalesOrderDraftData(BaseModel):
     company: str
     customer: str | None = None
     status: Literal["draft", "pending_outbox", "cancelled"]
+    docstatus: int
     transaction_date: date | None = None
     delivery_date: date | None = None
     currency: str | None = None

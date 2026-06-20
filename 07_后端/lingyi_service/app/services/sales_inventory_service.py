@@ -519,6 +519,7 @@ class SalesInventoryService:
         order.delivery_date = payload.delivery_date
         order.currency = currency
         order.grand_total = grand_total
+        order.docstatus = 0
         order.request_hash = request_hash
         order.updated_by = current_user
         order.updated_at = datetime.now(timezone.utc)
@@ -540,6 +541,73 @@ class SalesInventoryService:
                 sales_order_id=int(order.id),
                 response_json=self._sales_order_draft_response_json(response),
                 created_by=current_user,
+            )
+        )
+        session.flush()
+        return response
+
+    def submit_sales_order_draft(
+        self,
+        *,
+        draft_id: int,
+        idempotency_key: str,
+        submitted_by: str,
+    ) -> SalesOrderDraftData:
+        session = self._require_session()
+        order = session.query(LySalesOrder).filter(LySalesOrder.id == int(draft_id)).first()
+        if order is None:
+            raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
+
+        now = datetime.now(timezone.utc)
+        idem_key = self._require_text(idempotency_key, "idempotency_key")
+        request_hash = self._native_sales_order_request_hash(
+            {
+                "draft_id": int(order.id),
+                "company": str(order.company),
+                "sales_order_no": str(order.sales_order_no),
+                "operation": "submit_draft",
+            }
+        )
+        existing_idem = (
+            session.query(LySalesOrderIdempotency)
+            .filter(
+                LySalesOrderIdempotency.company == str(order.company),
+                LySalesOrderIdempotency.operation == "submit_draft",
+                LySalesOrderIdempotency.idempotency_key == idem_key,
+            )
+            .first()
+        )
+        if existing_idem is not None:
+            if str(existing_idem.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", "幂等键冲突且请求内容不一致")
+            return self._build_native_sales_order_draft_data(order)
+
+        if str(order.status) == "cancelled" or int(order.docstatus or 0) == 2:
+            raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_ALREADY_CANCELLED", "草稿已取消")
+        if int(order.docstatus or 0) == 1:
+            raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_INVALID_STATUS", "销售订单已审核")
+        if str(order.status) not in {"draft", "planned"}:
+            raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_INVALID_STATUS", "当前状态不允许审核")
+
+        order.docstatus = 1
+        order.updated_by = submitted_by
+        order.updated_at = now
+        order.payload = {
+            **(order.payload or {}),
+            "submitted_by": submitted_by,
+            "submitted_at": now.isoformat(),
+            "submit_idempotency_key": idem_key,
+        }
+        response = self._build_native_sales_order_draft_data(order)
+        session.add(
+            LySalesOrderIdempotency(
+                company=str(order.company),
+                operation="submit_draft",
+                idempotency_key=idem_key,
+                request_hash=request_hash,
+                sales_order_id=int(order.id),
+                response_json=self._sales_order_draft_response_json(response),
+                created_by=submitted_by,
             )
         )
         session.flush()
@@ -4923,6 +4991,7 @@ class SalesInventoryService:
             company=str(draft.company),
             customer=self._text(payload.get("customer")),
             status=str(draft.status),  # type: ignore[arg-type]
+            docstatus=0,
             transaction_date=transaction_date,
             delivery_date=delivery_date,
             currency=self._text(payload.get("currency")) or "CNY",
@@ -5023,6 +5092,7 @@ class SalesInventoryService:
             company=str(order.company),
             customer=self._text(order.customer),
             status=self._native_draft_status(order.status),  # type: ignore[arg-type]
+            docstatus=int(order.docstatus or 0),
             transaction_date=order.transaction_date,
             delivery_date=order.delivery_date,
             currency=self._text(order.currency) or "CNY",
