@@ -405,6 +405,11 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(list_invoices.json()["data"]["items"][0]["purchase_invoice"], "PINV-B2-001")
         self.assertEqual(Decimal(str(created_invoice.json()["data"]["grand_total"])), Decimal("250.000000"))
         self.assertEqual(Decimal(str(created_invoice.json()["data"]["outstanding_amount"])), Decimal("250.000000"))
+        self.assertEqual(created_invoice.json()["data"]["financial_ledger_status"], "posted")
+        self.assertEqual(created_invoice.json()["data"]["financial_ledger_status_name"], "总账已归集")
+        self.assertEqual(Decimal(str(created_invoice.json()["data"]["financial_ledger_payable_amount"])), Decimal("250.000000"))
+        self.assertEqual(Decimal(str(created_invoice.json()["data"]["financial_ledger_cash_out_amount"])), Decimal("0"))
+        self.assertFalse(created_invoice.json()["data"]["financial_ledger_closed"])
 
         created_payment = self.client.post(
             "/api/material-purchase/purchase-payments",
@@ -443,6 +448,9 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(created_payment.json()["data"]["outstanding_before"])), Decimal("250.000000"))
         self.assertEqual(Decimal(str(created_payment.json()["data"]["outstanding_after"])), Decimal("150.000000"))
         self.assertEqual(created_payment.json()["data"]["status"], "pending_approval")
+        self.assertEqual(created_payment.json()["data"]["financial_ledger_status"], "pending")
+        self.assertEqual(created_payment.json()["data"]["financial_ledger_status_name"], "待审批")
+        self.assertEqual(Decimal(str(created_payment.json()["data"]["financial_ledger_cash_out_amount"])), Decimal("0"))
         self.assertEqual(created_payment.json()["data"]["docstatus"], 0)
         self.assertEqual(list_payments.status_code, 200)
         self.assertEqual(list_payments.json()["data"]["items"][0]["payment_entry"], "PP-B2-001")
@@ -451,6 +459,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(invoice_row["status"], "submitted")
         self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("0.000000"))
         self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("250.000000"))
+        self.assertEqual(invoice_row["financial_ledger_status"], "posted")
 
         approved = self._approve_purchase_payment(created_payment.json()["data"]["id"])
         self.assertEqual(approved["source_status"], "submitted")
@@ -462,6 +471,10 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(invoice_row["status"], "partly_paid")
         self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("100.000000"))
         self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("150.000000"))
+        self.assertEqual(invoice_row["financial_ledger_status"], "partial")
+        self.assertEqual(invoice_row["financial_ledger_status_name"], "部分归集")
+        self.assertEqual(Decimal(str(invoice_row["financial_ledger_cash_out_amount"])), Decimal("100.000000"))
+        self.assertEqual(Decimal(str(invoice_row["financial_ledger_outstanding_amount"])), Decimal("150.000000"))
 
         with self.SessionLocal() as session:
             order = session.query(LyMaterialPurchaseOrder).one()
@@ -543,6 +556,8 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(cancelled.json()["data"]["id"], replay.json()["data"]["id"])
         self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
         self.assertEqual(cancelled.json()["data"]["docstatus"], 2)
+        self.assertEqual(cancelled.json()["data"]["financial_ledger_status"], "cancelled")
+        self.assertEqual(Decimal(str(cancelled.json()["data"]["financial_ledger_cash_out_amount"])), Decimal("0"))
         self.assertEqual(conflict.status_code, 409)
         self.assertEqual(conflict.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
         self.assertEqual(submitted_payments.status_code, 200)
@@ -553,6 +568,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(invoice_row["status"], "submitted")
         self.assertEqual(Decimal(str(invoice_row["paid_amount"])), Decimal("0.000000"))
         self.assertEqual(Decimal(str(invoice_row["outstanding_amount"])), Decimal("250.000000"))
+        self.assertEqual(invoice_row["financial_ledger_status"], "posted")
 
         with self.SessionLocal() as session:
             invoice = session.query(LyMaterialPurchaseInvoice).one()

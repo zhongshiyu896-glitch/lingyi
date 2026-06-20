@@ -1573,6 +1573,7 @@ class MaterialPurchaseService:
         )
 
     def _invoice_data(self, row: LyMaterialPurchaseInvoice) -> MaterialPurchaseInvoiceData:
+        financial_ledger = self._purchase_invoice_financial_ledger(row)
         return MaterialPurchaseInvoiceData(
             id=int(row.id),
             company=str(row.company),
@@ -1598,11 +1599,13 @@ class MaterialPurchaseService:
             scenario_tag=self._optional_text(row.scenario_tag),
             approval_status=self._finance_approval_status(row),
             approval_no=self._finance_approval_no(row),
+            **financial_ledger,
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
 
     def _payment_data(self, row: LyMaterialPurchasePayment) -> MaterialPurchasePaymentData:
+        financial_ledger = self._purchase_payment_financial_ledger(row)
         return MaterialPurchasePaymentData(
             id=int(row.id),
             company=str(row.company),
@@ -1626,9 +1629,80 @@ class MaterialPurchaseService:
             scenario_tag=self._optional_text(row.scenario_tag),
             approval_status=self._finance_approval_status(row),
             approval_no=self._finance_approval_no(row),
+            **financial_ledger,
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
+
+    @staticmethod
+    def _purchase_invoice_financial_ledger(row: LyMaterialPurchaseInvoice) -> dict[str, Decimal | bool | str]:
+        status = str(row.status or "")
+        grand_total = Decimal(str(row.grand_total or 0))
+        paid_amount = Decimal(str(row.paid_amount or 0))
+        outstanding_amount = Decimal(str(row.outstanding_amount or 0))
+        if status == "cancelled":
+            ledger_status = "cancelled"
+            ledger_status_name = "已取消"
+            ledger_payable_amount = Decimal("0")
+            ledger_cash_out_amount = Decimal("0")
+            ledger_outstanding_amount = Decimal("0")
+        elif status == "paid" or outstanding_amount <= Decimal("0"):
+            ledger_status = "closed"
+            ledger_status_name = "总账已闭合"
+            ledger_payable_amount = grand_total
+            ledger_cash_out_amount = paid_amount
+            ledger_outstanding_amount = Decimal("0")
+        elif paid_amount > Decimal("0"):
+            ledger_status = "partial"
+            ledger_status_name = "部分归集"
+            ledger_payable_amount = grand_total
+            ledger_cash_out_amount = paid_amount
+            ledger_outstanding_amount = outstanding_amount
+        else:
+            ledger_status = "posted"
+            ledger_status_name = "总账已归集"
+            ledger_payable_amount = grand_total
+            ledger_cash_out_amount = Decimal("0")
+            ledger_outstanding_amount = outstanding_amount
+        return {
+            "financial_ledger_status": ledger_status,
+            "financial_ledger_status_name": ledger_status_name,
+            "financial_ledger_payable_amount": ledger_payable_amount,
+            "financial_ledger_cash_out_amount": ledger_cash_out_amount,
+            "financial_ledger_outstanding_amount": ledger_outstanding_amount,
+            "financial_ledger_closed": ledger_status == "closed",
+            "financial_ledger_source_note": (
+                f"采购发票 {row.purchase_invoice}；应付 {grand_total}；已付 {paid_amount}；未付 {outstanding_amount}"
+            ),
+        }
+
+    @staticmethod
+    def _purchase_payment_financial_ledger(row: LyMaterialPurchasePayment) -> dict[str, Decimal | bool | str]:
+        status = str(row.status or "")
+        paid_amount = Decimal(str(row.paid_amount or 0))
+        outstanding_after = Decimal(str(row.outstanding_after or 0))
+        if status == "submitted":
+            ledger_status = "closed" if outstanding_after <= Decimal("0") else "partial"
+            ledger_status_name = "总账已闭合" if ledger_status == "closed" else "部分归集"
+            ledger_cash_out_amount = paid_amount
+        elif status == "cancelled":
+            ledger_status = "cancelled"
+            ledger_status_name = "已取消"
+            ledger_cash_out_amount = Decimal("0")
+        else:
+            ledger_status = "pending"
+            ledger_status_name = "待审批"
+            ledger_cash_out_amount = Decimal("0")
+        return {
+            "financial_ledger_status": ledger_status,
+            "financial_ledger_status_name": ledger_status_name,
+            "financial_ledger_cash_out_amount": ledger_cash_out_amount,
+            "financial_ledger_outstanding_amount": Decimal("0") if status == "cancelled" else outstanding_after,
+            "financial_ledger_closed": ledger_status == "closed",
+            "financial_ledger_source_note": (
+                f"采购付款 {row.payment_entry}；采购发票 {row.purchase_invoice}；状态 {status or '-'}"
+            ),
+        }
 
     @classmethod
     def _finance_approval_payload(cls, row: Any) -> dict[str, Any]:

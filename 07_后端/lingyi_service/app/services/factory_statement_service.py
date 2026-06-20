@@ -542,7 +542,15 @@ class FactoryStatementService:
 
         latest_payable = payable_outboxes[0] if payable_outboxes else None
         paid_amount = sum((self._to_decimal(row.paid_amount) for row in payments if str(row.status) == "submitted"), Decimal("0"))
-        outstanding_amount = self._compute_outstanding_amount(net_amount=self._to_decimal(statement.net_amount), paid_amount=paid_amount)
+        net_amount = self._to_decimal(statement.net_amount)
+        outstanding_amount = self._compute_outstanding_amount(net_amount=net_amount, paid_amount=paid_amount)
+        financial_ledger = self._statement_financial_ledger(
+            statement_no=str(statement.statement_no),
+            status=str(statement.statement_status),
+            payable_amount=net_amount,
+            paid_amount=paid_amount,
+            outstanding_amount=outstanding_amount,
+        )
 
         return FactoryStatementDetailData(
             statement_id=int(statement.id),
@@ -558,10 +566,10 @@ class FactoryStatementService:
             accepted_qty=self._to_decimal(statement.accepted_qty),
             gross_amount=self._to_decimal(statement.gross_amount),
             deduction_amount=self._to_decimal(statement.deduction_amount),
-            net_amount=self._to_decimal(statement.net_amount),
+            net_amount=net_amount,
             paid_amount=paid_amount,
             outstanding_amount=outstanding_amount,
-            payment_status=self._payment_status(net_amount=self._to_decimal(statement.net_amount), paid_amount=paid_amount),
+            payment_status=self._payment_status(net_amount=net_amount, paid_amount=paid_amount),
             rejected_rate=self._to_decimal(statement.rejected_rate),
             idempotency_key=str(statement.idempotency_key),
             created_by=str(statement.created_by),
@@ -577,6 +585,7 @@ class FactoryStatementService:
             payable_error_message=(
                 self._normalize_text(latest_payable.last_error_message) if latest_payable is not None else None
             ),
+            **financial_ledger,
             items=[
                 FactoryStatementItemData(
                     id=int(row.id),
@@ -4917,6 +4926,13 @@ class FactoryStatementService:
     ) -> FactoryStatementListItem:
         net_amount = self._to_decimal(row.net_amount)
         outstanding_amount = self._compute_outstanding_amount(net_amount=net_amount, paid_amount=paid_amount)
+        financial_ledger = self._statement_financial_ledger(
+            statement_no=str(row.statement_no),
+            status=str(row.statement_status),
+            payable_amount=net_amount,
+            paid_amount=paid_amount,
+            outstanding_amount=outstanding_amount,
+        )
         return FactoryStatementListItem(
             id=int(row.id),
             statement_no=str(row.statement_no),
@@ -4944,6 +4960,7 @@ class FactoryStatementService:
             payable_error_message=(
                 self._normalize_text(latest_payable.last_error_message) if latest_payable is not None else None
             ),
+            **financial_ledger,
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
@@ -5093,6 +5110,7 @@ class FactoryStatementService:
         return statement.to_date
 
     def _to_payment_data(self, row: LyFactoryStatementPayment) -> FactoryStatementPaymentData:
+        financial_ledger = self._payment_financial_ledger(row)
         return FactoryStatementPaymentData(
             id=int(row.id),
             company=str(row.company),
@@ -5115,9 +5133,100 @@ class FactoryStatementService:
             scenario_tag=self._normalize_text(row.scenario_tag),
             approval_status=self._finance_approval_status(row),
             approval_no=self._finance_approval_no(row),
+            **financial_ledger,
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
+
+    @staticmethod
+    def _statement_financial_ledger(
+        *,
+        statement_no: str,
+        status: str,
+        payable_amount: Decimal,
+        paid_amount: Decimal,
+        outstanding_amount: Decimal,
+    ) -> dict[str, Decimal | bool | str]:
+        if status == "draft":
+            ledger_status = "pending"
+            ledger_status_name = "待确认"
+            payable = Decimal("0")
+            cash_out = Decimal("0")
+            outstanding = Decimal("0")
+        elif status == "cancelled":
+            ledger_status = "cancelled"
+            ledger_status_name = "已取消"
+            payable = Decimal("0")
+            cash_out = Decimal("0")
+            outstanding = Decimal("0")
+        elif outstanding_amount <= Decimal("0") and payable_amount > Decimal("0"):
+            ledger_status = "closed"
+            ledger_status_name = "总账已闭合"
+            payable = payable_amount
+            cash_out = paid_amount
+            outstanding = Decimal("0")
+        elif paid_amount > Decimal("0"):
+            ledger_status = "partial"
+            ledger_status_name = "部分归集"
+            payable = payable_amount
+            cash_out = paid_amount
+            outstanding = outstanding_amount
+        elif payable_amount > Decimal("0"):
+            ledger_status = "posted"
+            ledger_status_name = "总账已归集"
+            payable = payable_amount
+            cash_out = Decimal("0")
+            outstanding = outstanding_amount
+        else:
+            ledger_status = "estimated"
+            ledger_status_name = "待归集"
+            payable = Decimal("0")
+            cash_out = Decimal("0")
+            outstanding = Decimal("0")
+        return {
+            "financial_ledger_status": ledger_status,
+            "financial_ledger_status_name": ledger_status_name,
+            "financial_ledger_payable_amount": payable,
+            "financial_ledger_cash_out_amount": cash_out,
+            "financial_ledger_outstanding_amount": outstanding,
+            "financial_ledger_closed": ledger_status == "closed",
+            "financial_ledger_source_note": (
+                f"加工厂对账 {statement_no}；应付 {payable_amount}；已付 {paid_amount}；未付 {outstanding_amount}"
+            ),
+        }
+
+    @staticmethod
+    def _payment_financial_ledger(row: LyFactoryStatementPayment) -> dict[str, Decimal | bool | str]:
+        status = str(row.status or "")
+        paid_amount = Decimal(str(row.paid_amount or 0))
+        outstanding_after = Decimal(str(row.outstanding_after or 0))
+        approval_status = FactoryStatementService._finance_approval_status(row)
+        if status == "submitted":
+            ledger_status = "closed" if outstanding_after <= Decimal("0") else "partial"
+            ledger_status_name = "总账已闭合" if ledger_status == "closed" else "部分归集"
+            cash_out = paid_amount
+        elif status == "cancelled":
+            ledger_status = "cancelled"
+            ledger_status_name = "已取消"
+            cash_out = Decimal("0")
+        elif approval_status == "rejected":
+            ledger_status = "rejected"
+            ledger_status_name = "审批驳回"
+            cash_out = Decimal("0")
+        else:
+            ledger_status = "pending"
+            ledger_status_name = "待审批" if approval_status == "pending" else "待送审"
+            cash_out = Decimal("0")
+        return {
+            "financial_ledger_status": ledger_status,
+            "financial_ledger_status_name": ledger_status_name,
+            "financial_ledger_cash_out_amount": cash_out,
+            "financial_ledger_outstanding_amount": Decimal("0") if status == "cancelled" else outstanding_after,
+            "financial_ledger_closed": ledger_status == "closed",
+            "financial_ledger_source_note": (
+                f"加工厂付款 {row.payment_entry}；对账单 {row.statement_no}；状态 {status or '-'}"
+            ),
+        }
 
     @classmethod
     def _finance_approval_payload(cls, row: Any) -> dict[str, Any]:

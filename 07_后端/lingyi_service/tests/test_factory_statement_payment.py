@@ -161,10 +161,15 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         self.assertEqual(payment_list.json()["data"]["items"][0]["status"], "pending_approval")
         self.assertEqual(Decimal(str(created.json()["data"]["outstanding_before"])), Decimal("4700.000000"))
         self.assertEqual(Decimal(str(created.json()["data"]["outstanding_after"])), Decimal("3500.000000"))
+        self.assertEqual(created.json()["data"]["financial_ledger_status"], "pending")
+        self.assertEqual(created.json()["data"]["financial_ledger_status_name"], "待送审")
+        self.assertEqual(Decimal(str(created.json()["data"]["financial_ledger_cash_out_amount"])), Decimal("0"))
         list_row = statement_list.json()["data"]["items"][0]
         self.assertEqual(Decimal(str(list_row["paid_amount"])), Decimal("0.000000"))
         self.assertEqual(Decimal(str(list_row["outstanding_amount"])), Decimal("4700.000000"))
         self.assertEqual(list_row["payment_status"], "unpaid")
+        self.assertEqual(list_row["financial_ledger_status"], "posted")
+        self.assertEqual(Decimal(str(list_row["financial_ledger_payable_amount"])), Decimal("4700.000000"))
 
         self._approve_payment(int(created.json()["data"]["id"]), suffix="001")
         approved_list = self.client.get(
@@ -176,6 +181,9 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         self.assertEqual(Decimal(str(approved_row["paid_amount"])), Decimal("1200.000000"))
         self.assertEqual(Decimal(str(approved_row["outstanding_amount"])), Decimal("3500.000000"))
         self.assertEqual(approved_row["payment_status"], "partly_paid")
+        self.assertEqual(approved_row["financial_ledger_status"], "partial")
+        self.assertEqual(Decimal(str(approved_row["financial_ledger_cash_out_amount"])), Decimal("1200.000000"))
+        self.assertEqual(Decimal(str(approved_row["financial_ledger_outstanding_amount"])), Decimal("3500.000000"))
 
         closed = self.client.post(
             f"/api/factory-statements/{statement_id}/payments",
@@ -197,6 +205,7 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         self.assertEqual(closed.status_code, 201)
         self.assertEqual(closed.json()["data"]["status"], "pending_approval")
         self.assertEqual(Decimal(str(closed.json()["data"]["outstanding_after"])), Decimal("0.000000"))
+        self.assertEqual(closed.json()["data"]["financial_ledger_status"], "pending")
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(Decimal(str(detail.json()["data"]["paid_amount"])), Decimal("1200.000000"))
         self.assertEqual(Decimal(str(detail.json()["data"]["outstanding_amount"])), Decimal("3500.000000"))
@@ -211,6 +220,9 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         self.assertEqual(Decimal(str(detail.json()["data"]["paid_amount"])), Decimal("4700.000000"))
         self.assertEqual(Decimal(str(detail.json()["data"]["outstanding_amount"])), Decimal("0.000000"))
         self.assertEqual(detail.json()["data"]["payment_status"], "paid")
+        self.assertEqual(detail.json()["data"]["financial_ledger_status"], "closed")
+        self.assertEqual(detail.json()["data"]["financial_ledger_status_name"], "总账已闭合")
+        self.assertTrue(detail.json()["data"]["financial_ledger_closed"])
         self.assertEqual(len(detail.json()["data"]["payments"]), 2)
 
         with self.SessionLocal() as session:
@@ -394,6 +406,7 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         self.assertEqual(closed_detail.json()["data"]["payment_status"], "paid")
         self.assertEqual(Decimal(str(closed_detail.json()["data"]["paid_amount"])), Decimal("4700.000000"))
         self.assertEqual(Decimal(str(closed_detail.json()["data"]["outstanding_amount"])), Decimal("0.000000"))
+        self.assertEqual(closed_detail.json()["data"]["financial_ledger_status"], "closed")
 
         second_payment_id = int(second_payment.json()["data"]["id"])
         cancel_payload = self._payment_cancel_payload(
@@ -436,14 +449,18 @@ class FactoryStatementPaymentFlowTest(FactoryStatementApiBase):
         self.assertEqual(cancelled.json()["data"]["id"], replay.json()["data"]["id"])
         self.assertEqual(cancelled.json()["data"]["payment_entry"], "FSP-B6-CLOSE-B")
         self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancelled.json()["data"]["financial_ledger_status"], "cancelled")
+        self.assertEqual(Decimal(str(cancelled.json()["data"]["financial_ledger_cash_out_amount"])), Decimal("0"))
         self.assertEqual(reopened_detail.status_code, 200, reopened_detail.text)
         self.assertEqual(reopened_detail.json()["data"]["payment_status"], "partly_paid")
         self.assertEqual(Decimal(str(reopened_detail.json()["data"]["paid_amount"])), Decimal("1200.000000"))
         self.assertEqual(Decimal(str(reopened_detail.json()["data"]["outstanding_amount"])), Decimal("3500.000000"))
+        self.assertEqual(reopened_detail.json()["data"]["financial_ledger_status"], "partial")
         list_row = statement_list.json()["data"]["items"][0]
         self.assertEqual(list_row["payment_status"], "partly_paid")
         self.assertEqual(Decimal(str(list_row["paid_amount"])), Decimal("1200.000000"))
         self.assertEqual(Decimal(str(list_row["outstanding_amount"])), Decimal("3500.000000"))
+        self.assertEqual(list_row["financial_ledger_status"], "partial")
         self.assertEqual(submitted_payments.json()["data"]["total"], 1)
         self.assertEqual(submitted_payments.json()["data"]["items"][0]["payment_entry"], "FSP-B6-CLOSE-A")
         self.assertEqual(cancelled_payments.json()["data"]["total"], 1)

@@ -742,8 +742,22 @@ class WorkshopService:
             total_paid_amount += paid_amount
             total_outstanding_amount += outstanding_amount
 
-        return WorkshopDailyWageListData(
-            items=[
+        daily_wage_items: list[WorkshopDailyWageRow] = []
+        for row in rows:
+            key = self._daily_wage_key(
+                employee=str(row.employee),
+                work_date=row.work_date,
+                process_name=str(row.process_name),
+                item_code=row.item_code,
+            )
+            summary = payment_summary.get(key, {})
+            wage_amount = self._round(Decimal(row.wage_amount))
+            paid_amount = self._round(summary.get("paid_amount", Decimal("0")))
+            outstanding_amount = self._round(max(wage_amount - paid_amount, Decimal("0")))
+            payment_count = int(summary.get("payment_count", 0))
+            latest_payment_id = summary.get("latest_payment_id")
+            latest_payment_entry = summary.get("latest_payment_entry")
+            daily_wage_items.append(
                 WorkshopDailyWageRow(
                     employee=str(row.employee),
                     work_date=row.work_date,
@@ -752,101 +766,27 @@ class WorkshopService:
                     register_qty=self._round(Decimal(row.register_qty)),
                     reversal_qty=self._round(Decimal(row.reversal_qty)),
                     net_qty=self._round(Decimal(row.net_qty)),
-                    wage_amount=self._round(Decimal(row.wage_amount)),
-                    paid_amount=self._round(
-                        payment_summary.get(
-                            self._daily_wage_key(
-                                employee=str(row.employee),
-                                work_date=row.work_date,
-                                process_name=str(row.process_name),
-                                item_code=row.item_code,
-                            ),
-                            {},
-                        ).get("paid_amount", Decimal("0"))
-                    ),
-                    outstanding_amount=self._round(
-                        max(
-                            Decimal(row.wage_amount)
-                            - payment_summary.get(
-                                self._daily_wage_key(
-                                    employee=str(row.employee),
-                                    work_date=row.work_date,
-                                    process_name=str(row.process_name),
-                                    item_code=row.item_code,
-                                ),
-                                {},
-                            ).get("paid_amount", Decimal("0")),
-                            Decimal("0"),
-                        )
-                    ),
-                    payment_status=self._payment_status(
-                        wage_amount=Decimal(row.wage_amount),
-                        paid_amount=payment_summary.get(
-                            self._daily_wage_key(
-                                employee=str(row.employee),
-                                work_date=row.work_date,
-                                process_name=str(row.process_name),
-                                item_code=row.item_code,
-                            ),
-                            {},
-                        ).get("paid_amount", Decimal("0")),
-                    ),
-                    payment_count=int(
-                        payment_summary.get(
-                            self._daily_wage_key(
-                                employee=str(row.employee),
-                                work_date=row.work_date,
-                                process_name=str(row.process_name),
-                                item_code=row.item_code,
-                            ),
-                            {},
-                        ).get("payment_count", 0)
-                    ),
-                    latest_payment_id=(
-                        int(payment_summary.get(
-                            self._daily_wage_key(
-                                employee=str(row.employee),
-                                work_date=row.work_date,
-                                process_name=str(row.process_name),
-                                item_code=row.item_code,
-                            ),
-                            {},
-                        ).get("latest_payment_id"))
-                        if payment_summary.get(
-                            self._daily_wage_key(
-                                employee=str(row.employee),
-                                work_date=row.work_date,
-                                process_name=str(row.process_name),
-                                item_code=row.item_code,
-                            ),
-                            {},
-                        ).get("latest_payment_id") is not None
-                        else None
-                    ),
-                    latest_payment_entry=(
-                        str(payment_summary.get(
-                            self._daily_wage_key(
-                                employee=str(row.employee),
-                                work_date=row.work_date,
-                                process_name=str(row.process_name),
-                                item_code=row.item_code,
-                            ),
-                            {},
-                        ).get("latest_payment_entry"))
-                        if payment_summary.get(
-                            self._daily_wage_key(
-                                employee=str(row.employee),
-                                work_date=row.work_date,
-                                process_name=str(row.process_name),
-                                item_code=row.item_code,
-                            ),
-                            {},
-                        ).get("latest_payment_entry") is not None
-                        else None
+                    wage_amount=wage_amount,
+                    paid_amount=paid_amount,
+                    outstanding_amount=outstanding_amount,
+                    payment_status=self._payment_status(wage_amount=wage_amount, paid_amount=paid_amount),
+                    payment_count=payment_count,
+                    latest_payment_id=int(latest_payment_id) if latest_payment_id is not None else None,
+                    latest_payment_entry=str(latest_payment_entry) if latest_payment_entry is not None else None,
+                    **self._daily_wage_financial_ledger(
+                        employee=str(row.employee),
+                        work_date=row.work_date,
+                        process_name=str(row.process_name),
+                        item_code=row.item_code,
+                        wage_amount=wage_amount,
+                        paid_amount=paid_amount,
+                        outstanding_amount=outstanding_amount,
                     ),
                 )
-                for row in rows
-            ],
+            )
+
+        return WorkshopDailyWageListData(
+            items=daily_wage_items,
             total=int(total),
             total_amount=self._round(Decimal(total_amount)),
             total_paid_amount=self._round(total_paid_amount),
@@ -2501,11 +2441,49 @@ class WorkshopService:
         return "partly_paid"
 
     @staticmethod
+    def _daily_wage_financial_ledger(
+        *,
+        employee: str,
+        work_date: date,
+        process_name: str,
+        item_code: str | None,
+        wage_amount: Decimal,
+        paid_amount: Decimal,
+        outstanding_amount: Decimal,
+    ) -> dict[str, Decimal | bool | int | str]:
+        if wage_amount <= Decimal("0"):
+            ledger_status = "estimated"
+            ledger_status_name = "待归集"
+        elif outstanding_amount <= Decimal("0"):
+            ledger_status = "closed"
+            ledger_status_name = "总账已闭合"
+        elif paid_amount > Decimal("0"):
+            ledger_status = "partial"
+            ledger_status_name = "部分归集"
+        else:
+            ledger_status = "posted"
+            ledger_status_name = "应付已归集"
+        return {
+            "financial_ledger_status": ledger_status,
+            "financial_ledger_status_name": ledger_status_name,
+            "financial_ledger_payable_amount": Decimal("0") if wage_amount <= Decimal("0") else wage_amount,
+            "financial_ledger_cash_out_amount": paid_amount,
+            "financial_ledger_outstanding_amount": outstanding_amount,
+            "financial_ledger_closed": ledger_status == "closed",
+            "financial_ledger_source_count": int(wage_amount > Decimal("0")) + int(paid_amount > Decimal("0")),
+            "financial_ledger_source_note": (
+                f"计件日工资 {employee}/{work_date.isoformat()}/{process_name}/{item_code or '-'}；"
+                f"应付工资 {wage_amount}；已发 {paid_amount}；未发 {outstanding_amount}"
+            ),
+        }
+
+    @staticmethod
     def _build_wage_payment_request_hash(payload: dict[str, object]) -> str:
         return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
     @staticmethod
     def _to_wage_payment_data(row: YsWorkshopWagePayment) -> WorkshopWagePaymentData:
+        financial_ledger = WorkshopService._wage_payment_financial_ledger(row)
         return WorkshopWagePaymentData(
             id=int(row.id),
             payment_entry=str(row.payment_entry),
@@ -2522,9 +2500,36 @@ class WorkshopService:
             reference_date=row.reference_date,
             status=str(row.status),
             source_ref=str(row.source_ref),
+            **financial_ledger,
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
+
+    @staticmethod
+    def _wage_payment_financial_ledger(row: YsWorkshopWagePayment) -> dict[str, Decimal | bool | str]:
+        status = str(row.status or "")
+        paid_amount = WorkshopService._round(Decimal(row.paid_amount))
+        outstanding_after = WorkshopService._round(Decimal(row.outstanding_after))
+        if status == "submitted":
+            ledger_status = "closed" if outstanding_after <= Decimal("0") else "partial"
+            ledger_status_name = "总账已闭合" if ledger_status == "closed" else "部分归集"
+            cash_out = paid_amount
+        elif status == "cancelled":
+            ledger_status = "cancelled"
+            ledger_status_name = "已取消"
+            cash_out = Decimal("0")
+        else:
+            ledger_status = "pending"
+            ledger_status_name = "待归集"
+            cash_out = Decimal("0")
+        return {
+            "financial_ledger_status": ledger_status,
+            "financial_ledger_status_name": ledger_status_name,
+            "financial_ledger_cash_out_amount": cash_out,
+            "financial_ledger_outstanding_amount": Decimal("0") if status == "cancelled" else outstanding_after,
+            "financial_ledger_closed": ledger_status == "closed",
+            "financial_ledger_source_note": f"工资付款 {row.payment_entry}；员工 {row.employee}；状态 {status or '-'}",
+        }
 
     @staticmethod
     def _build_ticket_no() -> str:

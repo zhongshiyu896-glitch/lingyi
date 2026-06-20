@@ -200,6 +200,14 @@ class WorkshopDailyWageRow(BaseModel):
     payment_count: int = 0
     latest_payment_id: Optional[int] = None
     latest_payment_entry: Optional[str] = None
+    financial_ledger_status: str = "posted"
+    financial_ledger_status_name: str = "应付已归集"
+    financial_ledger_payable_amount: Decimal = Decimal("0")
+    financial_ledger_cash_out_amount: Decimal = Decimal("0")
+    financial_ledger_outstanding_amount: Decimal = Decimal("0")
+    financial_ledger_closed: bool = False
+    financial_ledger_source_count: int = 0
+    financial_ledger_source_note: str = ""
 
 
 class WorkshopDailyWageListData(BaseModel):
@@ -260,6 +268,12 @@ class WorkshopWagePaymentData(BaseModel):
     reference_date: Optional[date]
     status: str
     source_ref: str
+    financial_ledger_status: str = "posted"
+    financial_ledger_status_name: str = "总账已归集"
+    financial_ledger_cash_out_amount: Decimal = Decimal("0")
+    financial_ledger_outstanding_amount: Decimal = Decimal("0")
+    financial_ledger_closed: bool = False
+    financial_ledger_source_note: str = ""
     created_by: str
     created_at: datetime
 

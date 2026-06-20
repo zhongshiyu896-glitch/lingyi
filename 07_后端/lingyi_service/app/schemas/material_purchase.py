@@ -219,6 +219,13 @@ class MaterialPurchaseInvoiceData(BaseModel):
     scenario_tag: str | None = None
     approval_status: str = "not_submitted"
     approval_no: str | None = None
+    financial_ledger_status: str = "posted"
+    financial_ledger_status_name: str = "总账已归集"
+    financial_ledger_payable_amount: Decimal = Decimal("0")
+    financial_ledger_cash_out_amount: Decimal = Decimal("0")
+    financial_ledger_outstanding_amount: Decimal = Decimal("0")
+    financial_ledger_closed: bool = False
+    financial_ledger_source_note: str = ""
     created_by: str
     created_at: datetime | None = None
 
@@ -286,6 +293,12 @@ class MaterialPurchasePaymentData(BaseModel):
     scenario_tag: str | None = None
     approval_status: str = "not_submitted"
     approval_no: str | None = None
+    financial_ledger_status: str = "pending"
+    financial_ledger_status_name: str = "待审批"
+    financial_ledger_cash_out_amount: Decimal = Decimal("0")
+    financial_ledger_outstanding_amount: Decimal = Decimal("0")
+    financial_ledger_closed: bool = False
+    financial_ledger_source_note: str = ""
     created_by: str
     created_at: datetime | None = None
 

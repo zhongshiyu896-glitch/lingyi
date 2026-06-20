@@ -446,6 +446,9 @@ class WorkshopWageApiTest(unittest.TestCase):
         self.assertEqual(data["employee"], "EMP-PAY-001")
         self.assertEqual(Decimal(str(data["paid_amount"])), wage_amount)
         self.assertEqual(Decimal(str(data["outstanding_after"])), Decimal("0.000000"))
+        self.assertEqual(data["financial_ledger_status"], "closed")
+        self.assertEqual(data["financial_ledger_status_name"], "总账已闭合")
+        self.assertTrue(data["financial_ledger_closed"])
 
         replay = self.client.post(
             "/api/workshop/wage-payments",
@@ -465,6 +468,9 @@ class WorkshopWageApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(paid_row["outstanding_amount"])), Decimal("0.000000"))
         self.assertEqual(paid_row["payment_status"], "paid")
         self.assertEqual(paid_row["payment_count"], 1)
+        self.assertEqual(paid_row["financial_ledger_status"], "closed")
+        self.assertEqual(Decimal(str(paid_row["financial_ledger_cash_out_amount"])), wage_amount)
+        self.assertEqual(Decimal(str(paid_row["financial_ledger_outstanding_amount"])), Decimal("0.000000"))
 
         payments = self.client.get(
             "/api/workshop/wage-payments?employee=EMP-PAY-001&from_date=2026-04-12&to_date=2026-04-12",
@@ -500,6 +506,9 @@ class WorkshopWageApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(reopened_row["paid_amount"])), Decimal("0.000000"))
         self.assertEqual(Decimal(str(reopened_row["outstanding_amount"])), wage_amount)
         self.assertEqual(reopened_row["payment_status"], "unpaid")
+        self.assertEqual(reopened_row["financial_ledger_status"], "posted")
+        self.assertEqual(reopened_row["financial_ledger_status_name"], "应付已归集")
+        self.assertEqual(Decimal(str(reopened_row["financial_ledger_cash_out_amount"])), Decimal("0.000000"))
 
         submitted_payments = self.client.get(
             "/api/workshop/wage-payments?employee=EMP-PAY-001&from_date=2026-04-12&to_date=2026-04-12",
@@ -507,6 +516,38 @@ class WorkshopWageApiTest(unittest.TestCase):
         )
         self.assertEqual(submitted_payments.status_code, 200)
         self.assertEqual(submitted_payments.json()["data"]["total"], 0)
+
+    def test_wage_payment_partial_financial_ledger_status(self) -> None:
+        row = self._create_daily_wage_for_payment(ticket_key="PAY-RG-PART", qty="8", employee="EMP-PAY-PART")
+        wage_amount = Decimal(str(row["wage_amount"]))
+        partial_amount = wage_amount / Decimal("2")
+        payload = self._payment_payload(
+            row=row,
+            paid_amount=str(partial_amount),
+            carrier_suffix="PAY-PART",
+        )
+
+        response = self.client.post(
+            "/api/workshop/wage-payments",
+            headers=self._headers(role="Workshop Wage Clerk"),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+        payment = response.json()["data"]
+        self.assertEqual(payment["financial_ledger_status"], "partial")
+        self.assertEqual(payment["financial_ledger_status_name"], "部分归集")
+        self.assertEqual(Decimal(str(payment["financial_ledger_cash_out_amount"])), partial_amount)
+
+        daily = self.client.get(
+            "/api/workshop/daily-wages?employee=EMP-PAY-PART&from_date=2026-04-12&to_date=2026-04-12",
+            headers=self._headers(role="Workshop Wage Clerk"),
+        )
+        self.assertEqual(daily.status_code, 200)
+        daily_row = daily.json()["data"]["items"][0]
+        self.assertEqual(daily_row["payment_status"], "partly_paid")
+        self.assertEqual(daily_row["financial_ledger_status"], "partial")
+        self.assertEqual(Decimal(str(daily_row["financial_ledger_cash_out_amount"])), partial_amount)
+        self.assertEqual(Decimal(str(daily_row["financial_ledger_outstanding_amount"])), partial_amount)
 
     def test_wage_payment_over_amount_returns_409(self) -> None:
         row = self._create_daily_wage_for_payment(ticket_key="PAY-RG-002", qty="4", employee="EMP-PAY-002")
