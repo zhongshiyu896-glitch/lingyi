@@ -76,6 +76,8 @@ from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CREATE
+from app.core.permissions import FINANCE_APPROVAL_MANAGE
+from app.core.permissions import FINANCE_APPROVAL_READ
 from app.core.permissions import MASTER_DATA_MANAGE
 from app.core.permissions import MASTER_DATA_READ
 from app.core.permissions import MATERIAL_PURCHASE_READ
@@ -217,6 +219,8 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_CANCEL,
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
         FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER,
+        FINANCE_APPROVAL_READ,
+        FINANCE_APPROVAL_MANAGE,
         SALES_INVENTORY_READ,
         SALES_INVENTORY_EXPORT,
         SALES_INVENTORY_DIAGNOSTIC,
@@ -293,6 +297,8 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_CONFIRM,
         FACTORY_STATEMENT_CANCEL,
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
+        FINANCE_APPROVAL_READ,
+        FINANCE_APPROVAL_MANAGE,
         SALES_INVENTORY_READ,
         SALES_INVENTORY_EXPORT,
     },
@@ -2326,6 +2332,8 @@ class PermissionService:
             "factory_statement_payable_draft_create": False,
             "factory_statement_payable_draft_worker": False,
             "factory_statement_payment_create": False,
+            "finance_approval_read": False,
+            "finance_approval_manage": False,
             "payment_create": False,
             "payment_cancel": False,
             "manage": False,
@@ -2457,6 +2465,16 @@ class PermissionService:
             base["factory_statement_payment_create"] = FACTORY_STATEMENT_PAYMENT_CREATE in actions
             base["payment_cancel"] = FACTORY_STATEMENT_PAYMENT_CANCEL in actions
             base["factory_statement_payment_cancel"] = FACTORY_STATEMENT_PAYMENT_CANCEL in actions
+            return base
+        if module == "finance_approval":
+            base["read"] = FINANCE_APPROVAL_READ in actions
+            base["manage"] = FINANCE_APPROVAL_MANAGE in actions
+            base["create"] = base["manage"]
+            base["update"] = base["manage"]
+            base["confirm"] = base["manage"]
+            base["cancel"] = base["manage"]
+            base["finance_approval_read"] = base["read"]
+            base["finance_approval_manage"] = base["manage"]
             return base
         if module == "sales_inventory":
             base["read"] = SALES_INVENTORY_READ in actions

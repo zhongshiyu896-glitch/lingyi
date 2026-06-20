@@ -112,6 +112,9 @@ STYLE_MASTER_MANAGE = "style_master:manage"
 MATERIAL_PURCHASE_READ = "material_purchase:read"
 MATERIAL_PURCHASE_WRITE = "material_purchase:write"
 
+FINANCE_APPROVAL_READ = "finance_approval:read"
+FINANCE_APPROVAL_MANAGE = "finance_approval:manage"
+
 SALES_READ = "sales:read"
 SALES_EXPORT = "sales:export"
 INVENTORY_READ = "inventory:read"
@@ -279,6 +282,11 @@ ALL_MATERIAL_PURCHASE_ACTIONS = {
     MATERIAL_PURCHASE_WRITE,
 }
 
+ALL_FINANCE_APPROVAL_ACTIONS = {
+    FINANCE_APPROVAL_READ,
+    FINANCE_APPROVAL_MANAGE,
+}
+
 ALL_SALES_ACTIONS = {
     SALES_READ,
     SALES_EXPORT,
@@ -357,6 +365,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_SAMPLE_ACTIONS
         | ALL_STYLE_MASTER_ACTIONS
         | ALL_MATERIAL_PURCHASE_ACTIONS
+        | ALL_FINANCE_APPROVAL_ACTIONS
         | ALL_SALES_ACTIONS
         | ALL_INVENTORY_ACTIONS
         | ALL_WAREHOUSE_ACTIONS
@@ -429,6 +438,8 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
         FACTORY_STATEMENT_PAYMENT_CREATE,
         FACTORY_STATEMENT_PAYMENT_CANCEL,
+        FINANCE_APPROVAL_READ,
+        FINANCE_APPROVAL_MANAGE,
         SALES_INVENTORY_READ,
         SALES_INVENTORY_EXPORT,
     },
@@ -445,6 +456,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
     "Sample Manager": set(ALL_SAMPLE_ACTIONS | {STYLE_MASTER_READ}),
     "Style Manager": set(ALL_STYLE_MASTER_ACTIONS),
     "Purchasing Manager": set(ALL_MATERIAL_PURCHASE_ACTIONS | {WAREHOUSE_READ, WAREHOUSE_STOCK_ENTRY_DRAFT}),
+    "Finance Approval Manager": set(ALL_FINANCE_APPROVAL_ACTIONS),
     "Warehouse Manager": set(ALL_WAREHOUSE_ACTIONS),
     "Quality Manager": {
         QUALITY_READ,
@@ -489,6 +501,8 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
         FACTORY_STATEMENT_PAYMENT_CREATE,
         FACTORY_STATEMENT_PAYMENT_CANCEL,
+        FINANCE_APPROVAL_READ,
+        FINANCE_APPROVAL_MANAGE,
     },
     "Viewer": {BOM_READ},
 }
@@ -510,6 +524,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "sample": set(ALL_SAMPLE_ACTIONS),
     "style_master": set(ALL_STYLE_MASTER_ACTIONS),
     "material_purchase": set(ALL_MATERIAL_PURCHASE_ACTIONS),
+    "finance_approval": set(ALL_FINANCE_APPROVAL_ACTIONS),
     "sales": set(ALL_SALES_ACTIONS),
     "inventory": set(ALL_INVENTORY_ACTIONS),
     "warehouse": set(ALL_WAREHOUSE_ACTIONS),
