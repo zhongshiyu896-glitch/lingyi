@@ -27,6 +27,8 @@ from app.core.permissions import WAREHOUSE_STOCK_HOLD_RELEASE
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.quality import Base as QualityBase
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
@@ -53,6 +55,7 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -85,6 +88,7 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LyMasterDataRecord).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.commit()
@@ -146,6 +150,28 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
             )
             session.commit()
 
+    def _seed_material_master(
+        self,
+        *,
+        company: str = "COMP-A",
+        item_code: str = "ITEM-A",
+        payload: dict[str, object],
+    ) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company=company,
+                    code=item_code,
+                    name=f"{item_code} 物料",
+                    status="active",
+                    payload=payload,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
 
 class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
     """Read-only API behavior and boundaries."""
@@ -200,7 +226,73 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         self.assertEqual(Decimal(str(row["projected_qty"])), Decimal("7.000000"))
         self.assertFalse(row["is_below_reorder"])
         self.assertFalse(row["is_below_safety"])
+        self.assertTrue(row["threshold_missing"])
+        self.assertIsNone(row["reorder_level"])
+        self.assertIsNone(row["safety_stock"])
+
+    def test_stock_summary_reads_material_thresholds_from_master_payload(self) -> None:
+        self._seed_material_master(payload={"reorder_level": "5", "safety_stock": "3"})
+        self._seed_stock_entry(qty="2", event_key="EVT-WH-READ-THRESHOLD-001")
+
+        response = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        row = response.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(row["actual_qty"])), Decimal("2.000000"))
+        self.assertEqual(Decimal(str(row["reorder_level"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(row["safety_stock"])), Decimal("3.000000"))
         self.assertFalse(row["threshold_missing"])
+        self.assertTrue(row["is_below_reorder"])
+        self.assertTrue(row["is_below_safety"])
+
+    def test_stock_summary_uses_min_stock_as_safety_stock_alias(self) -> None:
+        self._seed_material_master(item_code="ITEM-MIN", payload={"min_stock": "4"})
+        self._seed_stock_entry(item_code="ITEM-MIN", qty="2", event_key="EVT-WH-READ-MIN-STOCK-001")
+
+        response = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=WH-A&item_code=ITEM-MIN",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        row = response.json()["data"]["items"][0]
+        self.assertIsNone(row["reorder_level"])
+        self.assertEqual(Decimal(str(row["safety_stock"])), Decimal("4.000000"))
+        self.assertTrue(row["threshold_missing"])
+        self.assertFalse(row["is_below_reorder"])
+        self.assertTrue(row["is_below_safety"])
+
+    def test_fastapi_alerts_use_material_thresholds_from_master_payload(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "warehouse.user": {
+                        "company": ["COMP-A"],
+                        "warehouse": ["WH-A"],
+                        "item_code": ["ITEM-A"],
+                    }
+                }
+            }
+        )
+        self._seed_material_master(payload={"reorder_level": "5", "safety_stock": "3"})
+        self._seed_stock_entry(qty="2", event_key="EVT-WH-READ-ALERT-THRESHOLD-001")
+
+        response = self.client.get(
+            "/api/warehouse/alerts?company=COMP-A&warehouse=WH-A&item_code=ITEM-A&alert_type=low_stock",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        items = response.json()["data"]["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["alert_type"], "low_stock")
+        self.assertEqual(Decimal(str(items[0]["current_qty"])), Decimal("2.000000"))
+        self.assertEqual(Decimal(str(items[0]["threshold_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(items[0]["gap_qty"])), Decimal("3.000000"))
 
     def test_alerts_returns_low_stock(self) -> None:
         with patch(
@@ -305,6 +397,7 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
             event_key="EVT-WH-FASTAPI-ALERT-001",
             created_at=datetime(2026, 4, 20, tzinfo=timezone.utc),
         )
+        self._seed_material_master(payload={"reorder_level": "5", "safety_stock": "3"})
 
         with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("erpnext adapter")):
             alerts = self.client.get(

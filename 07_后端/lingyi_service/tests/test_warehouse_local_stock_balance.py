@@ -190,7 +190,7 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         )
         summary_by_warehouse = {row.warehouse: Decimal(str(row.actual_qty)) for row in summary.items}
         self.assertEqual(summary_by_warehouse, {"WH-A": Decimal("5.000000"), "WH-B": Decimal("2.000000")})
-        self.assertTrue(all(not row.threshold_missing for row in summary.items))
+        self.assertTrue(all(row.threshold_missing for row in summary.items))
 
     def test_date_filter_keeps_running_balance_from_prior_movements(self) -> None:
         self._seed_movements()

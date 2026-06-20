@@ -23,6 +23,8 @@ from app.core.permissions import DASHBOARD_READ
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.quality import Base as QualityBase
@@ -50,6 +52,7 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
@@ -88,6 +91,7 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
             session.query(LySalesOrder).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LyMasterDataRecord).delete()
             session.commit()
 
     @staticmethod
@@ -307,6 +311,72 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(payload["sales_inventory"]["total_actual_qty"])), Decimal("7.000000"))
         self.assertEqual(payload["warehouse"]["alert_count"], 0)
         self.assertEqual([row["status"] for row in payload["source_status"]], ["ok", "ok", "ok"])
+
+    def test_fastapi_dashboard_inventory_alerts_read_material_thresholds(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code="DASH-MAT-THRESHOLD",
+                    name="Dashboard 阈值物料",
+                    status="active",
+                    payload={"reorder_level": "10", "safety_stock": "8"},
+                    created_by="dash.seed",
+                    updated_by="dash.seed",
+                )
+            )
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="dashboard_seed",
+                source_id="DASH-STOCK-THRESHOLD",
+                source_warehouse=None,
+                target_warehouse="WH-DASH",
+                status="draft",
+                created_by="dash.seed",
+                idempotency_key="idem-dash-stock-threshold",
+                event_key="event-dash-stock-threshold",
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company="COMP-A",
+                    item_code="DASH-MAT-THRESHOLD",
+                    qty=Decimal("7"),
+                    uom="米",
+                    target_warehouse="WH-DASH",
+                )
+            )
+            session.commit()
+
+        with patch.dict(
+            os.environ,
+            {"LINGYI_PERMISSION_SOURCE": "fastapi", "LINGYI_ERPNEXT_BASE_URL": ""},
+            clear=False,
+        ), patch(
+            "app.services.quality_service.QualityService.statistics",
+            return_value=SimpleNamespace(
+                total_count=0,
+                total_inspected_qty=Decimal("0"),
+                total_accepted_qty=Decimal("0"),
+                total_rejected_qty=Decimal("0"),
+                total_defect_qty=Decimal("0"),
+            ),
+        ):
+            response = self.client.get(
+                "/api/dashboard/overview?company=COMP-A",
+                headers=self._headers_with_roles("System Manager"),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["sales_inventory"]["below_safety_count"], 1)
+        self.assertEqual(payload["sales_inventory"]["below_reorder_count"], 1)
+        self.assertEqual(payload["warehouse"]["alert_count"], 1)
+        self.assertEqual(payload["warehouse"]["critical_alert_count"], 1)
 
     def test_module_read_actions_cannot_replace_dashboard_read(self) -> None:
         for role in ("quality:read", "sales_inventory:read", "warehouse:read", "inventory:read"):

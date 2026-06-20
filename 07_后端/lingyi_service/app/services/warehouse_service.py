@@ -1118,6 +1118,7 @@ class WarehouseService:
             key = (movement.company, movement.warehouse, movement.item_code)
             grouped[key] = grouped.get(key, Decimal("0")) + movement.actual_qty
 
+        material_thresholds = self._local_material_thresholds(keys=set(grouped.keys()))
         items = [
             WarehouseStockSummaryItem(
                 company=company_key,
@@ -1127,11 +1128,17 @@ class WarehouseService:
                 projected_qty=qty,
                 reserved_qty=Decimal("0"),
                 ordered_qty=Decimal("0"),
-                reorder_level=Decimal("0"),
-                safety_stock=Decimal("0"),
-                threshold_missing=False,
-                is_below_reorder=False,
-                is_below_safety=False,
+                reorder_level=material_thresholds.get((company_key, item_key), {}).get("reorder_level"),
+                safety_stock=material_thresholds.get((company_key, item_key), {}).get("safety_stock"),
+                threshold_missing=self._threshold_missing(material_thresholds.get((company_key, item_key))),
+                is_below_reorder=self._is_below_threshold(
+                    qty=qty,
+                    threshold=material_thresholds.get((company_key, item_key), {}).get("reorder_level"),
+                ),
+                is_below_safety=self._is_below_threshold(
+                    qty=qty,
+                    threshold=material_thresholds.get((company_key, item_key), {}).get("safety_stock"),
+                ),
             )
             for (company_key, warehouse_key, item_key), qty in sorted(grouped.items())
         ]
@@ -1143,6 +1150,59 @@ class WarehouseService:
             warehouse_management=self._build_management_overview(items=items),
             material_inventory=self._build_material_inventory(items=items),
         )
+
+    def _local_material_thresholds(
+        self,
+        *,
+        keys: set[tuple[str, str, str]],
+    ) -> dict[tuple[str, str], dict[str, Decimal | None]]:
+        companies = sorted({company for company, _, _ in keys if company})
+        item_codes = sorted({item_code for _, _, item_code in keys if item_code})
+        if not companies or not item_codes or not self._has_sqlite_master_data_table():
+            return {}
+
+        session = self._require_session()
+        try:
+            rows = (
+                session.query(LyMasterDataRecord.company, LyMasterDataRecord.code, LyMasterDataRecord.payload)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.status == "active",
+                    LyMasterDataRecord.company.in_(companies),
+                    LyMasterDataRecord.code.in_(item_codes),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise WarehouseServiceError(500, DATABASE_READ_FAILED, "数据库读取失败") from exc
+
+        thresholds: dict[tuple[str, str], dict[str, Decimal | None]] = {}
+        for row in rows:
+            payload = row.payload if isinstance(row.payload, dict) else {}
+            thresholds[(str(row.company), str(row.code))] = {
+                "reorder_level": self._payload_optional_decimal(payload, "reorder_level", "reorderLevel"),
+                "safety_stock": self._payload_optional_decimal(payload, "safety_stock", "safetyStock", "min_stock", "minStock"),
+            }
+        return thresholds
+
+    @classmethod
+    def _payload_optional_decimal(cls, payload: dict[str, Any], *keys: str) -> Decimal | None:
+        for key in keys:
+            value = payload.get(key)
+            number = cls._to_optional_decimal(value)
+            if number is not None:
+                return number
+        return None
+
+    @staticmethod
+    def _threshold_missing(thresholds: dict[str, Decimal | None] | None) -> bool:
+        if thresholds is None:
+            return True
+        return thresholds.get("reorder_level") is None or thresholds.get("safety_stock") is None
+
+    @staticmethod
+    def _is_below_threshold(*, qty: Decimal, threshold: Decimal | None) -> bool:
+        return threshold is not None and qty < threshold
 
     def list_other_inbound(
         self,
