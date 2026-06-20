@@ -2221,11 +2221,11 @@ def get_stock_alerts(
         _raise_scope_denied_as_forbidden(exc)
 
     if get_permission_source() == "fastapi":
-        data = _build_local_alerts_fallback(
-            company=company,
-            warehouse=warehouse,
-            item_code=item_code,
-            alert_type=alert_type,
+        data = WarehouseService(session=session).get_alerts(
+            company=_scope_text(company),
+            warehouse=_scope_text(warehouse),
+            item_code=_scope_text(item_code),
+            alert_type=_scope_text(alert_type),
         )
     else:
         try:

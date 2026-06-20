@@ -2103,12 +2103,20 @@ class WarehouseService:
         item_code: str | None,
         alert_type: str | None,
     ) -> WarehouseAlertsData:
-        summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
-        latest_dates = self._require_adapter().latest_movement_by_item_warehouse(
-            company=company,
-            warehouse=warehouse,
-            item_code=item_code,
-        )
+        if self.adapter is None:
+            summary = self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+            latest_dates = self._local_latest_movement_by_item_warehouse(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+            )
+        else:
+            summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+            latest_dates = self._require_adapter().latest_movement_by_item_warehouse(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+            )
 
         normalized_alert = (alert_type or "").strip().lower() or None
         supported = {"low_stock", "below_safety", "overstock", "stale_stock"}
@@ -2135,6 +2143,21 @@ class WarehouseService:
             alert_type=normalized_alert,
             items=rows,
         )
+
+    def _local_latest_movement_by_item_warehouse(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> dict[tuple[str, str], date]:
+        latest_dates: dict[tuple[str, str], date] = {}
+        for movement in self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code):
+            key = (movement.item_code, movement.warehouse)
+            current = latest_dates.get(key)
+            if current is None or movement.posting_date > current:
+                latest_dates[key] = movement.posting_date
+        return latest_dates
 
     def list_batches(
         self,

@@ -299,10 +299,16 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
                 }
             }
         )
+        self._seed_stock_entry(
+            qty="5",
+            purpose="Material Issue",
+            event_key="EVT-WH-FASTAPI-ALERT-001",
+            created_at=datetime(2026, 4, 20, tzinfo=timezone.utc),
+        )
 
         with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("erpnext adapter")):
             alerts = self.client.get(
-                "/api/warehouse/alerts?company=COMP-A&warehouse=WH-A&item_code=ITEM-A",
+                "/api/warehouse/alerts?company=COMP-A&warehouse=WH-A&item_code=ITEM-A&alert_type=low_stock",
                 headers=self._headers(),
             )
             batches = self.client.get(
@@ -316,7 +322,10 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
 
         self.assertEqual(alerts.status_code, 200, alerts.text)
         self.assertEqual(alerts.json()["code"], "0")
-        self.assertEqual(alerts.json()["data"]["items"], [])
+        alert_items = alerts.json()["data"]["items"]
+        self.assertEqual(len(alert_items), 1)
+        self.assertEqual(alert_items[0]["alert_type"], "low_stock")
+        self.assertEqual(alert_items[0]["current_qty"], "-5.000000")
         self.assertEqual(batches.status_code, 200, batches.text)
         self.assertEqual(batches.json()["code"], "0")
         self.assertEqual(batches.json()["data"]["total"], 0)
