@@ -620,7 +620,7 @@
         "WarehouseMaterialHoldReleaseRequest"
       ],
       "partial_gap": [
-        "MaterialHoldWarehouseReservationDetail: A期列表/新建/释放已接 WarehouseStockEntryDraftData + source_type=material_hold；锁定量/占用明细仍待后续专用表"
+        "MaterialHoldWarehouseReservationDetail: A期列表/新建/释放已接 WarehouseStockEntryDraftData + source_type=material_hold；reserved_qty 已按未释放 material_hold 草稿明细汇总，专用 reservation 表仍待后续库存预留模型补齐"
       ],
       "priority": "P1_first_readonly_connect"
     },

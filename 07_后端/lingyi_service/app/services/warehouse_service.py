@@ -1118,29 +1118,35 @@ class WarehouseService:
             key = (movement.company, movement.warehouse, movement.item_code)
             grouped[key] = grouped.get(key, Decimal("0")) + movement.actual_qty
 
-        material_thresholds = self._local_material_thresholds(keys=set(grouped.keys()))
+        reserved_quantities = self._local_material_hold_reserved_quantities(
+            company=normalized_company,
+            warehouse=normalized_warehouse,
+            item_code=normalized_item_code,
+        )
+        summary_keys = set(grouped.keys()) | set(reserved_quantities.keys())
+        material_thresholds = self._local_material_thresholds(keys=summary_keys)
         items = [
             WarehouseStockSummaryItem(
                 company=company_key,
                 warehouse=warehouse_key,
                 item_code=item_key,
-                actual_qty=qty,
-                projected_qty=qty,
-                reserved_qty=Decimal("0"),
+                actual_qty=grouped.get((company_key, warehouse_key, item_key), Decimal("0")),
+                projected_qty=grouped.get((company_key, warehouse_key, item_key), Decimal("0")),
+                reserved_qty=reserved_quantities.get((company_key, warehouse_key, item_key), Decimal("0")),
                 ordered_qty=Decimal("0"),
                 reorder_level=material_thresholds.get((company_key, item_key), {}).get("reorder_level"),
                 safety_stock=material_thresholds.get((company_key, item_key), {}).get("safety_stock"),
                 threshold_missing=self._threshold_missing(material_thresholds.get((company_key, item_key))),
                 is_below_reorder=self._is_below_threshold(
-                    qty=qty,
+                    qty=grouped.get((company_key, warehouse_key, item_key), Decimal("0")),
                     threshold=material_thresholds.get((company_key, item_key), {}).get("reorder_level"),
                 ),
                 is_below_safety=self._is_below_threshold(
-                    qty=qty,
+                    qty=grouped.get((company_key, warehouse_key, item_key), Decimal("0")),
                     threshold=material_thresholds.get((company_key, item_key), {}).get("safety_stock"),
                 ),
             )
-            for (company_key, warehouse_key, item_key), qty in sorted(grouped.items())
+            for company_key, warehouse_key, item_key in sorted(summary_keys)
         ]
         return WarehouseStockSummaryData(
             company=normalized_company,
@@ -1150,6 +1156,42 @@ class WarehouseService:
             warehouse_management=self._build_management_overview(items=items),
             material_inventory=self._build_material_inventory(items=items),
         )
+
+    def _local_material_hold_reserved_quantities(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> dict[tuple[str, str, str], Decimal]:
+        session = self._require_session()
+        query = (
+            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(
+                LyWarehouseStockEntryDraft.status != "cancelled",
+                LyWarehouseStockEntryDraft.purpose == "Material Issue",
+                LyWarehouseStockEntryDraft.source_type == "material_hold",
+            )
+        )
+        if company:
+            query = query.filter(LyWarehouseStockEntryDraft.company == company)
+        if item_code:
+            query = query.filter(LyWarehouseStockEntryDraftItem.item_code == item_code)
+
+        reserved: dict[tuple[str, str, str], Decimal] = {}
+        for draft, item in query.all():
+            warehouse_key = str(item.source_warehouse or draft.source_warehouse or "").strip()
+            if not warehouse_key:
+                continue
+            if warehouse and warehouse_key != warehouse:
+                continue
+            key = (str(draft.company), warehouse_key, str(item.item_code))
+            reserved[key] = reserved.get(key, Decimal("0")) + Decimal(str(item.qty or 0))
+        return reserved
 
     def _local_material_thresholds(
         self,
