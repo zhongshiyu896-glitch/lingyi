@@ -145,6 +145,7 @@ from app.schemas.production import ProductionTrackingExceptionItem
 from app.schemas.production import ProductionTrackingNodeEventData
 from app.schemas.production import ProductionTrackingNodeEventRequest
 from app.schemas.production import ProductionTrackingNodeItem
+from app.schemas.production import ProductionTrackingSummary
 from app.schemas.production import ProductionWorkOrderListData
 from app.schemas.production import ProductionWorkOrderListItem
 from app.schemas.production import ProductionWorkOrderQuery
@@ -357,6 +358,7 @@ class ProductionService:
         plan_ids = [int(row.id) for row in rows]
         latest_map = self.outbox_service.latest_by_plan_ids(plan_ids=plan_ids)
         readiness_map = self._material_readiness_by_plan_ids(plan_ids=plan_ids)
+        tracking_context = self._tracking_context_by_plan_ids(plan_ids=plan_ids)
 
         items: list[ProductionPlanListItem] = []
         for row in rows:
@@ -370,6 +372,16 @@ class ProductionService:
                     erpnext_work_order=(str(latest.erpnext_work_order) if latest.erpnext_work_order else None),
                     error_code=(str(latest.last_error_code) if latest.last_error_code else None),
                 )
+            context = tracking_context.get(int(row.id), {})
+            tracking_nodes = self._production_tracking_nodes(
+                plan=row,
+                materials=context.get("materials", []),
+                work_order_link=context.get("work_order_link"),
+                cards=context.get("cards", []),
+                exceptions=context.get("exceptions", []),
+                node_events=context.get("node_events", []),
+                latest_outbox=latest,
+            )
 
             items.append(
                 ProductionPlanListItem(
@@ -392,6 +404,10 @@ class ProductionService:
                     pending_requirement_count=int(material_readiness["pending_requirement_count"]),
                     purchase_status=str(material_readiness["purchase_status"]),
                     latest_work_order_outbox=summary,
+                    tracking_summary=self._production_tracking_summary(
+                        nodes=tracking_nodes,
+                        exceptions=context.get("exceptions", []),
+                    ),
                     created_at=row.created_at,
                 )
             )
@@ -3853,6 +3869,125 @@ class ProductionService:
             tracking_exceptions=[self._tracking_exception_item(row) for row in exceptions],
             created_at=plan.created_at,
             updated_at=plan.updated_at,
+        )
+
+    def _tracking_context_by_plan_ids(self, *, plan_ids: list[int]) -> dict[int, dict[str, Any]]:
+        normalized_ids = sorted({int(plan_id) for plan_id in plan_ids if int(plan_id) > 0})
+        if not normalized_ids:
+            return {}
+
+        context: dict[int, dict[str, Any]] = {
+            plan_id: {
+                "materials": [],
+                "work_order_link": None,
+                "cards": [],
+                "exceptions": [],
+                "node_events": [],
+            }
+            for plan_id in normalized_ids
+        }
+        try:
+            for row in (
+                self.session.query(LyProductionPlanMaterial)
+                .filter(LyProductionPlanMaterial.plan_id.in_(normalized_ids))
+                .order_by(LyProductionPlanMaterial.plan_id.asc(), LyProductionPlanMaterial.id.asc())
+                .all()
+            ):
+                context[int(row.plan_id)]["materials"].append(row)
+
+            for row in (
+                self.session.query(LyProductionWorkOrderLink)
+                .filter(LyProductionWorkOrderLink.plan_id.in_(normalized_ids))
+                .order_by(LyProductionWorkOrderLink.plan_id.asc(), LyProductionWorkOrderLink.id.desc())
+                .all()
+            ):
+                plan_id = int(row.plan_id)
+                if context[plan_id]["work_order_link"] is None:
+                    context[plan_id]["work_order_link"] = row
+
+            for row in (
+                self.session.query(LyProductionJobCardLink)
+                .filter(LyProductionJobCardLink.plan_id.in_(normalized_ids))
+                .order_by(LyProductionJobCardLink.plan_id.asc(), LyProductionJobCardLink.id.asc())
+                .all()
+            ):
+                context[int(row.plan_id)]["cards"].append(row)
+
+            for row in (
+                self.session.query(LyProductionTrackingException)
+                .filter(LyProductionTrackingException.plan_id.in_(normalized_ids))
+                .order_by(
+                    LyProductionTrackingException.plan_id.asc(),
+                    LyProductionTrackingException.created_at.desc(),
+                    LyProductionTrackingException.id.desc(),
+                )
+                .all()
+            ):
+                context[int(row.plan_id)]["exceptions"].append(row)
+
+            for row in (
+                self.session.query(LyProductionTrackingNodeEvent)
+                .filter(LyProductionTrackingNodeEvent.plan_id.in_(normalized_ids))
+                .order_by(
+                    LyProductionTrackingNodeEvent.plan_id.asc(),
+                    LyProductionTrackingNodeEvent.created_at.asc(),
+                    LyProductionTrackingNodeEvent.id.asc(),
+                )
+                .all()
+            ):
+                context[int(row.plan_id)]["node_events"].append(row)
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        return context
+
+    def _production_tracking_summary(
+        self,
+        *,
+        nodes: list[ProductionTrackingNodeItem],
+        exceptions: list[LyProductionTrackingException],
+    ) -> ProductionTrackingSummary:
+        open_exceptions = [
+            row
+            for row in exceptions
+            if str(getattr(row, "status", "") or "").strip().lower() not in {"resolved", "ignored", "closed"}
+        ]
+        blocker_count = sum(
+            1
+            for row in open_exceptions
+            if str(getattr(row, "severity", "") or "").strip().lower() == "blocker"
+        )
+        latest_candidates: list[datetime] = []
+        for node in nodes:
+            if node.updated_at is not None:
+                latest_candidates.append(node.updated_at)
+        for row in exceptions:
+            updated_at = getattr(row, "updated_at", None) or getattr(row, "created_at", None)
+            if updated_at is not None:
+                latest_candidates.append(updated_at)
+
+        current_node = next((node for node in nodes if node.node_key == "exception" and node.status == "blocked"), None)
+        if current_node is None:
+            explicit_nodes = [node for node in nodes if node.event_id is not None]
+            if explicit_nodes:
+                current_node = max(explicit_nodes, key=lambda node: node.updated_at or datetime.min)
+        if current_node is None:
+            current_node = next((node for node in nodes if node.status == "blocked"), None)
+        if current_node is None and open_exceptions:
+            current_node = next((node for node in nodes if node.node_key == "exception"), None)
+        if current_node is None:
+            current_node = next((node for node in nodes if node.status != "done"), None)
+        if current_node is None and nodes:
+            current_node = nodes[-1]
+
+        return ProductionTrackingSummary(
+            current_node_key=(current_node.node_key if current_node is not None else None),
+            current_node_name=(current_node.node_name if current_node is not None else None),
+            current_node_status=(current_node.status if current_node is not None else "pending"),
+            current_node_progress=(int(current_node.progress) if current_node is not None else 0),
+            open_exception_count=len(open_exceptions),
+            blocker_count=blocker_count,
+            latest_tracking_at=(max(latest_candidates) if latest_candidates else None),
         )
 
     def _production_tracking_nodes(

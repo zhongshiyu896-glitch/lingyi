@@ -346,6 +346,19 @@ class ProductionTrackingReconcileTest(unittest.TestCase):
         self.assertEqual(exception_node["status"], "in_progress")
         self.assertEqual(exception_node["source_ref"], data["exception_no"])
 
+        list_response = self.client.get(
+            "/api/production/plans?company=COMP-PTR&item_code=ST-PTR-001",
+            headers=self._headers(roles="production:read", request_id="PTR-EXC-LIST"),
+        )
+        self.assertEqual(list_response.status_code, 200, list_response.text)
+        listed_plan = next(row for row in list_response.json()["data"]["items"] if int(row["id"]) == plan_id)
+        tracking_summary = listed_plan["tracking_summary"]
+        self.assertEqual(tracking_summary["current_node_key"], "exception")
+        self.assertEqual(tracking_summary["current_node_status"], "in_progress")
+        self.assertEqual(tracking_summary["open_exception_count"], 1)
+        self.assertEqual(tracking_summary["blocker_count"], 0)
+        self.assertIsNotNone(tracking_summary["latest_tracking_at"])
+
         replay = self.client.post(
             f"/api/production/plans/{plan_id}/tracking-exceptions",
             headers=self._headers(roles="Production Manager", request_id="PTR-EXC-001"),

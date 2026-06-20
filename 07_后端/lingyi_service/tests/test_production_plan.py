@@ -809,6 +809,23 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(conflict.status_code, 409, conflict.text)
         self.assertEqual(conflict.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
 
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionPlanMaterial(
+                    plan_id=plan_id,
+                    bom_item_id=2001,
+                    material_item_code="MAT-NODE-SHORT",
+                    warehouse="WIP Warehouse - LY",
+                    qty_per_piece=Decimal("1"),
+                    loss_rate=Decimal("0"),
+                    required_qty=Decimal("6"),
+                    available_qty=Decimal("0"),
+                    shortage_qty=Decimal("6"),
+                    checked_at=datetime.utcnow(),
+                )
+            )
+            session.commit()
+
         detail_response = self.client.get(
             f"/api/production/plans/{plan_id}",
             headers=self._headers(),
@@ -819,6 +836,21 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(nodes["work_order"]["progress"], 60)
         self.assertEqual(nodes["work_order"]["remark"], "工单已排入车间")
         self.assertEqual(nodes["work_order"]["source_type"], "production_tracking_node")
+
+        list_response = self.client.get(
+            "/api/production/plans?company=COMP-A&item_code=ITEM-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(list_response.status_code, 200, list_response.text)
+        listed_plan = next(row for row in list_response.json()["data"]["items"] if int(row["id"]) == plan_id)
+        tracking_summary = listed_plan["tracking_summary"]
+        self.assertEqual(tracking_summary["current_node_key"], "work_order")
+        self.assertEqual(tracking_summary["current_node_name"], "生产工单")
+        self.assertEqual(tracking_summary["current_node_status"], "in_progress")
+        self.assertEqual(tracking_summary["current_node_progress"], 60)
+        self.assertEqual(tracking_summary["open_exception_count"], 0)
+        self.assertEqual(tracking_summary["blocker_count"], 0)
+        self.assertIsNotNone(tracking_summary["latest_tracking_at"])
 
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyProductionTrackingNodeEvent).count(), 1)

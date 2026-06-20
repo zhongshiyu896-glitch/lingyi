@@ -75,6 +75,18 @@ class ProductionWorkOrderOutboxSummary(BaseModel):
     error_code: Optional[str] = None
 
 
+class ProductionTrackingSummary(BaseModel):
+    """Production tracking summary derived for list display."""
+
+    current_node_key: Optional[str] = None
+    current_node_name: Optional[str] = None
+    current_node_status: str = "pending"
+    current_node_progress: int = 0
+    open_exception_count: int = 0
+    blocker_count: int = 0
+    latest_tracking_at: Optional[datetime] = None
+
+
 class ProductionPlanListItem(BaseModel):
     """Production plan list row."""
 
@@ -97,6 +109,7 @@ class ProductionPlanListItem(BaseModel):
     pending_requirement_count: int = 0
     purchase_status: str = "not_calculated"
     latest_work_order_outbox: Optional[ProductionWorkOrderOutboxSummary] = None
+    tracking_summary: ProductionTrackingSummary = Field(default_factory=ProductionTrackingSummary)
     created_at: datetime
 
 
