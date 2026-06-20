@@ -2,11 +2,28 @@
 
 任务编号：HISTORICAL-RED-CLEANUP-001
 
-范围：清理当前全量 pytest 的既有历史红，不混入 A 期功能主线交付。功能主线每次收口仍按定向测试、acceptance smoke、前端 typecheck/API smoke 证明新增失败为 0。
+范围：清理全量 pytest 既有历史红，不混入 A/B 期功能主线交付。功能主线每次收口仍按定向测试、acceptance smoke、前端 typecheck/API smoke 证明新增失败为 0。
 
-当前登记来源：2026-06-18 执行 `.venv/bin/python -m pytest --lf -q --tb=short`，重放 19 个历史红，结果仍为 19 failed。
+## 当前状态
 
-## 当前 19 个历史红
+状态：已清零，转为上线前回归守门。
+
+最新复核：2026-06-20 在 `/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service` 执行：
+
+- `.venv/bin/python -m pytest --lf -q --tb=short`
+- `.venv/bin/python -m pytest -q`
+
+两次结果均为：
+
+- `1495 passed`
+- `13 skipped`
+- `0 failed`
+
+## 历史登记来源
+
+2026-06-18 曾执行 `.venv/bin/python -m pytest --lf -q --tb=short`，登记 19 个历史红。该清单截至 2026-06-20 已不再复现；`pytest --lf` 已无失败保留，并退化为全量通过。
+
+原 19 项历史红保留如下，便于后续若回归时快速定位：
 
 1. `tests/test_logging_sanitization.py::LoggingSanitizationTest::test_database_write_failure_log_is_sanitized`
 2. `tests/test_logging_sanitization.py::LoggingSanitizationTest::test_rollback_failure_log_is_sanitized`
@@ -28,9 +45,8 @@
 18. `tests/test_subcontract_stock_outbox_idempotency.py::SubcontractStockOutboxIdempotencyTest::test_issue_material_idempotency_key_different_payload_returns_conflict`
 19. `tests/test_subcontract_stock_outbox_idempotency.py::SubcontractStockOutboxIdempotencyTest::test_issue_material_idempotent_same_payload_returns_existing_result`
 
-## 清理验收
+## 回归守门
 
-- 每个历史红单独修复并补定向测试或更新过时断言。
 - 不修改封板测试来假绿。
-- 清理完成后全量 pytest 新增失败为 0，`pytest --lf` 不再保留上述失败。
-- 与 A/B 期功能闭环交付分开回交，避免历史红遮挡功能主线验收。
+- 上线前继续要求全量 pytest 新增失败为 0。
+- 若上述任一历史项回归，必须按单项修复并补定向证据，不混入功能主线回交。
