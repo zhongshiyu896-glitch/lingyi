@@ -205,7 +205,7 @@ class MaterialBomApiTest(unittest.TestCase):
             sales_order_no="SO-MB-001",
             customer="BOM 客户",
             status="draft",
-            docstatus=0,
+            docstatus=1,
             currency="CNY",
             grand_total=Decimal("0"),
             idempotency_key="seed-SO-MB-001",
@@ -732,6 +732,9 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(detail.status_code, 200, detail.text)
         sales_order_item = detail.json()["data"]["items"][0]["name"]
         with self.SessionLocal() as session:
+            sales_order = session.query(LySalesOrder).filter_by(sales_order_no=bulk_no).one()
+            sales_order.status = "draft"
+            sales_order.docstatus = 1
             line = session.query(LySalesOrderItem).filter_by(sales_order_item=sales_order_item).one()
             line.size = "M"
             session.commit()
@@ -843,7 +846,7 @@ class MaterialBomApiTest(unittest.TestCase):
                 source_order_ref=f"SAMPLE-{sample_no}",
                 customer="BOM 客户",
                 status="draft",
-                docstatus=0,
+                docstatus=1,
                 currency="CNY",
                 grand_total=Decimal("0"),
                 idempotency_key=f"seed-{bulk_no}",
@@ -949,7 +952,7 @@ class MaterialBomApiTest(unittest.TestCase):
                 source_order_ref=f"SAMPLE-{sample_no}",
                 customer="BOM 客户",
                 status="draft",
-                docstatus=0,
+                docstatus=1,
                 currency="CNY",
                 grand_total=Decimal("0"),
                 idempotency_key=f"seed-{bulk_no}",
@@ -1201,7 +1204,7 @@ class MaterialBomApiTest(unittest.TestCase):
                 sales_order_no="SO-MB-EMPTY",
                 customer="BOM 客户",
                 status="draft",
-                docstatus=0,
+                docstatus=1,
                 currency="CNY",
                 grand_total=Decimal("0"),
                 idempotency_key="seed-SO-MB-EMPTY",

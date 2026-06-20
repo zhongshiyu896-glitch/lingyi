@@ -760,6 +760,7 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
             "/api/sales-inventory/sales-orders/drafts": {"POST"},
             "/api/sales-inventory/sales-orders/drafts/{draft_id}": {"PATCH"},
             "/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel": {"POST"},
+            "/api/sales-inventory/sales-orders/drafts/{draft_id}/submit": {"POST"},
         }
         post_routes = {path for path, methods in methods_by_path.items() if "POST" in methods}
         self.assertEqual(post_routes, {path for path, methods in local_write_routes.items() if "POST" in methods})

@@ -6,6 +6,7 @@ from collections.abc import Generator
 from datetime import UTC
 from datetime import date
 from datetime import datetime
+import hashlib
 import os
 import re
 from typing import Any
@@ -27,6 +28,8 @@ from app.core.error_codes import ERPNEXT_RESOURCE_NOT_FOUND
 from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.error_codes import RESOURCE_ACCESS_DENIED
 from app.core.error_codes import message_of
+from app.core.exceptions import AppException
+from app.core.permissions import PRODUCTION_MATERIAL_CHECK
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
 from app.core.permissions import SALES_INVENTORY_WRITE
@@ -49,6 +52,7 @@ from app.schemas.sales_inventory import SalesOrderDraftUpdateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryCancelRequest
 from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryListData
+from app.schemas.production import ProductionSalesOrderMaterialCheckRequest
 from app.schemas.sales_inventory import StockLedgerData
 from app.schemas.sales_inventory import StockLedgerItem
 from app.schemas.sales_inventory import StockSummaryData
@@ -58,6 +62,7 @@ from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
 from app.services.permission_service import PermissionService
+from app.services.production_service import ProductionService
 from app.services.warehouse_service import WarehouseService
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
@@ -774,6 +779,13 @@ def _validate_date_range(*, from_date: date | None, to_date: date | None) -> Non
 
 
 def _raise_sales_inventory_service_error(exc: SalesInventoryServiceError) -> None:
+    raise HTTPException(
+        status_code=exc.status_code,
+        detail={"code": exc.code, "message": exc.message, "data": None},
+    ) from exc
+
+
+def _raise_app_exception(exc: AppException) -> None:
     raise HTTPException(
         status_code=exc.status_code,
         detail={"code": exc.code, "message": exc.message, "data": None},
@@ -1763,13 +1775,70 @@ def submit_sales_order_draft(
         gate_fields.get("source_order_ref", ""),
     }:
         _raise_sales_order_idempotency_conflict("sales_order_no_or_source_order_ref 载体与草稿上下文不一致")
+    material_check_warehouse = _scope_text(payload.material_check_warehouse)
     try:
         before = _write_service(session).get_local_sales_order(name=gate_fields.get("sales_order_no", ""))
+        material_check_data: Any | None = None
+        production_service: ProductionService | None = None
+        if material_check_warehouse:
+            production_service = ProductionService(session=session)
+            scope_company, scope_item_codes = production_service.resolve_sales_order_material_check_scope(
+                sales_order=gate_fields.get("sales_order_no", ""),
+                company=payload.company,
+            )
+            permission_service.require_action(
+                current_user=current_user,
+                request_obj=request,
+                action=PRODUCTION_MATERIAL_CHECK,
+                module="production",
+                resource_type="sales_order",
+                resource_id=None,
+            )
+            for item_code in scope_item_codes:
+                permission_service.ensure_production_resource_permission(
+                    current_user=current_user,
+                    request_obj=request,
+                    action=PRODUCTION_MATERIAL_CHECK,
+                    item_code=item_code,
+                    company=scope_company,
+                    resource_type="sales_order",
+                    resource_id=None,
+                    resource_no=gate_fields.get("sales_order_no", ""),
+                    enforce_action=False,
+                )
         data = _write_service(session).submit_sales_order_draft(
             draft_id=draft_id,
             idempotency_key=payload.idempotency_key or "",
             submitted_by=current_user.username,
+            material_check_warehouse=material_check_warehouse,
         )
+        if material_check_warehouse:
+            assert production_service is not None
+            digest_source = (
+                f"{payload.idempotency_key}:"
+                f"{draft_id}:"
+                f"{gate_fields.get('sales_order_no', '')}:"
+                f"{material_check_warehouse}"
+            )
+            digest = hashlib.sha1(digest_source.encode("utf-8")).hexdigest()[:16]
+            material_check_data = production_service.material_check_sales_order(
+                sales_order=gate_fields.get("sales_order_no", ""),
+                operator=current_user.username,
+                payload=ProductionSalesOrderMaterialCheckRequest(
+                    warehouse=material_check_warehouse,
+                    company=payload.company,
+                    operation="sales_order_material_check",
+                    idempotency_key=f"submit-material-check-{digest}",
+                ),
+                request_id=None,
+            )
+            data = _write_service(session).get_sales_order_draft_by_id(draft_id=draft_id)
+        after_data = jsonable_encoder(data)
+        if material_check_data is not None:
+            after_data = {
+                **after_data,
+                "material_check": jsonable_encoder(material_check_data),
+            }
         AuditService(session).record_success(
             module="sales_inventory",
             action=action,
@@ -1779,7 +1848,7 @@ def submit_sales_order_draft(
             resource_id=int(data.id),
             resource_no=str(data.sales_order_no),
             before_data=jsonable_encoder(before),
-            after_data=jsonable_encoder(data),
+            after_data=after_data,
             context=AuditContext.from_request(request),
         )
         session.commit()
@@ -1800,6 +1869,23 @@ def submit_sales_order_draft(
         )
         session.commit()
         _raise_sales_inventory_service_error(exc)
+    except AppException as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_order",
+            resource_id=int(draft_id),
+            resource_no=payload.sales_order_no_or_source_order_ref,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_app_exception(exc)
     except Exception:
         session.rollback()
         raise

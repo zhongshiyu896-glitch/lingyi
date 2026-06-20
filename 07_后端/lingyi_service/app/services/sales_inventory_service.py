@@ -552,6 +552,7 @@ class SalesInventoryService:
         draft_id: int,
         idempotency_key: str,
         submitted_by: str,
+        material_check_warehouse: str | None = None,
     ) -> SalesOrderDraftData:
         session = self._require_session()
         order = session.query(LySalesOrder).filter(LySalesOrder.id == int(draft_id)).first()
@@ -560,14 +561,16 @@ class SalesInventoryService:
 
         now = datetime.now(timezone.utc)
         idem_key = self._require_text(idempotency_key, "idempotency_key")
-        request_hash = self._native_sales_order_request_hash(
-            {
-                "draft_id": int(order.id),
-                "company": str(order.company),
-                "sales_order_no": str(order.sales_order_no),
-                "operation": "submit_draft",
-            }
-        )
+        request_payload = {
+            "draft_id": int(order.id),
+            "company": str(order.company),
+            "sales_order_no": str(order.sales_order_no),
+            "operation": "submit_draft",
+        }
+        normalized_material_check_warehouse = self._text(material_check_warehouse)
+        if normalized_material_check_warehouse:
+            request_payload["material_check_warehouse"] = normalized_material_check_warehouse
+        request_hash = self._native_sales_order_request_hash(request_payload)
         existing_idem = (
             session.query(LySalesOrderIdempotency)
             .filter(
@@ -597,6 +600,7 @@ class SalesInventoryService:
             "submitted_by": submitted_by,
             "submitted_at": now.isoformat(),
             "submit_idempotency_key": idem_key,
+            "material_check_warehouse": normalized_material_check_warehouse,
         }
         response = self._build_native_sales_order_draft_data(order)
         session.add(
@@ -866,6 +870,12 @@ class SalesInventoryService:
             "company": str(draft.company),
             "scenario_tag": scenario_tag,
         }
+
+    def get_sales_order_draft_by_id(self, *, draft_id: int) -> SalesOrderDraftData:
+        native = self._require_session().query(LySalesOrder).filter(LySalesOrder.id == int(draft_id)).first()
+        if native is None:
+            raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
+        return self._build_native_sales_order_draft_data(native)
 
     def list_local_sales_orders(
         self,

@@ -207,7 +207,7 @@ class ProductionPlanTest(unittest.TestCase):
         company: str = "COMP-A",
         qty: str = "100",
         status: str = "draft",
-        docstatus: int = 0,
+        docstatus: int = 1,
         items: list[dict[str, str]] | None = None,
     ) -> None:
         line_rows = items or [
@@ -544,6 +544,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(detail_response.json()["data"]["planned_start_date"], "2026-04-13")
 
     def test_create_plan_accepts_native_draft_sales_order_from_existing_page(self) -> None:
+        self._seed_sales_order(status="draft", docstatus=0)
         with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
             response = self.client.post(
                 "/api/production/plans",

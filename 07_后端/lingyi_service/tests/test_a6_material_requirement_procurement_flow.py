@@ -1915,6 +1915,90 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
             self.assertIn("sales_inventory:write", audit_actions)
 
+    def test_submit_sales_order_can_trigger_material_check_and_requirement_pool(self) -> None:
+        order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers("req-a6-submit-auto-create"),
+            json={
+                "company": self.COMPANY,
+                "customer": "CUST-A6",
+                "operation": "create_draft",
+                "sales_order_no": "SO-A6-AUTO-001",
+                "source_order_ref": "SO-A6-AUTO-001",
+                "idempotency_key": "idem-so-a6-auto-001",
+                "transaction_date": "2026-06-17",
+                "delivery_date": "2026-06-30",
+                "currency": "CNY",
+                "items": [
+                    {
+                        "style_master_id": self._style_id(),
+                        "item_code": self.STYLE,
+                        "item_name": "A6 Tee",
+                        "color": "白",
+                        "size": "M",
+                        "qty": 100,
+                        "rate": 80,
+                        "uom": "件",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(order.status_code, 201, order.text)
+        draft_id = int(order.json()["data"]["id"])
+        submit_payload = {
+            "operation": "submit_draft",
+            "company": self.COMPANY,
+            "sales_order_no_or_source_order_ref": "SO-A6-AUTO-001",
+            "idempotency_key": "idem-a6-submit-auto-001",
+            "material_check_warehouse": self.WAREHOUSE,
+        }
+
+        submitted = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/submit",
+            headers=self._headers("req-a6-submit-auto"),
+            json=submit_payload,
+        )
+        replay = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/submit",
+            headers=self._headers("req-a6-submit-auto-replay"),
+            json=submit_payload,
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        submit_data = submitted.json()["data"]
+        self.assertEqual(submit_data["docstatus"], 1)
+        self.assertEqual(submit_data["items"][0]["ys_material_calc_state"], "已算料")
+
+        plans = self.client.get(
+            "/api/production/plans?sales_order=SO-A6-AUTO-001&page=1&page_size=20",
+            headers=self._headers("req-a6-submit-auto-plans"),
+        )
+        self.assertEqual(plans.status_code, 200, plans.text)
+        plan_rows = plans.json()["data"]["items"]
+        self.assertEqual(len(plan_rows), 1)
+        self.assertEqual(plan_rows[0]["purchase_status"], "pending_purchase")
+        self.assertEqual(Decimal(str(plan_rows[0]["required_qty_total"])), Decimal("210.000000"))
+        self.assertEqual(Decimal(str(plan_rows[0]["shortage_qty_total"])), Decimal("210.000000"))
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword=SO-A6-AUTO-001",
+            headers=self._headers("req-a6-submit-auto-requirements"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_rows = requirements.json()["data"]["items"]
+        self.assertEqual(len(requirement_rows), 1)
+        requirement = requirement_rows[0]
+        self.assertEqual(requirement["sales_order"], "SO-A6-AUTO-001")
+        self.assertEqual(requirement["material_item_code"], self.MATERIAL)
+        self.assertEqual(requirement["warehouse"], self.WAREHOUSE)
+        self.assertEqual(requirement["status"], "pending")
+        self.assertEqual(Decimal(str(requirement["required_qty"])), Decimal("210.000000"))
+        self.assertEqual(Decimal(str(requirement["net_required_qty"])), Decimal("210.000000"))
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlan).count(), 1)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 1)
+
     def test_material_check_filters_bom_rows_by_sales_order_color_size(self) -> None:
         with self.SessionLocal() as session:
             self._seed_master_data_record(session=session, entity_type="material", code="FAB-A6-WHT", name="A6 白色配布")

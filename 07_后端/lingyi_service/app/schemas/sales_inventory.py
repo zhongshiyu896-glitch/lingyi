@@ -338,6 +338,7 @@ class SalesOrderDraftSubmitRequest(BaseModel):
     idempotency_key: str | None = None
     sales_order_no_or_source_order_ref: str | None = None
     company: str
+    material_check_warehouse: str | None = Field(default=None, max_length=140)
 
 
 class SalesOrderDraftUpdateRequest(BaseModel):
