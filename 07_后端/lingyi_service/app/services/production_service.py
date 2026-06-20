@@ -2516,6 +2516,8 @@ class ProductionService:
             fact = quantity_facts.get(int(plan.id), {})
             inbound_qty = Decimal(str(fact.get("inbound_qty", Decimal("0")))).quantize(Decimal("0.000001"))
             outbound_qty = Decimal(str(fact.get("outbound_qty", Decimal("0")))).quantize(Decimal("0.000001"))
+            inbound_refs = sorted(str(ref) for ref in fact.get("inbound_refs", set()) if str(ref).strip())
+            outbound_refs = sorted(str(ref) for ref in fact.get("outbound_refs", set()) if str(ref).strip())
             pending_inbound_qty = (ordered_qty - inbound_qty).quantize(Decimal("0.000001"))
             if pending_inbound_qty < 0:
                 pending_inbound_qty = Decimal("0")
@@ -2582,6 +2584,10 @@ class ProductionService:
                     pending_outbound_qty=pending_outbound_qty,
                     inbound_progress=inbound_progress,
                     outbound_progress=outbound_progress,
+                    inbound_ref_count=len(inbound_refs),
+                    outbound_ref_count=len(outbound_refs),
+                    inbound_refs=inbound_refs,
+                    outbound_refs=outbound_refs,
                     io_status=io_status,
                     status=status,
                     planned_start_date=plan.planned_start_date,
@@ -2599,9 +2605,15 @@ class ProductionService:
             page_size=query.page_size,
         )
 
-    def _production_order_io_quantity_facts(self, plans: list[LyProductionPlan]) -> dict[int, dict[str, Decimal]]:
-        facts: dict[int, dict[str, Decimal]] = {
-            int(plan.id): {"inbound_qty": Decimal("0"), "outbound_qty": Decimal("0")} for plan in plans
+    def _production_order_io_quantity_facts(self, plans: list[LyProductionPlan]) -> dict[int, dict[str, Any]]:
+        facts: dict[int, dict[str, Any]] = {
+            int(plan.id): {
+                "inbound_qty": Decimal("0"),
+                "outbound_qty": Decimal("0"),
+                "inbound_refs": set(),
+                "outbound_refs": set(),
+            }
+            for plan in plans
         }
         if not plans:
             return facts
@@ -2642,12 +2654,15 @@ class ProductionService:
                         LyWarehouseStockEntryDraft.source_id.in_(sorted({key[2] for key in inbound_refs}))
                     )
                 for draft, line in inbound_query.all():
+                    source_ref = self._display_order_io_source_ref(str(draft.source_id))
                     key = (str(draft.company), str(line.item_code), str(draft.source_id))
                     self._allocate_order_io_quantity(
                         facts=facts,
                         plans=inbound_refs.get(key, []),
                         quantity=Decimal(str(line.qty or 0)),
                         field="inbound_qty",
+                        ref_field="inbound_refs",
+                        ref_no=source_ref,
                     )
 
             if self._has_sqlite_tables({LyDeliveryInvoice.__tablename__}):
@@ -2665,6 +2680,8 @@ class ProductionService:
                         plans=outbound_refs.get(key, []),
                         quantity=Decimal(str(row.delivered_qty or 0)),
                         field="outbound_qty",
+                        ref_field="outbound_refs",
+                        ref_no=f"{row.delivery_note}/{row.sales_invoice}",
                     )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
@@ -2673,7 +2690,7 @@ class ProductionService:
     @staticmethod
     def _production_order_inbound_refs(plan: LyProductionPlan) -> set[str]:
         plan_id = int(plan.id)
-        return {
+        refs = {
             str(plan.plan_no),
             str(plan.sales_order_item),
             str(plan.sales_order),
@@ -2681,38 +2698,71 @@ class ProductionService:
             f"production_plan:{plan_id}:finished_goods_inbound",
             f"plan:{plan_id}",
         }
+        expanded_refs: set[str] = set()
+        for ref in refs:
+            expanded_refs.update(ProductionService._finished_goods_source_aliases(ref))
+        return expanded_refs
+
+    @staticmethod
+    def _finished_goods_source_aliases(ref: str) -> set[str]:
+        normalized = str(ref or "").strip()
+        if not normalized:
+            return set()
+        return {normalized, f"Z003-WAREHOUSE-20260616-301:finished-goods:{normalized}"}
+
+    @staticmethod
+    def _display_order_io_source_ref(ref: str) -> str:
+        normalized = str(ref or "").strip()
+        prefix = "Z003-WAREHOUSE-20260616-301:finished-goods:"
+        if normalized.startswith(prefix):
+            return normalized[len(prefix) :]
+        return normalized
 
     @staticmethod
     def _allocate_order_io_quantity(
         *,
-        facts: dict[int, dict[str, Decimal]],
+        facts: dict[int, dict[str, Any]],
         plans: list[LyProductionPlan],
         quantity: Decimal,
         field: str,
+        ref_field: str,
+        ref_no: str,
     ) -> None:
         remaining = Decimal(str(quantity or 0))
         if remaining <= Decimal("0") or not plans:
             return
+        normalized_ref = str(ref_no or "").strip()
         assigned_plan_ids: list[int] = []
         for plan in sorted(plans, key=lambda row: int(row.id)):
             plan_id = int(plan.id)
             assigned_plan_ids.append(plan_id)
             planned_qty = Decimal(str(plan.planned_qty or 0))
-            already_assigned = facts.setdefault(plan_id, {"inbound_qty": Decimal("0"), "outbound_qty": Decimal("0")}).setdefault(
-                field,
-                Decimal("0"),
+            plan_fact = facts.setdefault(
+                plan_id,
+                {
+                    "inbound_qty": Decimal("0"),
+                    "outbound_qty": Decimal("0"),
+                    "inbound_refs": set(),
+                    "outbound_refs": set(),
+                },
             )
+            already_assigned = plan_fact.setdefault(field, Decimal("0"))
             remaining_capacity = planned_qty - already_assigned
             if remaining_capacity <= Decimal("0"):
                 continue
             assigned_qty = min(remaining, remaining_capacity)
-            facts[plan_id][field] = already_assigned + assigned_qty
+            plan_fact[field] = already_assigned + assigned_qty
+            if normalized_ref:
+                plan_fact.setdefault(ref_field, set()).add(normalized_ref)
             remaining -= assigned_qty
             if remaining <= Decimal("0"):
                 return
         if remaining > Decimal("0") and assigned_plan_ids:
             last_plan_id = assigned_plan_ids[-1]
-            facts[last_plan_id][field] = facts[last_plan_id].get(field, Decimal("0")) + remaining
+            last_fact = facts[last_plan_id]
+            last_fact[field] = last_fact.get(field, Decimal("0")) + remaining
+            if normalized_ref:
+                last_fact.setdefault(ref_field, set()).add(normalized_ref)
 
     def list_salesperson_performance(
         self,

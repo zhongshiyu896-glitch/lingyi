@@ -682,6 +682,10 @@ class ProductionOrderIOQuantityListItem(BaseModel):
     pending_outbound_qty: Decimal
     inbound_progress: Decimal
     outbound_progress: Decimal
+    inbound_ref_count: int = 0
+    outbound_ref_count: int = 0
+    inbound_refs: List[str] = Field(default_factory=list)
+    outbound_refs: List[str] = Field(default_factory=list)
     io_status: str
     status: str
     planned_start_date: Optional[date] = None

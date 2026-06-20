@@ -867,11 +867,12 @@ class ProductionPlanTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one()
+            plan_no = str(plan.plan_no)
             receipt = LyWarehouseStockEntryDraft(
                 company="COMP-A",
                 purpose="Material Receipt",
                 source_type="finished_goods_inbound",
-                source_id=str(plan.plan_no),
+                source_id=f"Z003-WAREHOUSE-20260616-301:finished-goods:{plan_no}",
                 source_warehouse=None,
                 target_warehouse="FG-WH-001",
                 status="pending_outbox",
@@ -938,6 +939,10 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(Decimal(str(matched["pending_outbound_qty"])), Decimal("6.000000"))
         self.assertEqual(Decimal(str(matched["inbound_progress"])), Decimal("60.00"))
         self.assertEqual(Decimal(str(matched["outbound_progress"])), Decimal("40.00"))
+        self.assertEqual(matched["inbound_ref_count"], 1)
+        self.assertEqual(matched["outbound_ref_count"], 1)
+        self.assertEqual(matched["inbound_refs"], [plan_no])
+        self.assertEqual(matched["outbound_refs"], ["DN-REAL-IO-001/SI-REAL-IO-001"])
         self.assertEqual(matched["io_status"], "in_progress")
 
     def test_material_check_requires_warehouse(self) -> None:
