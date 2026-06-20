@@ -24,6 +24,8 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.auth import is_internal_worker_api_enabled
+from app.core.config import factory_statement_enable_payable_worker_sync
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import FACTORY_STATEMENT_DATABASE_WRITE_FAILED
 from app.core.error_codes import FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT
@@ -31,6 +33,7 @@ from app.core.error_codes import FACTORY_STATEMENT_INTERNAL_ERROR
 from app.core.error_codes import FACTORY_STATEMENT_PERMISSION_DENIED
 from app.core.error_codes import FACTORY_STATEMENT_PERMISSION_SOURCE_UNAVAILABLE
 from app.core.error_codes import FACTORY_STATEMENT_SOURCE_NOT_FOUND
+from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import PERMISSION_SOURCE_UNAVAILABLE
 from app.core.error_codes import message_of
 from app.core.error_codes import status_of
@@ -944,6 +947,30 @@ def run_factory_statement_payable_worker_once(
     context = AuditContext.from_request(request)
 
     try:
+        if not is_internal_worker_api_enabled():
+            permission_service.record_security_denial(
+                request_obj=request,
+                current_user=current_user,
+                action=action,
+                resource_type="factory_statement_payable_worker",
+                resource_no=current_user.username,
+                deny_reason="加工厂应付 worker 内部接口未启用",
+                event_type=INTERNAL_API_DISABLED,
+                module="factory_statement",
+            )
+            return _err(INTERNAL_API_DISABLED, "内部接口未启用", status_of(INTERNAL_API_DISABLED))
+        if not payload.dry_run and not factory_statement_enable_payable_worker_sync():
+            permission_service.record_security_denial(
+                request_obj=request,
+                current_user=current_user,
+                action=action,
+                resource_type="factory_statement_payable_worker",
+                resource_no=current_user.username,
+                deny_reason="加工厂应付 ERP 同步未启用",
+                event_type=INTERNAL_API_DISABLED,
+                module="factory_statement",
+            )
+            return _err(INTERNAL_API_DISABLED, "加工厂应付 ERP 同步未启用", status_of(INTERNAL_API_DISABLED))
         permission_service.require_action_from_roles_only(
             current_user=current_user,
             request_obj=request,

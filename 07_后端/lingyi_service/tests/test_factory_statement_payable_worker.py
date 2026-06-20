@@ -8,7 +8,11 @@ import os
 import unittest
 from unittest.mock import patch
 
+from app.core.auth import CurrentUser
+from app.core.auth import get_current_user
 from app.core.exceptions import ERPNextServiceUnavailableError
+from app.main import app
+from app.models.audit import LySecurityAuditLog
 from app.models.factory_statement import LyFactoryStatement
 from app.models.factory_statement import LyFactoryStatementLog
 from app.models.factory_statement import LyFactoryStatementPayableOutbox
@@ -125,6 +129,94 @@ class FactoryStatementPayableWorkerTest(FactoryStatementApiBase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_PERMISSION_DENIED")
+
+    def test_worker_internal_api_disabled_in_production_without_flag(self) -> None:
+        old_env = {
+            "APP_ENV": os.environ.get("APP_ENV"),
+            "ENABLE_INTERNAL_WORKER_API": os.environ.get("ENABLE_INTERNAL_WORKER_API"),
+            "FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC": os.environ.get(
+                "FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC"
+            ),
+        }
+        os.environ["APP_ENV"] = "production"
+        os.environ["ENABLE_INTERNAL_WORKER_API"] = "false"
+        os.environ["FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC"] = "false"
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="svc.payable",
+            roles=["LY Integration Service"],
+            is_service_account=True,
+            source="test_override",
+        )
+        try:
+            with patch("app.routers.factory_statement.FactoryStatementPayableWorker") as worker_mock, patch(
+                "app.routers.factory_statement.ERPNextPurchaseInvoiceAdapter"
+            ) as adapter_mock:
+                response = self.client.post(
+                    "/api/factory-statements/internal/payable-draft-sync/run-once",
+                    json={"batch_size": 20, "dry_run": False},
+                )
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+            for key, value in old_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "INTERNAL_API_DISABLED")
+        self.assertEqual(response.json()["message"], "内部接口未启用")
+        self.assertEqual(worker_mock.call_count, 0)
+        self.assertEqual(adapter_mock.call_count, 0)
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+        self.assertIsNotNone(row)
+        self.assertEqual(str(row.event_type), "INTERNAL_API_DISABLED")
+        self.assertEqual(str(row.resource_type), "factory_statement_payable_worker")
+
+    def test_worker_non_dry_run_disabled_in_production_without_sync_flag(self) -> None:
+        old_env = {
+            "APP_ENV": os.environ.get("APP_ENV"),
+            "ENABLE_INTERNAL_WORKER_API": os.environ.get("ENABLE_INTERNAL_WORKER_API"),
+            "FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC": os.environ.get(
+                "FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC"
+            ),
+        }
+        os.environ["APP_ENV"] = "production"
+        os.environ["ENABLE_INTERNAL_WORKER_API"] = "true"
+        os.environ["FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC"] = "false"
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="svc.payable",
+            roles=["LY Integration Service"],
+            is_service_account=True,
+            source="test_override",
+        )
+        try:
+            with patch("app.routers.factory_statement.FactoryStatementPayableWorker") as worker_mock, patch(
+                "app.routers.factory_statement.ERPNextPurchaseInvoiceAdapter"
+            ) as adapter_mock:
+                response = self.client.post(
+                    "/api/factory-statements/internal/payable-draft-sync/run-once",
+                    json={"batch_size": 20, "dry_run": False},
+                )
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+            for key, value in old_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "INTERNAL_API_DISABLED")
+        self.assertEqual(response.json()["message"], "加工厂应付 ERP 同步未启用")
+        self.assertEqual(worker_mock.call_count, 0)
+        self.assertEqual(adapter_mock.call_count, 0)
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+        self.assertIsNotNone(row)
+        self.assertEqual(str(row.event_type), "INTERNAL_API_DISABLED")
+        self.assertEqual(str(row.action), "factory_statement:payable_draft_worker")
 
     def test_worker_processes_outbox_and_updates_statement_status(self) -> None:
         statement_id = self._create_confirmed_statement(create_key="idem-worker-success-create")

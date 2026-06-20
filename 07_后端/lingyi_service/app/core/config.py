@@ -74,6 +74,22 @@ def workshop_enable_job_card_worker_sync() -> bool:
     return _env_flag("WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC", default=True)
 
 
+def factory_statement_enable_payable_worker_sync() -> bool:
+    """Whether factory statement payable worker may execute non-dry-run ERP sync."""
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if app_env == "production":
+        return _env_flag("FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC", default=False)
+    return _env_flag("FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC", default=True)
+
+
+def quality_enable_outbox_worker_sync() -> bool:
+    """Whether quality outbox worker may execute non-dry-run ERP sync."""
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    if app_env == "production":
+        return _env_flag("QUALITY_ENABLE_OUTBOX_WORKER_SYNC", default=False)
+    return _env_flag("QUALITY_ENABLE_OUTBOX_WORKER_SYNC", default=True)
+
+
 def workshop_dry_run_audit_required() -> bool:
     """Whether dry-run path must write operation audit.
 

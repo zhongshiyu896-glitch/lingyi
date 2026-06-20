@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
 from app.core.auth import is_internal_worker_api_enabled
+from app.core.config import quality_enable_outbox_worker_sync
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import ERPNEXT_RESOURCE_NOT_FOUND
 from app.core.error_codes import INTERNAL_API_DISABLED
@@ -1150,6 +1151,22 @@ def run_quality_outbox_sync_once(
         return _err(
             INTERNAL_API_DISABLED,
             "内部接口未启用",
+            status_code=status_of(INTERNAL_API_DISABLED),
+        )
+    if not payload.dry_run and not quality_enable_outbox_worker_sync():
+        permission_service.record_security_denial(
+            request_obj=request,
+            current_user=current_user,
+            action=action,
+            resource_type="QualityOutboxWorker",
+            resource_no=None,
+            deny_reason="质量 Outbox ERP 同步未启用",
+            event_type=INTERNAL_API_DISABLED,
+            module="quality",
+        )
+        return _err(
+            INTERNAL_API_DISABLED,
+            "质量 Outbox ERP 同步未启用",
             status_code=status_of(INTERNAL_API_DISABLED),
         )
 
