@@ -654,6 +654,15 @@ class FrontendReadinessTest(unittest.TestCase):
                 self.assertEqual(data["items"], [])
                 self.assertEqual(data["total"], 0)
 
+        purchase_orders = self.client.get("/api/bom/purchase-orders?purchase_no=PO-FR-001", headers=self._headers())
+        self.assertEqual(purchase_orders.status_code, 200, purchase_orders.text)
+        purchase_rows = purchase_orders.json()["data"]["items"]
+        self.assertEqual(len(purchase_rows), 1)
+        self.assertEqual(purchase_rows[0]["purchase_no"], "PO-FR-001")
+        self.assertEqual(purchase_rows[0]["supplier_name"], "Frontend Readiness Supplier")
+        self.assertEqual(purchase_rows[0]["material_item_code"], "MAT-FR-FABRIC-001")
+        self.assertEqual(Decimal(str(purchase_rows[0]["total_amount"])), Decimal("1530"))
+
         with self.SessionLocal() as session:
             session.add(
                 LyMaterialPurchaseRequirement(

@@ -2786,6 +2786,89 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(data["total"], 1)
         self.assertEqual([int(row["id"]) for row in data["items"]], [allowed_id])
 
+    def test_orders_list_filters_fastapi_resource_scope(self) -> None:
+        with self.SessionLocal() as session:
+            allowed_order = LyMaterialPurchaseOrder(
+                company=self.COMPANY,
+                purchase_no="PO-A6-SCOPE-ALLOW",
+                supplier_name="SUP-A6",
+                status="draft",
+                total_qty=Decimal("10"),
+                received_qty=Decimal("0"),
+                total_amount=Decimal("125"),
+                currency="CNY",
+                created_by="seed",
+                updated_by="seed",
+            )
+            blocked_order = LyMaterialPurchaseOrder(
+                company=self.COMPANY,
+                purchase_no="PO-A6-SCOPE-BLOCK",
+                supplier_name="SUP-A6",
+                status="draft",
+                total_qty=Decimal("10"),
+                received_qty=Decimal("0"),
+                total_amount=Decimal("125"),
+                currency="CNY",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add_all([allowed_order, blocked_order])
+            session.flush()
+            allowed_line = LyMaterialPurchaseOrderItem(
+                order_id=int(allowed_order.id),
+                company=self.COMPANY,
+                item_code=self.STYLE,
+                material_item_code=self.MATERIAL,
+                material_name="A6 棉布",
+                qty=Decimal("10"),
+                received_qty=Decimal("0"),
+                uom="米",
+                unit_price=Decimal("12.5"),
+                amount=Decimal("125"),
+                warehouse=self.WAREHOUSE,
+            )
+            blocked_line = LyMaterialPurchaseOrderItem(
+                order_id=int(blocked_order.id),
+                company=self.COMPANY,
+                item_code=self.STYLE,
+                material_item_code="FAB-A6-BLOCK",
+                material_name="A6 禁止面料",
+                qty=Decimal("10"),
+                received_qty=Decimal("0"),
+                uom="米",
+                unit_price=Decimal("12.5"),
+                amount=Decimal("125"),
+                warehouse=self.WAREHOUSE,
+            )
+            session.add_all([allowed_line, blocked_line])
+            session.commit()
+            allowed_line_id = int(allowed_line.id)
+
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "a6.scope.user": {
+                        "companies": [self.COMPANY],
+                        "item_codes": [self.MATERIAL],
+                        "suppliers": ["SUP-A6"],
+                        "warehouses": [self.WAREHOUSE],
+                    }
+                }
+            }
+        )
+
+        response = self.client.get(
+            "/api/material-purchase/orders?page_size=100",
+            headers=self._scope_headers("req-a6-order-list-scope"),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["code"], "0")
+        data = response.json()["data"]
+        self.assertEqual(data["total"], 1)
+        self.assertEqual([int(row["line_id"]) for row in data["items"]], [allowed_line_id])
+
     def test_requirements_list_filters_by_supplier_name(self) -> None:
         self._seed_requirement(requirement_no="REQ-A6-SUP-FILTER-KEEP", supplier_name="SUP-A6-KEEP")
         self._seed_requirement(requirement_no="REQ-A6-SUP-FILTER-BLOCK", supplier_name="SUP-A6-BLOCK")

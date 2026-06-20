@@ -38,6 +38,8 @@ from app.core.exceptions import is_default_bom_unique_conflict
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
+from app.models.material_purchase import LyMaterialPurchaseOrder
+from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.style_master import LyStyleMaster
 from app.schemas.bom import BomActivateData
 from app.schemas.bom import BomAccessoriesPackagingData
@@ -800,21 +802,39 @@ class BomService:
     def list_purchase_orders(
         self,
         query: BomPurchaseOrderQuery,
-        allowed_item_codes: set[str] | None = None,
+        allowed_companies: set[str] | None = None,
+        allowed_materials: set[str] | None = None,
+        allowed_suppliers: set[str] | None = None,
+        allowed_warehouses: set[str] | None = None,
     ) -> BomPurchaseOrderData:
-        """List readonly purchase-order semantics derived from BOM items."""
+        """List readonly purchase orders through the legacy BOM compatibility path."""
         try:
             sql = (
-                self.session.query(LyApparelBomItem, LyApparelBom)
-                .join(LyApparelBom, LyApparelBomItem.bom_id == LyApparelBom.id)
+                self.session.query(LyMaterialPurchaseOrder, LyMaterialPurchaseOrderItem)
+                .join(
+                    LyMaterialPurchaseOrderItem,
+                    LyMaterialPurchaseOrderItem.order_id == LyMaterialPurchaseOrder.id,
+                )
             )
-            if allowed_item_codes is not None:
-                if not allowed_item_codes:
+            if allowed_companies is not None:
+                if not allowed_companies:
                     return BomPurchaseOrderData(items=[], total=0, page=query.page, page_size=query.page_size)
-                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+                sql = sql.filter(LyMaterialPurchaseOrder.company.in_(sorted(allowed_companies)))
+            if allowed_materials is not None:
+                if not allowed_materials:
+                    return BomPurchaseOrderData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyMaterialPurchaseOrderItem.material_item_code.in_(sorted(allowed_materials)))
+            if allowed_suppliers is not None:
+                if not allowed_suppliers:
+                    return BomPurchaseOrderData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyMaterialPurchaseOrder.supplier_name.in_(sorted(allowed_suppliers)))
+            if allowed_warehouses is not None:
+                if not allowed_warehouses:
+                    return BomPurchaseOrderData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyMaterialPurchaseOrderItem.warehouse.in_(sorted(allowed_warehouses)))
 
-            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.asc()).all()
+            rows: list[tuple[LyMaterialPurchaseOrder, LyMaterialPurchaseOrderItem]] = (
+                sql.order_by(LyMaterialPurchaseOrder.id.desc(), LyMaterialPurchaseOrderItem.id.asc()).all()
             )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
@@ -825,19 +845,15 @@ class BomService:
         supplier_keyword = (query.supplier_name or "").strip().lower()
         status_keyword = (query.status or "").strip()
 
-        for item_row, bom_row in rows:
-            purchase_no = self._build_purchase_no(str(bom_row.bom_no), int(item_row.id))
-            supplier_name = self._derive_purchase_supplier(str(item_row.material_item_code))
-            status = self._derive_purchase_status(str(bom_row.status))
-            qty = self._round(Decimal(item_row.qty_per_piece) * Decimal("100"))
-            unit_price = self._round(Decimal("5") + (Decimal(int(item_row.id) % 7) * Decimal("1.8")))
-            total_amount = self._round(qty * unit_price)
-            expected_delivery_date = (
-                bom_row.effective_date + timedelta(days=7)
-                if bom_row.effective_date
-                else None
-            )
-            material_name = str(item_row.remark or item_row.material_item_code)
+        for order_row, item_row in rows:
+            purchase_no = str(order_row.purchase_no)
+            supplier_name = str(order_row.supplier_name)
+            status = str(order_row.status)
+            qty = self._round(Decimal(str(item_row.qty or 0)))
+            unit_price = self._round(Decimal(str(item_row.unit_price or 0)))
+            total_amount = self._round(Decimal(str(item_row.amount or 0)))
+            expected_delivery_date = order_row.expected_delivery_date
+            material_name = str(item_row.material_name or item_row.material_item_code)
 
             if purchase_no_keyword and purchase_no_keyword not in purchase_no.lower():
                 continue
@@ -846,7 +862,7 @@ class BomService:
             if status_keyword and status_keyword != status:
                 continue
             if material_keyword:
-                haystack = f"{item_row.material_item_code} {material_name} {bom_row.item_code}".lower()
+                haystack = f"{item_row.material_item_code} {material_name} {item_row.item_code}".lower()
                 if material_keyword not in haystack:
                     continue
             if query.delivery_date_from and (not expected_delivery_date or expected_delivery_date < query.delivery_date_from):
@@ -865,10 +881,10 @@ class BomService:
             items.append(
                 BomPurchaseOrderItem(
                     id=int(item_row.id),
-                    bom_id=int(bom_row.id),
+                    bom_id=0,
                     purchase_no=purchase_no,
                     supplier_name=supplier_name,
-                    item_code=str(bom_row.item_code),
+                    item_code=str(item_row.item_code),
                     material_item_code=str(item_row.material_item_code),
                     material_name=material_name,
                     qty=qty,
@@ -877,7 +893,7 @@ class BomService:
                     total_amount=total_amount,
                     expected_delivery_date=expected_delivery_date,
                     status=status,
-                    bom_no=str(bom_row.bom_no),
+                    bom_no=str(item_row.item_code or purchase_no),
                 )
             )
 

@@ -40,6 +40,7 @@ from app.core.permissions import BOM_PUBLISH
 from app.core.permissions import BOM_READ
 from app.core.permissions import BOM_SET_DEFAULT
 from app.core.permissions import BOM_UPDATE
+from app.core.permissions import MATERIAL_PURCHASE_READ
 from app.schemas.bom import BomActivateData
 from app.schemas.bom import BomAccessoriesPackagingData
 from app.schemas.bom import BomAccessoriesPackagingQuery
@@ -289,6 +290,22 @@ def _unknown_to_internal_error(request: Request, action: str, exc: Exception) ->
         },
     )
     return BomInternalError()
+
+
+def _material_purchase_scope_filters(permissions) -> dict[str, set[str] | None]:
+    if permissions is None or permissions.unrestricted:
+        return {
+            "allowed_companies": None,
+            "allowed_materials": None,
+            "allowed_suppliers": None,
+            "allowed_warehouses": None,
+        }
+    return {
+        "allowed_companies": set(permissions.allowed_companies),
+        "allowed_materials": set(permissions.allowed_items),
+        "allowed_suppliers": set(permissions.allowed_suppliers),
+        "allowed_warehouses": set(permissions.allowed_warehouses),
+    }
 
 
 def _rollback_safely(session: Session, request: Request, action: str, origin: BaseException) -> None:
@@ -793,12 +810,19 @@ def list_bom_purchase_orders(
         action=BOM_READ,
         module="bom",
     )
-    allowed_item_codes = permission_service.get_readable_item_codes(
+    permission_service.require_action(
         current_user=current_user,
         request_obj=request,
-        module="bom",
-        action_context=BOM_READ,
-        resource_type="bom",
+        action=MATERIAL_PURCHASE_READ,
+        module="material_purchase",
+        resource_type="MATERIAL_PURCHASE_ORDER",
+    )
+    permissions = permission_service.get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_ORDER",
     )
 
     query = BomPurchaseOrderQuery(
@@ -819,7 +843,7 @@ def list_bom_purchase_orders(
     try:
         data: BomPurchaseOrderData = service.list_purchase_orders(
             query=query,
-            allowed_item_codes=allowed_item_codes,
+            **_material_purchase_scope_filters(permissions),
         )
         return _ok(data.model_dump())
     except AppException as exc:
@@ -841,12 +865,27 @@ def list_bom_material_requests(
     session: Session = Depends(get_db_session),
 ):
     """Read material purchase requirements through the legacy BOM path."""
-    PermissionService(session=session).require_action(
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
         current_user=current_user,
         request_obj=request,
         action=BOM_READ,
         module="bom",
         resource_type="material_request",
+    )
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=MATERIAL_PURCHASE_READ,
+        module="material_purchase",
+        resource_type="MATERIAL_PURCHASE_REQUIREMENT",
+    )
+    permissions = permission_service.get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_REQUIREMENT",
     )
     try:
         requirements = MaterialPurchaseService(session).list_requirements(
@@ -857,6 +896,7 @@ def list_bom_material_requests(
             status=status,
             page=page,
             page_size=page_size,
+            **_material_purchase_scope_filters(permissions),
         )
         data = BomMaterialRequestData(
             items=[

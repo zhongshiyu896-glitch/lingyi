@@ -128,11 +128,35 @@ class MaterialPurchaseService:
         status: str | None,
         page: int,
         page_size: int,
+        allowed_companies: set[str] | None = None,
+        allowed_materials: set[str] | None = None,
+        allowed_suppliers: set[str] | None = None,
+        allowed_warehouses: set[str] | None = None,
     ) -> MaterialPurchaseOrderData:
         try:
             query = (
                 self.session.query(LyMaterialPurchaseOrder, LyMaterialPurchaseOrderItem)
                 .join(LyMaterialPurchaseOrderItem, LyMaterialPurchaseOrderItem.order_id == LyMaterialPurchaseOrder.id)
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseOrder.company,
+                allowed_values=allowed_companies,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseOrderItem.material_item_code,
+                allowed_values=allowed_materials,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseOrder.supplier_name,
+                allowed_values=allowed_suppliers,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseOrderItem.warehouse,
+                allowed_values=allowed_warehouses,
             )
             normalized_company = self._optional_text(company)
             if normalized_company:

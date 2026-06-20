@@ -73,7 +73,7 @@ def _require_action(
     )
 
 
-def _requirement_scope_filters(permissions) -> dict[str, set[str] | None]:
+def _material_purchase_scope_filters(permissions) -> dict[str, set[str] | None]:
     if permissions is None or permissions.unrestricted:
         return {
             "allowed_companies": None,
@@ -87,6 +87,10 @@ def _requirement_scope_filters(permissions) -> dict[str, set[str] | None]:
         "allowed_suppliers": set(permissions.allowed_suppliers),
         "allowed_warehouses": set(permissions.allowed_warehouses),
     }
+
+
+def _requirement_scope_filters(permissions) -> dict[str, set[str] | None]:
+    return _material_purchase_scope_filters(permissions)
 
 
 def _ensure_requirement_resource_scope(
@@ -149,6 +153,14 @@ def list_material_purchase_orders(
         action=MATERIAL_PURCHASE_READ,
         resource_type="MATERIAL_PURCHASE_ORDER",
     )
+    permission_service = PermissionService(session=session)
+    permissions = permission_service.get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_ORDER",
+    )
     try:
         data = MaterialPurchaseService(session).list_orders(
             company=company,
@@ -157,6 +169,7 @@ def list_material_purchase_orders(
             status=status,
             page=page,
             page_size=page_size,
+            **_material_purchase_scope_filters(permissions),
         )
     except AppException as exc:
         return _err(exc)
