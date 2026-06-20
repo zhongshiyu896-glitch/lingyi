@@ -767,6 +767,7 @@ class SampleService:
             return self._order_result(row=idem_row, before=after, after=after, idempotent=True)
         if row.status != "sealed":
             raise BusinessException(code=SAMPLE_INVALID_STATUS, message="只有已封样的样板单可以转大货衔接")
+        self._ensure_sample_material_bom_ready_for_convert(order=row)
 
         before = self._snapshot_order(row)
         try:
@@ -1262,6 +1263,18 @@ class SampleService:
         bom.status = "draft"
         bom.updated_by = actor
         bom.updated_at = datetime.now(UTC)
+
+    def _ensure_sample_material_bom_ready_for_convert(self, *, order: LySampleOrder) -> None:
+        bom = self._find_sample_material_bom(order=order)
+        if bom is None:
+            raise BusinessException(code=SAMPLE_CONFLICT, message="样衣转大货前必须维护打样用料 BOM")
+        item_count = (
+            self.session.query(LySampleMaterialBomItem)
+            .filter(LySampleMaterialBomItem.bom_id == int(bom.id))
+            .count()
+        )
+        if item_count <= 0:
+            raise BusinessException(code=SAMPLE_CONFLICT, message="打样用料 BOM 未维护明细，不能转大货")
 
     def _sample_material_bom_data(self, *, order: LySampleOrder, bom: LySampleMaterialBom) -> SampleMaterialBomData:
         items = (

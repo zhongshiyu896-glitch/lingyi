@@ -17,6 +17,8 @@ from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.sample import Base as SampleBase
+from app.models.sample import LySampleMaterialBom
+from app.models.sample import LySampleMaterialBomItem
 from app.models.sample import LySampleCostLine
 from app.models.sample import LySampleCostOperation
 from app.models.sample import LySampleIdempotency
@@ -89,6 +91,8 @@ class SampleApiTest(unittest.TestCase):
             session.query(LySampleTrackingEvent).delete()
             session.query(LySampleTrackingNode).delete()
             session.query(LySampleTrackingTemplate).delete()
+            session.query(LySampleMaterialBomItem).delete()
+            session.query(LySampleMaterialBom).delete()
             session.query(LySampleOrder).delete()
             session.query(LyStyleMaster).delete()
             self._seed_style(session, style_no="ST-A3-001", style_name="A3 样衣款")
@@ -151,6 +155,36 @@ class SampleApiTest(unittest.TestCase):
                 updated_by="test",
             )
         )
+
+    def _seed_sample_material_bom(self, order_id: int) -> None:
+        with self.SessionLocal() as session:
+            order = session.query(LySampleOrder).filter(LySampleOrder.id == order_id).one()
+            bom = LySampleMaterialBom(
+                company=str(order.company),
+                sample_order_id=int(order.id),
+                style_master_id=int(order.style_master_id) if order.style_master_id is not None else None,
+                item_code=str(order.style_no),
+                version_no="S1",
+                status="draft",
+                created_by="test",
+                updated_by="test",
+            )
+            session.add(bom)
+            session.flush()
+            session.add(
+                LySampleMaterialBomItem(
+                    bom_id=int(bom.id),
+                    material_item_code="MAT-SMP-A3",
+                    color="白",
+                    size="M",
+                    part="样衣转大货",
+                    qty_per_piece=Decimal("1"),
+                    loss_rate=Decimal("0"),
+                    uom="米",
+                    is_alternative=0,
+                )
+            )
+            session.commit()
 
     def test_sample_order_create_list_update_submit_reverse(self) -> None:
         created = self.client.post(
@@ -287,6 +321,7 @@ class SampleApiTest(unittest.TestCase):
             headers=self._headers(request_id="SAMPLE-ID-ONLY-SEAL"),
             json={"company": "COMP-A", "idempotency_key": "IDEMP-SMP-A3-ID-ONLY-SEAL"},
         )
+        self._seed_sample_material_bom(order_id)
         converted = self.client.post(
             f"/api/sample/orders/{order_id}/convert-to-bulk",
             headers=self._headers(request_id="SAMPLE-ID-ONLY-CONVERT"),
@@ -758,6 +793,20 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(sealed.status_code, 200)
         self.assertEqual(sealed.json()["data"]["status"], "sealed")
 
+        no_bom = self.client.post(
+            f"/api/sample/orders/{order_id}/convert-to-bulk",
+            headers=self._headers(request_id="SAMPLE-CONVERT-NO-BOM"),
+            json={
+                "operation": "convert",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-SMP-A3-CONVERT-NO-BOM",
+            },
+        )
+        self.assertEqual(no_bom.status_code, 409)
+        self.assertEqual(no_bom.json()["code"], "SAMPLE_CONFLICT")
+        self.assertIn("打样用料 BOM", no_bom.json()["message"])
+
+        self._seed_sample_material_bom(order_id)
         converted = self.client.post(
             f"/api/sample/orders/{order_id}/convert-to-bulk",
             headers=self._headers(request_id="SAMPLE-CONVERT-002"),
@@ -786,7 +835,7 @@ class SampleApiTest(unittest.TestCase):
             self.assertEqual(sales_item.item_code, "ST-A3-001")
             self.assertEqual(str(sales_item.qty), "1.000000")
             self.assertEqual(session.query(LySalesOrderIdempotency).count(), 1)
-            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 5)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 6)
 
     def test_sample_order_convert_can_use_target_sales_order_no(self) -> None:
         created = self.client.post(
@@ -815,6 +864,7 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(sealed.status_code, 200)
 
+        self._seed_sample_material_bom(order_id)
         converted = self.client.post(
             f"/api/sample/orders/{order_id}/convert-to-bulk",
             headers=self._headers(request_id="SAMPLE-CONVERT-TARGET-002"),
