@@ -39,6 +39,7 @@ from app.models.bom import Base as BomBase  # noqa: E402
 from app.models.bom import LyApparelBom  # noqa: E402
 from app.models.bom import LyApparelBomItem  # noqa: E402
 from app.models.bom import LyBomOperation  # noqa: E402
+from app.models.bom import LyFoundationTemplate  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.factory_statement import LyFactoryStatement  # noqa: E402
 from app.models.factory_statement import LyFactoryStatementPayableOutbox  # noqa: E402
@@ -47,6 +48,7 @@ from app.models.master_data import LyMasterDataRecord  # noqa: E402
 from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrder  # noqa: E402
 from app.models.material_purchase import LyMaterialPurchaseOrderItem  # noqa: E402
+from app.models.material_purchase import LyMaterialPurchaseRequirement  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 from app.models.quality import LyQualityInspection  # noqa: E402
 from app.models.sample import Base as SampleBase  # noqa: E402
@@ -61,7 +63,10 @@ from app.models.style_profit import Base as StyleProfitBase  # noqa: E402
 from app.models.style_profit import LyStyleProfitSnapshot  # noqa: E402
 from app.models.subcontract import Base as SubcontractBase  # noqa: E402
 from app.models.subcontract import LySubcontractInspection  # noqa: E402
+from app.models.subcontract import LySubcontractMaterial  # noqa: E402
 from app.models.subcontract import LySubcontractOrder  # noqa: E402
+from app.models.subcontract import LySubcontractReceipt  # noqa: E402
+from app.models.subcontract import LySubcontractStockOutbox  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.production import LyProductionPlan  # noqa: E402
 from app.models.production import LyProductionPlanMaterial  # noqa: E402
@@ -179,6 +184,152 @@ def _seed_production_material_issue_read_rows(session) -> None:  # noqa: ANN001
         )
     )
 
+def _seed_procurement_subcontract_read_rows(session) -> None:  # noqa: ANN001
+    """Seed real procurement/subcontract rows for legacy frontend readback paths."""
+    material_request = GAP_LIST_ROWS["material_requests"][0]
+    issue = GAP_LIST_ROWS["subcontract_material_issues"][0]
+    receipt = GAP_LIST_ROWS["subcontract_receipts"][0]
+    now = datetime(2026, 6, 19, tzinfo=timezone.utc)
+    session.add(
+        LyMaterialPurchaseRequirement(
+            id=1001,
+            company=str(material_request["company"]),
+            requirement_no=str(material_request["request_no"]),
+            source_type="production_plan",
+            source_id="PLAN-FR-001",
+            source_no=str(material_request["bom_no"]),
+            plan_id=1,
+            bom_item_id=1,
+            sales_order="SO-FR-001",
+            item_code=str(material_request["item_code"]),
+            material_item_code=str(material_request["material_item_code"]),
+            material_name="Frontend Readiness Fabric",
+            supplier_name=str(material_request["supplier_name"]),
+            warehouse="WH-FR-001",
+            required_qty=Decimal(str(material_request["qty"])),
+            available_qty=Decimal("0"),
+            net_required_qty=Decimal(str(material_request["qty"])),
+            purchased_qty=Decimal("0"),
+            received_qty=Decimal("0"),
+            uom=str(material_request["uom"]),
+            unit_price=Decimal("8.5"),
+            status="pending",
+            payload={},
+            created_by="frontend.readiness.smoke",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    session.add(
+        LySubcontractOrder(
+            id=2001,
+            subcontract_no=str(issue["subcontract_no"]),
+            supplier=str(issue["supplier"]),
+            item_code=str(issue["item_code"]),
+            company=str(issue["company"]),
+            bom_id=1,
+            process_name="Frontend Readiness Process",
+            planned_qty=Decimal("160"),
+            subcontract_rate=Decimal("1.2"),
+            issued_qty=Decimal(str(issue["issued_qty"])),
+            received_qty=Decimal(str(receipt["received_qty"])),
+            inspected_qty=Decimal(str(receipt["accepted_qty"])),
+            rejected_qty=Decimal(str(receipt["rejected_qty"])),
+            accepted_qty=Decimal(str(receipt["accepted_qty"])),
+            status="received",
+            settlement_status="unsettled",
+            source_ref="SRC-SUB-FR-001",
+            idempotency_key="IDEM-SUB-FR-001",
+            request_hash="HASH-SUB-FR-001",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    session.add(
+        LySubcontractStockOutbox(
+            id=2002,
+            subcontract_id=2001,
+            event_key="EVT-SUB-FR-ISSUE",
+            stock_action="issue",
+            idempotency_key="IDEM-SUB-FR-ISSUE",
+            payload_hash="HASH-SUB-FR-ISSUE",
+            payload_json={},
+            company=str(issue["company"]),
+            supplier=str(issue["supplier"]),
+            item_code=str(issue["item_code"]),
+            warehouse=str(issue["warehouse"]),
+            action="issue",
+            status="succeeded",
+            payload={},
+            request_id="REQ-SUB-FR-ISSUE",
+            created_by="frontend.readiness.smoke",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    session.add(
+        LySubcontractMaterial(
+            id=2003,
+            subcontract_id=2001,
+            stock_outbox_id=2002,
+            company=str(issue["company"]),
+            issue_batch_no="IB-FR-001",
+            material_item_code=str(issue["material_item_code"]),
+            required_qty=Decimal(str(issue["required_qty"])),
+            issued_qty=Decimal(str(issue["issued_qty"])),
+            sync_status="succeeded",
+            stock_entry_name="STE-SUB-FR-ISSUE",
+            created_at=now,
+        )
+    )
+    session.add(
+        LySubcontractReceipt(
+            id=2004,
+            subcontract_id=2001,
+            company=str(receipt["company"]),
+            receipt_batch_no=str(receipt["receipt_batch_no"]),
+            receipt_warehouse=str(receipt["receipt_warehouse"]),
+            item_code=str(receipt["item_code"]),
+            uom="Pcs",
+            received_qty=Decimal(str(receipt["received_qty"])),
+            sync_status="succeeded",
+            idempotency_key="IDEM-SUB-FR-RECEIPT",
+            received_by="frontend.readiness.smoke",
+            received_at=now,
+            stock_entry_name="STE-SUB-FR-RECEIPT",
+            inspected_qty=Decimal(str(receipt["accepted_qty"])),
+            rejected_qty=Decimal(str(receipt["rejected_qty"])),
+            rejected_rate=Decimal("0"),
+            deduction_amount=Decimal("0"),
+            net_amount=Decimal("24.00"),
+            inspect_status=str(receipt["status"]),
+            created_at=now,
+        )
+    )
+
+
+def _seed_foundation_template_read_rows(session) -> None:  # noqa: ANN001
+    """Seed real foundation template rows for the workmanship template page."""
+    seed = GAP_LIST_ROWS["process_requirement_templates"][0]
+    now = datetime(2026, 6, 19, tzinfo=timezone.utc)
+    session.add(
+        LyFoundationTemplate(
+            id=3001,
+            company=DEFAULT_COMPANY,
+            template_type="workmanship",
+            template_code=str(seed["process_type_code"]),
+            name=str(seed["process_name"]),
+            scene=str(seed["process_type_name"]),
+            status=str(seed["status"]),
+            version=1,
+            created_by="frontend.readiness.smoke",
+            created_at=now,
+            updated_by="frontend.readiness.smoke",
+            updated_at=now,
+        )
+    )
+
+
 GAP_PATHS = [
     "/api/subcontract/factories",
     "/api/bom/colors",
@@ -281,12 +432,13 @@ REAL_REUSE_EXPECTATIONS = {
     "/api/bom/styles": {"bom_no", "item_code", "version_no", "is_default", "status"},
     "/api/bom/style-bom-process": {"bom_no", "item_code", "process_name", "sequence_no", "unit_rate"},
     "/api/bom/process-requirement-templates": {
-        "process_type_code",
-        "process_type_name",
-        "process_name",
-        "sequence_no",
-        "unit_rate",
+        "id",
+        "company",
+        "template_type",
+        "template_code",
+        "name",
         "status",
+        "nodes",
     },
     "/api/bom/purchase-orders": {"purchase_no", "supplier_name", "material_item_code", "total_amount"},
     "/api/production/plans": {"plan_no", "sales_order", "item_code", "planned_qty"},
@@ -542,19 +694,33 @@ def _warehouse_request_id(
     item_code: str,
     quantity: object,
     business_date: str,
+    operation: str = "create_stock_entry_draft",
+    status_action: str = "create",
 ) -> str:
+    operation_code = {
+        "create_stock_entry_draft": "C",
+        "audit_stock_entry_draft": "A",
+        "cancel_stock_entry_draft": "X",
+        "release_material_hold": "R",
+    }[operation]
+    status_action_code = {
+        "create": "C",
+        "audit": "A",
+        "cancel": "X",
+        "release": "R",
+    }[status_action]
     return "-".join(
         [
             scenario_tag,
             "RW",
-            "C",
+            operation_code,
             _carrier_code(idempotency_key),
             _carrier_code(source_ref),
             _carrier_code(warehouse),
             _carrier_code(item_code),
             _carrier_code(_decimal_text(quantity)),
             _carrier_code(business_date),
-            _carrier_code("C"),
+            _carrier_code(status_action_code),
         ]
     )
 
@@ -793,6 +959,23 @@ def _exercise_sales_order_to_material_issue_smoke(client: TestClient, session_lo
             colors=[{"ys_color_code": "WHITE", "ys_color_name": "白色"}],
             sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
         )
+        for entity_type, code, name, payload in (
+            ("supplier", "SUP-A4-SMOKE", "SUP-A4-SMOKE", {"supplier_name": "SUP-A4-SMOKE"}),
+            ("material", material_code, material_code, {"material_item_code": material_code, "material_kind": "fabric"}),
+            ("warehouse", warehouse, warehouse, {"warehouse_code": warehouse, "warehouse_name": warehouse}),
+        ):
+            session.add(
+                LyMasterDataRecord(
+                    entity_type=entity_type,
+                    company=company,
+                    code=code,
+                    name=name,
+                    status="active",
+                    payload=payload,
+                    created_by="frontend.readiness.smoke",
+                    updated_by="frontend.readiness.smoke",
+                )
+            )
         session.add(
             LyApparelBom(
                 id=1101,
@@ -1806,10 +1989,47 @@ def _exercise_subcontract_return_material_smoke(client: TestClient, session_loca
     material_code = "MAT-SUB-SMOKE"
     process_name = "外发车缝"
     issue_warehouse = "WH-SUB-SMOKE"
+    receipt_warehouse = "WH-SUB-RECV-SMOKE"
     work_order_ref = "NO-WORK-ORDER"
     bom_id = 801
 
     with session_local() as session:
+        session.add(
+            LyMasterDataRecord(
+                entity_type="factory",
+                company=company,
+                code=supplier,
+                name=supplier,
+                status="active",
+                payload={"factory_code": supplier, "factory_name": supplier},
+                created_by="frontend.readiness.smoke",
+                updated_by="frontend.readiness.smoke",
+            )
+        )
+        session.add(
+            LyMasterDataRecord(
+                entity_type="warehouse",
+                company=company,
+                code=issue_warehouse,
+                name=issue_warehouse,
+                status="active",
+                payload={"warehouse_code": issue_warehouse, "warehouse_name": issue_warehouse},
+                created_by="frontend.readiness.smoke",
+                updated_by="frontend.readiness.smoke",
+            )
+        )
+        session.add(
+            LyMasterDataRecord(
+                entity_type="warehouse",
+                company=company,
+                code=receipt_warehouse,
+                name=receipt_warehouse,
+                status="active",
+                payload={"warehouse_code": receipt_warehouse, "warehouse_name": receipt_warehouse},
+                created_by="frontend.readiness.smoke",
+                updated_by="frontend.readiness.smoke",
+            )
+        )
         session.add(
             LyApparelBom(
                 id=bom_id,
@@ -1970,7 +2190,7 @@ def _exercise_subcontract_return_material_smoke(client: TestClient, session_loca
                 "item_code": item_code,
                 "quantity": "60",
                 "status_action": "receive",
-                "receipt_warehouse": "WH-SUB-RECV-SMOKE",
+                "receipt_warehouse": receipt_warehouse,
                 "received_qty": "60",
                 "uom": "件",
             },
@@ -2592,6 +2812,8 @@ def main() -> int:
     try:
         with session_local() as session:
             _seed_production_material_issue_read_rows(session)
+            _seed_procurement_subcontract_read_rows(session)
+            _seed_foundation_template_read_rows(session)
             session.commit()
 
         client = TestClient(app)
@@ -2967,6 +3189,30 @@ def main() -> int:
         purchase_warehouse = "WH-SMOKE"
         purchase_scenario = "Z003-WAREHOUSE-20260617-201"
         purchase_business_date = date(2026, 6, 17).isoformat()
+        with session_local() as session:
+            for entity_type, code, name, payload in (
+                ("supplier", purchase_supplier, purchase_supplier, {"supplier_name": purchase_supplier}),
+                ("material", purchase_item, "Smoke Fabric", {"material_item_code": purchase_item, "material_kind": "fabric"}),
+                (
+                    "warehouse",
+                    purchase_warehouse,
+                    purchase_warehouse,
+                    {"warehouse_code": purchase_warehouse, "warehouse_name": purchase_warehouse},
+                ),
+            ):
+                session.add(
+                    LyMasterDataRecord(
+                        entity_type=entity_type,
+                        company=purchase_company,
+                        code=code,
+                        name=name,
+                        status="active",
+                        payload=payload,
+                        created_by="frontend.readiness.smoke",
+                        updated_by="frontend.readiness.smoke",
+                    )
+                )
+            session.commit()
         purchase_order = client.post(
             "/api/material-purchase/orders",
             headers=_headers(),
@@ -3047,6 +3293,36 @@ def main() -> int:
             else:
                 os.environ["LINGYI_DB_URL"] = previous_db_url
         _assert(stock_receipt.status_code == 201, stock_receipt.text)
+        draft_id = int(stock_receipt.json()["data"]["id"])
+        audit_request_id = _warehouse_request_id(
+            scenario_tag=purchase_scenario,
+            idempotency_key=stock_idempotency,
+            source_ref=stock_source_ref,
+            warehouse=purchase_warehouse,
+            item_code=purchase_item,
+            quantity="20",
+            business_date=purchase_business_date,
+            operation="audit_stock_entry_draft",
+            status_action="audit",
+        )
+        with patch.dict("os.environ", {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            stock_audit = client.post(
+                f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+                headers=_headers(request_id=audit_request_id),
+                json={
+                    "reason": "acceptance-smoke",
+                    "idempotency_key": stock_idempotency,
+                    "source_ref": stock_source_ref,
+                    "warehouse": purchase_warehouse,
+                    "item_code": purchase_item,
+                    "operation": "audit_stock_entry_draft",
+                    "quantity": "20",
+                    "business_date": purchase_business_date,
+                    "status_action": "audit",
+                    "scenario_tag": purchase_scenario,
+                },
+            )
+        _assert(stock_audit.status_code == 200, stock_audit.text)
 
         purchase_orders = client.get(
             f"/api/material-purchase/orders?page=1&page_size=100&keyword={purchase_no}",
