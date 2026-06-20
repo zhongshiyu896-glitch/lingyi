@@ -29,7 +29,9 @@ from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchasePayment
 from app.routers.auth import get_db_session as auth_db_dep
+from app.routers.factory_statement import get_db_session as factory_statement_db_dep
 from app.routers.finance_approval import get_db_session as finance_approval_db_dep
+from app.routers.material_purchase import get_db_session as material_purchase_db_dep
 
 
 class FinanceApprovalApiTest(unittest.TestCase):
@@ -61,7 +63,9 @@ class FinanceApprovalApiTest(unittest.TestCase):
                 db.close()
 
         app.dependency_overrides[auth_db_dep] = _override_db
+        app.dependency_overrides[factory_statement_db_dep] = _override_db
         app.dependency_overrides[finance_approval_db_dep] = _override_db
+        app.dependency_overrides[material_purchase_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
         main_module.SessionLocal = cls.SessionLocal
         cls.client = TestClient(app)
@@ -70,7 +74,9 @@ class FinanceApprovalApiTest(unittest.TestCase):
     def tearDownClass(cls) -> None:
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
+        app.dependency_overrides.pop(factory_statement_db_dep, None)
         app.dependency_overrides.pop(finance_approval_db_dep, None)
+        app.dependency_overrides.pop(material_purchase_db_dep, None)
         cls.engine.dispose()
 
     def setUp(self) -> None:
@@ -248,6 +254,10 @@ class FinanceApprovalApiTest(unittest.TestCase):
         self.assertEqual(created_data["source_no"], "PINV-FIN-001")
         self.assertEqual(created_data["amount"], "150.000000")
         self.assertEqual(created_data["status"], "pending")
+        with self.SessionLocal() as session:
+            invoice = session.query(LyMaterialPurchaseInvoice).filter_by(id=self.invoice_id).one()
+            self.assertEqual(invoice.payload["finance_approval"]["status"], "pending")
+            self.assertEqual(invoice.payload["finance_approval"]["approval_no"], created_data["approval_no"])
 
         replayed = self.client.post(
             "/api/finance/approval-tasks",
@@ -272,6 +282,20 @@ class FinanceApprovalApiTest(unittest.TestCase):
         )
         self.assertEqual(approved.status_code, 200)
         self.assertEqual(approved.json()["data"]["status"], "approved")
+        with self.SessionLocal() as session:
+            invoice = session.query(LyMaterialPurchaseInvoice).filter_by(id=self.invoice_id).one()
+            self.assertEqual(invoice.payload["finance_approval"]["status"], "approved")
+            self.assertEqual(invoice.payload["finance_approval"]["approved_by"], "finance.approver")
+
+        listed_invoices = self.client.get(
+            "/api/material-purchase/purchase-invoices",
+            params={"company": self.COMPANY, "keyword": "PINV-FIN"},
+            headers=self._headers(request_id="req-fin-list-invoice-approval"),
+        )
+        self.assertEqual(listed_invoices.status_code, 200)
+        invoice_row = listed_invoices.json()["data"]["items"][0]
+        self.assertEqual(invoice_row["approval_status"], "approved")
+        self.assertEqual(invoice_row["approval_no"], created_data["approval_no"])
 
         rejected_after_approve = self.client.post(
             f"/api/finance/approval-tasks/{created_data['id']}/reject",
@@ -323,6 +347,20 @@ class FinanceApprovalApiTest(unittest.TestCase):
         data = rejected.json()["data"]
         self.assertEqual(data["status"], "rejected")
         self.assertEqual(data["reject_reason"], "付款凭证需补充")
+        with self.SessionLocal() as session:
+            payment = session.query(LyMaterialPurchasePayment).filter_by(id=self.purchase_payment_id).one()
+            self.assertEqual(payment.payload["finance_approval"]["status"], "rejected")
+            self.assertEqual(payment.payload["finance_approval"]["reject_reason"], "付款凭证需补充")
+
+        listed_payments = self.client.get(
+            "/api/material-purchase/purchase-payments",
+            params={"company": self.COMPANY, "keyword": "PP-FIN"},
+            headers=self._headers(request_id="req-fin-list-payment-approval"),
+        )
+        self.assertEqual(listed_payments.status_code, 200)
+        payment_row = listed_payments.json()["data"]["items"][0]
+        self.assertEqual(payment_row["approval_status"], "rejected")
+        self.assertEqual(payment_row["approval_no"], created.json()["data"]["approval_no"])
 
     def test_create_factory_statement_payment_task(self) -> None:
         created = self.client.post(
@@ -341,6 +379,10 @@ class FinanceApprovalApiTest(unittest.TestCase):
         self.assertEqual(data["source_no"], "FSP-FIN-001")
         self.assertEqual(data["partner_name"], "FIN-FACTORY")
         self.assertEqual(data["amount"], "200.000000")
+        with self.SessionLocal() as session:
+            payment = session.query(LyFactoryStatementPayment).filter_by(id=self.factory_payment_id).one()
+            self.assertEqual(payment.payload["finance_approval"]["status"], "pending")
+            self.assertEqual(payment.payload["finance_approval"]["approval_no"], data["approval_no"])
 
         listed = self.client.get(
             "/api/finance/approval-tasks",
@@ -349,6 +391,16 @@ class FinanceApprovalApiTest(unittest.TestCase):
         )
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json()["data"]["total"], 1)
+
+        listed_payments = self.client.get(
+            "/api/factory-statements/payments",
+            params={"company": self.COMPANY, "keyword": "FSP-FIN"},
+            headers=self._headers(request_id="req-fin-list-fsp-approval"),
+        )
+        self.assertEqual(listed_payments.status_code, 200)
+        payment_row = listed_payments.json()["data"]["items"][0]
+        self.assertEqual(payment_row["approval_status"], "pending")
+        self.assertEqual(payment_row["approval_no"], data["approval_no"])
 
     def test_create_idempotency_conflict_is_explicit(self) -> None:
         payload = {

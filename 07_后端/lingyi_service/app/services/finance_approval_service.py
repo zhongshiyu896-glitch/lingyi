@@ -173,6 +173,7 @@ class FinanceApprovalService:
         try:
             self.session.add(task)
             self.session.flush()
+            self._apply_source_approval_state(task=task, approval_status="pending", actor=actor, when=now)
         except IntegrityError as exc:
             raise BusinessException(code=FINANCE_APPROVAL_CONFLICT) from exc
         except SQLAlchemyError as exc:
@@ -276,6 +277,13 @@ class FinanceApprovalService:
         )
         try:
             self.session.add(operation)
+            self._apply_source_approval_state(
+                task=task,
+                approval_status=decision,
+                actor=actor,
+                when=now,
+                reason=payload.reason,
+            )
             self.session.flush()
         except IntegrityError as exc:
             raise BusinessException(code=FINANCE_APPROVAL_CONFLICT) from exc
@@ -363,6 +371,85 @@ class FinanceApprovalService:
                         "paid_amount": str(row.paid_amount),
                     },
                 )
+        except BusinessException:
+            raise
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        raise BusinessException(code=FINANCE_APPROVAL_NOT_FOUND)
+
+    def _apply_source_approval_state(
+        self,
+        *,
+        task: LyFinanceApprovalTask,
+        approval_status: str,
+        actor: str,
+        when: datetime,
+        reason: str | None = None,
+    ) -> None:
+        row = self._get_source_row_for_task(task)
+        existing_payload = row.payload if isinstance(row.payload, dict) else {}
+        payload = dict(existing_payload)
+        approval_payload = {
+            "status": approval_status,
+            "approval_no": task.approval_no,
+            "approval_task_id": int(task.id),
+            "source_type": task.source_type,
+            "source_id": str(task.source_id),
+            "updated_by": actor,
+            "updated_at": when.isoformat(),
+        }
+        if approval_status == "pending":
+            approval_payload["submitted_by"] = task.submitted_by or actor
+            approval_payload["submitted_at"] = (task.submitted_at or when).isoformat()
+        if approval_status == "approved":
+            approval_payload["approved_by"] = actor
+            approval_payload["approved_at"] = when.isoformat()
+        if approval_status == "rejected":
+            approval_payload["rejected_by"] = actor
+            approval_payload["rejected_at"] = when.isoformat()
+            approval_payload["reject_reason"] = reason or task.reject_reason or "审批驳回"
+        payload["finance_approval"] = approval_payload
+        row.payload = payload
+        if hasattr(row, "updated_by"):
+            row.updated_by = actor
+        if hasattr(row, "updated_at"):
+            row.updated_at = when
+        task.source_status = str(row.status or "")
+
+    def _get_source_row_for_task(self, task: LyFinanceApprovalTask) -> Any:
+        try:
+            source_id = int(task.source_id)
+        except (TypeError, ValueError) as exc:
+            raise BusinessException(code=FINANCE_APPROVAL_NOT_FOUND) from exc
+
+        try:
+            if task.source_type == "purchase_invoice":
+                row = (
+                    self.session.query(LyMaterialPurchaseInvoice)
+                    .filter(LyMaterialPurchaseInvoice.company == task.company, LyMaterialPurchaseInvoice.id == source_id)
+                    .first()
+                )
+                if row:
+                    return row
+                raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND)
+            if task.source_type == "purchase_payment":
+                row = (
+                    self.session.query(LyMaterialPurchasePayment)
+                    .filter(LyMaterialPurchasePayment.company == task.company, LyMaterialPurchasePayment.id == source_id)
+                    .first()
+                )
+                if row:
+                    return row
+                raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND)
+            if task.source_type == "factory_statement_payment":
+                row = (
+                    self.session.query(LyFactoryStatementPayment)
+                    .filter(LyFactoryStatementPayment.company == task.company, LyFactoryStatementPayment.id == source_id)
+                    .first()
+                )
+                if row:
+                    return row
+                raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
         except BusinessException:
             raise
         except SQLAlchemyError as exc:

@@ -628,6 +628,8 @@ class FactoryStatementPaymentData(BaseModel):
     source_ref: str
     idempotency_key: str
     scenario_tag: str | None = None
+    approval_status: str = "not_submitted"
+    approval_no: str | None = None
     created_by: str
     created_at: datetime
 

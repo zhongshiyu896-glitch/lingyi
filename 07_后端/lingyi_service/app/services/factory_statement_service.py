@@ -11,6 +11,7 @@ from decimal import ROUND_HALF_UP
 import hashlib
 import json
 import os
+from typing import Any
 import uuid
 
 from sqlalchemy import func
@@ -4948,6 +4949,23 @@ class FactoryStatementService:
             source_ref=str(row.source_ref),
             idempotency_key=str(row.idempotency_key),
             scenario_tag=self._normalize_text(row.scenario_tag),
+            approval_status=self._finance_approval_status(row),
+            approval_no=self._finance_approval_no(row),
             created_by=str(row.created_by),
             created_at=row.created_at,
         )
+
+    @classmethod
+    def _finance_approval_payload(cls, row: Any) -> dict[str, Any]:
+        payload = row.payload if isinstance(row.payload, dict) else {}
+        approval = payload.get("finance_approval")
+        return approval if isinstance(approval, dict) else {}
+
+    @classmethod
+    def _finance_approval_status(cls, row: Any) -> str:
+        status = cls._finance_approval_payload(row).get("status")
+        return str(status or "not_submitted")
+
+    @classmethod
+    def _finance_approval_no(cls, row: Any) -> str | None:
+        return cls._normalize_text(cls._finance_approval_payload(row).get("approval_no"))
