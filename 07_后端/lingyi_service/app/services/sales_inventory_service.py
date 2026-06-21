@@ -96,6 +96,7 @@ from app.schemas.sales_inventory import StockSummaryData
 from app.schemas.sales_inventory import StockSummaryItem
 from app.schemas.sales_inventory import WarehouseItem
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
+from app.services.warehouse_service import WarehouseService
 
 
 class SalesInventoryServiceError(Exception):
@@ -5873,37 +5874,12 @@ class SalesInventoryService:
             )
 
     def _local_stock_balance(self, *, company: str, item_code: str, warehouse: str) -> Decimal:
-        session = self._require_session()
-        rows = (
-            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
-            .join(
-                LyWarehouseStockEntryDraftItem,
-                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
-            )
-            .filter(
-                LyWarehouseStockEntryDraft.company == company,
-                LyWarehouseStockEntryDraft.status != "cancelled",
-                LyWarehouseStockEntryDraftItem.item_code == item_code,
-            )
-            .all()
+        summary = WarehouseService(session=self._require_session()).get_local_stock_summary(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
         )
-        balance = Decimal("0")
-        for draft, item in rows:
-            qty = Decimal(str(item.qty or 0))
-            purpose = str(draft.purpose)
-            source_warehouse = self._text(item.source_warehouse) or self._text(draft.source_warehouse)
-            target_warehouse = self._text(item.target_warehouse) or self._text(draft.target_warehouse)
-            if purpose == "Material Issue":
-                if source_warehouse == warehouse:
-                    balance -= qty
-            elif purpose == "Material Transfer":
-                if source_warehouse == warehouse:
-                    balance -= qty
-                if target_warehouse == warehouse:
-                    balance += qty
-            elif target_warehouse == warehouse:
-                balance += qty
-        return balance
+        return sum((Decimal(str(row.actual_qty)) for row in summary.items), Decimal("0"))
 
     def _increase_native_sales_order_delivered_qty(
         self,
