@@ -373,9 +373,18 @@ class ProductionService:
         latest_map = self.outbox_service.latest_by_plan_ids(plan_ids=plan_ids)
         readiness_map = self._material_readiness_by_plan_ids(plan_ids=plan_ids)
         tracking_context = self._tracking_context_by_plan_ids(plan_ids=plan_ids)
+        sales_order_line_attrs = self._sales_order_line_attrs_by_plan_rows(rows=rows)
 
         items: list[ProductionPlanListItem] = []
         for row in rows:
+            line_attrs = sales_order_line_attrs.get(
+                (
+                    str(row.company),
+                    str(row.sales_order),
+                    str(row.sales_order_item),
+                ),
+                {},
+            )
             material_readiness = readiness_map.get(int(row.id), self._empty_material_readiness_summary())
             summary = None
             latest = latest_map.get(int(row.id))
@@ -406,6 +415,9 @@ class ProductionService:
                     sales_order_item=str(row.sales_order_item),
                     customer=(str(row.customer) if row.customer else None),
                     item_code=str(row.item_code),
+                    color=line_attrs.get("color"),
+                    size=line_attrs.get("size"),
+                    sales_order_item_qty=line_attrs.get("qty"),
                     bom_id=int(row.bom_id),
                     bom_version=(str(row.bom_version) if row.bom_version else None),
                     planned_qty=Decimal(str(row.planned_qty)),
@@ -427,6 +439,66 @@ class ProductionService:
             )
 
         return ProductionPlanListData(items=items, total=int(total), page=query.page, page_size=query.page_size)
+
+    def _sales_order_line_attrs_by_plan_rows(self, *, rows: list[LyProductionPlan]) -> dict[tuple[str, str, str], dict[str, Any]]:
+        keys = {
+            (
+                str(row.company or "").strip(),
+                str(row.sales_order or "").strip(),
+                str(row.sales_order_item or "").strip(),
+            )
+            for row in rows
+            if str(row.company or "").strip()
+            and str(row.sales_order or "").strip()
+            and str(row.sales_order_item or "").strip()
+        }
+        if not keys:
+            return {}
+
+        companies = sorted({company for company, _, _ in keys})
+        sales_orders = sorted({sales_order for _, sales_order, _ in keys})
+        sales_order_items = sorted({sales_order_item for _, _, sales_order_item in keys})
+        try:
+            order_rows = (
+                self.session.query(LySalesOrder)
+                .filter(
+                    LySalesOrder.company.in_(companies),
+                    LySalesOrder.sales_order_no.in_(sales_orders),
+                )
+                .all()
+            )
+            order_by_id = {int(row.id): row for row in order_rows}
+            if not order_by_id:
+                return {}
+            line_rows = (
+                self.session.query(LySalesOrderItem)
+                .filter(
+                    LySalesOrderItem.sales_order_id.in_(sorted(order_by_id)),
+                    LySalesOrderItem.sales_order_item.in_(sales_order_items),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        attrs: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for line in line_rows:
+            order = order_by_id.get(int(line.sales_order_id))
+            if order is None:
+                continue
+            key = (
+                str(order.company),
+                str(order.sales_order_no),
+                str(line.sales_order_item),
+            )
+            if key not in keys:
+                continue
+            attrs[key] = {
+                "color": (str(line.color) if line.color else None),
+                "size": (str(line.size) if line.size else None),
+                "qty": Decimal(str(line.qty)),
+            }
+        return attrs
 
     def _material_readiness_by_plan_ids(self, *, plan_ids: list[int]) -> dict[int, dict[str, Any]]:
         normalized_ids = sorted({int(plan_id) for plan_id in plan_ids if int(plan_id) > 0})
@@ -775,7 +847,7 @@ class ProductionService:
 
             total = sql.with_entities(func.count(LyProductionTrackingReconcile.id)).scalar() or 0
             rows = (
-                sql.order_by(LyProductionTrackingReconcile.updated_at.desc(), LyProductionTrackingReconcile.id.desc())
+                sql.order_by(LyProductionTrackingReconcile.created_at.desc(), LyProductionTrackingReconcile.id.desc())
                 .offset((query.page - 1) * query.page_size)
                 .limit(query.page_size)
                 .all()
@@ -1933,7 +2005,7 @@ class ProductionService:
                         func.lower(LyProductionFollowupTemplate.company).like(like_value),
                     )
                 )
-            rows = sql.order_by(LyProductionFollowupTemplate.updated_at.desc(), LyProductionFollowupTemplate.id.desc()).all()
+            rows = sql.order_by(LyProductionFollowupTemplate.created_at.desc(), LyProductionFollowupTemplate.id.desc()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
         return [self._followup_template_item(row) for row in rows]
@@ -4179,6 +4251,14 @@ class ProductionService:
             node_events=node_events,
             latest_outbox=latest,
         )
+        line_attrs = self._sales_order_line_attrs_by_plan_rows(rows=[plan]).get(
+            (
+                str(plan.company),
+                str(plan.sales_order),
+                str(plan.sales_order_item),
+            ),
+            {},
+        )
 
         return ProductionPlanDetailData(
             id=int(plan.id),
@@ -4188,6 +4268,9 @@ class ProductionService:
             sales_order_item=str(plan.sales_order_item),
             customer=(str(plan.customer) if plan.customer else None),
             item_code=str(plan.item_code),
+            color=line_attrs.get("color"),
+            size=line_attrs.get("size"),
+            sales_order_item_qty=line_attrs.get("qty"),
             bom_id=int(plan.bom_id),
             bom_version=(str(plan.bom_version) if plan.bom_version else None),
             planned_qty=Decimal(str(plan.planned_qty)),
@@ -6763,7 +6846,7 @@ class ProductionService:
                 )
             if payload.customer:
                 sql = sql.filter(LySampleOrder.customer.like(f"%{payload.customer.strip()}%"))
-            rows = sql.order_by(LySampleOrder.updated_at.desc(), LySampleOrder.id.desc()).all()
+            rows = sql.order_by(LySampleOrder.created_at.desc(), LySampleOrder.id.desc()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 

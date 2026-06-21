@@ -130,8 +130,7 @@ class MasterDataService:
             offset = max(page - 1, 0) * page_size
             rows = (
                 query.order_by(
-                    LyMasterDataRecord.status.asc(),
-                    LyMasterDataRecord.updated_at.desc(),
+                    LyMasterDataRecord.created_at.desc(),
                     LyMasterDataRecord.id.desc(),
                 )
                 .offset(offset)

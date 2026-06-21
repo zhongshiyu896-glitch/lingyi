@@ -832,7 +832,7 @@ class SampleService:
                 query = query.filter(LySampleTrackingTemplate.status == normalized_status)
             total = int(query.count())
             rows = (
-                query.order_by(LySampleTrackingTemplate.updated_at.desc(), LySampleTrackingTemplate.id.desc())
+                query.order_by(LySampleTrackingTemplate.created_at.desc(), LySampleTrackingTemplate.id.desc())
                 .offset(max(page - 1, 0) * page_size)
                 .limit(page_size)
                 .all()

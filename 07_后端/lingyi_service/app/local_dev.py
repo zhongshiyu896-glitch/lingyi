@@ -304,7 +304,8 @@ def _ensure_local_sales_order_idempotency_supports_update() -> None:
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_sales_order_idempotency'"
         ).fetchone()
         existing_sql = str(row[0]) if row else ""
-        if not row or "'update_draft'" in existing_sql:
+        required_operations = ["'create_draft'", "'update_draft'", "'submit_draft'", "'cancel_draft'"]
+        if not row or all(operation in existing_sql for operation in required_operations):
             return
         conn.executescript(
             """
@@ -320,7 +321,7 @@ def _ensure_local_sales_order_idempotency_supports_update() -> None:
                 created_by VARCHAR(140) NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 PRIMARY KEY (id),
-                CONSTRAINT ck_ly_sales_order_idem_operation CHECK (operation IN ('create_draft','update_draft','cancel_draft'))
+                CONSTRAINT ck_ly_sales_order_idem_operation CHECK (operation IN ('create_draft','update_draft','submit_draft','cancel_draft'))
             );
             INSERT INTO ly_sales_order_idempotency_new (
                 id, company, operation, idempotency_key, request_hash, sales_order_id, response_json, created_by, created_at

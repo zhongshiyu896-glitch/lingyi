@@ -106,8 +106,7 @@ class FoundationTemplateService:
             total = int(query.count())
             rows = (
                 query.order_by(
-                    LyFoundationTemplate.status.asc(),
-                    LyFoundationTemplate.updated_at.desc(),
+                    LyFoundationTemplate.created_at.desc(),
                     LyFoundationTemplate.id.desc(),
                 )
                 .offset(max(page - 1, 0) * page_size)

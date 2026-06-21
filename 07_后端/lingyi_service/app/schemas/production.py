@@ -97,6 +97,9 @@ class ProductionPlanListItem(BaseModel):
     sales_order_item: str
     customer: Optional[str] = None
     item_code: str
+    color: Optional[str] = None
+    size: Optional[str] = None
+    sales_order_item_qty: Optional[Decimal] = None
     bom_id: int
     bom_version: Optional[str] = None
     planned_qty: Decimal
@@ -930,6 +933,9 @@ class ProductionPlanDetailData(BaseModel):
     sales_order_item: str
     customer: Optional[str] = None
     item_code: str
+    color: Optional[str] = None
+    size: Optional[str] = None
+    sales_order_item_qty: Optional[Decimal] = None
     bom_id: int
     bom_version: Optional[str] = None
     planned_qty: Decimal

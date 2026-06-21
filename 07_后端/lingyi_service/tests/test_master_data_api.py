@@ -133,6 +133,43 @@ class MasterDataApiTest(unittest.TestCase):
             self.assertEqual(audit.action, "create")
             self.assertEqual(audit.result, "success")
 
+    def test_list_records_orders_by_latest_created_not_latest_updated(self) -> None:
+        first = self.client.post(
+            "/api/master-data/suppliers",
+            headers=self._headers(request_id="MASTER-DATA-SORT-001"),
+            json=self._payload(code="SUP-SORT-001", idempotency_key="IDEMP-SUP-SORT-001-C"),
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        first_id = int(first.json()["data"]["id"])
+
+        second = self.client.post(
+            "/api/master-data/suppliers",
+            headers=self._headers(request_id="MASTER-DATA-SORT-002"),
+            json=self._payload(code="SUP-SORT-002", idempotency_key="IDEMP-SUP-SORT-002-C"),
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+
+        updated_first = self.client.patch(
+            f"/api/master-data/suppliers/{first_id}",
+            headers=self._headers(request_id="MASTER-DATA-SORT-003"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "name": "旧供应商被编辑",
+                "idempotency_key": "IDEMP-SUP-SORT-001-U",
+                "payload": {"owner": "purchase", "level": "updated"},
+            },
+        )
+        self.assertEqual(updated_first.status_code, 200, updated_first.text)
+
+        listed = self.client.get(
+            "/api/master-data/suppliers?company=COMP-A",
+            headers=self._headers(request_id="MASTER-DATA-SORT-004"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        codes = [item["code"] for item in listed.json()["data"]["items"]]
+        self.assertEqual(codes[:2], ["SUP-SORT-002", "SUP-SORT-001"])
+
     def test_create_supplier_without_code_auto_generates_and_replays(self) -> None:
         payload = {
             "operation": "create",

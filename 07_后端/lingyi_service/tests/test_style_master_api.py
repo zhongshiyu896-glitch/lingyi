@@ -205,6 +205,44 @@ class StyleMasterApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyStyleDictionary).count(), 7)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "style_master").count(), 10)
 
+    def test_style_list_orders_by_latest_created_not_latest_updated(self) -> None:
+        self._seed_style_dictionaries()
+
+        first = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-SORT-CREATE-001"),
+            json=self._style_payload(style_no="ST-SORT-001", idempotency_key="IDEMP-ST-SORT-001-C"),
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        first_id = int(first.json()["data"]["id"])
+
+        second = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-SORT-CREATE-002"),
+            json=self._style_payload(style_no="ST-SORT-002", idempotency_key="IDEMP-ST-SORT-002-C"),
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+
+        updated_first = self.client.patch(
+            f"/api/style-master/styles/{first_id}",
+            headers=self._headers(request_id="STYLE-SORT-UPDATE-001"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "ys_style_name_cn": "旧款式被编辑",
+                "idempotency_key": "IDEMP-ST-SORT-001-U",
+            },
+        )
+        self.assertEqual(updated_first.status_code, 200, updated_first.text)
+
+        listed = self.client.get(
+            "/api/style-master/styles?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SORT-LIST-001"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        style_nos = [item["ys_style_no"] for item in listed.json()["data"]["items"]]
+        self.assertEqual(style_nos[:2], ["ST-SORT-002", "ST-SORT-001"])
+
     def test_style_idempotency_conflict_and_invalid_reference(self) -> None:
         self._seed_style_dictionaries()
 

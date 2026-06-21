@@ -112,8 +112,7 @@ class StyleMasterService:
             total = int(query.count())
             rows = (
                 query.order_by(
-                    LyStyleMaster.ys_style_status.asc(),
-                    LyStyleMaster.updated_at.desc(),
+                    LyStyleMaster.created_at.desc(),
                     LyStyleMaster.id.desc(),
                 )
                 .offset(max(page - 1, 0) * page_size)
@@ -179,8 +178,7 @@ class StyleMasterService:
             total = int(query.count())
             rows = (
                 query.order_by(
-                    LyStyleGallery.is_primary.desc(),
-                    LyStyleGallery.updated_at.desc(),
+                    LyStyleGallery.created_at.desc(),
                     LyStyleGallery.id.desc(),
                 )
                 .offset(max(page - 1, 0) * page_size)
@@ -794,10 +792,8 @@ class StyleMasterService:
             total = int(query.count())
             rows = (
                 query.order_by(
-                    LyStyleDictionary.dict_type.asc(),
-                    LyStyleDictionary.status.asc(),
-                    LyStyleDictionary.sort_no.asc(),
-                    LyStyleDictionary.id.asc(),
+                    LyStyleDictionary.created_at.desc(),
+                    LyStyleDictionary.id.desc(),
                 )
                 .offset(max(page - 1, 0) * page_size)
                 .limit(page_size)

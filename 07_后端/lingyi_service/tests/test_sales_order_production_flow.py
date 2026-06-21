@@ -248,6 +248,70 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             )
             session.commit()
 
+    def _seed_style_with_matrix_bom(
+        self,
+        *,
+        style_no: str,
+        style_name: str,
+        bom_id: int,
+        bom_items: list[dict[str, object]],
+    ) -> None:
+        with self.SessionLocal() as session:
+            style = LyStyleMaster(
+                company="COMP-A",
+                ys_style_no=style_no,
+                ys_style_name_cn=style_name,
+                ys_season="SS",
+                ys_year="2026",
+                ys_brand="LY",
+                ys_style_status="enabled",
+                colors=[
+                    {"ys_color_code": "BLK", "ys_color_name": "黑"},
+                    {"ys_color_code": "WHT", "ys_color_name": "白"},
+                ],
+                sizes=[
+                    {"ys_size_code": "S", "ys_size_name": "S"},
+                    {"ys_size_code": "M", "ys_size_name": "M"},
+                    {"ys_size_code": "L", "ys_size_name": "L"},
+                ],
+                version=1,
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(style)
+            session.flush()
+            bom = LyApparelBom(
+                id=bom_id,
+                bom_no=f"BOM-{style_no}-V1",
+                company="COMP-A",
+                style_master_id=int(style.id),
+                item_code=style_no,
+                version_no="V1",
+                is_default=True,
+                status="active",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(bom)
+            next_item_id = bom_id * 100
+            for item in bom_items:
+                session.add(
+                    LyApparelBomItem(
+                        id=next_item_id,
+                        bom_id=bom_id,
+                        material_item_code=str(item["material_item_code"]),
+                        color=item.get("color"),
+                        size=item.get("size"),
+                        part=item.get("part"),
+                        qty_per_piece=Decimal(str(item["qty_per_piece"])),
+                        loss_rate=Decimal(str(item.get("loss_rate", "0"))),
+                        uom=str(item.get("uom", "米")),
+                        remark=item.get("remark"),
+                    )
+                )
+                next_item_id += 1
+            session.commit()
+
     def test_sales_order_update_resets_material_calc_before_purchase_or_issue(self) -> None:
         order_payload = {
             "company": "COMP-A",
@@ -504,6 +568,185 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertEqual(session.query(LyProductionPlanOperation).filter(LyProductionPlanOperation.operation == "material_check").count(), 2)
             self.assertEqual(session.query(LyProductionPlanOperation).filter(LyProductionPlanOperation.operation == "sales_order_material_check").count(), 1)
             self.assertIn("production:material_check", audit_actions)
+
+    def test_sales_order_material_check_matches_bom_by_color_size_and_purchase_requirements(self) -> None:
+        self._seed_style_with_matrix_bom(
+            style_no="STYLE-MATRIX",
+            style_name="Color Size Matrix Tee",
+            bom_id=20,
+            bom_items=[
+                {"material_item_code": "THREAD-ALL", "part": "全款通用线", "qty_per_piece": "0.1", "loss_rate": "0"},
+                {"material_item_code": "FAB-MATRIX", "size": "S", "part": "面料主身", "qty_per_piece": "1", "loss_rate": "0.1"},
+                {"material_item_code": "FAB-MATRIX", "size": "M", "part": "面料主身", "qty_per_piece": "2", "loss_rate": "0.2"},
+                {"material_item_code": "ZIP-S-50", "color": "黑", "size": "S", "part": "门襟拉链", "qty_per_piece": "1", "loss_rate": "0"},
+                {"material_item_code": "ZIP-M-55", "color": "黑", "size": "M", "part": "门襟拉链", "qty_per_piece": "1", "loss_rate": "0"},
+                {"material_item_code": "ZIP-WHITE-M", "color": "白", "size": "M", "part": "门襟拉链", "qty_per_piece": "1", "loss_rate": "0"},
+                {"material_item_code": "LABEL-BLACK", "color": "黑", "part": "黑色标", "qty_per_piece": "0.2", "loss_rate": "0.1"},
+            ],
+        )
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-BOM-MATRIX-001",
+            "source_order_ref": "SO-A4-BOM-MATRIX-001",
+            "idempotency_key": "idem-so-a4-bom-matrix-001",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "STYLE-MATRIX",
+                    "item_name": "Color Size Matrix Tee",
+                    "color": "黑",
+                    "size": "S",
+                    "qty": 5,
+                    "rate": 80,
+                    "uom": "件",
+                },
+                {
+                    "item_code": "STYLE-MATRIX",
+                    "item_name": "Color Size Matrix Tee",
+                    "color": "黑",
+                    "size": "M",
+                    "qty": 10,
+                    "rate": 80,
+                    "uom": "件",
+                },
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-BOM-MATRIX-001",
+            key="idem-so-a4-bom-matrix-001-submit",
+        )
+
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            material_check = self.client.post(
+                "/api/production/sales-orders/SO-A4-BOM-MATRIX-001/material-check",
+                headers={**self._headers(), "X-Request-ID": "req-a4-bom-matrix-check"},
+                json={
+                    "warehouse": "WH-BOM-MATRIX",
+                    "company": "COMP-A",
+                    "planned_start_date": "2026-06-18",
+                    "operation": "sales_order_material_check",
+                    "idempotency_key": "idem-sales-order-material-check-a4-bom-matrix-001",
+                },
+            )
+        self.assertEqual(material_check.status_code, 200, material_check.text)
+        data = material_check.json()["data"]
+        self.assertEqual(data["plan_count"], 2)
+        self.assertEqual(data["snapshot_count"], 8)
+        self.assertEqual(Decimal(str(data["required_qty_total"])), Decimal("49.300000"))
+
+        with self.SessionLocal() as session:
+            plans = session.query(LyProductionPlan).order_by(LyProductionPlan.id.asc()).all()
+            snapshots = session.query(LyProductionPlanMaterial).order_by(LyProductionPlanMaterial.id.asc()).all()
+            requirements = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.id.asc()).all()
+
+            self.assertEqual(len(plans), 2)
+            self.assertEqual(len(snapshots), 8)
+            self.assertEqual(len(requirements), 8)
+            snapshots_by_plan = {
+                str(plan.sales_order_item): [row for row in snapshots if int(row.plan_id) == int(plan.id)]
+                for plan in plans
+            }
+            requirements_by_plan = {
+                str(plan.sales_order_item): [row for row in requirements if int(row.plan_id) == int(plan.id)]
+                for plan in plans
+            }
+            s_item = "SO-A4-BOM-MATRIX-001-001"
+            m_item = "SO-A4-BOM-MATRIX-001-002"
+            s_snapshots = {row.material_item_code: row for row in snapshots_by_plan[s_item]}
+            m_snapshots = {row.material_item_code: row for row in snapshots_by_plan[m_item]}
+
+            self.assertEqual(set(s_snapshots), {"THREAD-ALL", "FAB-MATRIX", "ZIP-S-50", "LABEL-BLACK"})
+            self.assertEqual(set(m_snapshots), {"THREAD-ALL", "FAB-MATRIX", "ZIP-M-55", "LABEL-BLACK"})
+            self.assertNotIn("ZIP-WHITE-M", s_snapshots)
+            self.assertNotIn("ZIP-WHITE-M", m_snapshots)
+            self.assertEqual(Decimal(str(s_snapshots["FAB-MATRIX"].qty_per_piece)), Decimal("1.000000"))
+            self.assertEqual(Decimal(str(s_snapshots["FAB-MATRIX"].loss_rate)), Decimal("0.100000"))
+            self.assertEqual(Decimal(str(s_snapshots["FAB-MATRIX"].required_qty)), Decimal("5.500000"))
+            self.assertEqual(Decimal(str(m_snapshots["FAB-MATRIX"].qty_per_piece)), Decimal("2.000000"))
+            self.assertEqual(Decimal(str(m_snapshots["FAB-MATRIX"].loss_rate)), Decimal("0.200000"))
+            self.assertEqual(Decimal(str(m_snapshots["FAB-MATRIX"].required_qty)), Decimal("24.000000"))
+            self.assertEqual(Decimal(str(s_snapshots["ZIP-S-50"].required_qty)), Decimal("5.000000"))
+            self.assertEqual(Decimal(str(m_snapshots["ZIP-M-55"].required_qty)), Decimal("10.000000"))
+
+            s_requirements = {row.material_item_code: row for row in requirements_by_plan[s_item]}
+            m_requirements = {row.material_item_code: row for row in requirements_by_plan[m_item]}
+            self.assertEqual(set(s_requirements), set(s_snapshots))
+            self.assertEqual(set(m_requirements), set(m_snapshots))
+            self.assertEqual(Decimal(str(s_requirements["FAB-MATRIX"].net_required_qty)), Decimal("5.500000"))
+            self.assertEqual(Decimal(str(m_requirements["FAB-MATRIX"].net_required_qty)), Decimal("24.000000"))
+            self.assertEqual({row.status for row in requirements}, {"pending"})
+
+    def test_sales_order_material_check_reports_no_matching_color_size_bom_row(self) -> None:
+        self._seed_style_with_matrix_bom(
+            style_no="STYLE-NOMATCH",
+            style_name="No Matching Bom Tee",
+            bom_id=30,
+            bom_items=[
+                {"material_item_code": "ONLY-WHITE-S", "color": "白", "size": "S", "part": "面料主身", "qty_per_piece": "1", "loss_rate": "0"},
+            ],
+        )
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-BOM-NOMATCH-001",
+            "source_order_ref": "SO-A4-BOM-NOMATCH-001",
+            "idempotency_key": "idem-so-a4-bom-nomatch-001",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "STYLE-NOMATCH",
+                    "item_name": "No Matching Bom Tee",
+                    "color": "黑",
+                    "size": "M",
+                    "qty": 5,
+                    "rate": 80,
+                    "uom": "件",
+                }
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-BOM-NOMATCH-001",
+            key="idem-so-a4-bom-nomatch-001-submit",
+        )
+
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            material_check = self.client.post(
+                "/api/production/sales-orders/SO-A4-BOM-NOMATCH-001/material-check",
+                headers={**self._headers(), "X-Request-ID": "req-a4-bom-nomatch-check"},
+                json={
+                    "warehouse": "WH-BOM-NOMATCH",
+                    "company": "COMP-A",
+                    "planned_start_date": "2026-06-18",
+                    "operation": "sales_order_material_check",
+                    "idempotency_key": "idem-sales-order-material-check-a4-bom-nomatch-001",
+                },
+            )
+        self.assertEqual(material_check.status_code, 404, material_check.text)
+        self.assertEqual(material_check.json()["code"], "PRODUCTION_BOM_NOT_FOUND")
+        self.assertIn("匹配当前颜色/尺码", material_check.json()["message"])
 
     def test_sales_order_draft_can_create_plan_and_blocks_overplanning(self) -> None:
         order_payload = {
@@ -839,6 +1082,186 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertIn("production:plan_create", audit_actions)
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("production:material_issue", audit_actions)
+
+    def test_sales_order_multi_sku_items_survive_update_and_plan_specific_line(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyStyleMaster(
+                    company="COMP-A",
+                    ys_style_no="DEMO-NOBOM",
+                    ys_style_name_cn="No BOM Tee",
+                    ys_season="SS",
+                    ys_year="2026",
+                    ys_brand="LY",
+                    ys_style_status="enabled",
+                    colors=[{"ys_color_code": "BLACK", "ys_color_name": "黑色"}],
+                    sizes=[{"ys_size_code": "M", "ys_size_name": "M"}],
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-SKU-001",
+            "source_order_ref": "SO-A4-SKU-001",
+            "idempotency_key": "idem-so-a4-sku-001",
+            "transaction_date": "2026-06-21",
+            "delivery_date": "2026-07-15",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Ignored Name",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 20,
+                    "rate": 80,
+                    "uom": "件",
+                },
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Ignored Name",
+                    "color": "白色",
+                    "size": "L",
+                    "qty": 30,
+                    "rate": 80,
+                    "uom": "件",
+                },
+                {
+                    "item_code": "DEMO-NOBOM",
+                    "item_name": "No BOM Tee",
+                    "color": "黑色",
+                    "size": "M",
+                    "qty": 10,
+                    "rate": 60,
+                    "uom": "件",
+                },
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+
+        detail = self.client.get("/api/sales-inventory/sales-orders/SO-A4-SKU-001", headers=self._headers())
+        self.assertEqual(detail.status_code, 200, detail.text)
+        detail_items = detail.json()["data"]["items"]
+        self.assertEqual(len(detail_items), 3)
+        self.assertEqual([(row["item_code"], row["color"], row["size"]) for row in detail_items], [
+            ("DEMO-TEE", "白色", "M"),
+            ("DEMO-TEE", "白色", "L"),
+            ("DEMO-NOBOM", "黑色", "M"),
+        ])
+
+        update_payload = {
+            **order_payload,
+            "operation": "update_draft",
+            "sales_order_no_or_source_order_ref": "SO-A4-SKU-001",
+            "idempotency_key": "idem-so-a4-sku-001-update",
+            "items": [
+                order_payload["items"][0],
+                {**order_payload["items"][1], "qty": 35},
+                order_payload["items"][2],
+            ],
+        }
+        update_order = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json=update_payload,
+        )
+        self.assertEqual(update_order.status_code, 200, update_order.text)
+        self.assertEqual(len(update_order.json()["data"]["items"]), 3)
+
+        updated_detail = self.client.get("/api/sales-inventory/sales-orders/SO-A4-SKU-001", headers=self._headers())
+        self.assertEqual(updated_detail.status_code, 200, updated_detail.text)
+        updated_items = updated_detail.json()["data"]["items"]
+        self.assertEqual(len(updated_items), 3)
+        self.assertEqual(Decimal(str(updated_items[1]["qty"])), Decimal("35.000000"))
+        self.assertEqual(updated_items[1]["name"], "SO-A4-SKU-001-002")
+        self.assertEqual(updated_items[2]["name"], "SO-A4-SKU-001-003")
+
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-SKU-001",
+            key="idem-so-a4-sku-001-submit",
+        )
+
+        create_plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers(),
+            json={
+                "sales_order": "SO-A4-SKU-001",
+                "sales_order_item": updated_items[1]["name"],
+                "item_code": "DEMO-TEE",
+                "bom_id": 1,
+                "planned_qty": 12,
+                "planned_start_date": "2026-06-22",
+                "operation": "create_plan",
+                "idempotency_key": "idem-plan-a4-sku-001-line-002",
+                "company": "COMP-A",
+            },
+        )
+        self.assertEqual(create_plan.status_code, 200, create_plan.text)
+        plan_id = int(create_plan.json()["data"]["plan_id"])
+
+        over_plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers(),
+            json={
+                "sales_order": "SO-A4-SKU-001",
+                "sales_order_item": updated_items[1]["name"],
+                "item_code": "DEMO-TEE",
+                "bom_id": 1,
+                "planned_qty": 24,
+                "planned_start_date": "2026-06-23",
+                "operation": "create_plan",
+                "idempotency_key": "idem-plan-a4-sku-001-line-002-over",
+                "company": "COMP-A",
+            },
+        )
+        self.assertEqual(over_plan.status_code, 409, over_plan.text)
+        self.assertEqual(over_plan.json()["code"], "PRODUCTION_PLANNED_QTY_EXCEEDED")
+
+        no_bom_plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers(),
+            json={
+                "sales_order": "SO-A4-SKU-001",
+                "sales_order_item": updated_items[2]["name"],
+                "item_code": "DEMO-NOBOM",
+                "planned_qty": 1,
+                "planned_start_date": "2026-06-24",
+                "operation": "create_plan",
+                "idempotency_key": "idem-plan-a4-sku-001-line-003-no-bom",
+                "company": "COMP-A",
+            },
+        )
+        self.assertEqual(no_bom_plan.status_code, 404, no_bom_plan.text)
+        self.assertEqual(no_bom_plan.json()["code"], "PRODUCTION_BOM_NOT_FOUND")
+
+        list_plans = self.client.get("/api/production/plans?sales_order=SO-A4-SKU-001", headers=self._headers())
+        self.assertEqual(list_plans.status_code, 200, list_plans.text)
+        plan_row = list_plans.json()["data"]["items"][0]
+        self.assertEqual(plan_row["sales_order_item"], updated_items[1]["name"])
+        self.assertEqual(plan_row["color"], "白色")
+        self.assertEqual(plan_row["size"], "L")
+        self.assertEqual(Decimal(str(plan_row["sales_order_item_qty"])), Decimal("35.000000"))
+
+        plan_detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers())
+        self.assertEqual(plan_detail.status_code, 200, plan_detail.text)
+        plan_detail_data = plan_detail.json()["data"]
+        self.assertEqual(plan_detail_data["sales_order_item"], updated_items[1]["name"])
+        self.assertEqual(plan_detail_data["color"], "白色")
+        self.assertEqual(plan_detail_data["size"], "L")
+        self.assertEqual(Decimal(str(plan_detail_data["sales_order_item_qty"])), Decimal("35.000000"))
 
     def test_sales_order_draft_validates_style_master_id(self) -> None:
         style_id = self._style_id("DEMO-TEE")
