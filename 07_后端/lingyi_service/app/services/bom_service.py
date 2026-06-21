@@ -264,6 +264,10 @@ class BomService:
         return f"/api/bom/material-gallery/thumb/{material_item_code}"
 
     @staticmethod
+    def _bom_item_created_ordering() -> tuple[Any, ...]:
+        return (LyApparelBom.created_at.desc(), LyApparelBom.id.desc(), LyApparelBomItem.id.desc())
+
+    @staticmethod
     def _is_fabric_material(material_item_code: str, remark: str | None) -> bool:
         remark_text = (remark or "").strip()
         if "面料" in remark_text:
@@ -582,9 +586,7 @@ class BomService:
             if query.status:
                 sql = sql.filter(LyApparelBom.status == query.status)
 
-            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.desc()).all()
-            )
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = sql.order_by(*self._bom_item_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -642,9 +644,7 @@ class BomService:
                     return BomFabricData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.desc()).all()
-            )
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = sql.order_by(*self._bom_item_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -726,9 +726,7 @@ class BomService:
                     return BomAccessoriesPackagingData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.desc()).all()
-            )
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = sql.order_by(*self._bom_item_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
