@@ -523,17 +523,17 @@ class ProductionService:
             return True
         return not normalized_bom_value or normalized_bom_value == order_value
 
-    def _material_bom_rows_for_plan(self, *, plan: LyProductionPlan) -> list[Any]:
+    def _material_bom_rows_for_plan(self, *, plan: LyProductionPlan) -> tuple[list[Any], str]:
         sample_rows = self._sample_material_bom_rows_for_plan(plan=plan)
         if sample_rows is not None:
-            return sample_rows
+            return sample_rows, "sample"
         try:
             return (
                 self.session.query(LyApparelBomItem)
                 .filter(LyApparelBomItem.bom_id == int(plan.bom_id))
                 .order_by(LyApparelBomItem.id.asc())
                 .all()
-            )
+            ), "style"
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -4763,12 +4763,22 @@ class ProductionService:
         self._ensure_warehouse_master_active(company=str(plan.company), warehouse=warehouse)
         self._ensure_material_check_status_allowed(plan=plan)
 
-        bom_rows = self._material_bom_rows_for_plan(plan=plan)
+        bom_rows, bom_source = self._material_bom_rows_for_plan(plan=plan)
         if not bom_rows:
-            raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护用料 BOM 明细，无法算料")
+            message = (
+                "该样板单未维护打样用料 BOM 明细，无法算料"
+                if bom_source == "sample"
+                else "该款式未维护用料 BOM 明细，无法算料"
+            )
+            raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message=message)
         bom_rows = self._filter_bom_rows_for_sales_order_item(bom_rows=bom_rows, sales_order_item=native_item)
         if not bom_rows:
-            raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message="该款式未维护匹配当前颜色/尺码的用料 BOM 明细，无法算料")
+            message = (
+                "该样板单未维护匹配当前颜色/尺码的打样用料 BOM 明细，无法算料"
+                if bom_source == "sample"
+                else "该款式未维护匹配当前颜色/尺码的用料 BOM 明细，无法算料"
+            )
+            raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message=message)
         self._ensure_material_bom_rows_active(company=str(plan.company), bom_rows=bom_rows)
 
         try:

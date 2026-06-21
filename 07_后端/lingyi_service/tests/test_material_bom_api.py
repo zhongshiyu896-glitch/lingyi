@@ -1018,6 +1018,8 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(checked.status_code, 404, checked.text)
         self.assertEqual(checked.json()["code"], "PRODUCTION_BOM_NOT_FOUND")
+        self.assertIn("样板单", checked.json()["message"])
+        self.assertIn("打样用料 BOM", checked.json()["message"])
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
             self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
@@ -1124,6 +1126,8 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(checked.status_code, 404, checked.text)
         self.assertEqual(checked.json()["code"], "PRODUCTION_BOM_NOT_FOUND")
+        self.assertIn("样板单", checked.json()["message"])
+        self.assertIn("打样用料 BOM", checked.json()["message"])
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
             self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
