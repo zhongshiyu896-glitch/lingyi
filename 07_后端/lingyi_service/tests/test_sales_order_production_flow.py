@@ -577,6 +577,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             bom_items=[
                 {"material_item_code": "THREAD-ALL", "part": "全款通用线", "qty_per_piece": "0.1", "loss_rate": "0"},
                 {"material_item_code": "FAB-MATRIX", "size": "S", "part": "面料主身", "qty_per_piece": "1", "loss_rate": "0.1"},
+                {"material_item_code": "FAB-MATRIX", "size": "S", "part": "面料袖片", "qty_per_piece": "0.5", "loss_rate": "0"},
                 {"material_item_code": "FAB-MATRIX", "size": "M", "part": "面料主身", "qty_per_piece": "2", "loss_rate": "0.2"},
                 {"material_item_code": "ZIP-S-50", "color": "黑", "size": "S", "part": "门襟拉链", "qty_per_piece": "1", "loss_rate": "0"},
                 {"material_item_code": "ZIP-M-55", "color": "黑", "size": "M", "part": "门襟拉链", "qty_per_piece": "1", "loss_rate": "0"},
@@ -643,8 +644,8 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(material_check.status_code, 200, material_check.text)
         data = material_check.json()["data"]
         self.assertEqual(data["plan_count"], 2)
-        self.assertEqual(data["snapshot_count"], 8)
-        self.assertEqual(Decimal(str(data["required_qty_total"])), Decimal("49.300000"))
+        self.assertEqual(data["snapshot_count"], 9)
+        self.assertEqual(Decimal(str(data["required_qty_total"])), Decimal("51.800000"))
 
         with self.SessionLocal() as session:
             plans = session.query(LyProductionPlan).order_by(LyProductionPlan.id.asc()).all()
@@ -652,8 +653,8 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             requirements = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.id.asc()).all()
 
             self.assertEqual(len(plans), 2)
-            self.assertEqual(len(snapshots), 8)
-            self.assertEqual(len(requirements), 8)
+            self.assertEqual(len(snapshots), 9)
+            self.assertEqual(len(requirements), 9)
             snapshots_by_plan = {
                 str(plan.sales_order_item): [row for row in snapshots if int(row.plan_id) == int(plan.id)]
                 for plan in plans
@@ -664,28 +665,48 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             }
             s_item = "SO-A4-BOM-MATRIX-001-001"
             m_item = "SO-A4-BOM-MATRIX-001-002"
-            s_snapshots = {row.material_item_code: row for row in snapshots_by_plan[s_item]}
-            m_snapshots = {row.material_item_code: row for row in snapshots_by_plan[m_item]}
+            s_snapshots = {(row.material_item_code, row.bom_part): row for row in snapshots_by_plan[s_item]}
+            m_snapshots = {(row.material_item_code, row.bom_part): row for row in snapshots_by_plan[m_item]}
 
-            self.assertEqual(set(s_snapshots), {"THREAD-ALL", "FAB-MATRIX", "ZIP-S-50", "LABEL-BLACK"})
-            self.assertEqual(set(m_snapshots), {"THREAD-ALL", "FAB-MATRIX", "ZIP-M-55", "LABEL-BLACK"})
-            self.assertNotIn("ZIP-WHITE-M", s_snapshots)
-            self.assertNotIn("ZIP-WHITE-M", m_snapshots)
-            self.assertEqual(Decimal(str(s_snapshots["FAB-MATRIX"].qty_per_piece)), Decimal("1.000000"))
-            self.assertEqual(Decimal(str(s_snapshots["FAB-MATRIX"].loss_rate)), Decimal("0.100000"))
-            self.assertEqual(Decimal(str(s_snapshots["FAB-MATRIX"].required_qty)), Decimal("5.500000"))
-            self.assertEqual(Decimal(str(m_snapshots["FAB-MATRIX"].qty_per_piece)), Decimal("2.000000"))
-            self.assertEqual(Decimal(str(m_snapshots["FAB-MATRIX"].loss_rate)), Decimal("0.200000"))
-            self.assertEqual(Decimal(str(m_snapshots["FAB-MATRIX"].required_qty)), Decimal("24.000000"))
-            self.assertEqual(Decimal(str(s_snapshots["ZIP-S-50"].required_qty)), Decimal("5.000000"))
-            self.assertEqual(Decimal(str(m_snapshots["ZIP-M-55"].required_qty)), Decimal("10.000000"))
+            self.assertEqual(
+                set(s_snapshots),
+                {
+                    ("THREAD-ALL", "全款通用线"),
+                    ("FAB-MATRIX", "面料主身"),
+                    ("FAB-MATRIX", "面料袖片"),
+                    ("ZIP-S-50", "门襟拉链"),
+                    ("LABEL-BLACK", "黑色标"),
+                },
+            )
+            self.assertEqual(
+                set(m_snapshots),
+                {
+                    ("THREAD-ALL", "全款通用线"),
+                    ("FAB-MATRIX", "面料主身"),
+                    ("ZIP-M-55", "门襟拉链"),
+                    ("LABEL-BLACK", "黑色标"),
+                },
+            )
+            self.assertNotIn(("ZIP-WHITE-M", "门襟拉链"), s_snapshots)
+            self.assertNotIn(("ZIP-WHITE-M", "门襟拉链"), m_snapshots)
+            self.assertEqual(Decimal(str(s_snapshots[("FAB-MATRIX", "面料主身")].qty_per_piece)), Decimal("1.000000"))
+            self.assertEqual(Decimal(str(s_snapshots[("FAB-MATRIX", "面料主身")].loss_rate)), Decimal("0.100000"))
+            self.assertEqual(Decimal(str(s_snapshots[("FAB-MATRIX", "面料主身")].required_qty)), Decimal("5.500000"))
+            self.assertEqual(Decimal(str(s_snapshots[("FAB-MATRIX", "面料袖片")].qty_per_piece)), Decimal("0.500000"))
+            self.assertEqual(Decimal(str(s_snapshots[("FAB-MATRIX", "面料袖片")].required_qty)), Decimal("2.500000"))
+            self.assertEqual(Decimal(str(m_snapshots[("FAB-MATRIX", "面料主身")].qty_per_piece)), Decimal("2.000000"))
+            self.assertEqual(Decimal(str(m_snapshots[("FAB-MATRIX", "面料主身")].loss_rate)), Decimal("0.200000"))
+            self.assertEqual(Decimal(str(m_snapshots[("FAB-MATRIX", "面料主身")].required_qty)), Decimal("24.000000"))
+            self.assertEqual(Decimal(str(s_snapshots[("ZIP-S-50", "门襟拉链")].required_qty)), Decimal("5.000000"))
+            self.assertEqual(Decimal(str(m_snapshots[("ZIP-M-55", "门襟拉链")].required_qty)), Decimal("10.000000"))
 
-            s_requirements = {row.material_item_code: row for row in requirements_by_plan[s_item]}
-            m_requirements = {row.material_item_code: row for row in requirements_by_plan[m_item]}
+            s_requirements = {(row.material_item_code, row.bom_part): row for row in requirements_by_plan[s_item]}
+            m_requirements = {(row.material_item_code, row.bom_part): row for row in requirements_by_plan[m_item]}
             self.assertEqual(set(s_requirements), set(s_snapshots))
             self.assertEqual(set(m_requirements), set(m_snapshots))
-            self.assertEqual(Decimal(str(s_requirements["FAB-MATRIX"].net_required_qty)), Decimal("5.500000"))
-            self.assertEqual(Decimal(str(m_requirements["FAB-MATRIX"].net_required_qty)), Decimal("24.000000"))
+            self.assertEqual(Decimal(str(s_requirements[("FAB-MATRIX", "面料主身")].net_required_qty)), Decimal("5.500000"))
+            self.assertEqual(Decimal(str(s_requirements[("FAB-MATRIX", "面料袖片")].net_required_qty)), Decimal("2.500000"))
+            self.assertEqual(Decimal(str(m_requirements[("FAB-MATRIX", "面料主身")].net_required_qty)), Decimal("24.000000"))
             self.assertEqual({row.status for row in requirements}, {"pending"})
 
     def test_sales_order_material_check_reports_no_matching_color_size_bom_row(self) -> None:

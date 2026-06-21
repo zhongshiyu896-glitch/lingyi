@@ -387,6 +387,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         material_item_code: str | None = None,
         warehouse: str | None = None,
         unit_price: str = "12.5",
+        bom_color: str | None = None,
+        bom_size: str | None = None,
+        bom_part: str | None = None,
     ) -> int:
         material_code = material_item_code or self.MATERIAL
         target_warehouse = warehouse or self.WAREHOUSE
@@ -402,6 +405,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 sales_order=sales_order,
                 sales_order_item=sales_order_item,
                 item_code=self.STYLE,
+                bom_color=bom_color,
+                bom_size=bom_size,
+                bom_part=bom_part,
                 material_item_code=material_code,
                 material_name="A6 棉布",
                 supplier_name=supplier_name,
@@ -2835,12 +2841,18 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             net_required_qty="5",
             sales_order="SO-A6-GROUP-001",
             sales_order_item="SO-A6-GROUP-001-ITEM",
+            bom_color="黑",
+            bom_size="S",
+            bom_part="门襟",
         )
         requirement_b = self._seed_requirement(
             requirement_no="REQ-A6-GROUP-B",
             net_required_qty="10",
             sales_order="SO-A6-GROUP-002",
             sales_order_item="SO-A6-GROUP-002-ITEM",
+            bom_color="白",
+            bom_size="M",
+            bom_part="袖口",
         )
 
         payload = self._from_requirements_payload(
@@ -2869,6 +2881,10 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(purchase_order["total_qty"])), Decimal("15.000000"))
         self.assertEqual(Decimal(str(purchase_order["total_amount"])), Decimal("187.500000"))
         self.assertEqual({row["sales_order"] for row in data["requirements"]}, {"SO-A6-GROUP-001", "SO-A6-GROUP-002"})
+        self.assertEqual({row["sales_order_item"] for row in data["requirements"]}, {"SO-A6-GROUP-001-ITEM", "SO-A6-GROUP-002-ITEM"})
+        self.assertEqual({row["bom_color"] for row in data["requirements"]}, {"黑", "白"})
+        self.assertEqual({row["bom_size"] for row in data["requirements"]}, {"S", "M"})
+        self.assertEqual({row["bom_part"] for row in data["requirements"]}, {"门襟", "袖口"})
         self.assertTrue(all(row["status"] == "purchased" for row in data["requirements"]))
         self.assertTrue(all(row["purchase_no"] == purchase_no for row in data["requirements"]))
         self.assertTrue(all(row["has_completed"] is False for row in data["requirements"]))
@@ -2893,6 +2909,10 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(completed.status_code, 200, completed.text)
         completed_rows = completed.json()["data"]["items"]
         self.assertEqual(len(completed_rows), 2)
+        self.assertEqual({row["sales_order_item"] for row in completed_rows}, {"SO-A6-GROUP-001-ITEM", "SO-A6-GROUP-002-ITEM"})
+        self.assertEqual({row["bom_color"] for row in completed_rows}, {"黑", "白"})
+        self.assertEqual({row["bom_size"] for row in completed_rows}, {"S", "M"})
+        self.assertEqual({row["bom_part"] for row in completed_rows}, {"门襟", "袖口"})
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
 
