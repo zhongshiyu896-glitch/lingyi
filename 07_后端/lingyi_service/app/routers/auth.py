@@ -56,7 +56,9 @@ def login(payload: LocalLoginRequest, request: Request, response: Response):
     """Create an authenticated browser session.
 
     Local profile login is available only when development auth is explicitly enabled.
-    All other environments use ERPNext login and mirror the ERPNext sid cookie.
+    Production uses the FastAPI native user source when permission source is fastapi.
+    The legacy ERPNext session path is retained only for deployments that explicitly
+    keep the ERPNext permission source.
     """
     if is_local_session_auth_enabled():
         current_user = build_local_login_user(username=payload.username, profile=payload.profile or "system_manager")
