@@ -296,6 +296,9 @@ class WarehouseService:
         `_local_stock_movements` until table parity is proven across all sources.
         """
 
+        if not self._has_sqlite_stock_ledger_entry_table():
+            return {"inserted": 0, "updated": 0, "voided": 0}
+
         session = self._require_session()
         normalized_company = self._text(company)
         normalized_warehouse = self._text(warehouse)
@@ -395,6 +398,39 @@ class WarehouseService:
 
         session.flush()
         return {"inserted": inserted, "updated": updated, "voided": voided}
+
+    def _refresh_projected_ledger_for_draft(self, draft: LyWarehouseStockEntryDraft) -> None:
+        if not self._has_sqlite_stock_ledger_entry_table():
+            return
+
+        company = self._text(getattr(draft, "company", None))
+        if not company:
+            return
+
+        session = self._require_session()
+        items = (
+            session.query(LyWarehouseStockEntryDraftItem)
+            .filter(LyWarehouseStockEntryDraftItem.draft_id == draft.id)
+            .all()
+        )
+        scopes: set[tuple[str, str]] = set()
+        for item in items:
+            item_code = self._text(getattr(item, "item_code", None))
+            if not item_code:
+                continue
+            for warehouse_value in (
+                self._text(getattr(item, "source_warehouse", None)) or self._text(getattr(draft, "source_warehouse", None)),
+                self._text(getattr(item, "target_warehouse", None)) or self._text(getattr(draft, "target_warehouse", None)),
+            ):
+                if warehouse_value:
+                    scopes.add((warehouse_value, item_code))
+
+        if not scopes:
+            self.project_local_stock_ledger_entries(company=company, warehouse=None, item_code=None)
+            return
+
+        for warehouse_value, item_code in sorted(scopes):
+            self.project_local_stock_ledger_entries(company=company, warehouse=warehouse_value, item_code=item_code)
 
     @staticmethod
     def _stock_ledger_keyword_matches(*, row: WarehouseStockLedgerItem, keyword: str) -> bool:
@@ -908,8 +944,14 @@ class WarehouseService:
             item_code=normalized_item_code,
         )
 
-        movements.sort(key=lambda row: (row.sort_at, row.source_id, row.line_id, row.sequence, row.warehouse))
+        movements.sort(key=lambda row: (self._stock_movement_sort_at(row.sort_at), row.source_id, row.line_id, row.sequence, row.warehouse))
         return movements
+
+    @staticmethod
+    def _stock_movement_sort_at(value: datetime) -> datetime:
+        if value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
 
     @staticmethod
     def _draft_counts_in_local_stock(*, draft: LyWarehouseStockEntryDraft) -> bool:
@@ -1199,6 +1241,14 @@ class WarehouseService:
             return True
         table_names = set(inspect(session.connection()).get_table_names())
         return LyQualityOutbox.__tablename__ in table_names
+
+    def _has_sqlite_stock_ledger_entry_table(self) -> bool:
+        session = self._require_session()
+        bind = session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        table_names = set(inspect(session.connection()).get_table_names())
+        return LyWarehouseStockLedgerEntry.__tablename__ in table_names
 
     def _has_sqlite_master_data_table(self) -> bool:
         session = self._require_session()
@@ -2787,6 +2837,7 @@ class WarehouseService:
             )
         )
         session.flush()
+        self._refresh_projected_ledger_for_draft(draft)
 
         return self._build_draft_data(draft)
 
@@ -2906,6 +2957,7 @@ class WarehouseService:
                 event.processed_at = now
 
         session.flush()
+        self._refresh_projected_ledger_for_draft(draft)
         return self._build_draft_data(draft)
 
     def audit_stock_entry_draft(
@@ -2937,6 +2989,7 @@ class WarehouseService:
             draft.status = "pending_outbox"
             session.flush()
 
+        self._refresh_projected_ledger_for_draft(draft)
         return self._build_draft_data(draft)
 
     def release_material_hold_draft(
@@ -2982,6 +3035,7 @@ class WarehouseService:
                 event.processed_at = now
 
         session.flush()
+        self._refresh_projected_ledger_for_draft(draft)
         return self._build_draft_data(draft)
 
     def get_stock_entry_draft(self, *, draft_id: int) -> WarehouseStockEntryDraftData:

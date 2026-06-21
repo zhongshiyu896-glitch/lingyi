@@ -31,6 +31,8 @@ from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseInventoryCount
 from app.models.warehouse import LyWarehouseInventoryCountItem
 from app.schemas.warehouse import WarehouseFactoryReturnMaterialDraftRequest
+from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
+from app.schemas.warehouse import WarehouseStockEntryDraftItemCreateRequest
 from app.services.warehouse_service import WarehouseService
 
 
@@ -168,6 +170,33 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
             )
             session.commit()
 
+    def _projected_ledger_rows(
+        self,
+        session,
+        *,
+        item_code: str = "FAB-A",
+        warehouse: str | None = None,
+        status: str | None = None,
+    ) -> list[LyWarehouseStockLedgerEntry]:
+        query = session.query(LyWarehouseStockLedgerEntry).filter(
+            LyWarehouseStockLedgerEntry.company == "COMP-A",
+            LyWarehouseStockLedgerEntry.item_code == item_code,
+        )
+        if warehouse is not None:
+            query = query.filter(LyWarehouseStockLedgerEntry.warehouse == warehouse)
+        if status is not None:
+            query = query.filter(LyWarehouseStockLedgerEntry.status == status)
+        return (
+            query.order_by(
+                LyWarehouseStockLedgerEntry.sort_at.asc(),
+                LyWarehouseStockLedgerEntry.source_id.asc(),
+                LyWarehouseStockLedgerEntry.source_line_id.asc(),
+                LyWarehouseStockLedgerEntry.sequence.asc(),
+                LyWarehouseStockLedgerEntry.warehouse.asc(),
+            )
+            .all()
+        )
+
     def test_ledger_and_summary_recompute_balance_from_draft_movements(self) -> None:
         self._seed_movements()
         with self.SessionLocal() as session:
@@ -200,6 +229,120 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         summary_by_warehouse = {row.warehouse: Decimal(str(row.actual_qty)) for row in summary.items}
         self.assertEqual(summary_by_warehouse, {"WH-A": Decimal("5.000000"), "WH-B": Decimal("2.000000")})
         self.assertTrue(all(row.threshold_missing for row in summary.items))
+
+    def test_stock_entry_create_projects_counted_draft_into_durable_ledger(self) -> None:
+        with self.SessionLocal() as session:
+            service = WarehouseService(session=session)
+            service.create_stock_entry_draft(
+                payload=WarehouseStockEntryDraftCreateRequest(
+                    company="COMP-A",
+                    purpose="Material Issue",
+                    source_type="manual_issue",
+                    source_id="CREATE-PROJECT-001",
+                    source_ref="CREATE-PROJECT-001",
+                    warehouse="WH-A",
+                    item_code="FAB-A",
+                    operation="create_stock_entry_draft",
+                    quantity=Decimal("3"),
+                    business_date=date(2026, 6, 5),
+                    status_action="create",
+                    scenario_tag="TEST",
+                    source_warehouse="WH-A",
+                    target_warehouse=None,
+                    idempotency_key="idem-create-project-001",
+                    items=[
+                        WarehouseStockEntryDraftItemCreateRequest(
+                            item_code="FAB-A",
+                            qty=Decimal("3"),
+                            uom="米",
+                            source_warehouse="WH-A",
+                        )
+                    ],
+                ),
+                current_user="warehouse.test",
+            )
+            projected_rows = self._projected_ledger_rows(session, warehouse="WH-A", status="active")
+
+        self.assertEqual(len(projected_rows), 1)
+        self.assertEqual(projected_rows[0].voucher_type, "Stock Entry Draft/Material Issue")
+        self.assertEqual(Decimal(str(projected_rows[0].actual_qty)), Decimal("-3.000000"))
+
+    def test_stock_entry_audit_projects_draft_receipt_into_durable_ledger(self) -> None:
+        with self.SessionLocal() as session:
+            self._add_draft(
+                session,
+                source_id="AUDIT-PROJECT-001",
+                purpose="Material Receipt",
+                target_warehouse="WH-A",
+                qty="5",
+                business_date=date(2026, 6, 6),
+                status="draft",
+            )
+            session.flush()
+            draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_id="AUDIT-PROJECT-001").one()
+
+            service = WarehouseService(session=session)
+            service.audit_stock_entry_draft(draft_id=int(draft.id))
+            projected_rows = self._projected_ledger_rows(session, warehouse="WH-A", status="active")
+
+        self.assertEqual(len(projected_rows), 1)
+        self.assertEqual(projected_rows[0].voucher_type, "Stock Entry Draft/Material Receipt")
+        self.assertEqual(Decimal(str(projected_rows[0].actual_qty)), Decimal("5.000000"))
+
+    def test_stock_entry_cancel_voids_projected_durable_ledger_rows(self) -> None:
+        with self.SessionLocal() as session:
+            self._add_draft(
+                session,
+                source_id="CANCEL-PROJECT-001",
+                purpose="Material Issue",
+                source_warehouse="WH-A",
+                qty="4",
+                business_date=date(2026, 6, 7),
+            )
+            session.flush()
+            draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_id="CANCEL-PROJECT-001").one()
+            service = WarehouseService(session=session)
+            service.project_local_stock_ledger_entries(company="COMP-A", warehouse="WH-A", item_code="FAB-A")
+
+            service.cancel_stock_entry_draft(
+                draft_id=int(draft.id),
+                reason="cancel projected issue",
+                cancelled_by="warehouse.test",
+            )
+            active_rows = self._projected_ledger_rows(session, warehouse="WH-A", status="active")
+            voided_rows = self._projected_ledger_rows(session, warehouse="WH-A", status="voided")
+
+        self.assertEqual(active_rows, [])
+        self.assertEqual(len(voided_rows), 1)
+        self.assertEqual(Decimal(str(voided_rows[0].actual_qty)), Decimal("-4.000000"))
+
+    def test_material_hold_release_voids_projected_durable_ledger_rows(self) -> None:
+        with self.SessionLocal() as session:
+            self._add_draft(
+                session,
+                source_id="HOLD-PROJECT-001",
+                purpose="Material Issue",
+                source_warehouse="WH-A",
+                qty="2",
+                business_date=date(2026, 6, 8),
+                source_type="material_hold",
+            )
+            session.flush()
+            draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_id="HOLD-PROJECT-001").one()
+            service = WarehouseService(session=session)
+            service.project_local_stock_ledger_entries(company="COMP-A", warehouse="WH-A", item_code="FAB-A")
+
+            service.release_material_hold_draft(
+                draft_id=int(draft.id),
+                reason="release projected hold",
+                released_by="warehouse.test",
+            )
+            active_rows = self._projected_ledger_rows(session, warehouse="WH-A", status="active")
+            voided_rows = self._projected_ledger_rows(session, warehouse="WH-A", status="voided")
+
+        self.assertEqual(active_rows, [])
+        self.assertEqual(len(voided_rows), 1)
+        self.assertEqual(Decimal(str(voided_rows[0].actual_qty)), Decimal("-2.000000"))
 
     def test_stock_ledger_projector_persists_dynamic_movements_idempotently(self) -> None:
         self._seed_movements()
