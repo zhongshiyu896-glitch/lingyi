@@ -41,6 +41,7 @@ from app.models.workshop import YsWorkshopTicket
 from app.routers.style_profit import _build_local_style_profit_fallback_request
 from app.schemas.style_profit import StyleProfitSnapshotSelectorRequest
 from app.services.erpnext_style_profit_adapter import ERPNextStyleProfitAdapter
+from app.services.erpnext_style_profit_adapter import StyleProfitLocalSourceAdapter
 from app.services.style_profit_api_source_collector import StyleProfitApiSourceCollector
 from app.services.style_profit_service import StyleProfitService
 
@@ -102,6 +103,13 @@ class ERPNextStyleProfitAdapterTest(unittest.TestCase):
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
             session.commit()
+
+    def test_default_collector_uses_non_erpnext_local_adapter(self) -> None:
+        with self.SessionLocal() as session:
+            collector = StyleProfitApiSourceCollector(session=session)
+
+        self.assertIsInstance(collector.adapter, StyleProfitLocalSourceAdapter)
+        self.assertNotIsInstance(collector.adapter, ERPNextStyleProfitAdapter)
 
     def test_load_active_default_bom_rows_success(self) -> None:
         with self.SessionLocal() as session:

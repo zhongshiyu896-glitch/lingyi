@@ -40,7 +40,7 @@ from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.services.warehouse_service import WarehouseService
 
 
-class ERPNextStyleProfitAdapter:
+class StyleProfitLocalSourceAdapter:
     """Load trusted source facts for style-profit snapshot creation.
 
     Rules:
@@ -53,7 +53,7 @@ class ERPNextStyleProfitAdapter:
     def __init__(self, *, session: Session, request_obj: Request | None = None) -> None:
         self.session = session
         self.request_obj = request_obj
-        self.base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
+        self.base_url = ""
 
     # -----------------------------
     # Revenue facts
@@ -762,34 +762,8 @@ class ERPNextStyleProfitAdapter:
         path: str,
         allow_404: bool,
     ) -> dict[str, Any] | None:
-        if not self.base_url:
-            raise self._source_unavailable("ERPNext 服务未配置")
-
-        headers = self._build_headers()
-        req = request.Request(
-            url=f"{self.base_url}{path}",
-            method=method,
-            headers=headers,
-        )
-        try:
-            with request.urlopen(req, timeout=10) as response:
-                text = response.read().decode("utf-8")
-        except error.HTTPError as exc:
-            if allow_404 and exc.code == 404:
-                return None
-            raise self._source_unavailable(f"ERPNext 请求失败: {exc.code}") from exc
-        except (error.URLError, TimeoutError) as exc:
-            raise self._source_unavailable("ERPNext 服务不可用") from exc
-        except Exception as exc:  # pragma: no cover
-            raise self._source_unavailable("ERPNext 调用异常") from exc
-
-        try:
-            payload = json.loads(text)
-        except json.JSONDecodeError as exc:
-            raise self._source_unavailable("ERPNext 返回非 JSON") from exc
-        if not isinstance(payload, dict):
-            raise self._source_unavailable("ERPNext 返回结构异常")
-        return payload
+        _ = method, path, allow_404
+        raise self._source_unavailable("FastAPI 利润来源不访问 ERPNext")
 
     def _build_headers(self) -> dict[str, str]:
         headers: dict[str, str] = {"Accept": "application/json"}
@@ -845,17 +819,17 @@ class ERPNextStyleProfitAdapter:
         return BusinessException(code=STYLE_PROFIT_SOURCE_UNAVAILABLE, message=message)
 
 
-class StyleProfitLocalSourceAdapter(ERPNextStyleProfitAdapter):
-    """FastAPI-native style-profit source adapter.
+class ERPNextStyleProfitAdapter(StyleProfitLocalSourceAdapter):
+    """Explicit legacy ERPNext style-profit adapter.
 
-    The snapshot collector uses this adapter by default so current API-mode
-    pages cannot accidentally reach ERPNext. The legacy class remains for
-    compatibility tests and any explicitly reviewed legacy path.
+    The default snapshot collector uses StyleProfitLocalSourceAdapter directly.
+    This subclass is kept only for explicitly reviewed legacy paths/tests that
+    need the remote request implementation.
     """
 
     def __init__(self, *, session: Session, request_obj: Request | None = None) -> None:
         super().__init__(session=session, request_obj=request_obj)
-        self.base_url = ""
+        self.base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
 
     def _request_json(
         self,
@@ -864,5 +838,31 @@ class StyleProfitLocalSourceAdapter(ERPNextStyleProfitAdapter):
         path: str,
         allow_404: bool,
     ) -> dict[str, Any] | None:
-        _ = method, path, allow_404
-        raise self._source_unavailable("FastAPI 利润来源不访问 ERPNext")
+        if not self.base_url:
+            raise self._source_unavailable("ERPNext 服务未配置")
+
+        headers = self._build_headers()
+        req = request.Request(
+            url=f"{self.base_url}{path}",
+            method=method,
+            headers=headers,
+        )
+        try:
+            with request.urlopen(req, timeout=10) as response:
+                text = response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            if allow_404 and exc.code == 404:
+                return None
+            raise self._source_unavailable(f"ERPNext 请求失败: {exc.code}") from exc
+        except (error.URLError, TimeoutError) as exc:
+            raise self._source_unavailable("ERPNext 服务不可用") from exc
+        except Exception as exc:  # pragma: no cover
+            raise self._source_unavailable("ERPNext 调用异常") from exc
+
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise self._source_unavailable("ERPNext 返回非 JSON") from exc
+        if not isinstance(payload, dict):
+            raise self._source_unavailable("ERPNext 返回结构异常")
+        return payload
