@@ -1219,6 +1219,17 @@ class SalesInventoryService:
         session.flush()
         return self._build_delivery_invoice_data(row)
 
+    def get_delivery_invoice_scope_for_permission(
+        self,
+        *,
+        company: str,
+        invoice_id: int,
+    ) -> dict[str, str | None]:
+        row = self._find_delivery_invoice_by_id(company=company, invoice_id=invoice_id)
+        if row is None:
+            raise SalesInventoryServiceError(404, "SALES_DELIVERY_INVOICE_NOT_FOUND", "发货开票单不存在")
+        return self._delivery_invoice_scope(row)
+
     def cancel_delivery_invoice(
         self,
         *,
@@ -1603,6 +1614,28 @@ class SalesInventoryService:
         session.add(row)
         session.flush()
         return self._build_sales_payment_entry_data(row)
+
+    def get_payment_entry_scope_for_permission(
+        self,
+        *,
+        company: str,
+        payment_id: int,
+    ) -> dict[str, str | None]:
+        session = self._require_session()
+        payment = self._find_sales_payment_entry_by_id(company=company, payment_id=payment_id)
+        if payment is None:
+            raise SalesInventoryServiceError(404, "SALES_PAYMENT_ENTRY_NOT_FOUND", "销售回款单不存在")
+        invoice = (
+            session.query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.id == int(payment.delivery_invoice_id),
+            )
+            .first()
+        )
+        if invoice is None:
+            raise SalesInventoryServiceError(404, "SALES_PAYMENT_INVOICE_NOT_FOUND", "销售发票不存在")
+        return self._delivery_invoice_scope(invoice)
 
     def cancel_payment_entry(
         self,
@@ -5374,6 +5407,14 @@ class SalesInventoryService:
             .with_for_update()
             .first()
         )
+
+    def _delivery_invoice_scope(self, row: LyDeliveryInvoice) -> dict[str, str | None]:
+        return {
+            "company": self._text(row.company),
+            "customer": self._text(row.customer),
+            "item_code": self._text(row.item_code),
+            "warehouse": self._text(row.warehouse),
+        }
 
     def _find_delivery_invoice_operation_by_idempotency(
         self,

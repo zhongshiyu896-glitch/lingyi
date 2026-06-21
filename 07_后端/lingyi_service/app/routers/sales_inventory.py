@@ -1230,21 +1230,24 @@ def cancel_delivery_invoice(
         company=payload.company,
         operation=payload.operation,
     )
-    permission_service.ensure_resource_scope_permission(
-        current_user=current_user,
-        request_obj=request,
-        module="sales_inventory",
-        action=action,
-        resource_scope={
-            "company": payload.company,
-        },
-        required_fields=("company",),
-        resource_type="delivery_invoice",
-        resource_id=str(invoice_id),
-        enforce_action=False,
-    )
+    service = _write_service(session)
     try:
-        data = _write_service(session).cancel_delivery_invoice(
+        permission_service.ensure_resource_scope_permission(
+            current_user=current_user,
+            request_obj=request,
+            module="sales_inventory",
+            action=action,
+            resource_scope=service.get_delivery_invoice_scope_for_permission(
+                company=payload.company,
+                invoice_id=invoice_id,
+            ),
+            required_fields=("company", "item_code", "warehouse"),
+            resource_type="delivery_invoice",
+            resource_id=str(invoice_id),
+            resource_no=payload.delivery_note,
+            enforce_action=False,
+        )
+        data = service.cancel_delivery_invoice(
             invoice_id=invoice_id,
             payload=payload,
             current_user=current_user.username,
@@ -1506,21 +1509,24 @@ def cancel_payment_entry(
         company=payload.company,
         operation=payload.operation,
     )
-    permission_service.ensure_resource_scope_permission(
-        current_user=current_user,
-        request_obj=request,
-        module="sales_inventory",
-        action=action,
-        resource_scope={
-            "company": payload.company,
-        },
-        required_fields=("company",),
-        resource_type="payment_entry",
-        resource_id=payment_id,
-        enforce_action=False,
-    )
+    service = _write_service(session)
     try:
-        data = _write_service(session).cancel_payment_entry(
+        permission_service.ensure_resource_scope_permission(
+            current_user=current_user,
+            request_obj=request,
+            module="sales_inventory",
+            action=action,
+            resource_scope=service.get_payment_entry_scope_for_permission(
+                company=payload.company,
+                payment_id=payment_id,
+            ),
+            required_fields=("company", "item_code", "warehouse"),
+            resource_type="payment_entry",
+            resource_id=payment_id,
+            resource_no=payload.sales_invoice,
+            enforce_action=False,
+        )
+        data = service.cancel_payment_entry(
             payment_id=payment_id,
             payload=payload,
             current_user=current_user.username,

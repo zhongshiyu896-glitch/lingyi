@@ -6,6 +6,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timezone
 from decimal import Decimal
+import json
 import os
 import unittest
 
@@ -22,6 +23,7 @@ from app.models.audit import LySecurityAuditLog
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LyDeliveryInvoice
+from app.models.sales_order import LyDeliveryInvoiceOperation
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
@@ -73,10 +75,12 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         os.environ["APP_ENV"] = "test"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyDeliveryInvoiceOperation).delete()
             session.query(LyDeliveryInvoice).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
@@ -167,6 +171,32 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
             "X-LY-Dev-Roles": role,
             "X-Request-ID": "req-b4-delivery",
         }
+
+    @staticmethod
+    def _cancel_payload(**overrides) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "operation": "cancel_delivery_invoice",
+            "company": "COMP-A",
+            "delivery_note": "DN-B4-001",
+            "sales_invoice": "SI-B4-001",
+            "reason": "VOID-B4-DELIVERY-001",
+            "idempotency_key": "idem-b4-delivery-cancel-001",
+            "scenario_tag": "B4-DELIVERY-CANCEL-001",
+        }
+        payload.update(overrides)
+        return payload
+
+    @staticmethod
+    def _set_fastapi_scope(**overrides: list[str]) -> None:
+        scope = {
+            "companies": ["COMP-A"],
+            "customers": ["CUST-A"],
+            "item_codes": ["DEMO-TEE"],
+            "warehouses": ["WH-FG"],
+        }
+        scope.update(overrides)
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps({"users": {"b4.delivery.user": scope}})
 
     @staticmethod
     def _payload(**overrides) -> dict[str, object]:
@@ -297,6 +327,38 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SALES_DELIVERY_INVOICE_STOCK_SHORTAGE")
+
+    def test_delivery_invoice_cancel_denies_fastapi_resource_scope_and_does_not_reverse(self) -> None:
+        created = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+
+        self._set_fastapi_scope(warehouses=["WH-OTHER"])
+        response = self.client.post(
+            f"/api/sales-inventory/delivery-invoices/{created.json()['data']['id']}/cancel",
+            headers=self._headers(role="Sales Manager"),
+            json=self._cancel_payload(
+                idempotency_key="idem-b4-delivery-cancel-scope-deny",
+                scenario_tag="B4-DELIVERY-CANCEL-SCOPE-DENY",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        with self.SessionLocal() as session:
+            invoice = session.query(LyDeliveryInvoice).one()
+            order_item = session.query(LySalesOrderItem).one()
+            self.assertEqual(str(invoice.status), "submitted")
+            self.assertEqual(Decimal(str(order_item.delivered_qty)), Decimal("4.000000"))
+            self.assertEqual(session.query(LyDeliveryInvoiceOperation).count(), 0)
+            security = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(security)
+            self.assertEqual(security.event_type, "RESOURCE_ACCESS_DENIED")
+            self.assertEqual(security.resource_type, "DELIVERY_INVOICE")
+            self.assertEqual(security.resource_no, "DN-B4-001")
 
     def test_delivery_invoice_requires_local_sales_order(self) -> None:
         response = self.client.post(

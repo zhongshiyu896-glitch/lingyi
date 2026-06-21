@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import json
 import os
 import unittest
 
@@ -65,6 +66,7 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         os.environ["APP_ENV"] = "test"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
@@ -110,6 +112,18 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
             "X-LY-Dev-Roles": role,
             "X-Request-ID": "req-b5-payment",
         }
+
+    @staticmethod
+    def _set_fastapi_scope(**overrides: list[str]) -> None:
+        scope = {
+            "companies": ["COMP-A"],
+            "customers": ["CUST-A"],
+            "item_codes": ["DEMO-TEE"],
+            "warehouses": ["WH-FG"],
+        }
+        scope.update(overrides)
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps({"users": {"b5.payment.user": scope}})
 
     @staticmethod
     def _payload(**overrides) -> dict[str, object]:
@@ -311,6 +325,40 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
             self.assertEqual(str(payment.status), "cancelled")
             self.assertEqual(int(payment.docstatus), 2)
             self.assertEqual(session.query(LySalesPaymentEntryOperation).count(), 1)
+
+    def test_payment_entry_cancel_denies_fastapi_resource_scope_and_does_not_reverse(self) -> None:
+        created = self.client.post(
+            "/api/sales-inventory/payment-entries",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        payment_id = created.json()["data"]["id"]
+
+        self._set_fastapi_scope(warehouses=["WH-OTHER"])
+        response = self.client.post(
+            f"/api/sales-inventory/payment-entries/{payment_id}/cancel",
+            headers=self._headers(role="Sales Manager"),
+            json=self._cancel_payload(
+                idempotency_key="idem-b5-payment-cancel-scope-deny",
+                scenario_tag="B5-SALES-PAYMENT-CANCEL-SCOPE-DENY",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        with self.SessionLocal() as session:
+            invoice = session.query(LyDeliveryInvoice).one()
+            payment = session.query(LySalesPaymentEntry).one()
+            self.assertEqual(str(payment.status), "submitted")
+            self.assertEqual(Decimal(str(invoice.paid_amount)), Decimal("150.000000"))
+            self.assertEqual(Decimal(str(invoice.outstanding_amount)), Decimal("250.000000"))
+            self.assertEqual(session.query(LySalesPaymentEntryOperation).count(), 0)
+            security = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(security)
+            self.assertEqual(security.event_type, "RESOURCE_ACCESS_DENIED")
+            self.assertEqual(security.resource_type, "PAYMENT_ENTRY")
+            self.assertEqual(security.resource_no, "SI-B5-001")
 
     def test_payment_entry_cancel_second_payment_reopens_paid_invoice_to_partly_paid(self) -> None:
         first_payment = self.client.post(
