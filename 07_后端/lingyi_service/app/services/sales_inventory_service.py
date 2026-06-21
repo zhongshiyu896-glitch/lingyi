@@ -129,6 +129,13 @@ class SalesInventoryService:
         self.adapter = adapter
         self.session = session
 
+    def _adapter_disabled(self) -> bool:
+        return self.adapter is None
+
+    @staticmethod
+    def _empty_page(data_cls: Any, *, page: int, page_size: int) -> Any:
+        return data_cls(items=[], total=0, page=page, page_size=page_size)
+
     def list_sales_orders(
         self,
         *,
@@ -2058,6 +2065,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> MaterialTransferData:
+        if self._adapter_disabled():
+            return self._empty_page(MaterialTransferData, page=page, page_size=page_size)
         normalized_item_code = self._text(item_code)
         normalized_keyword = self._text(keyword)
         normalized_source_warehouse = self._text(source_warehouse)
@@ -2182,6 +2191,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> MaterialCountData:
+        if self._adapter_disabled():
+            return self._empty_page(MaterialCountData, page=page, page_size=page_size)
         normalized_item_code = self._text(item_code)
         normalized_keyword = self._text(keyword)
         normalized_warehouse = self._text(warehouse)
@@ -2306,6 +2317,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> MaterialInventoryReportData:
+        if self._adapter_disabled():
+            return self._empty_page(MaterialInventoryReportData, page=page, page_size=page_size)
         normalized_report_no = self._text(report_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -2453,6 +2466,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> InventoryMaterialRetentionReportData:
+        if self._adapter_disabled():
+            return self._empty_page(InventoryMaterialRetentionReportData, page=page, page_size=page_size)
         normalized_report_no = self._text(report_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -2589,6 +2604,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> SemiFinishedInventoryData:
+        if self._adapter_disabled():
+            return self._empty_page(SemiFinishedInventoryData, page=page, page_size=page_size)
         normalized_record_no = self._text(record_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -2741,6 +2758,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> FinishedGoodsReservedInboundData:
+        if self._adapter_disabled():
+            return self._empty_page(FinishedGoodsReservedInboundData, page=page, page_size=page_size)
         normalized_reservation_no = self._text(reservation_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -2893,6 +2912,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> FinishedGoodsShippingNoticeData:
+        if self._adapter_disabled():
+            return self._empty_page(FinishedGoodsShippingNoticeData, page=page, page_size=page_size)
         normalized_notice_no = self._text(notice_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -3045,6 +3066,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> FinishedGoodsOtherInboundData:
+        if self._adapter_disabled():
+            return self._empty_page(FinishedGoodsOtherInboundData, page=page, page_size=page_size)
         normalized_inbound_no = self._text(inbound_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -3196,6 +3219,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
         ) -> FinishedGoodsReportData:
+        if self._adapter_disabled():
+            return self._empty_page(FinishedGoodsReportData, page=page, page_size=page_size)
         normalized_no = self._text(no)
         normalized_style = self._text(style)
         normalized_keyword = self._text(keyword)
@@ -3300,6 +3325,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> CustomerReturnApplicationData:
+        if self._adapter_disabled():
+            return self._empty_page(CustomerReturnApplicationData, page=page, page_size=page_size)
         normalized_application_no = self._text(application_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -3454,6 +3481,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> CustomerReturnInboundData:
+        if self._adapter_disabled():
+            return self._empty_page(CustomerReturnInboundData, page=page, page_size=page_size)
         normalized_inbound_no = self._text(inbound_no)
         normalized_application_no = self._text(application_no)
         normalized_item_code = self._text(item_code)
@@ -3616,6 +3645,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> FinishedGoodsOtherOutboundData:
+        if self._adapter_disabled():
+            return self._empty_page(FinishedGoodsOtherOutboundData, page=page, page_size=page_size)
         normalized_outbound_no = self._text(outbound_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -3769,6 +3800,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> FinishedGoodsCountData:
+        if self._adapter_disabled():
+            return self._empty_page(FinishedGoodsCountData, page=page, page_size=page_size)
         normalized_count_no = self._text(count_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -3916,6 +3949,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> FinishedGoodsAdjustmentData:
+        if self._adapter_disabled():
+            return self._empty_page(FinishedGoodsAdjustmentData, page=page, page_size=page_size)
         normalized_adjustment_no = self._text(adjustment_no)
         normalized_item_code = self._text(item_code)
         normalized_warehouse = self._text(warehouse)
@@ -4070,6 +4105,8 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> FinishedGoodsTransferData:
+        if self._adapter_disabled():
+            return self._empty_page(FinishedGoodsTransferData, page=page, page_size=page_size)
         normalized_transfer_no = self._text(transfer_no)
         normalized_item_code = self._text(item_code)
         normalized_source_warehouse = self._text(source_warehouse)

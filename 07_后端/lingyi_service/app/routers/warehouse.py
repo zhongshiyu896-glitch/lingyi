@@ -232,6 +232,8 @@ def _validate_date_range(*, from_date: date | None, to_date: date | None) -> Non
 
 
 def _read_service(request: Request) -> WarehouseService:
+    if get_permission_source() == "fastapi":
+        return WarehouseService(adapter=None)
     return WarehouseService(adapter=ERPNextWarehouseAdapter(request_obj=request))
 
 
@@ -247,6 +249,8 @@ def _is_local_warehouse_write_enabled() -> bool:
 
 
 def _is_local_warehouse_read_enabled() -> bool:
+    if get_permission_source() == "fastapi":
+        return True
     app_env = os.getenv("APP_ENV", "").strip().lower()
     db_url = os.getenv("LINGYI_DB_URL", "").strip()
     allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()

@@ -222,3 +222,26 @@ class CrossModuleViewApiTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["code"], "ERPNEXT_RESOURCE_NOT_FOUND")
+
+    def test_fastapi_trails_do_not_construct_erpnext_adapters(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        with patch(
+            "app.services.cross_module_view_service.ERPNextJobCardAdapter",
+            side_effect=AssertionError("FastAPI cross-module trail must not construct ERPNextJobCardAdapter"),
+        ), patch(
+            "app.services.cross_module_view_service.ERPNextSalesInventoryAdapter",
+            side_effect=AssertionError("FastAPI cross-module trail must not construct ERPNextSalesInventoryAdapter"),
+        ):
+            work_order_response = self.client.get(
+                "/api/cross-module/work-order-trail/WO-FASTAPI-001?company=COMP-A",
+                headers=self._headers(),
+            )
+            sales_order_response = self.client.get(
+                "/api/cross-module/sales-order-trail/SO-FASTAPI-001?company=COMP-A",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(work_order_response.status_code, 404, work_order_response.text)
+        self.assertEqual(work_order_response.json()["code"], "ERPNEXT_RESOURCE_NOT_FOUND")
+        self.assertEqual(sales_order_response.status_code, 404, sales_order_response.text)
+        self.assertEqual(sales_order_response.json()["code"], "ERPNEXT_RESOURCE_NOT_FOUND")

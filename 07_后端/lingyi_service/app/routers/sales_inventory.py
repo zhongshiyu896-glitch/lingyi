@@ -525,6 +525,8 @@ def _raise_hidden_sales_order_not_found() -> None:
 
 
 def _service(request: Request) -> SalesInventoryService:
+    if get_permission_source() == "fastapi":
+        return SalesInventoryService(adapter=None)
     return SalesInventoryService(adapter=ERPNextSalesInventoryAdapter(request_obj=request))
 
 

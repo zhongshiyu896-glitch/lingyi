@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ERPNextServiceAccountForbiddenError
 from app.core.exceptions import ERPNextServiceUnavailableError
+from app.core.permissions import get_permission_source
 from app.models.quality import LyQualityInspection
 from app.schemas.cross_module_view import CrossModuleDeliveryNoteData
 from app.schemas.cross_module_view import CrossModuleQualityInspectionData
@@ -72,8 +73,12 @@ class CrossModuleViewService:
     ):
         self.session = session
         self.request_obj = request_obj
-        self.sales_adapter = sales_adapter or ERPNextSalesInventoryAdapter(request_obj=request_obj)
-        self.job_card_adapter = job_card_adapter or ERPNextJobCardAdapter(request_obj=request_obj)
+        if get_permission_source() == "fastapi":
+            self.sales_adapter = sales_adapter
+            self.job_card_adapter = job_card_adapter
+        else:
+            self.sales_adapter = sales_adapter or ERPNextSalesInventoryAdapter(request_obj=request_obj)
+            self.job_card_adapter = job_card_adapter or ERPNextJobCardAdapter(request_obj=request_obj)
 
     def get_work_order_trail(
         self,
@@ -83,6 +88,8 @@ class CrossModuleViewService:
     ) -> CrossModuleWorkOrderTrailData | None:
         work_order_no = _text(work_order_id)
         if work_order_no is None:
+            return None
+        if self.job_card_adapter is None:
             return None
         try:
             work_order = self.job_card_adapter.get_work_order(work_order=work_order_no)
@@ -143,6 +150,8 @@ class CrossModuleViewService:
     ) -> CrossModuleSalesOrderTrailData | None:
         sales_order_no = _text(sales_order_id)
         if sales_order_no is None:
+            return None
+        if self.sales_adapter is None:
             return None
         try:
             sales_order = self.sales_adapter.get_sales_order(name=sales_order_no)

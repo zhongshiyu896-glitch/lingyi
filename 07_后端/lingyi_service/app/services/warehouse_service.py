@@ -23,8 +23,10 @@ from sqlalchemy.orm import Session
 
 from app.core.error_codes import INTERNAL_ERROR
 from app.core.error_codes import DATABASE_READ_FAILED
+from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.exceptions import AppException
 from app.core.exceptions import BusinessException
+from app.core.permissions import get_permission_source
 from app.models.master_data import LyMasterDataRecord
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
@@ -1093,6 +1095,8 @@ class WarehouseService:
         return date.today()
 
     def _local_read_fallback_enabled(self) -> bool:
+        if self.session is not None and get_permission_source() == "fastapi":
+            return True
         app_env = os.getenv("APP_ENV", "").strip().lower()
         db_url = os.getenv("LINGYI_DB_URL", "").strip()
         allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
@@ -4308,6 +4312,11 @@ class WarehouseService:
 
     def _require_adapter(self) -> ERPNextWarehouseAdapter:
         if self.adapter is None:
+            if get_permission_source() == "fastapi":
+                raise ERPNextAdapterException(
+                    error_code=EXTERNAL_SERVICE_UNAVAILABLE,
+                    safe_message="FastAPI 原生库存源未配置 ERPNext 适配器",
+                )
             self.adapter = ERPNextWarehouseAdapter()
         return self.adapter
 

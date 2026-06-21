@@ -544,6 +544,35 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         self.assertEqual(payload["items"][0]["item_code"], "FG-001")
         self.assertEqual(Decimal(str(payload["items"][0]["qty"])), Decimal("1.0"))
 
+    def test_fastapi_legacy_inventory_reports_return_empty_without_erpnext_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        paths = [
+            "/api/sales-inventory/material-transfers",
+            "/api/sales-inventory/material-counts",
+            "/api/sales-inventory/material-inventory-report",
+            "/api/sales-inventory/inventory-material-retention-report",
+            "/api/sales-inventory/semi-finished-inventory",
+            "/api/sales-inventory/finished-goods-reserved-inbound",
+            "/api/sales-inventory/finished-goods-shipping-notices",
+            "/api/sales-inventory/finished-goods-other-inbound",
+            "/api/sales-inventory/customer-return-applications",
+            "/api/sales-inventory/customer-return-inbound",
+            "/api/sales-inventory/finished-goods-other-outbound",
+            "/api/sales-inventory/finished-goods-count",
+            "/api/sales-inventory/finished-goods-adjustment",
+            "/api/sales-inventory/finished-goods-transfer",
+        ]
+        with patch(
+            "app.routers.sales_inventory.ERPNextSalesInventoryAdapter",
+            side_effect=AssertionError("FastAPI legacy sales inventory reports must not construct ERPNext adapter"),
+        ):
+            for path in paths:
+                response = self.client.get(path, headers=self._headers(role="System Manager"))
+                self.assertEqual(response.status_code, 200, response.text)
+                payload = response.json()["data"]
+                self.assertEqual(payload["items"], [], path)
+                self.assertEqual(payload["total"], 0, path)
+
     def test_customers_empty_customer_permissions_filter_all(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
         with patch.object(
