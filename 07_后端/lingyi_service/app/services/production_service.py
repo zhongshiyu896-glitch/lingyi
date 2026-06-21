@@ -371,7 +371,7 @@ class ProductionService:
 
             total = sql.with_entities(func.count(LyProductionPlan.id)).scalar() or 0
             rows = (
-                sql.order_by(LyProductionPlan.id.desc())
+                sql.order_by(LyProductionPlan.created_at.desc(), LyProductionPlan.id.desc())
                 .offset((query.page - 1) * query.page_size)
                 .limit(query.page_size)
                 .all()

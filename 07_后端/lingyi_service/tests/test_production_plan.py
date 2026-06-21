@@ -610,6 +610,74 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertEqual(detail_response.json()["data"]["planned_start_date"], "2026-04-13")
 
+    def test_list_plans_orders_by_latest_created_then_id(self) -> None:
+        new_created_at = datetime(2026, 4, 13, 9, 0, 0)
+        old_created_at = datetime(2026, 4, 13, 8, 0, 0)
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-NEW-LOW-ID",
+                    company="COMP-A",
+                    sales_order="SO-TEST-001",
+                    sales_order_item="SOI-001",
+                    customer="CUST-A",
+                    item_code="ITEM-A",
+                    bom_id=101,
+                    bom_version="v1",
+                    planned_qty=Decimal("10"),
+                    status="planned",
+                    idempotency_key="sort-new-low-id",
+                    request_hash="sort-new-low-id",
+                    created_by="seed",
+                    created_at=new_created_at,
+                )
+            )
+            session.flush()
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-OLD-HIGH-ID",
+                    company="COMP-A",
+                    sales_order="SO-TEST-001",
+                    sales_order_item="SOI-001",
+                    customer="CUST-A",
+                    item_code="ITEM-A",
+                    bom_id=101,
+                    bom_version="v1",
+                    planned_qty=Decimal("10"),
+                    status="planned",
+                    idempotency_key="sort-old-high-id",
+                    request_hash="sort-old-high-id",
+                    created_by="seed",
+                    created_at=old_created_at,
+                )
+            )
+            session.flush()
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-NEW-HIGH-ID",
+                    company="COMP-A",
+                    sales_order="SO-TEST-001",
+                    sales_order_item="SOI-001",
+                    customer="CUST-A",
+                    item_code="ITEM-A",
+                    bom_id=101,
+                    bom_version="v1",
+                    planned_qty=Decimal("10"),
+                    status="planned",
+                    idempotency_key="sort-new-high-id",
+                    request_hash="sort-new-high-id",
+                    created_by="seed",
+                    created_at=new_created_at,
+                )
+            )
+            session.commit()
+
+        response = self.client.get("/api/production/plans?company=COMP-A&page=1&page_size=20", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        plan_nos = [row["plan_no"] for row in response.json()["data"]["items"]]
+        self.assertEqual(plan_nos[:3], ["PP-NEW-HIGH-ID", "PP-NEW-LOW-ID", "PP-OLD-HIGH-ID"])
+
     def test_create_plan_accepts_native_draft_sales_order_from_existing_page(self) -> None:
         self._seed_sales_order(status="draft", docstatus=0)
         with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
