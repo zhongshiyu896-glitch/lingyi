@@ -27,6 +27,7 @@ from app.models.subcontract import LySubcontractStockOutbox
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseInventoryCount
 from app.models.warehouse import LyWarehouseInventoryCountItem
 from app.schemas.warehouse import WarehouseFactoryReturnMaterialDraftRequest
@@ -70,6 +71,7 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
             session.query(LyMaterialPurchaseOrder).delete()
             session.query(LyWarehouseInventoryCountItem).delete()
             session.query(LyWarehouseInventoryCount).delete()
+            session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
@@ -198,6 +200,86 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         summary_by_warehouse = {row.warehouse: Decimal(str(row.actual_qty)) for row in summary.items}
         self.assertEqual(summary_by_warehouse, {"WH-A": Decimal("5.000000"), "WH-B": Decimal("2.000000")})
         self.assertTrue(all(row.threshold_missing for row in summary.items))
+
+    def test_stock_ledger_projector_persists_dynamic_movements_idempotently(self) -> None:
+        self._seed_movements()
+        with self.SessionLocal() as session:
+            service = WarehouseService(session=session)
+            first = service.project_local_stock_ledger_entries(company="COMP-A", warehouse=None, item_code="FAB-A")
+            second = service.project_local_stock_ledger_entries(company="COMP-A", warehouse=None, item_code="FAB-A")
+            dynamic_ledger = service.list_stock_ledger(
+                company="COMP-A",
+                warehouse=None,
+                item_code="FAB-A",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            projected_rows = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == "COMP-A",
+                    LyWarehouseStockLedgerEntry.item_code == "FAB-A",
+                )
+                .order_by(
+                    LyWarehouseStockLedgerEntry.sort_at.asc(),
+                    LyWarehouseStockLedgerEntry.source_id.asc(),
+                    LyWarehouseStockLedgerEntry.source_line_id.asc(),
+                    LyWarehouseStockLedgerEntry.sequence.asc(),
+                    LyWarehouseStockLedgerEntry.warehouse.asc(),
+                )
+                .all()
+            )
+
+        self.assertEqual(first, {"inserted": 4, "updated": 0, "voided": 0})
+        self.assertEqual(second, {"inserted": 0, "updated": 0, "voided": 0})
+        self.assertEqual(len(projected_rows), dynamic_ledger.total)
+        self.assertEqual(
+            [
+                (row.warehouse, row.posting_date.isoformat(), Decimal(str(row.actual_qty)), row.status)
+                for row in projected_rows
+            ],
+            [
+                (row.warehouse, row.posting_date.isoformat(), Decimal(str(row.actual_qty)), "active")
+                for row in dynamic_ledger.items
+            ],
+        )
+
+    def test_stock_ledger_projector_voids_cancelled_dynamic_movements(self) -> None:
+        self._seed_movements()
+        with self.SessionLocal() as session:
+            service = WarehouseService(session=session)
+            service.project_local_stock_ledger_entries(company="COMP-A", warehouse=None, item_code="FAB-A")
+            draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_id="ISSUE-001").one()
+            draft.status = "cancelled"
+            session.flush()
+
+            result = service.project_local_stock_ledger_entries(company="COMP-A", warehouse=None, item_code="FAB-A")
+            active_rows = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == "COMP-A",
+                    LyWarehouseStockLedgerEntry.item_code == "FAB-A",
+                    LyWarehouseStockLedgerEntry.status == "active",
+                )
+                .order_by(LyWarehouseStockLedgerEntry.sort_at.asc(), LyWarehouseStockLedgerEntry.sequence.asc())
+                .all()
+            )
+            voided_rows = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == "COMP-A",
+                    LyWarehouseStockLedgerEntry.item_code == "FAB-A",
+                    LyWarehouseStockLedgerEntry.status == "voided",
+                )
+                .all()
+            )
+
+        self.assertEqual(result, {"inserted": 0, "updated": 0, "voided": 1})
+        self.assertEqual([Decimal(str(row.actual_qty)) for row in active_rows], [Decimal("10.000000"), Decimal("-2.000000"), Decimal("2.000000")])
+        self.assertEqual(len(voided_rows), 1)
+        self.assertEqual(Decimal(str(voided_rows[0].actual_qty)), Decimal("-3.000000"))
 
     def test_material_purchase_receipt_draft_waits_for_audit_before_stock_readback(self) -> None:
         with self.SessionLocal() as session:

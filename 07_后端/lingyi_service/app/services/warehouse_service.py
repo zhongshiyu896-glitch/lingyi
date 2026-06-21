@@ -35,6 +35,7 @@ from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseInventoryCount
 from app.models.warehouse import LyWarehouseInventoryCountItem
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractOrder
@@ -121,8 +122,10 @@ class WarehouseStockMovement:
     company: str
     warehouse: str
     item_code: str
+    uom: str | None
     posting_date: date
     sort_at: datetime
+    source_type: str
     source_id: int
     line_id: int
     sequence: int
@@ -279,6 +282,119 @@ class WarehouseService:
             page=page,
             page_size=page_size,
         )
+
+    def project_local_stock_ledger_entries(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> dict[str, int]:
+        """Persist local FastAPI stock movements into the durable ledger table.
+
+        This is a projector/backfill step only. Public stock ledger reads still use
+        `_local_stock_movements` until table parity is proven across all sources.
+        """
+
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_warehouse = self._text(warehouse)
+        normalized_item_code = self._text(item_code)
+        movements = self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code)
+        projected_at = datetime.now(timezone.utc)
+        active_keys: set[tuple[str, str, str, str, int]] = set()
+        inserted = 0
+        updated = 0
+
+        for movement in movements:
+            source_id = str(movement.source_id)
+            source_line_id = str(movement.line_id)
+            key = (movement.company, movement.source_type, source_id, source_line_id, movement.sequence)
+            active_keys.add(key)
+            existing = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == movement.company,
+                    LyWarehouseStockLedgerEntry.source_type == movement.source_type,
+                    LyWarehouseStockLedgerEntry.source_id == source_id,
+                    LyWarehouseStockLedgerEntry.source_line_id == source_line_id,
+                    LyWarehouseStockLedgerEntry.sequence == movement.sequence,
+                )
+                .first()
+            )
+            values: dict[str, Any] = {
+                "warehouse": movement.warehouse,
+                "item_code": movement.item_code,
+                "uom": movement.uom,
+                "posting_date": movement.posting_date,
+                "sort_at": movement.sort_at,
+                "voucher_type": movement.voucher_type,
+                "voucher_no": movement.voucher_no,
+                "actual_qty": movement.actual_qty,
+                "valuation_rate": movement.valuation_rate,
+                "status": "active",
+                "voided_at": None,
+            }
+            if existing is None:
+                session.add(
+                    LyWarehouseStockLedgerEntry(
+                        company=movement.company,
+                        source_type=movement.source_type,
+                        source_id=source_id,
+                        source_line_id=source_line_id,
+                        sequence=movement.sequence,
+                        projected_at=projected_at,
+                        **values,
+                    )
+                )
+                inserted += 1
+                continue
+
+            changed = False
+            for field, value in values.items():
+                if getattr(existing, field) != value:
+                    setattr(existing, field, value)
+                    changed = True
+            if changed:
+                existing.projected_at = projected_at
+                updated += 1
+
+        stale_query = session.query(LyWarehouseStockLedgerEntry).filter(
+            LyWarehouseStockLedgerEntry.status == "active",
+            LyWarehouseStockLedgerEntry.source_type.in_(
+                (
+                    "stock_entry_draft",
+                    "quality_outbox",
+                    "subcontract_material_issue",
+                    "subcontract_receipt",
+                )
+            ),
+        )
+        if normalized_company:
+            stale_query = stale_query.filter(LyWarehouseStockLedgerEntry.company == normalized_company)
+        if normalized_warehouse:
+            stale_query = stale_query.filter(LyWarehouseStockLedgerEntry.warehouse == normalized_warehouse)
+        if normalized_item_code:
+            stale_query = stale_query.filter(LyWarehouseStockLedgerEntry.item_code == normalized_item_code)
+
+        voided = 0
+        for row in stale_query.all():
+            key = (
+                str(row.company),
+                str(row.source_type),
+                str(row.source_id),
+                str(row.source_line_id),
+                int(row.sequence or 0),
+            )
+            if key in active_keys:
+                continue
+            row.status = "voided"
+            row.voided_at = projected_at
+            row.projected_at = projected_at
+            voided += 1
+
+        session.flush()
+        return {"inserted": inserted, "updated": updated, "voided": voided}
 
     @staticmethod
     def _stock_ledger_keyword_matches(*, row: WarehouseStockLedgerItem, keyword: str) -> bool:
@@ -728,8 +844,10 @@ class WarehouseService:
                     company=str(draft.company),
                     warehouse=warehouse_key,
                     item_code=str(item.item_code),
+                    uom=self._text(item.uom),
                     posting_date=posting_date,
                     sort_at=draft.created_at or datetime.combine(posting_date, datetime.min.time(), timezone.utc),
+                    source_type="stock_entry_draft",
                     source_id=int(draft.id),
                     line_id=int(item.id),
                     sequence=sequence,
@@ -854,6 +972,7 @@ class WarehouseService:
                 row=row,
                 stock_entry_name=stock_entry_name,
                 sort_at=posting_at,
+                uom=self._text(payload.get("uom")),
                 sequence=1,
                 warehouse_filter=warehouse,
             )
@@ -867,6 +986,7 @@ class WarehouseService:
                 row=row,
                 stock_entry_name=stock_entry_name,
                 sort_at=posting_at,
+                uom=self._text(payload.get("uom")),
                 sequence=3,
                 warehouse_filter=warehouse,
             )
@@ -883,6 +1003,7 @@ class WarehouseService:
         row: LyQualityOutbox,
         stock_entry_name: str,
         sort_at: datetime,
+        uom: str | None,
         sequence: int,
         warehouse_filter: str | None,
     ) -> None:
@@ -899,8 +1020,10 @@ class WarehouseService:
                     company=company,
                     warehouse=warehouse_value,
                     item_code=item_code,
+                    uom=uom,
                     posting_date=sort_at.date(),
                     sort_at=sort_at,
+                    source_type="quality_outbox",
                     source_id=int(getattr(row, "id", 0) or 0),
                     line_id=int(getattr(row, "id", 0) or 0),
                     sequence=movement_sequence,
@@ -979,8 +1102,10 @@ class WarehouseService:
                     company=company_value,
                     warehouse=warehouse_value,
                     item_code=material_code,
+                    uom=None,
                     posting_date=sort_at.date(),
                     sort_at=sort_at,
+                    source_type="subcontract_material_issue",
                     source_id=int(getattr(material, "id", 0) or 0),
                     line_id=int(getattr(material, "id", 0) or 0),
                     sequence=1,
@@ -1037,8 +1162,10 @@ class WarehouseService:
                     company=company_value,
                     warehouse=warehouse_value,
                     item_code=receipt_item_code,
+                    uom=self._text(getattr(receipt, "uom", None)),
                     posting_date=sort_at.date(),
                     sort_at=sort_at,
+                    source_type="subcontract_receipt",
                     source_id=int(getattr(receipt, "id", 0) or 0),
                     line_id=int(getattr(receipt, "id", 0) or 0),
                     sequence=2,
