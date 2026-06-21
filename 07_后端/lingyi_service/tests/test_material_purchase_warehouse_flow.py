@@ -33,6 +33,7 @@ from app.models.subcontract import LySubcontractOrder
 from app.models.subcontract import LySubcontractStockOutbox
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.material_purchase import get_db_session as material_purchase_db_dep
@@ -110,6 +111,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             session.query(LySubcontractMaterial).delete()
             session.query(LySubcontractStockOutbox).delete()
             session.query(LySubcontractOrder).delete()
+            session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()

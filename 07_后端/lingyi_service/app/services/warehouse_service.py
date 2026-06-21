@@ -126,8 +126,8 @@ class WarehouseStockMovement:
     posting_date: date
     sort_at: datetime
     source_type: str
-    source_id: int
-    line_id: int
+    source_id: int | str
+    line_id: int | str
     sequence: int
     voucher_type: str
     voucher_no: str
@@ -247,7 +247,7 @@ class WarehouseService:
         page_size: int,
         keyword: str | None = None,
     ) -> WarehouseStockLedgerData:
-        movements = self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code)
+        movements = self._local_stock_read_movements(company=company, warehouse=warehouse, item_code=item_code)
         running_qty: dict[tuple[str, str, str], Decimal] = {}
         ledger_rows: list[WarehouseStockLedgerItem] = []
         normalized_keyword = self._text(keyword)
@@ -292,8 +292,9 @@ class WarehouseService:
     ) -> dict[str, int]:
         """Persist local FastAPI stock movements into the durable ledger table.
 
-        This is a projector/backfill step only. Public stock ledger reads still use
-        `_local_stock_movements` until table parity is proven across all sources.
+        This is the write-side projector/backfill. Public stock ledger reads prefer
+        active durable rows when the table already has scoped data, and retain the
+        dynamic movement fallback for old dev databases or not-yet-projected scopes.
         """
 
         if not self._has_sqlite_stock_ledger_entry_table():
@@ -444,6 +445,107 @@ class WarehouseService:
                 row.voucher_no,
             )
         )
+
+    def _active_durable_stock_ledger_entries(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> list[LyWarehouseStockLedgerEntry]:
+        if not self._has_sqlite_stock_ledger_entry_table():
+            return []
+
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_warehouse = self._text(warehouse)
+        normalized_item_code = self._text(item_code)
+        query = session.query(LyWarehouseStockLedgerEntry).filter(LyWarehouseStockLedgerEntry.status == "active")
+        if normalized_company:
+            query = query.filter(LyWarehouseStockLedgerEntry.company == normalized_company)
+        if normalized_warehouse:
+            query = query.filter(LyWarehouseStockLedgerEntry.warehouse == normalized_warehouse)
+        if normalized_item_code:
+            query = query.filter(LyWarehouseStockLedgerEntry.item_code == normalized_item_code)
+
+        rows = query.all()
+        rows.sort(key=self._durable_stock_ledger_sort_key)
+        return rows
+
+    def _local_stock_read_movements(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> list[WarehouseStockMovement]:
+        durable_rows = self._active_durable_stock_ledger_entries(company=company, warehouse=warehouse, item_code=item_code)
+        if not durable_rows:
+            return self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code)
+
+        durable_keys = {self._stock_ledger_source_key_for_entry(row) for row in durable_rows}
+        movements = [self._stock_movement_from_durable_entry(row) for row in durable_rows]
+        movements.extend(
+            movement
+            for movement in self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code)
+            if self._stock_ledger_source_key_for_movement(movement) not in durable_keys
+        )
+        movements.sort(key=self._stock_movement_sort_key)
+        return movements
+
+    def _stock_movement_from_durable_entry(self, row: LyWarehouseStockLedgerEntry) -> WarehouseStockMovement:
+        return WarehouseStockMovement(
+            company=self._text(row.company),
+            warehouse=self._text(row.warehouse),
+            item_code=self._text(row.item_code),
+            uom=self._text(row.uom),
+            posting_date=row.posting_date,
+            sort_at=row.sort_at,
+            source_type=self._text(row.source_type),
+            source_id=self._text(row.source_id),
+            line_id=self._text(row.source_line_id),
+            sequence=int(row.sequence or 0),
+            voucher_type=self._text(row.voucher_type),
+            voucher_no=self._text(row.voucher_no),
+            actual_qty=Decimal(str(row.actual_qty or 0)),
+            valuation_rate=Decimal(str(row.valuation_rate or 0)),
+        )
+
+    def _stock_ledger_source_key_for_entry(self, row: LyWarehouseStockLedgerEntry) -> tuple[str, str, str, str, int]:
+        return (
+            self._text(row.company),
+            self._text(row.source_type),
+            self._text(row.source_id),
+            self._text(row.source_line_id),
+            int(row.sequence or 0),
+        )
+
+    def _stock_ledger_source_key_for_movement(self, row: WarehouseStockMovement) -> tuple[str, str, str, str, int]:
+        return (
+            row.company,
+            row.source_type,
+            str(row.source_id),
+            str(row.line_id),
+            int(row.sequence or 0),
+        )
+
+    @classmethod
+    def _durable_stock_ledger_sort_key(cls, row: LyWarehouseStockLedgerEntry) -> tuple[Any, ...]:
+        return (
+            cls._stock_movement_sort_at(row.sort_at),
+            cls._sortable_ledger_identifier(row.source_id),
+            cls._sortable_ledger_identifier(row.source_line_id),
+            int(row.sequence or 0),
+            str(row.warehouse or ""),
+            int(row.id or 0),
+        )
+
+    @staticmethod
+    def _sortable_ledger_identifier(value: Any) -> tuple[int, int | str]:
+        text = str(value or "").strip()
+        if text.isdigit():
+            return (0, int(text))
+        return (1, text)
 
     def get_local_stock_summary(
         self,
@@ -944,8 +1046,18 @@ class WarehouseService:
             item_code=normalized_item_code,
         )
 
-        movements.sort(key=lambda row: (self._stock_movement_sort_at(row.sort_at), row.source_id, row.line_id, row.sequence, row.warehouse))
+        movements.sort(key=self._stock_movement_sort_key)
         return movements
+
+    @classmethod
+    def _stock_movement_sort_key(cls, row: WarehouseStockMovement) -> tuple[Any, ...]:
+        return (
+            cls._stock_movement_sort_at(row.sort_at),
+            cls._sortable_ledger_identifier(row.source_id),
+            cls._sortable_ledger_identifier(row.line_id),
+            int(row.sequence or 0),
+            row.warehouse,
+        )
 
     @staticmethod
     def _stock_movement_sort_at(value: datetime) -> datetime:
@@ -1308,7 +1420,7 @@ class WarehouseService:
         normalized_warehouse = self._text(warehouse)
         normalized_item_code = self._text(item_code)
         grouped: dict[tuple[str, str, str], Decimal] = {}
-        for movement in self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code):
+        for movement in self._local_stock_read_movements(company=company, warehouse=warehouse, item_code=item_code):
             key = (movement.company, movement.warehouse, movement.item_code)
             grouped[key] = grouped.get(key, Decimal("0")) + movement.actual_qty
 

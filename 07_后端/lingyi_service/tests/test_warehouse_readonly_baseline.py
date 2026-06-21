@@ -32,6 +32,7 @@ from app.models.master_data import LyMasterDataRecord
 from app.models.quality import Base as QualityBase
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
@@ -84,7 +85,19 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
+        os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"] = json.dumps(
+            {
+                "roles": {
+                    WAREHOUSE_READ: [WAREHOUSE_READ],
+                    WAREHOUSE_ALERT_READ: [WAREHOUSE_ALERT_READ],
+                    WAREHOUSE_EXPORT: [WAREHOUSE_EXPORT],
+                    WAREHOUSE_DIAGNOSTIC: [WAREHOUSE_DIAGNOSTIC],
+                    WAREHOUSE_STOCK_HOLD_RELEASE: [WAREHOUSE_STOCK_HOLD_RELEASE],
+                }
+            }
+        )
         with self.SessionLocal() as session:
+            session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
@@ -154,6 +167,43 @@ class WarehouseReadonlyApiBase(unittest.TestCase):
             )
             session.commit()
 
+    def _seed_durable_ledger_entry(
+        self,
+        *,
+        company: str = "COMP-A",
+        warehouse: str = "WH-A",
+        item_code: str = "ITEM-DURABLE",
+        posting_date: date = date(2026, 4, 20),
+        source_id: str = "DURABLE-001",
+        voucher_no: str = "DURABLE-001",
+        actual_qty: str = "2",
+        status: str = "active",
+    ) -> None:
+        sort_at = datetime.combine(posting_date, datetime.min.time(), timezone.utc)
+        with self.SessionLocal() as session:
+            session.add(
+                LyWarehouseStockLedgerEntry(
+                    company=company,
+                    warehouse=warehouse,
+                    item_code=item_code,
+                    uom="PCS",
+                    posting_date=posting_date,
+                    sort_at=sort_at,
+                    source_type="durable_api_test",
+                    source_id=source_id,
+                    source_line_id="1",
+                    sequence=1,
+                    voucher_type="Durable/Test",
+                    voucher_no=voucher_no,
+                    actual_qty=Decimal(actual_qty),
+                    valuation_rate=Decimal("1"),
+                    status=status,
+                    projected_at=sort_at,
+                    voided_at=sort_at if status == "voided" else None,
+                )
+            )
+            session.commit()
+
     def _seed_material_master(
         self,
         *,
@@ -190,6 +240,47 @@ class WarehouseReadonlyApiTest(WarehouseReadonlyApiBase):
         self.assertEqual(payload["items"][0]["warehouse"], "WH-A")
         self.assertEqual(payload["items"][0]["voucher_type"], "Stock Entry Draft/Material Receipt")
         self.assertEqual(Decimal(str(payload["items"][0]["qty_after_transaction"])), Decimal("2.000000"))
+
+    def test_stock_ledger_and_summary_read_durable_rows_without_drafts(self) -> None:
+        self._seed_durable_ledger_entry(
+            posting_date=date(2026, 4, 20),
+            source_id="DURABLE-RCPT",
+            voucher_no="D-RCPT",
+            actual_qty="10",
+        )
+        self._seed_durable_ledger_entry(
+            posting_date=date(2026, 4, 21),
+            source_id="DURABLE-ISSUE",
+            voucher_no="D-ISSUE",
+            actual_qty="-3",
+        )
+        self._seed_durable_ledger_entry(
+            posting_date=date(2026, 4, 21),
+            source_id="DURABLE-VOID",
+            voucher_no="D-VOID",
+            actual_qty="99",
+            status="voided",
+        )
+
+        ledger = self.client.get(
+            "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=ITEM-DURABLE&from_date=2026-04-21&to_date=2026-04-21&keyword=D-ISSUE",
+            headers=self._headers(),
+        )
+        summary = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=WH-A&item_code=ITEM-DURABLE",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        ledger_payload = ledger.json()["data"]
+        self.assertEqual(ledger_payload["total"], 1)
+        ledger_row = ledger_payload["items"][0]
+        self.assertEqual(ledger_row["voucher_no"], "D-ISSUE")
+        self.assertEqual(Decimal(str(ledger_row["actual_qty"])), Decimal("-3.000000"))
+        self.assertEqual(Decimal(str(ledger_row["qty_after_transaction"])), Decimal("7.000000"))
+        self.assertEqual(summary.status_code, 200, summary.text)
+        summary_row = summary.json()["data"]["items"][0]
+        self.assertEqual(Decimal(str(summary_row["actual_qty"])), Decimal("7.000000"))
 
     def test_stock_ledger_keyword_filters_after_running_balance_recalculation(self) -> None:
         self._seed_stock_entry(qty="10", event_key="EVT-WH-KEYWORD-001", created_at=datetime(2026, 4, 20, tzinfo=timezone.utc))

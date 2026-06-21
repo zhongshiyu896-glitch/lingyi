@@ -57,6 +57,7 @@ from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.finance_approval import get_db_session as finance_approval_db_dep
@@ -149,6 +150,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             session.query(LyMaterialPurchasePaymentOperation).delete()
             session.query(LyMaterialPurchasePayment).delete()
             session.query(LyMaterialPurchaseInvoice).delete()
+            session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()

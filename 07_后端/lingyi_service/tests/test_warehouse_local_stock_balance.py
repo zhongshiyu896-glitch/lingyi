@@ -424,6 +424,136 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         self.assertEqual(len(voided_rows), 1)
         self.assertEqual(Decimal(str(voided_rows[0].actual_qty)), Decimal("-3.000000"))
 
+    def test_durable_stock_ledger_read_rebuilds_balance_without_dynamic_movements(self) -> None:
+        projected_at = datetime(2026, 6, 1, tzinfo=timezone.utc)
+        with self.SessionLocal() as session:
+            session.add_all(
+                [
+                    LyWarehouseStockLedgerEntry(
+                        company="COMP-A",
+                        warehouse="WH-A",
+                        item_code="FAB-DURABLE",
+                        uom="米",
+                        posting_date=date(2026, 6, 1),
+                        sort_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+                        source_type="durable_test",
+                        source_id="1",
+                        source_line_id="1",
+                        sequence=1,
+                        voucher_type="Durable/Test",
+                        voucher_no="D-RCPT",
+                        actual_qty=Decimal("10"),
+                        valuation_rate=Decimal("2"),
+                        status="active",
+                        projected_at=projected_at,
+                    ),
+                    LyWarehouseStockLedgerEntry(
+                        company="COMP-A",
+                        warehouse="WH-A",
+                        item_code="FAB-DURABLE",
+                        uom="米",
+                        posting_date=date(2026, 6, 2),
+                        sort_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+                        source_type="durable_test",
+                        source_id="2",
+                        source_line_id="1",
+                        sequence=1,
+                        voucher_type="Durable/Test",
+                        voucher_no="D-ISSUE",
+                        actual_qty=Decimal("-3"),
+                        valuation_rate=Decimal("2"),
+                        status="active",
+                        projected_at=projected_at,
+                    ),
+                    LyWarehouseStockLedgerEntry(
+                        company="COMP-A",
+                        warehouse="WH-A",
+                        item_code="FAB-DURABLE",
+                        uom="米",
+                        posting_date=date(2026, 6, 2),
+                        sort_at=datetime(2026, 6, 2, tzinfo=timezone.utc),
+                        source_type="durable_test",
+                        source_id="3",
+                        source_line_id="1",
+                        sequence=1,
+                        voucher_type="Durable/Test",
+                        voucher_no="D-VOID",
+                        actual_qty=Decimal("99"),
+                        valuation_rate=Decimal("2"),
+                        status="voided",
+                        projected_at=projected_at,
+                        voided_at=projected_at,
+                    ),
+                ]
+            )
+            session.flush()
+
+            service = WarehouseService(session=session)
+            ledger = service.list_local_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-A",
+                item_code="FAB-DURABLE",
+                from_date=date(2026, 6, 2),
+                to_date=date(2026, 6, 2),
+                page=1,
+                page_size=20,
+                keyword="D-ISSUE",
+            )
+            summary = service.get_local_stock_summary(company="COMP-A", warehouse="WH-A", item_code="FAB-DURABLE")
+
+        self.assertEqual(ledger.total, 1)
+        self.assertEqual(ledger.items[0].voucher_no, "D-ISSUE")
+        self.assertEqual(Decimal(str(ledger.items[0].actual_qty)), Decimal("-3.000000"))
+        self.assertEqual(Decimal(str(ledger.items[0].qty_after_transaction)), Decimal("7.000000"))
+        self.assertEqual(len(summary.items), 1)
+        self.assertEqual(Decimal(str(summary.items[0].actual_qty)), Decimal("7.000000"))
+
+    def test_durable_stock_ledger_broad_read_keeps_unprojected_dynamic_movements(self) -> None:
+        self._seed_movements()
+        with self.SessionLocal() as session:
+            session.add(
+                LyWarehouseStockLedgerEntry(
+                    company="COMP-A",
+                    warehouse="WH-A",
+                    item_code="FAB-DURABLE",
+                    uom="米",
+                    posting_date=date(2026, 6, 5),
+                    sort_at=datetime(2026, 6, 5, tzinfo=timezone.utc),
+                    source_type="durable_test",
+                    source_id="DURABLE-ONLY",
+                    source_line_id="1",
+                    sequence=1,
+                    voucher_type="Durable/Test",
+                    voucher_no="D-DURABLE",
+                    actual_qty=Decimal("6"),
+                    valuation_rate=Decimal("2"),
+                    status="active",
+                    projected_at=datetime(2026, 6, 5, tzinfo=timezone.utc),
+                )
+            )
+            session.flush()
+
+            service = WarehouseService(session=session)
+            ledger = service.list_local_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-A",
+                item_code=None,
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            summary = service.get_local_stock_summary(company="COMP-A", warehouse="WH-A", item_code=None)
+
+        self.assertEqual(ledger.total, 4)
+        self.assertEqual(
+            sorted({row.item_code for row in ledger.items}),
+            ["FAB-A", "FAB-DURABLE"],
+        )
+        summary_by_item = {row.item_code: Decimal(str(row.actual_qty)) for row in summary.items}
+        self.assertEqual(summary_by_item["FAB-A"], Decimal("5.000000"))
+        self.assertEqual(summary_by_item["FAB-DURABLE"], Decimal("6.000000"))
+
     def test_material_purchase_receipt_draft_waits_for_audit_before_stock_readback(self) -> None:
         with self.SessionLocal() as session:
             self._add_draft(
