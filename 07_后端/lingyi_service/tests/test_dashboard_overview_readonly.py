@@ -180,6 +180,10 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(payload["home_overview"]["warnings"], [])
         self.assertEqual(payload["home_overview"]["trend_points"], [])
         self.assertIn("查看动态", payload["home_overview"]["primary_actions"])
+        self.assertEqual({row["source_type"] for row in payload["kanban"]["flow_nodes"]}, {"config"})
+        self.assertTrue(
+            all("不代表业务闭环完成" in row["status_note"] for row in payload["kanban"]["flow_nodes"])
+        )
         self.assertNotIn("120000", response.text)
         self.assertNotIn("写入类动作", response.text)
 

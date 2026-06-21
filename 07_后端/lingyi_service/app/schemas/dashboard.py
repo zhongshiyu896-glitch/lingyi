@@ -64,6 +64,8 @@ class DashboardKanbanFlowNodeData(BaseModel):
     label: str
     status: str
     route: str | None = None
+    source_type: str = "config"
+    status_note: str | None = "流程节点状态为系统导航配置，不代表业务闭环完成。"
 
 
 class DashboardKanbanFlowLinkData(BaseModel):
