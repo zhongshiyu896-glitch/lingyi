@@ -613,8 +613,17 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         qty: str,
         item_code: str | None = None,
         uom: str = "米",
+        purchase_requirement_id: int | None = None,
     ) -> dict[str, object]:
         receipt_item_code = item_code or self.MATERIAL
+        receipt_item: dict[str, object] = {
+            "item_code": receipt_item_code,
+            "qty": qty,
+            "uom": uom,
+            "target_warehouse": self.WAREHOUSE,
+        }
+        if purchase_requirement_id is not None:
+            receipt_item["purchase_requirement_id"] = purchase_requirement_id
         response = self.client.post(
             "/api/warehouse/stock-entry-drafts",
             headers=self._headers(
@@ -640,14 +649,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 "scenario_tag": self.WAREHOUSE_SCENARIO,
                 "target_warehouse": self.WAREHOUSE,
                 "idempotency_key": idempotency_key,
-                "items": [
-                    {
-                        "item_code": receipt_item_code,
-                        "qty": qty,
-                        "uom": uom,
-                        "target_warehouse": self.WAREHOUSE,
-                    }
-                ],
+                "items": [receipt_item],
             },
         )
         self.assertEqual(response.status_code, 201, response.text)
@@ -2881,6 +2883,111 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(len(completed_rows), 2)
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
+
+    def test_grouped_material_partial_receipt_requires_explicit_requirement_allocation(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-ALLOC-A",
+            net_required_qty="5",
+            sales_order="SO-A6-ALLOC-001",
+            sales_order_item="SO-A6-ALLOC-001-ITEM",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-ALLOC-B",
+            net_required_qty="10",
+            sales_order="SO-A6-ALLOC-002",
+            sales_order_item="SO-A6-ALLOC-002-ITEM",
+        )
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-alloc-material"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_a, requirement_b],
+                idempotency_key="idem-a6-alloc-material",
+                purchase_no="PO-A6-ALLOC",
+            ),
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+
+        ambiguous_source_ref = f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-ALLOC"
+        ambiguous_receipt = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                self._warehouse_request_id(
+                    idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-ALLOC:ambiguous",
+                    source_ref=ambiguous_source_ref,
+                    item_code=self.MATERIAL,
+                    quantity="10",
+                )
+            ),
+            json={
+                "operation": "create_stock_entry_draft",
+                "company": self.COMPANY,
+                "purpose": "Material Receipt",
+                "source_type": "material_purchase_order",
+                "source_id": ambiguous_source_ref,
+                "source_ref": ambiguous_source_ref,
+                "warehouse": self.WAREHOUSE,
+                "item_code": self.MATERIAL,
+                "quantity": "10",
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "create",
+                "scenario_tag": self.WAREHOUSE_SCENARIO,
+                "target_warehouse": self.WAREHOUSE,
+                "idempotency_key": f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-ALLOC:ambiguous",
+                "items": [
+                    {
+                        "item_code": self.MATERIAL,
+                        "qty": "10",
+                        "uom": "米",
+                        "target_warehouse": self.WAREHOUSE,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(ambiguous_receipt.status_code, 409, ambiguous_receipt.text)
+        self.assertIn("必须指定采购需求行", ambiguous_receipt.text)
+
+        draft = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-ALLOC",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-ALLOC:req-b",
+            qty="10",
+            purchase_requirement_id=requirement_b,
+        )
+
+        with self.SessionLocal() as session:
+            req_a = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_a).one()
+            req_b = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_b).one()
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-ALLOC").one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).one()
+
+            self.assertEqual(str(req_a.status), "purchased")
+            self.assertEqual(Decimal(str(req_a.received_qty)), Decimal("0.000000"))
+            self.assertEqual(str(req_b.status), "completed")
+            self.assertEqual(Decimal(str(req_b.received_qty)), Decimal("10.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("10.000000"))
+            self.assertEqual(str(order.status), "partially_received")
+
+        cancel_response = self._cancel_stock_receipt(
+            draft=draft,
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-ALLOC",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-ALLOC:req-b",
+            qty="10",
+        )
+        self.assertEqual(cancel_response.status_code, 200, cancel_response.text)
+
+        with self.SessionLocal() as session:
+            req_a = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_a).one()
+            req_b = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_b).one()
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-ALLOC").one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).one()
+
+            self.assertEqual(str(req_a.status), "purchased")
+            self.assertEqual(Decimal(str(req_a.received_qty)), Decimal("0.000000"))
+            self.assertEqual(str(req_b.status), "purchased")
+            self.assertEqual(Decimal(str(req_b.received_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("0.000000"))
+            self.assertEqual(str(order.status), "draft")
 
     def test_from_requirements_rejects_mixed_unit_prices_when_grouping_by_material(self) -> None:
         requirement_a = self._seed_requirement(

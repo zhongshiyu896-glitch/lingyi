@@ -69,6 +69,7 @@ class LyWarehouseStockEntryDraftItem(Base):
     __table_args__ = (
         Index("idx_ly_whse_stock_entry_item_draft", "draft_id"),
         Index("idx_ly_whse_stock_entry_item_company_item", "company", "item_code"),
+        Index("idx_ly_whse_stock_entry_item_requirement", "purchase_requirement_id"),
         CheckConstraint("qty > 0", name="ck_ly_whse_stock_entry_item_qty_positive"),
         {"schema": "ly_schema", "comment": "仓库 Stock Entry 草稿明细表"},
     )
@@ -83,6 +84,7 @@ class LyWarehouseStockEntryDraftItem(Base):
     serial_no = Column(String(500), nullable=True)
     source_warehouse = Column(String(140), nullable=True)
     target_warehouse = Column(String(140), nullable=True)
+    purchase_requirement_id = Column(IDType, nullable=True)
 
 
 class LyWarehouseStockEntryOutboxEvent(Base):

@@ -107,6 +107,7 @@ def _create_local_tables() -> None:
     _ensure_local_bom_company_style_columns()
     _ensure_local_production_material_uom_column()
     _ensure_local_bom_dimension_columns()
+    _ensure_local_stock_entry_purchase_requirement_column()
     _ensure_local_production_quote_operation_supports_quote_actions()
     _ensure_local_production_followup_node_operation_supports_edit()
     _seed_local_finance_approval_templates()
@@ -847,6 +848,30 @@ def _ensure_local_bom_dimension_columns() -> None:
             for column_name in column_names:
                 if column_name not in existing_columns:
                     conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} VARCHAR(100)")
+
+
+def _ensure_local_stock_entry_purchase_requirement_column() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_warehouse_stock_entry_draft_item'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_warehouse_stock_entry_draft_item)").fetchall()
+        }
+        if "purchase_requirement_id" not in existing_columns:
+            conn.execute(
+                "ALTER TABLE ly_warehouse_stock_entry_draft_item ADD COLUMN purchase_requirement_id BIGINT"
+            )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ly_whse_stock_entry_item_requirement "
+            "ON ly_warehouse_stock_entry_draft_item(purchase_requirement_id)"
+        )
 
 
 def _ensure_local_production_quote_operation_supports_quote_actions() -> None:

@@ -844,6 +844,9 @@ class MaterialPurchaseService:
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购单已取消")
         lines = self._get_lines(order_id=int(order.id))
         line_deltas: dict[int, tuple[LyMaterialPurchaseOrderItem, Decimal]] = {}
+        requirement_deltas: dict[int, tuple[LyMaterialPurchaseRequirement, Decimal]] = {}
+        directed_line_ids: set[int] = set()
+        undirected_line_ids: set[int] = set()
         for item in self._normalize_receipt_rows(items):
             line = self._match_receipt_line(
                 lines=lines,
@@ -851,11 +854,33 @@ class MaterialPurchaseService:
                 warehouse=self._optional_text(item.get("warehouse")),
             )
             line_id = int(line.id)
+            requirement_id = item.get("purchase_requirement_id")
+            if requirement_id is not None:
+                directed_line_ids.add(line_id)
+                requirement = self._match_receipt_requirement(
+                    order=order,
+                    line=line,
+                    requirement_id=int(requirement_id),
+                    item_code=str(item["item_code"]),
+                    warehouse=self._optional_text(item.get("warehouse")),
+                )
+                requirement_delta = Decimal(str(item["qty"])) * direction
+                requirement_key = int(requirement.id)
+                if requirement_key in requirement_deltas:
+                    requirement_deltas[requirement_key] = (requirement, requirement_deltas[requirement_key][1] + requirement_delta)
+                else:
+                    requirement_deltas[requirement_key] = (requirement, requirement_delta)
+            else:
+                undirected_line_ids.add(line_id)
             delta = Decimal(str(item["qty"])) * direction
             if line_id in line_deltas:
                 line_deltas[line_id] = (line, line_deltas[line_id][1] + delta)
             else:
                 line_deltas[line_id] = (line, delta)
+
+        mixed_line_ids = directed_line_ids & undirected_line_ids
+        if mixed_line_ids:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="同一采购明细不能混用指定和未指定采购需求行的入库")
 
         for line, delta in line_deltas.values():
             current_received = Decimal(str(line.received_qty or 0))
@@ -864,8 +889,19 @@ class MaterialPurchaseService:
                 raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"反冲收货数量超过已收数量: {line.material_item_code}")
             if next_received > Decimal(str(line.qty)):
                 raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"收货数量超过采购数量: {line.material_item_code}")
+            if int(line.id) in undirected_line_ids:
+                self._ensure_undirected_receipt_is_unambiguous(line=line, next_received=next_received)
             if mutate:
                 line.received_qty = next_received
+
+        for requirement, delta in requirement_deltas.values():
+            current_received = Decimal(str(requirement.received_qty or 0))
+            purchased_qty = Decimal(str(requirement.purchased_qty or requirement.net_required_qty or 0))
+            next_received = current_received + delta
+            if next_received < Decimal("0"):
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"反冲收货数量超过需求已收数量: {requirement.requirement_no}")
+            if next_received > purchased_qty:
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"收货数量超过需求采购数量: {requirement.requirement_no}")
 
         if not mutate:
             return
@@ -877,7 +913,10 @@ class MaterialPurchaseService:
             order.status = "draft"
         else:
             order.status = "received" if total_received >= total_qty else "partially_received"
-        self._apply_requirement_receipts(order=order, lines=lines)
+        self._apply_directed_requirement_receipt_deltas(order=order, requirement_deltas=requirement_deltas)
+        undirected_lines = [line for line in lines if int(line.id) in undirected_line_ids]
+        if undirected_lines:
+            self._apply_requirement_receipts(order=order, lines=undirected_lines)
         self.session.flush()
 
     def list_purchase_invoices(
@@ -2101,6 +2140,18 @@ class MaterialPurchaseService:
         normalized: list[dict[str, Any]] = []
         for index, item in enumerate(items, start=1):
             item_code = self._require_text(item.get("item_code"), f"items[{index}].item_code")
+            raw_requirement_id = item.get("purchase_requirement_id", item.get("requirement_id"))
+            requirement_id: int | None = None
+            if raw_requirement_id not in (None, ""):
+                try:
+                    requirement_id = int(raw_requirement_id)
+                except Exception as exc:
+                    raise BusinessException(
+                        code=MATERIAL_PURCHASE_CONFLICT,
+                        message=f"items[{index}].purchase_requirement_id 非法",
+                    ) from exc
+                if requirement_id <= 0:
+                    raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"items[{index}].purchase_requirement_id 必须大于 0")
             try:
                 qty = Decimal(str(item.get("qty")))
             except Exception as exc:
@@ -2114,6 +2165,7 @@ class MaterialPurchaseService:
                     "warehouse": self._optional_text(item.get("warehouse"))
                     or self._optional_text(item.get("target_warehouse"))
                     or self._optional_text(item.get("source_warehouse")),
+                    "purchase_requirement_id": requirement_id,
                 }
             )
         return normalized
@@ -2150,6 +2202,78 @@ class MaterialPurchaseService:
             raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购单中物料明细不唯一: {item_code}")
         return candidates[0]
 
+    def _requirements_for_order_line(self, *, line: LyMaterialPurchaseOrderItem) -> list[LyMaterialPurchaseRequirement]:
+        return (
+            self.session.query(LyMaterialPurchaseRequirement)
+            .filter(
+                LyMaterialPurchaseRequirement.company == str(line.company),
+                LyMaterialPurchaseRequirement.purchase_order_item_id == int(line.id),
+            )
+            .order_by(LyMaterialPurchaseRequirement.id.asc())
+            .all()
+        )
+
+    def _ensure_undirected_receipt_is_unambiguous(
+        self,
+        *,
+        line: LyMaterialPurchaseOrderItem,
+        next_received: Decimal,
+    ) -> None:
+        requirements = self._requirements_for_order_line(line=line)
+        if len(requirements) <= 1:
+            return
+        line_qty = Decimal(str(line.qty or 0))
+        if next_received in {Decimal("0"), line_qty}:
+            return
+        raise BusinessException(
+            code=MATERIAL_PURCHASE_CONFLICT,
+            message=f"{line.material_item_code} 合并采购部分入库必须指定采购需求行",
+        )
+
+    def _match_receipt_requirement(
+        self,
+        *,
+        order: LyMaterialPurchaseOrder,
+        line: LyMaterialPurchaseOrderItem,
+        requirement_id: int,
+        item_code: str,
+        warehouse: str | None,
+    ) -> LyMaterialPurchaseRequirement:
+        requirement = (
+            self.session.query(LyMaterialPurchaseRequirement)
+            .filter(
+                LyMaterialPurchaseRequirement.id == requirement_id,
+                LyMaterialPurchaseRequirement.company == str(order.company),
+                LyMaterialPurchaseRequirement.purchase_order_id == int(order.id),
+                LyMaterialPurchaseRequirement.purchase_order_item_id == int(line.id),
+            )
+            .first()
+        )
+        if requirement is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购需求行不属于当前采购单: {requirement_id}")
+        if item_code not in {str(requirement.material_item_code), str(line.material_item_code), str(line.item_code)}:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购需求行物料与入库物料不一致: {requirement.requirement_no}")
+        requirement_warehouse = self._optional_text(requirement.warehouse)
+        if warehouse is not None and requirement_warehouse is not None and warehouse != requirement_warehouse:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购需求行仓库与入库仓库不一致: {requirement.requirement_no}")
+        return requirement
+
+    def _apply_directed_requirement_receipt_deltas(
+        self,
+        *,
+        order: LyMaterialPurchaseOrder,
+        requirement_deltas: dict[int, tuple[LyMaterialPurchaseRequirement, Decimal]],
+    ) -> None:
+        for requirement, delta in requirement_deltas.values():
+            current_received = Decimal(str(requirement.received_qty or 0))
+            purchased_qty = Decimal(str(requirement.purchased_qty or requirement.net_required_qty or 0))
+            next_received = current_received + delta
+            requirement.received_qty = next_received
+            requirement.status = "completed" if next_received >= purchased_qty else "purchased"
+            requirement.updated_by = str(order.updated_by or order.created_by)
+            requirement.updated_at = datetime.now(UTC)
+            self._update_production_material_from_requirement(requirement=requirement)
+
     def _apply_requirement_receipts(
         self,
         *,
@@ -2157,15 +2281,7 @@ class MaterialPurchaseService:
         lines: list[LyMaterialPurchaseOrderItem],
     ) -> None:
         for line in lines:
-            requirements = (
-                self.session.query(LyMaterialPurchaseRequirement)
-                .filter(
-                    LyMaterialPurchaseRequirement.company == str(order.company),
-                    LyMaterialPurchaseRequirement.purchase_order_item_id == int(line.id),
-                )
-                .order_by(LyMaterialPurchaseRequirement.id.asc())
-                .all()
-            )
+            requirements = self._requirements_for_order_line(line=line)
             if not requirements:
                 continue
             remaining_received = Decimal(str(line.received_qty or 0))

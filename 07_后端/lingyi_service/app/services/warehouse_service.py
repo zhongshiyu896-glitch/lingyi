@@ -2643,6 +2643,7 @@ class WarehouseService:
                     serial_no=row.get("serial_no"),
                     source_warehouse=row.get("source_warehouse"),
                     target_warehouse=row.get("target_warehouse"),
+                    purchase_requirement_id=row.get("purchase_requirement_id"),
                 )
             )
 
@@ -3339,6 +3340,7 @@ class WarehouseService:
                     serial_no=self._text(item.serial_no),
                     source_warehouse=self._text(item.source_warehouse),
                     target_warehouse=self._text(item.target_warehouse),
+                    purchase_requirement_id=(int(item.purchase_requirement_id) if item.purchase_requirement_id is not None else None),
                 )
                 for item in items
             ],
@@ -3407,6 +3409,7 @@ class WarehouseService:
                 "qty": Decimal(str(item.qty or 0)),
                 "target_warehouse": self._text(item.target_warehouse),
                 "source_warehouse": self._text(item.source_warehouse),
+                "purchase_requirement_id": int(item.purchase_requirement_id) if item.purchase_requirement_id is not None else None,
             }
             for item in items
         ]
@@ -3417,6 +3420,7 @@ class WarehouseService:
                 "item_code": str(item["item_code"]).strip(),
                 "qty": Decimal(str(item["qty"])),
                 "warehouse": self._text(item.get("target_warehouse")) or self._text(item.get("warehouse")),
+                "purchase_requirement_id": item.get("purchase_requirement_id"),
             }
             for item in items
         ]
@@ -3557,6 +3561,20 @@ class WarehouseService:
         show_completed_forced: bool | None,
         finished_goods_source_id: str | None,
     ) -> dict[str, Any]:
+        def replay_item(row: dict[str, Any]) -> dict[str, Any]:
+            item = {
+                "item_code": row["item_code"],
+                "qty": str(row["qty"]),
+                "uom": row["uom"],
+                "batch_no": row.get("batch_no"),
+                "serial_no": row.get("serial_no"),
+                "source_warehouse": row.get("source_warehouse"),
+                "target_warehouse": row.get("target_warehouse"),
+            }
+            if row.get("purchase_requirement_id") is not None:
+                item["purchase_requirement_id"] = int(row["purchase_requirement_id"])
+            return item
+
         payload: dict[str, Any] = {
             "company": company,
             "purpose": purpose,
@@ -3565,18 +3583,7 @@ class WarehouseService:
             "business_date": business_date.isoformat(),
             "source_warehouse": source_warehouse,
             "target_warehouse": target_warehouse,
-            "items": [
-                {
-                    "item_code": row["item_code"],
-                    "qty": str(row["qty"]),
-                    "uom": row["uom"],
-                    "batch_no": row.get("batch_no"),
-                    "serial_no": row.get("serial_no"),
-                    "source_warehouse": row.get("source_warehouse"),
-                    "target_warehouse": row.get("target_warehouse"),
-                }
-                for row in item_rows
-            ],
+            "items": [replay_item(row) for row in item_rows],
         }
         if allocation_mode is not None:
             payload["allocation_mode"] = allocation_mode
@@ -4202,6 +4209,9 @@ class WarehouseService:
                 raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", f"items[{idx}].qty 非法") from exc
             if qty <= 0:
                 raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", f"items[{idx}].qty 必须大于 0")
+            purchase_requirement_id = item.purchase_requirement_id
+            if purchase_requirement_id is not None and purchase_requirement_id <= 0:
+                raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PAYLOAD", f"items[{idx}].purchase_requirement_id 必须大于 0")
 
             normalized_rows.append(
                 {
@@ -4212,6 +4222,7 @@ class WarehouseService:
                     "serial_no": self._text(item.serial_no),
                     "source_warehouse": source_warehouse,
                     "target_warehouse": target_warehouse,
+                    "purchase_requirement_id": purchase_requirement_id,
                 }
             )
 

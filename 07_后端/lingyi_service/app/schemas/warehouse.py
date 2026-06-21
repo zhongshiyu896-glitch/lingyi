@@ -492,6 +492,7 @@ class WarehouseStockEntryDraftItemCreateRequest(BaseModel):
     serial_no: str | None = None
     source_warehouse: str | None = None
     target_warehouse: str | None = None
+    purchase_requirement_id: int | None = None
 
 
 class WarehouseFinishedGoodsInboundCandidateItem(BaseModel):
@@ -596,6 +597,7 @@ class WarehouseStockEntryDraftItemData(BaseModel):
     serial_no: str | None = None
     source_warehouse: str | None = None
     target_warehouse: str | None = None
+    purchase_requirement_id: int | None = None
 
 
 class WarehouseStockEntryOutboxStatusData(BaseModel):
