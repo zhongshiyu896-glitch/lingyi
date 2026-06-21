@@ -3838,8 +3838,8 @@ def get_finished_goods_report(
     parsed_from_date = _parse_optional_date(from_date, "from_date")
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
-    try:
-        data = _service(request).get_finished_goods_report(
+    if _is_local_sales_inventory_read_enabled():
+        data = _write_service(session).get_local_finished_goods_report(
             no=_scope_text(no),
             style=_scope_text(style),
             warehouse=_scope_text(warehouse),
@@ -3849,17 +3849,29 @@ def get_finished_goods_report(
             page=page,
             page_size=page_size,
         )
-    except ERPNextAdapterException as exc:
-        if _local_read_fallback_enabled(exc):
-            return _ok({"items": [], "total": 0, "page": page, "page_size": page_size, "dropped_count": 0})
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="SalesOrder",
-        )
+    else:
+        try:
+            data = _service(request).get_finished_goods_report(
+                no=_scope_text(no),
+                style=_scope_text(style),
+                warehouse=_scope_text(warehouse),
+                from_date=parsed_from_date,
+                to_date=parsed_to_date,
+                keyword=_scope_text(keyword),
+                page=page,
+                page_size=page_size,
+            )
+        except ERPNextAdapterException as exc:
+            if _local_read_fallback_enabled(exc):
+                return _ok({"items": [], "total": 0, "page": page, "page_size": page_size, "dropped_count": 0})
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="SalesOrder",
+            )
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     data.items = filtered
     data.total = len(filtered)

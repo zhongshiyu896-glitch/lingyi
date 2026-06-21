@@ -1843,6 +1843,111 @@ class SalesInventoryService:
         rows.sort(key=lambda row: (row.sales_order, row.item_code, row.warehouse or ""))
         return SalesOrderFulfillmentData(company=company, items=rows)
 
+    def get_local_finished_goods_report(
+        self,
+        *,
+        no: str | None,
+        style: str | None,
+        warehouse: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+    ) -> FinishedGoodsReportData:
+        normalized_no = self._text(no)
+        normalized_style = self._text(style)
+        normalized_warehouse = self._text(warehouse)
+        normalized_keyword = self._text(keyword)
+        local_orders = self.list_local_sales_orders(
+            order_no=normalized_no,
+            keyword=None,
+            company=None,
+            customer=None,
+            item_code=None,
+            item_name=normalized_style,
+            from_date=from_date,
+            to_date=to_date,
+        )
+        report_rows: list[FinishedGoodsReportItem] = []
+        for order in local_orders:
+            detail = self.get_local_sales_order(name=order.name)
+            if detail is None:
+                continue
+            for line in detail.items:
+                line_item_code = self._text(line.item_code)
+                if line_item_code is None:
+                    continue
+                line_item_name = self._text(line.item_name)
+                line_warehouse = self._text(line.warehouse)
+                if normalized_style:
+                    in_style = self._contains_like(line_item_code, normalized_style) or self._contains_like(
+                        line_item_name, normalized_style
+                    )
+                    if not in_style:
+                        continue
+                if normalized_warehouse and line_warehouse != normalized_warehouse:
+                    continue
+                if normalized_keyword:
+                    keyword_text = " ".join(
+                        (
+                            detail.name,
+                            line_item_code,
+                            line_item_name or "",
+                            self._text(detail.customer) or "",
+                        )
+                    )
+                    if not self._contains_like(keyword_text, normalized_keyword):
+                        continue
+                delivered_qty = self._local_delivery_invoice_delivered_qty(
+                    company=detail.company,
+                    sales_order=detail.name,
+                    item_code=line_item_code,
+                    warehouse=line_warehouse,
+                )
+                line_delivered_qty = self._decimal_or_zero(line.delivered_qty)
+                real_qty = delivered_qty if delivered_qty >= line_delivered_qty else line_delivered_qty
+                if real_qty == Decimal("0"):
+                    real_qty = self._decimal_or_zero(line.qty)
+                report_rows.append(
+                    FinishedGoodsReportItem(
+                        image_url=None,
+                        processing_no=self._text(line.name),
+                        production_order=None,
+                        order_no=detail.name,
+                        item_code=line_item_code,
+                        item_name=line_item_name,
+                        warehouse=line_warehouse,
+                        season=None,
+                        style_type=None,
+                        qty=real_qty,
+                        receipt_date=detail.transaction_date,
+                        company=detail.company,
+                        customer=detail.customer,
+                        week_day_0=None,
+                        week_day_1=None,
+                        week_day_2=None,
+                        week_day_3=None,
+                        week_day_4=None,
+                        week_day_5=None,
+                        week_day_6=None,
+                        message_title=None,
+                        sent_at=None,
+                        message_status=detail.status,
+                        sender=None,
+                    )
+                )
+        report_rows.sort(key=lambda row: (row.order_no, row.item_code, row.processing_no or ""))
+        total = len(report_rows)
+        start = max(page - 1, 0) * page_size
+        return FinishedGoodsReportData(
+            items=report_rows[start : start + page_size],
+            total=total,
+            page=page,
+            page_size=page_size,
+            dropped_count=0,
+        )
+
     def _local_delivery_invoice_delivered_qty(
         self,
         *,

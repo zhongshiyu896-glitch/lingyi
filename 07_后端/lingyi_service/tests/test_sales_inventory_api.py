@@ -524,6 +524,26 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         self.assertEqual(response.json()["data"]["total"], 0)
         mocked_list.assert_not_called()
 
+    def test_finished_goods_report_fastapi_reads_local_orders_without_erpnext(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        self._seed_sales_order(sales_order_no="SO-FG-LOCAL-001", company="COMP-A", customer="CUST-A", item_code="FG-001")
+
+        with patch(
+            "app.routers.sales_inventory.ERPNextSalesInventoryAdapter",
+            side_effect=AssertionError("ERPNext must not be used in fastapi finished goods report"),
+        ):
+            response = self.client.get(
+                "/api/sales-inventory/finished-goods-report?style=FG-001",
+                headers=self._headers(role="System Manager"),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["items"][0]["order_no"], "SO-FG-LOCAL-001")
+        self.assertEqual(payload["items"][0]["item_code"], "FG-001")
+        self.assertEqual(Decimal(str(payload["items"][0]["qty"])), Decimal("1.0"))
+
     def test_customers_empty_customer_permissions_filter_all(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
         with patch.object(
