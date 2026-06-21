@@ -48,6 +48,7 @@ ENTITY_PATH_TO_TYPE = {
 }
 ENTITY_TYPES = set(ENTITY_PATH_TO_TYPE.values())
 WAREHOUSE_LOCATION_KINDS = {"warehouse", "area"}
+MATERIAL_SUPPLIER_BOUND_KINDS = {"fabric", "accessory"}
 
 
 @dataclass(frozen=True)
@@ -143,6 +144,11 @@ class MasterDataService:
                 payload=next_payload,
                 current_record_id=None,
             )
+        if normalized_entity_type == "material":
+            next_payload = self._normalize_material_payload(
+                company=company,
+                payload=next_payload,
+            )
         request_hash = self._request_hash(
             operation="create",
             entity_type=normalized_entity_type,
@@ -220,6 +226,11 @@ class MasterDataService:
                 code=next_code,
                 payload=next_payload,
                 current_record_id=int(row.id),
+            )
+        if normalized_entity_type == "material":
+            next_payload = self._normalize_material_payload(
+                company=company,
+                payload=next_payload,
             )
         request_hash = self._request_hash(
             operation="update",
@@ -416,6 +427,48 @@ class MasterDataService:
             normalized.pop("manager", None)
         return self._clean_payload(normalized)
 
+    def _normalize_material_payload(
+        self,
+        *,
+        company: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        normalized = dict(payload)
+        material_kind = (
+            self._optional_text(normalized.get("material_kind"))
+            or self._optional_text(normalized.get("materialKind"))
+            or ""
+        )
+        if material_kind not in MATERIAL_SUPPLIER_BOUND_KINDS:
+            return self._clean_payload(normalized)
+
+        has_supplier_key = any(
+            key in normalized
+            for key in (
+                "supplier_name",
+                "supplierName",
+                "supplier_code",
+                "supplierCode",
+            )
+        )
+        if not has_supplier_key:
+            return self._clean_payload(normalized)
+
+        supplier_name = self._optional_text(normalized.get("supplier_name")) or self._optional_text(normalized.get("supplierName"))
+        supplier_code = self._optional_text(normalized.get("supplier_code")) or self._optional_text(normalized.get("supplierCode"))
+        supplier = self._get_active_supplier_by_code_or_name(company=company, value=supplier_code) if supplier_code else None
+        if supplier is None and supplier_name:
+            supplier = self._get_active_supplier_by_code_or_name(company=company, value=supplier_name)
+        if supplier is None:
+            supplier_value = supplier_code or supplier_name or "空"
+            raise BusinessException(code=MASTER_DATA_CONFLICT, message=f"供应商主数据未启用或不存在：{supplier_value}")
+
+        normalized["supplier_name"] = str(supplier.name)
+        normalized["supplier_code"] = str(supplier.code)
+        normalized.pop("supplierName", None)
+        normalized.pop("supplierCode", None)
+        return self._clean_payload(normalized)
+
     def _ensure_no_warehouse_parent_cycle(
         self,
         *,
@@ -516,6 +569,21 @@ class MasterDataService:
                 LyMasterDataRecord.entity_type == entity_type,
                 LyMasterDataRecord.company == company,
                 LyMasterDataRecord.code == code,
+            )
+            .first()
+        )
+
+    def _get_active_supplier_by_code_or_name(self, *, company: str, value: str | None) -> LyMasterDataRecord | None:
+        normalized = self._optional_text(value)
+        if normalized is None:
+            return None
+        return (
+            self.session.query(LyMasterDataRecord)
+            .filter(
+                LyMasterDataRecord.entity_type == "supplier",
+                LyMasterDataRecord.company == company,
+                LyMasterDataRecord.status == "active",
+                (LyMasterDataRecord.code == normalized) | (LyMasterDataRecord.name == normalized),
             )
             .first()
         )
