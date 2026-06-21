@@ -316,6 +316,16 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
             )
             self.assertEqual([Decimal(str(row.actual_qty)) for row in ledger.items], [Decimal("10.000000"), Decimal("-4.000000")])
             self.assertEqual(Decimal(str(ledger.items[-1].qty_after_transaction)), Decimal("6.000000"))
+            self.assertEqual([row.voucher_type for row in ledger.items], ["Stock Entry Draft/Material Receipt", "Stock Entry Draft/Material Issue"])
+            summary = WarehouseService(session=session).get_local_stock_summary(
+                company="COMP-A",
+                warehouse="WH-FG",
+                item_code="DEMO-TEE",
+            )
+            self.assertEqual(len(summary.items), 1)
+            self.assertEqual(Decimal(str(summary.items[0].actual_qty)), Decimal("6.000000"))
+            self.assertEqual(Decimal(str(summary.items[0].actual_qty)), Decimal(str(ledger.items[-1].qty_after_transaction)))
+            self.assertEqual(Decimal(str(summary.items[0].actual_qty)), sum(Decimal(str(row.actual_qty)) for row in ledger.items))
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("sales_inventory:write", audit_actions)
 

@@ -1039,9 +1039,18 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual([Decimal(str(row["actual_qty"])) for row in ledger_rows], [Decimal("84.000000"), Decimal("-84.000000")])
         self.assertEqual([Decimal(str(row["qty_after_transaction"])) for row in ledger_rows], [Decimal("84.000000"), Decimal("0.000000")])
         self.assertEqual(ledger_rows[-1]["voucher_type"], "Stock Entry Draft/Material Issue")
+        self.assertEqual(ledger_rows[-1]["voucher_no"], f"DRAFT-{material_issue.json()['data']['draft_id']}")
         summary_rows = summary_after_issue.json()["data"]["items"]
         self.assertEqual(len(summary_rows), 1)
         self.assertEqual(Decimal(str(summary_rows[0]["actual_qty"])), Decimal("0.000000"))
+        self.assertEqual(
+            Decimal(str(summary_rows[0]["actual_qty"])),
+            sum(Decimal(str(row["actual_qty"])) for row in ledger_rows),
+        )
+        self.assertEqual(
+            Decimal(str(summary_rows[0]["actual_qty"])),
+            Decimal(str(ledger_rows[-1]["qty_after_transaction"])),
+        )
         self.assertEqual(Decimal(str(summary_rows[0]["projected_qty"])), Decimal("0.000000"))
 
         list_after_material_check = self.client.get(

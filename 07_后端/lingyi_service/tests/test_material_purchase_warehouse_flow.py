@@ -634,11 +634,21 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(ledger_items[0]["warehouse"], self.WAREHOUSE)
         self.assertEqual(Decimal(str(ledger_items[0]["actual_qty"])), Decimal("20.0"))
         self.assertEqual(Decimal(str(ledger_items[0]["qty_after_transaction"])), Decimal("20.0"))
+        self.assertEqual(ledger_items[0]["voucher_type"], "Stock Entry Draft/Material Receipt")
+        self.assertEqual(ledger_items[0]["voucher_no"], f"DRAFT-{draft_id}")
         self.assertEqual(ledger_items[0]["posting_date"], self.BUSINESS_DATE)
         self.assertEqual(stock_summary.status_code, 200, stock_summary.text)
         summary_items = stock_summary.json()["data"]["items"]
         self.assertEqual(len(summary_items), 1)
         self.assertEqual(Decimal(str(summary_items[0]["actual_qty"])), Decimal("20.0"))
+        self.assertEqual(
+            Decimal(str(summary_items[0]["actual_qty"])),
+            sum(Decimal(str(row["actual_qty"])) for row in ledger_items),
+        )
+        self.assertEqual(
+            Decimal(str(summary_items[0]["actual_qty"])),
+            Decimal(str(ledger_items[-1]["qty_after_transaction"])),
+        )
         self.assertEqual(return_report.status_code, 200, return_report.text)
         report_items = return_report.json()["data"]["items"]
         self.assertEqual(report_items, [])

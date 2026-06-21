@@ -116,6 +116,60 @@ class LyWarehouseStockEntryOutboxEvent(Base):
     processed_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class LyWarehouseStockLedgerEntry(Base):
+    """Immutable warehouse movement facts used to rebuild stock balances."""
+
+    __tablename__ = "ly_warehouse_stock_ledger_entry"
+    __table_args__ = (
+        Index(
+            "uk_ly_whse_stock_ledger_source",
+            "company",
+            "source_type",
+            "source_id",
+            "source_line_id",
+            "sequence",
+            unique=True,
+        ),
+        Index(
+            "idx_ly_whse_stock_ledger_company_wh_item",
+            "company",
+            "warehouse",
+            "item_code",
+            "status",
+            "posting_date",
+            "sort_at",
+            "id",
+        ),
+        Index("idx_ly_whse_stock_ledger_voucher", "voucher_type", "voucher_no"),
+        CheckConstraint(
+            "status IN ('active','voided')",
+            name="ck_ly_whse_stock_ledger_status",
+        ),
+        {"schema": "ly_schema", "comment": "仓库统一收发存流水事实表"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    warehouse = Column(String(140), nullable=False)
+    item_code = Column(String(140), nullable=False)
+    uom = Column(String(32), nullable=True)
+    posting_date = Column(Date, nullable=False)
+    sort_at = Column(DateTime(timezone=True), nullable=False)
+    source_type = Column(String(64), nullable=False)
+    source_id = Column(String(140), nullable=False)
+    source_line_id = Column(String(140), nullable=False, server_default="")
+    sequence = Column(Integer, nullable=False, server_default="0")
+    voucher_type = Column(String(140), nullable=False)
+    voucher_no = Column(String(140), nullable=False)
+    actual_qty = Column(Numeric(18, 6), nullable=False)
+    valuation_rate = Column(Numeric(18, 6), nullable=True)
+    batch_no = Column(String(140), nullable=True)
+    serial_no = Column(String(500), nullable=True)
+    status = Column(String(32), nullable=False, server_default="active")
+    projected_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    voided_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class LyWarehouseInventoryCount(Base):
     """Warehouse inventory-count header."""
 
