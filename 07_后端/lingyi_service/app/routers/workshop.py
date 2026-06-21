@@ -263,6 +263,8 @@ def _record_failure_safely(
 
 
 def _service(session: Session, request: Request) -> WorkshopService:
+    if get_permission_source() == "fastapi":
+        return WorkshopService(session=session, erp_adapter=None)
     return WorkshopService(session=session, erp_adapter=ERPNextJobCardAdapter(request_obj=request))
 
 

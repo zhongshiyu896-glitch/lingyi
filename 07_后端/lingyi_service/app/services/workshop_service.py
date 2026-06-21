@@ -177,10 +177,15 @@ class WorkshopService:
         AUTH_FORBIDDEN,
     }
 
-    def __init__(self, session: Session, erp_adapter: ERPNextJobCardAdapter):
+    def __init__(self, session: Session, erp_adapter: ERPNextJobCardAdapter | None):
         self.session = session
         self.erp_adapter = erp_adapter
         self.outbox_service = WorkshopOutboxService(session=session)
+
+    def _require_erp_adapter(self) -> ERPNextJobCardAdapter:
+        if self.erp_adapter is None:
+            raise BusinessException(code=ERPNEXT_SERVICE_UNAVAILABLE, message="ERPNext 服务暂时不可用")
+        return self.erp_adapter
 
     def resolve_job_card_resource(
         self,
@@ -1593,8 +1598,9 @@ class WorkshopService:
         raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="operation_type 非法")
 
     def _get_job_card_or_raise(self, *, job_card: str) -> JobCardInfo:
+        adapter = self._require_erp_adapter()
         try:
-            data = self.erp_adapter.get_job_card(job_card=job_card)
+            data = adapter.get_job_card(job_card=job_card)
         except ERPNextServiceUnavailableError as exc:
             raise BusinessException(code=ERPNEXT_SERVICE_UNAVAILABLE, message=exc.message) from exc
         if not data:
@@ -1664,8 +1670,9 @@ class WorkshopService:
     def _get_work_order_safe(self, work_order: str | None) -> WorkOrderInfo | None:
         if not work_order:
             return None
+        adapter = self._require_erp_adapter()
         try:
-            return self.erp_adapter.get_work_order(work_order=work_order)
+            return adapter.get_work_order(work_order=work_order)
         except ERPNextServiceUnavailableError as exc:
             raise BusinessException(code=ERPNEXT_SERVICE_UNAVAILABLE, message=exc.message) from exc
 
@@ -1697,8 +1704,9 @@ class WorkshopService:
             if not normalized_employee:
                 raise BusinessException(code=WORKSHOP_EMPLOYEE_NOT_FOUND, message="员工不存在或无效")
             return EmployeeInfo(name=normalized_employee, status="Active", disabled=False)
+        adapter = self._require_erp_adapter()
         try:
-            data = self.erp_adapter.get_employee(employee=employee)
+            data = adapter.get_employee(employee=employee)
         except ERPNextServiceUnavailableError as exc:
             raise BusinessException(code=ERPNEXT_SERVICE_UNAVAILABLE, message=exc.message) from exc
         if not data or not data.is_active:
@@ -1706,8 +1714,9 @@ class WorkshopService:
         return data
 
     def _get_item_or_raise(self, *, item_code: str) -> ItemInfo:
+        adapter = self._require_erp_adapter()
         try:
-            item_info = self.erp_adapter.get_item(item_code=item_code)
+            item_info = adapter.get_item(item_code=item_code)
         except ERPNextServiceUnavailableError as exc:
             raise BusinessException(code=ERPNEXT_SERVICE_UNAVAILABLE, message=exc.message) from exc
         if not item_info or not item_info.is_active:
@@ -1715,8 +1724,9 @@ class WorkshopService:
         return item_info
 
     def _require_company_exists(self, company: str) -> None:
+        adapter = self._require_erp_adapter()
         try:
-            company_info = self.erp_adapter.get_company(company=company)
+            company_info = adapter.get_company(company=company)
         except ERPNextServiceUnavailableError as exc:
             raise BusinessException(code=ERPNEXT_SERVICE_UNAVAILABLE, message=exc.message) from exc
         if not company_info or not company_info.is_active:
@@ -1729,7 +1739,7 @@ class WorkshopService:
             raise BusinessException(code=WORKSHOP_WAGE_RATE_COMPANY_REQUIRED, message="item_code 命中多个 company，请指定 company")
 
         try:
-            active_companies: list[CompanyInfo] = self.erp_adapter.list_active_companies()
+            active_companies: list[CompanyInfo] = self._require_erp_adapter().list_active_companies()
         except ERPNextServiceUnavailableError as exc:
             raise BusinessException(code=ERPNEXT_SERVICE_UNAVAILABLE, message=exc.message) from exc
         if len(active_companies) == 1:
@@ -2190,7 +2200,7 @@ class WorkshopService:
             return candidates
 
         try:
-            item_info = self.erp_adapter.get_item(item_code=item_code)
+            item_info = self._require_erp_adapter().get_item(item_code=item_code)
         except ERPNextServiceUnavailableError as exc:
             log_safe_error(
                 logger,

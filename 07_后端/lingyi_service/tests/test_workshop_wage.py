@@ -358,6 +358,54 @@ class WorkshopWageApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(ticket_response.json()["data"]["unit_wage"])), Decimal("2.250000"))
         self.assertEqual(Decimal(str(ticket_response.json()["data"]["wage_amount"])), Decimal("22.500000"))
 
+    def test_fastapi_native_local_ticket_does_not_construct_erpnext_adapter(self) -> None:
+        create_payload = self._wage_payload(
+            item_code="ITEM-FASTAPI",
+            company="LY-LOCAL-TEST",
+            wage_rate="1.75",
+            effective_from="2026-01-01",
+            effective_to=None,
+            carrier_suffix="FASTAPI-ITEM-LY-LOCAL-TEST-20260101",
+        )
+        wage_headers = self._headers_for_wage_payload(create_payload)
+        wage_headers["X-LY-Dev-Roles"] = "System Manager"
+        ticket_payload = self._ticket_payload(operation="register", ticket_key="FASTAPI-WAGE-RG-001", qty="8")
+        ticket_payload["item_code"] = "ITEM-FASTAPI"
+        ticket_headers = self._headers_for_ticket_payload(ticket_payload)
+        ticket_headers["X-LY-Dev-Roles"] = "System Manager"
+        read_headers = self._headers(role="System Manager")
+
+        with patch.dict(os.environ, {"LINGYI_PERMISSION_SOURCE": "fastapi"}), patch(
+            "app.routers.workshop.ERPNextJobCardAdapter",
+            side_effect=AssertionError("FastAPI workshop API must not construct ERPNextJobCardAdapter"),
+        ):
+            create_response = self.client.post(
+                "/api/workshop/wage-rates",
+                headers=wage_headers,
+                json=create_payload,
+            )
+            self.assertEqual(create_response.status_code, 200)
+
+            ticket_response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=ticket_headers,
+                json=ticket_payload,
+            )
+            self.assertEqual(ticket_response.status_code, 200)
+            self.assertEqual(Decimal(str(ticket_response.json()["data"]["unit_wage"])), Decimal("1.750000"))
+            self.assertEqual(Decimal(str(ticket_response.json()["data"]["wage_amount"])), Decimal("14.000000"))
+
+            tickets_response = self.client.get("/api/workshop/tickets?employee=EMP-001", headers=read_headers)
+            self.assertEqual(tickets_response.status_code, 200)
+            self.assertEqual(tickets_response.json()["data"]["total"], 1)
+
+            daily_response = self.client.get(
+                "/api/workshop/daily-wages?employee=EMP-001&from_date=2026-04-12&to_date=2026-04-12",
+                headers=read_headers,
+            )
+            self.assertEqual(daily_response.status_code, 200)
+            self.assertEqual(daily_response.json()["data"]["items"][0]["wage_amount"], 14.0)
+
     def test_daily_wage_formula_and_snapshot_not_changed(self) -> None:
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
             ERPNextJobCardAdapter,
