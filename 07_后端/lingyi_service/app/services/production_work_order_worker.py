@@ -41,7 +41,7 @@ class ProductionWorkOrderWorker:
         self,
         *,
         session: Session,
-        adapter: ERPNextProductionAdapter,
+        adapter: ERPNextProductionAdapter | None,
     ):
         self.session = session
         self.adapter = adapter
@@ -154,9 +154,10 @@ class ProductionWorkOrderWorker:
         return [int(row[0]) for row in rows]
 
     def _resolve_or_create_work_order(self, *, claim: ProductionOutboxClaim) -> str:
+        adapter = self._require_adapter()
         plan = self._must_get_plan(plan_id=claim.plan_id)
 
-        existing = self.adapter.find_work_order_by_plan(plan_id=plan.id, plan_no=plan.plan_no)
+        existing = adapter.find_work_order_by_plan(plan_id=plan.id, plan_no=plan.plan_no)
         if existing is not None:
             return self._ensure_submitted(existing)
 
@@ -164,9 +165,9 @@ class ProductionWorkOrderWorker:
         payload.setdefault("custom_ly_plan_id", str(plan.id))
         payload.setdefault("custom_ly_plan_no", str(plan.plan_no))
 
-        created_name = self.adapter.create_work_order(payload_json=payload)
-        self.adapter.submit_work_order(work_order=created_name)
-        check = self.adapter.get_work_order(work_order=created_name)
+        created_name = adapter.create_work_order(payload_json=payload)
+        adapter.submit_work_order(work_order=created_name)
+        check = adapter.get_work_order(work_order=created_name)
         if check is None:
             raise BusinessException(code=PRODUCTION_WORK_ORDER_SYNC_FAILED, message="ERPNext Work Order 提交后查询失败")
         if int(check.docstatus) != 1:
@@ -174,16 +175,22 @@ class ProductionWorkOrderWorker:
         return check.name
 
     def _ensure_submitted(self, existing: ERPNextWorkOrder) -> str:
+        adapter = self._require_adapter()
         docstatus = int(existing.docstatus)
         if docstatus == 1:
             return existing.name
         if docstatus == 0:
-            self.adapter.submit_work_order(work_order=existing.name)
-            refreshed = self.adapter.get_work_order(work_order=existing.name)
+            adapter.submit_work_order(work_order=existing.name)
+            refreshed = adapter.get_work_order(work_order=existing.name)
             if refreshed is None or int(refreshed.docstatus) != 1:
                 raise BusinessException(code=PRODUCTION_WORK_ORDER_SYNC_FAILED, message="ERPNext Work Order draft 提交失败")
             return refreshed.name
         raise BusinessException(code=PRODUCTION_WORK_ORDER_SYNC_FAILED, message="ERPNext Work Order 状态不允许同步成功")
+
+    def _require_adapter(self) -> ERPNextProductionAdapter:
+        if self.adapter is None:
+            raise BusinessException(code=PRODUCTION_WORK_ORDER_SYNC_FAILED, message="FastAPI 模式不执行 ERPNext Work Order 同步")
+        return self.adapter
 
     def _persist_success(self, *, claim: ProductionOutboxClaim, work_order: str) -> None:
         self.outbox_service.mark_succeeded(outbox_id=claim.outbox_id, work_order=work_order)

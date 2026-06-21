@@ -38,6 +38,10 @@ def workshop_enable_forbidden_diagnostics() -> bool:
     return _env_flag("WORKSHOP_ENABLE_FORBIDDEN_DIAGNOSTICS", default=False)
 
 
+def _fastapi_permission_source_enabled() -> bool:
+    return os.getenv("LINGYI_PERMISSION_SOURCE", "").strip().lower() == "fastapi"
+
+
 def workshop_enable_worker_dry_run() -> bool:
     """Whether internal worker dry-run is enabled for current environment.
 
@@ -52,6 +56,8 @@ def workshop_enable_worker_dry_run() -> bool:
 
 def production_enable_work_order_worker_sync() -> bool:
     """Whether production Work Order worker may execute non-dry-run ERP sync."""
+    if _fastapi_permission_source_enabled():
+        return False
     app_env = os.getenv("APP_ENV", "development").strip().lower()
     if app_env == "production":
         return _env_flag("PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC", default=False)
@@ -60,6 +66,8 @@ def production_enable_work_order_worker_sync() -> bool:
 
 def warehouse_enable_stock_entry_worker_sync() -> bool:
     """Whether warehouse Stock Entry worker may execute non-dry-run ERP sync."""
+    if _fastapi_permission_source_enabled():
+        return False
     app_env = os.getenv("APP_ENV", "development").strip().lower()
     if app_env == "production":
         return _env_flag("WAREHOUSE_ENABLE_STOCK_ENTRY_WORKER_SYNC", default=False)
@@ -68,6 +76,8 @@ def warehouse_enable_stock_entry_worker_sync() -> bool:
 
 def workshop_enable_job_card_worker_sync() -> bool:
     """Whether workshop Job Card worker may execute non-dry-run ERP sync."""
+    if _fastapi_permission_source_enabled():
+        return False
     app_env = os.getenv("APP_ENV", "development").strip().lower()
     if app_env == "production":
         return _env_flag("WORKSHOP_ENABLE_JOB_CARD_WORKER_SYNC", default=False)
@@ -76,6 +86,8 @@ def workshop_enable_job_card_worker_sync() -> bool:
 
 def factory_statement_enable_payable_worker_sync() -> bool:
     """Whether factory statement payable worker may execute non-dry-run ERP sync."""
+    if _fastapi_permission_source_enabled():
+        return False
     app_env = os.getenv("APP_ENV", "development").strip().lower()
     if app_env == "production":
         return _env_flag("FACTORY_STATEMENT_ENABLE_PAYABLE_WORKER_SYNC", default=False)
@@ -84,6 +96,8 @@ def factory_statement_enable_payable_worker_sync() -> bool:
 
 def quality_enable_outbox_worker_sync() -> bool:
     """Whether quality outbox worker may execute non-dry-run ERP sync."""
+    if _fastapi_permission_source_enabled():
+        return False
     app_env = os.getenv("APP_ENV", "development").strip().lower()
     if app_env == "production":
         return _env_flag("QUALITY_ENABLE_OUTBOX_WORKER_SYNC", default=False)

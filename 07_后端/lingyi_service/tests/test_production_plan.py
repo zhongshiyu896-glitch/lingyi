@@ -172,6 +172,32 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["code"], "0")
 
+    def test_fastapi_work_order_worker_dry_run_does_not_construct_erpnext_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        with patch("app.routers.production.ERPNextProductionAdapter", side_effect=AssertionError("erpnext adapter")):
+            response = self.client.post(
+                "/api/production/internal/work-order-sync/run-once",
+                headers=self._headers(role="System Manager"),
+                json={"batch_size": 1, "dry_run": True},
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["code"], "0")
+        self.assertTrue(response.json()["data"]["dry_run"])
+
+    def test_fastapi_work_order_worker_sync_is_disabled_even_when_env_enabled(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC"] = "true"
+        with patch("app.routers.production.ERPNextProductionAdapter", side_effect=AssertionError("erpnext adapter")):
+            response = self.client.post(
+                "/api/production/internal/work-order-sync/run-once",
+                headers=self._headers(role="System Manager"),
+                json={"batch_size": 1, "dry_run": False},
+            )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "INTERNAL_API_DISABLED")
+
     @staticmethod
     def _request_id(scenario_tag: str) -> str:
         return f"req-{scenario_tag}"

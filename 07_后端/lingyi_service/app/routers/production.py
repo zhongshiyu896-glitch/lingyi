@@ -285,6 +285,8 @@ def _service(session: Session, request: Request, *, use_service_account: bool = 
 
 
 def _worker(session: Session, request: Request) -> ProductionWorkOrderWorker:
+    if get_permission_source() == "fastapi":
+        return ProductionWorkOrderWorker(session=session, adapter=None)
     return ProductionWorkOrderWorker(
         session=session,
         adapter=ERPNextProductionAdapter(request_obj=request, use_service_account=True),
