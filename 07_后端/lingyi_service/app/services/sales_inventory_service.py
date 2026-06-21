@@ -938,7 +938,7 @@ class SalesInventoryService:
             native_query = session.query(LySalesOrder)
             if company:
                 native_query = native_query.filter(LySalesOrder.company == company)
-            native_rows = native_query.order_by(LySalesOrder.id.desc()).all()
+            native_rows = native_query.order_by(LySalesOrder.created_at.desc(), LySalesOrder.id.desc()).all()
         except Exception as exc:
             if self._is_missing_native_sales_order_table(exc):
                 native_rows = []

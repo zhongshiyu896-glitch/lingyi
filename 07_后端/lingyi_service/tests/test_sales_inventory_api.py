@@ -153,6 +153,7 @@ class SalesInventoryApiBase(unittest.TestCase):
         company: str = "COMP-A",
         customer: str = "CUST-A",
         item_code: str = "ITEM-A",
+        created_at: datetime | None = None,
     ) -> None:
         with self.SessionLocal() as session:
             order = LySalesOrder(
@@ -170,6 +171,7 @@ class SalesInventoryApiBase(unittest.TestCase):
                 request_hash=f"{sales_order_no}:hash",
                 payload={},
                 created_by="seed",
+                created_at=created_at or datetime(2026, 4, 1, tzinfo=timezone.utc),
             )
             session.add(order)
             session.flush()
@@ -512,6 +514,31 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         payload = response.json()["data"]
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["items"][0]["name"], "SO-FASTAPI-A")
+        mocked_list.assert_not_called()
+
+    def test_sales_orders_native_lists_newest_created_first(self) -> None:
+        self._seed_sales_order(
+            sales_order_no="SO-FASTAPI-NEWER-CREATED",
+            created_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+        )
+        self._seed_sales_order(
+            sales_order_no="SO-FASTAPI-OLDER-CREATED-LARGER-ID",
+            created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        )
+
+        with patch.object(ERPNextSalesInventoryAdapter, "list_sales_orders") as mocked_list:
+            response = self.client.get(
+                "/api/sales-inventory/sales-orders?company=COMP-A",
+                headers=self._headers(role="System Manager"),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 2)
+        self.assertEqual(
+            [item["name"] for item in payload["items"]],
+            ["SO-FASTAPI-NEWER-CREATED", "SO-FASTAPI-OLDER-CREATED-LARGER-ID"],
+        )
         mocked_list.assert_not_called()
 
     def test_sales_orders_fastapi_empty_local_does_not_call_adapter(self) -> None:
