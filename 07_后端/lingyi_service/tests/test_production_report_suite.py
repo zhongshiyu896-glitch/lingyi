@@ -352,6 +352,8 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertIn("发货开票、回款已合并为报表收入", basis_text)
         self.assertIn("工资发放、付款审批与审批模板/角色矩阵接 FastAPI 执行数据", basis_text)
         self.assertIn("财务总账按当前可追溯来源归集为 financialLedger* 字段", basis_text)
+        self.assertIn("progress/delayDays", pending_text)
+        self.assertIn("待 B 期生产跟进", pending_text)
         self.assertNotIn("财务总账归集仍按 B 期补齐", basis_text)
         self.assertNotIn("真实毛利闭环已完成", basis_text)
         self.assertNotIn("已接本地 FastAPI 闭环", basis_text)
@@ -778,6 +780,9 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["gapQty"])), Decimal("-26"))
         self.assertEqual(Decimal(str(row["materialCost"])), Decimal("880"))
         self.assertEqual(row["status"], "缺口")
+        pending_text = "；".join(payload["pending_b_phase_fields"])
+        self.assertIn("progress/delayDays", pending_text)
+        self.assertIn("待 B 期生产跟进", pending_text)
 
     def test_salesperson_performance_report_uses_salesperson_fields(self) -> None:
         response = self.client.get(
@@ -804,6 +809,9 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["pendingAmount"])), Decimal("0"))
         self.assertEqual(row["performanceStatus"], "attention")
         self.assertEqual(row["status"], "关注")
+        pending_text = "；".join(payload["pending_b_phase_fields"])
+        self.assertIn("settledAmount/pendingAmount", pending_text)
+        self.assertIn("保留 0 占位", pending_text)
 
     def test_salesperson_performance_endpoint_uses_job_card_completion_not_status_guess(self) -> None:
         response = self.client.get(
@@ -884,6 +892,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         pending_text = "；".join(payload["pending_b_phase_fields"])
         self.assertIn("样板单成本归集", basis_text)
         self.assertNotIn("样衣成本与样衣偏差等待", pending_text)
+        self.assertIn("progress/delayDays", pending_text)
         row = payload["items"][0]
         self.assertEqual(Decimal(str(row["sampleCost"])), Decimal("110.000000"))
         self.assertEqual(row["sampleGap"], "大货低于样衣")

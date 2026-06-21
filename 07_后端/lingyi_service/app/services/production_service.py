@@ -3009,7 +3009,7 @@ class ProductionService:
                 "B期报表继续披露经营测算/快照：已建成品入库、发货开票、回款、工资发放、付款审批与审批模板/角色矩阵接 FastAPI 执行数据",
                 "财务总账按当前可追溯来源归集为 financialLedger* 字段：收入取利润快照实际收入或发货开票，回款取销售回款，成本取利润快照实际成本，采购应付/付款按待采购需求池回溯到订单款式",
             ],
-            pending_b_phase_fields=[],
+            pending_b_phase_fields=self._report_suite_pending_b_phase_fields(query.report_key),
         )
 
     def _empty_report_suite(self, *, query: ProductionReportSuiteQuery) -> ProductionReportSuiteData:
@@ -3025,7 +3025,7 @@ class ProductionService:
             data_basis=[
                 "FastAPI 原生销售订单、生产计划、BOM、物料检查快照、款式利润快照",
             ],
-            pending_b_phase_fields=[],
+            pending_b_phase_fields=self._report_suite_pending_b_phase_fields(query.report_key),
         )
 
     def _build_report_suite_context(self, plans: list[LyProductionPlan]) -> dict[str, Any]:
@@ -3885,6 +3885,26 @@ class ProductionService:
             "productOrderProfitReport": "大货销售预测明细表",
             "productionCostMaterialDetailReport": "业务员业绩分析报表",
         }.get(report_key, "生产报表")
+
+    @staticmethod
+    def _report_suite_pending_b_phase_fields(report_key: str) -> list[str]:
+        fields: list[str] = []
+        if report_key == "productionCostMaterialDetailReport":
+            fields.append(
+                "settledAmount/pendingAmount：当前不按状态折算虚构金额，保留 0 占位；"
+                "待 B 期业务员业绩、工资发放与回款结算闭环后接真实口径"
+            )
+            fields.append("delayDays：当前未接发货交付延期节点，待 B 期交付闭环后接真实延期天数")
+            return fields
+        if report_key == "orderQuantityReport":
+            fields.append("delayDays：当前未接发货交付延期节点，待 B 期交付闭环后接真实延期天数")
+            return fields
+        if report_key in {"productOrderProfitReport", "productOrderSampleCompare", "orderTrackingReport"}:
+            fields.append(
+                "progress/delayDays：当前报表基础行保留 0 占位；"
+                "待 B 期生产跟进、质检放行、成品入库与发货交付节点后接真实进度/延期"
+            )
+        return fields
 
     def _material_unit_price(
         self,
