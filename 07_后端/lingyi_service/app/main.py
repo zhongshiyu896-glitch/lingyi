@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -155,6 +156,9 @@ from app.routers.permission_governance import get_db_session as permission_gover
 from app.routers.permission_governance import router as permission_governance_router
 from app.routers.system_management import get_db_session as system_management_router_session_dep
 from app.routers.system_management import router as system_management_router
+from app.routers.upload import get_db_session as upload_router_session_dep
+from app.routers.upload import router as upload_router
+from app.routers.upload import upload_root_dir
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -215,6 +219,9 @@ app.dependency_overrides[dashboard_router_session_dep] = get_db_session
 app.dependency_overrides[report_router_session_dep] = get_db_session
 app.dependency_overrides[permission_governance_router_session_dep] = get_db_session
 app.dependency_overrides[system_management_router_session_dep] = get_db_session
+app.dependency_overrides[upload_router_session_dep] = get_db_session
+upload_root_dir().mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(upload_root_dir())), name="uploads")
 app.include_router(auth_router)
 if frontend_readiness_enabled():
     app.include_router(frontend_readiness_early_router)
@@ -238,6 +245,7 @@ app.include_router(dashboard_router)
 app.include_router(report_router)
 app.include_router(permission_governance_router)
 app.include_router(system_management_router)
+app.include_router(upload_router)
 if frontend_readiness_enabled():
     app.include_router(frontend_readiness_router)
 
