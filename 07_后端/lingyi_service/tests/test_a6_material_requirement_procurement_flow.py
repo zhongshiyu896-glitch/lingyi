@@ -2916,6 +2916,169 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
 
+    def test_material_check_cross_order_requirements_grouped_po_receipt_marks_both_ready(self) -> None:
+        def create_checked_plan(*, sequence: str) -> tuple[str, str, int]:
+            sales_order_no = f"SO-A6-GROUP-CHECK-{sequence}"
+            order = self.client.post(
+                "/api/sales-inventory/sales-orders/drafts",
+                headers=self._headers(f"req-a6-group-check-{sequence}-order"),
+                json={
+                    "company": self.COMPANY,
+                    "customer": "CUST-A6",
+                    "operation": "create_draft",
+                    "sales_order_no": sales_order_no,
+                    "source_order_ref": sales_order_no,
+                    "idempotency_key": f"idem-so-a6-group-check-{sequence}",
+                    "transaction_date": "2026-06-17",
+                    "delivery_date": "2026-06-30",
+                    "currency": "CNY",
+                    "items": [
+                        {
+                            "style_master_id": self._style_id(),
+                            "item_code": self.STYLE,
+                            "item_name": "A6 Tee",
+                            "color": "白",
+                            "size": "M",
+                            "qty": 10,
+                            "rate": 80,
+                            "uom": "件",
+                        }
+                    ],
+                },
+            )
+            self.assertEqual(order.status_code, 201, order.text)
+            self._submit_sales_order(
+                draft_id=int(order.json()["data"]["id"]),
+                sales_order_no=sales_order_no,
+                suffix=f"group-check-{sequence}",
+            )
+            detail = self.client.get(
+                f"/api/sales-inventory/sales-orders/{sales_order_no}",
+                headers=self._headers(f"req-a6-group-check-{sequence}-detail"),
+            )
+            self.assertEqual(detail.status_code, 200, detail.text)
+            sales_order_item = detail.json()["data"]["items"][0]["name"]
+
+            plan = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(f"req-a6-group-check-{sequence}-plan"),
+                json={
+                    "sales_order": sales_order_no,
+                    "sales_order_item": sales_order_item,
+                    "item_code": self.STYLE,
+                    "bom_id": 601,
+                    "planned_qty": 10,
+                    "planned_start_date": "2026-06-18",
+                    "operation": "create_plan",
+                    "idempotency_key": f"idem-plan-a6-group-check-{sequence}",
+                    "company": self.COMPANY,
+                },
+            )
+            self.assertEqual(plan.status_code, 200, plan.text)
+            plan_id = int(plan.json()["data"]["plan_id"])
+
+            scenario_suffix = {"A": "470", "B": "471"}[sequence]
+            scenario = f"Z003-PROD-PLAN-DETAIL-20260618-{scenario_suffix}"
+            request_id = f"req-{scenario}"
+            material_check = self.client.post(
+                f"/api/production/plans/{plan_id}/material-check",
+                headers={**self._headers(request_id), "X-Request-ID": request_id},
+                json={
+                    "warehouse": self.WAREHOUSE,
+                    "operation": "material_check",
+                    "idempotency_key": f"{scenario}:idem-a6-group-check-material-check",
+                    "scenario_tag": scenario,
+                    "plan_id": plan_id,
+                    "sales_order": sales_order_no,
+                    "sales_order_item": sales_order_item,
+                    "item_code": self.STYLE,
+                    "bom_id": 601,
+                    "request_id": request_id,
+                },
+            )
+            self.assertEqual(material_check.status_code, 200, material_check.text)
+            material_row = material_check.json()["data"]["items"][0]
+            self.assertEqual(material_row["material_item_code"], self.MATERIAL)
+            self.assertEqual(Decimal(str(material_row["required_qty"])), Decimal("21.000000"))
+            self.assertEqual(Decimal(str(material_row["available_qty"])), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(material_row["shortage_qty"])), Decimal("21.000000"))
+            return sales_order_no, sales_order_item, plan_id
+
+        order_a, item_a, plan_a = create_checked_plan(sequence="A")
+        order_b, item_b, plan_b = create_checked_plan(sequence="B")
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword=SO-A6-GROUP-CHECK&page=1&page_size=100",
+            headers=self._headers("req-a6-group-check-requirements"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_rows = requirements.json()["data"]["items"]
+        self.assertEqual(len(requirement_rows), 2)
+        self.assertEqual({row["sales_order"] for row in requirement_rows}, {order_a, order_b})
+        self.assertEqual({row["sales_order_item"] for row in requirement_rows}, {item_a, item_b})
+        self.assertEqual({row["material_item_code"] for row in requirement_rows}, {self.MATERIAL})
+        self.assertEqual({row["status"] for row in requirement_rows}, {"pending"})
+        self.assertEqual(
+            sum(Decimal(str(row["net_required_qty"])) for row in requirement_rows),
+            Decimal("42.000000"),
+        )
+
+        create_po = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-group-check-req-to-po"),
+            json=self._from_requirements_payload(
+                requirement_ids=[int(row["id"]) for row in requirement_rows],
+                idempotency_key="idem-a6-group-check-req-to-po",
+                purchase_no="PO-A6-GROUP-CHECK-001",
+                supplier_name="SUP-A6",
+            ),
+        )
+        self.assertEqual(create_po.status_code, 201, create_po.text)
+        purchase_data = create_po.json()["data"]
+        purchase_order = purchase_data["purchase_order"]
+        purchase_no = purchase_order["purchase_no"]
+        self.assertEqual(len(purchase_order["items"]), 1)
+        self.assertEqual(purchase_order["items"][0]["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(purchase_order["items"][0]["qty"])), Decimal("42.000000"))
+        self.assertEqual({row["status"] for row in purchase_data["requirements"]}, {"purchased"})
+        self.assertEqual({row["sales_order"] for row in purchase_data["requirements"]}, {order_a, order_b})
+
+        receipt = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}:group-check",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:{purchase_no}:group-check",
+            qty="42",
+        )
+        self.assertEqual(receipt["source_type"], "material_purchase_order")
+
+        completed = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed&keyword={purchase_no}&page=1&page_size=100",
+            headers=self._headers("req-a6-group-check-completed"),
+        )
+        self.assertEqual(completed.status_code, 200, completed.text)
+        completed_rows = completed.json()["data"]["items"]
+        self.assertEqual(len(completed_rows), 2)
+        self.assertEqual({row["sales_order"] for row in completed_rows}, {order_a, order_b})
+        self.assertEqual({row["sales_order_item"] for row in completed_rows}, {item_a, item_b})
+        self.assertTrue(all(row["has_completed"] for row in completed_rows))
+        self.assertEqual({row["status"] for row in completed_rows}, {"completed"})
+        self.assertEqual(
+            sum(Decimal(str(row["received_qty"])) for row in completed_rows),
+            Decimal("42.000000"),
+        )
+
+        for plan_id in [plan_a, plan_b]:
+            ready_detail = self.client.get(
+                f"/api/production/plans/{plan_id}",
+                headers=self._headers(f"req-a6-group-check-ready-{plan_id}"),
+            )
+            self.assertEqual(ready_detail.status_code, 200, ready_detail.text)
+            ready_plan = ready_detail.json()["data"]
+            self.assertTrue(ready_plan["material_ready"])
+            self.assertEqual(ready_plan["purchase_status"], "ready")
+            self.assertEqual(ready_plan["pending_requirement_count"], 0)
+            self.assertEqual(Decimal(str(ready_plan["shortage_qty_total"])), Decimal("0.000000"))
+
     def test_grouped_material_partial_receipt_requires_explicit_requirement_allocation(self) -> None:
         requirement_a = self._seed_requirement(
             requirement_no="REQ-A6-ALLOC-A",
