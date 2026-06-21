@@ -322,7 +322,7 @@ class StyleMaterialBomUpsertRequest(BaseModel):
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     version_no: str = Field(default="V1", min_length=1, max_length=32)
-    items: list[StyleMaterialBomItemPayload] = Field(..., min_length=1)
+    items: list[StyleMaterialBomItemPayload] = Field(...)
 
 
 class StyleMaterialBomExplodeRequest(BaseModel):

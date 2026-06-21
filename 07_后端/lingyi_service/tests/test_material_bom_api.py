@@ -365,6 +365,44 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(exploded.json()["code"], "BOM_NOT_FOUND")
         self.assertIn("未维护明细", exploded.json()["message"])
 
+    def test_style_material_bom_can_be_cleared_with_empty_items(self) -> None:
+        style_id = self._seed_style()
+        upserted = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="STYLE-MB-CLEAR-SEED"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-STYLE-MB-CLEAR-SEED"),
+        )
+        self.assertEqual(upserted.status_code, 200, upserted.text)
+        bom_id = int(upserted.json()["data"]["bom"]["id"])
+
+        cleared = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="STYLE-MB-CLEAR"),
+            json={
+                "operation": "upsert",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-STYLE-MB-CLEAR",
+                "version_no": "V1",
+                "items": [],
+            },
+        )
+        self.assertEqual(cleared.status_code, 200, cleared.text)
+        self.assertEqual(cleared.json()["data"]["bom"]["id"], bom_id)
+        self.assertEqual(cleared.json()["data"]["items"], [])
+
+        exploded = self.client.post(
+            f"/api/style-master/styles/{style_id}/material-bom/explode?company=COMP-MB",
+            headers=self._headers(request_id="STYLE-MB-CLEAR-EXPLODE"),
+            json={"order_qty": "10"},
+        )
+        self.assertEqual(exploded.status_code, 404, exploded.text)
+        self.assertEqual(exploded.json()["code"], "BOM_NOT_FOUND")
+        self.assertIn("未维护明细", exploded.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyApparelBom).count(), 1)
+            self.assertEqual(session.query(LyApparelBomItem).count(), 0)
+            self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 2)
+
     def test_sample_material_bom_copies_style_snapshot_and_can_be_edited(self) -> None:
         style_id = self._seed_style()
         self.client.put(
@@ -473,6 +511,77 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LySampleMaterialBom).count(), 1)
             self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
             self.assertEqual(session.query(LyApparelBomItem).one().material_item_code, "FAB-BLK-001")
+
+    def test_sample_material_bom_can_be_cleared_with_empty_items(self) -> None:
+        style_id = self._seed_style()
+        seeded = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-CLEAR-SEED-STYLE"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-CLEAR-SEED-STYLE"),
+        )
+        self.assertEqual(seeded.status_code, 200, seeded.text)
+        with self.SessionLocal() as session:
+            order = LySampleOrder(
+                company="COMP-MB",
+                sample_no="SMP-MB-CLEAR",
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="建档",
+                progress=0,
+                status="draft",
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.commit()
+            order_id = int(order.id)
+
+        copied = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/copy-from-style",
+            headers=self._headers(request_id="SAMPLE-MB-CLEAR-COPY"),
+            json={
+                "operation": "copy_from_style",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-CLEAR-COPY",
+            },
+        )
+        self.assertEqual(copied.status_code, 200, copied.text)
+        self.assertEqual(len(copied.json()["data"]["items"]), 1)
+        bom_id = int(copied.json()["data"]["bom"]["id"])
+
+        cleared = self.client.put(
+            f"/api/sample/orders/{order_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-CLEAR"),
+            json={
+                "operation": "upsert",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-CLEAR",
+                "version_no": "S2",
+                "items": [],
+            },
+        )
+        self.assertEqual(cleared.status_code, 200, cleared.text)
+        self.assertEqual(cleared.json()["data"]["bom"]["id"], bom_id)
+        self.assertEqual(cleared.json()["data"]["items"], [])
+
+        exploded = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/explode?company=COMP-MB",
+            headers=self._headers(request_id="SAMPLE-MB-CLEAR-EXPLODE"),
+            json={"order_qty": "5"},
+        )
+        self.assertEqual(exploded.status_code, 404, exploded.text)
+        self.assertEqual(exploded.json()["code"], "BOM_NOT_FOUND")
+        self.assertIn("明细为空", exploded.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleMaterialBom).count(), 1)
+            self.assertEqual(session.query(LySampleMaterialBomItem).count(), 0)
+            self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
 
     def test_sample_material_bom_copy_from_style_rechecks_active_material_snapshot(self) -> None:
         style_id = self._seed_style()

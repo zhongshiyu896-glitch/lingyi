@@ -304,7 +304,7 @@ class SampleMaterialBomUpsertRequest(BaseModel):
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     version_no: str = Field(default="S1", min_length=1, max_length=32)
-    items: list[SampleMaterialBomItemPayload] = Field(..., min_length=1)
+    items: list[SampleMaterialBomItemPayload] = Field(...)
 
 
 class SampleMaterialBomCopyRequest(BaseModel):
