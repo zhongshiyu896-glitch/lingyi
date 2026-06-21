@@ -221,7 +221,7 @@ class ProductionService:
             raise BusinessException(code=PRODUCTION_BOM_ITEM_MISMATCH, message="BOM 与 Sales Order 行 item 不一致")
 
         planned_qty = Decimal(str(payload.planned_qty))
-        remaining_qty = self._remaining_plannable_qty(sales_order_item=target_item)
+        remaining_qty = self._remaining_plannable_qty(company=company, sales_order_item=target_item)
         if planned_qty > remaining_qty:
             raise BusinessException(code=PRODUCTION_PLANNED_QTY_EXCEEDED, message="计划数量超过可计划剩余数量")
 
@@ -291,6 +291,7 @@ class ProductionService:
             operator=operator,
         )
         self._apply_native_sales_order_planned_qty(
+            company=company,
             sales_order=str(sales_order.name),
             sales_order_item=str(target_item.name),
             planned_qty=planned_qty,
@@ -6382,12 +6383,12 @@ class ProductionService:
         *,
         payload: ProductionPlanCreateRequest,
     ) -> tuple[ERPNextSalesOrder, ERPNextSalesOrderItem, str] | None:
+        company = str(payload.company or "").strip()
         try:
-            order = (
-                self.session.query(LySalesOrder)
-                .filter(LySalesOrder.sales_order_no == payload.sales_order.strip())
-                .first()
-            )
+            order_query = self.session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == payload.sales_order.strip())
+            if company:
+                order_query = order_query.filter(LySalesOrder.company == company)
+            order = order_query.first()
         except SQLAlchemyError as exc:
             if self._is_missing_native_sales_order_table(exc):
                 raise DatabaseReadFailed() from exc
@@ -6444,13 +6445,21 @@ class ProductionService:
     def _apply_native_sales_order_planned_qty(
         self,
         *,
+        company: str,
         sales_order: str,
         sales_order_item: str,
         planned_qty: Decimal,
         operator: str,
     ) -> None:
         try:
-            order = self.session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == sales_order).first()
+            order = (
+                self.session.query(LySalesOrder)
+                .filter(
+                    LySalesOrder.company == company,
+                    LySalesOrder.sales_order_no == sales_order,
+                )
+                .first()
+            )
             if order is None:
                 return
             line = (
@@ -6814,11 +6823,12 @@ class ProductionService:
         )
         return link
 
-    def _remaining_plannable_qty(self, *, sales_order_item: ERPNextSalesOrderItem) -> Decimal:
+    def _remaining_plannable_qty(self, *, company: str, sales_order_item: ERPNextSalesOrderItem) -> Decimal:
         try:
             local_sum = (
                 self.session.query(func.coalesce(func.sum(LyProductionPlan.planned_qty), 0))
                 .filter(
+                    LyProductionPlan.company == company,
                     LyProductionPlan.sales_order_item == sales_order_item.name,
                     LyProductionPlan.status != "cancelled",
                 )

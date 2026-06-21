@@ -495,6 +495,110 @@ class ProductionPlanTest(unittest.TestCase):
             self.assertIsNotNone(line)
             self.assertEqual(Decimal(str(line.planned_qty)), Decimal("10.000000"))
 
+    def test_create_plan_uses_company_when_sales_order_number_overlaps(self) -> None:
+        sales_order_no = "SO-CROSS-COMPANY-001"
+        sales_order_item = f"{sales_order_no}-001"
+        self._seed_sales_order(
+            sales_order_no=sales_order_no,
+            company="COMP-A",
+            qty="10",
+            items=[{"sales_order_item": sales_order_item, "item_code": "ITEM-A", "qty": "10"}],
+        )
+        self._seed_sales_order(
+            sales_order_no=sales_order_no,
+            company="COMP-B",
+            qty="20",
+            items=[{"sales_order_item": sales_order_item, "item_code": "ITEM-A", "qty": "20"}],
+        )
+        with self.SessionLocal() as session:
+            session.add(
+                LyApparelBom(
+                    id=303,
+                    bom_no="BOM-PROD-COMP-B",
+                    company="COMP-B",
+                    item_code="ITEM-A",
+                    version_no="v1",
+                    is_default=False,
+                    status="active",
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.add(
+                LyApparelBomItem(
+                    id=3003,
+                    bom_id=303,
+                    material_item_code="MAT-A",
+                    qty_per_piece=Decimal("1"),
+                    loss_rate=Decimal("0"),
+                    uom="Nos",
+                )
+            )
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-CROSS-COMPANY-A",
+                    company="COMP-A",
+                    sales_order=sales_order_no,
+                    sales_order_item=sales_order_item,
+                    customer="CUST-A",
+                    item_code="ITEM-A",
+                    bom_id=101,
+                    bom_version="v1",
+                    planned_qty=Decimal("10"),
+                    status="planned",
+                    idempotency_key="seed-cross-company-plan-a",
+                    request_hash="seed-cross-company-plan-a",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json={
+                    **self._payload(
+                        idempotency_key="idem-pp-cross-company-b",
+                        planned_qty="20",
+                        sales_order_item=sales_order_item,
+                        bom_id=303,
+                    ),
+                    "sales_order": sales_order_no,
+                    "company": "COMP-B",
+                },
+            )
+            adapter_lookup.assert_not_called()
+
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()["data"]
+        self.assertEqual(data["company"], "COMP-B")
+        self.assertEqual(data["sales_order_item"], sales_order_item)
+        self.assertEqual(Decimal(str(data["sales_order_item_qty"])), Decimal("20.000000"))
+        with self.SessionLocal() as session:
+            line_a = (
+                session.query(LySalesOrderItem)
+                .join(LySalesOrder, LySalesOrder.id == LySalesOrderItem.sales_order_id)
+                .filter(
+                    LySalesOrder.company == "COMP-A",
+                    LySalesOrder.sales_order_no == sales_order_no,
+                    LySalesOrderItem.sales_order_item == sales_order_item,
+                )
+                .one()
+            )
+            line_b = (
+                session.query(LySalesOrderItem)
+                .join(LySalesOrder, LySalesOrder.id == LySalesOrderItem.sales_order_id)
+                .filter(
+                    LySalesOrder.company == "COMP-B",
+                    LySalesOrder.sales_order_no == sales_order_no,
+                    LySalesOrderItem.sales_order_item == sales_order_item,
+                )
+                .one()
+            )
+            self.assertEqual(Decimal(str(line_a.planned_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(line_b.planned_qty)), Decimal("20.000000"))
+
     def test_create_plan_requires_explicit_sales_order_item_even_for_single_line(self) -> None:
         self._seed_sales_order()
         missing_payload = self._payload(idempotency_key="idem-pp-missing-so-item", planned_qty="10")
