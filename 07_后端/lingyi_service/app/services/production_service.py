@@ -2843,45 +2843,34 @@ class ProductionService:
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
+        job_card_map: dict[int, list[LyProductionJobCardLink]] = {}
+        plan_ids = [int(plan.id) for plan in plans]
+        if plan_ids:
+            try:
+                job_cards = (
+                    self.session.query(LyProductionJobCardLink)
+                    .filter(LyProductionJobCardLink.plan_id.in_(plan_ids))
+                    .order_by(LyProductionJobCardLink.plan_id.asc(), LyProductionJobCardLink.id.asc())
+                    .all()
+                )
+            except SQLAlchemyError as exc:
+                raise DatabaseReadFailed() from exc
+            for row in job_cards:
+                job_card_map.setdefault(int(row.plan_id), []).append(row)
+
         normalized_keyword = (query.keyword or "").strip().lower()
         normalized_performance_status = (query.performance_status or "").strip().lower()
-        completion_ratio_by_status: dict[str, Decimal] = {
-            "draft": Decimal("0.10"),
-            "planned": Decimal("0.35"),
-            "material_checked": Decimal("0.55"),
-            "work_order_pending": Decimal("0.72"),
-            "work_order_created": Decimal("0.82"),
-            "job_cards_synced": Decimal("0.95"),
-            "cancelled": Decimal("0.00"),
-            "failed": Decimal("0.20"),
-        }
-        unit_price_by_status: dict[str, Decimal] = {
-            "draft": Decimal("95"),
-            "planned": Decimal("105"),
-            "material_checked": Decimal("112"),
-            "work_order_pending": Decimal("118"),
-            "work_order_created": Decimal("126"),
-            "job_cards_synced": Decimal("132"),
-            "cancelled": Decimal("90"),
-            "failed": Decimal("88"),
-        }
 
         items: list[ProductionSalespersonPerformanceListItem] = []
         for plan in plans:
             status = str(plan.status or "")
             salesperson = str(plan.created_by or "-")
-            ordered_qty = Decimal(str(plan.planned_qty or 0))
-            if ordered_qty < 0:
-                ordered_qty = Decimal("0")
-
-            completion_ratio = completion_ratio_by_status.get(status, Decimal("0.50"))
-            completed_qty = (ordered_qty * completion_ratio).quantize(Decimal("0.000001"))
-            completion_rate = (completion_ratio * Decimal("100")).quantize(Decimal("0.01"))
-            unit_price = unit_price_by_status.get(status, Decimal("100"))
-            settled_amount = (completed_qty * unit_price).quantize(Decimal("0.000001"))
-            pending_amount = ((ordered_qty - completed_qty) * unit_price).quantize(Decimal("0.000001"))
-            if pending_amount < 0:
-                pending_amount = Decimal("0")
+            ordered_qty, completed_qty, completion_rate, _pending_qty = self._salesperson_progress(
+                plan=plan,
+                job_cards=job_card_map.get(int(plan.id), []),
+            )
+            settled_amount = Decimal("0")
+            pending_amount = Decimal("0")
 
             if status in {"cancelled", "failed"}:
                 performance_status = "risk"
@@ -3470,38 +3459,13 @@ class ProductionService:
 
     def _build_report_suite_salesperson_row(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> dict[str, Any]:
         base = self._build_report_suite_base_row(plan=plan, context=context)
-        ordered_qty = self._dec(plan.planned_qty)
-        if ordered_qty < Decimal("0"):
-            ordered_qty = Decimal("0")
-        completion_ratio_by_status: dict[str, Decimal] = {
-            "draft": Decimal("0.10"),
-            "planned": Decimal("0.35"),
-            "material_checked": Decimal("0.55"),
-            "work_order_pending": Decimal("0.72"),
-            "work_order_created": Decimal("0.82"),
-            "job_cards_synced": Decimal("0.95"),
-            "cancelled": Decimal("0.00"),
-            "failed": Decimal("0.20"),
-        }
-        unit_price_by_status: dict[str, Decimal] = {
-            "draft": Decimal("95"),
-            "planned": Decimal("105"),
-            "material_checked": Decimal("112"),
-            "work_order_pending": Decimal("118"),
-            "work_order_created": Decimal("126"),
-            "job_cards_synced": Decimal("132"),
-            "cancelled": Decimal("90"),
-            "failed": Decimal("88"),
-        }
         status = str(plan.status or "")
-        completion_ratio = completion_ratio_by_status.get(status, Decimal("0.50"))
-        completed_qty = (ordered_qty * completion_ratio).quantize(Decimal("0.000001"))
-        completion_rate = (completion_ratio * Decimal("100")).quantize(Decimal("0.01"))
-        unit_price = unit_price_by_status.get(status, Decimal("100"))
-        settled_amount = (completed_qty * unit_price).quantize(Decimal("0.000001"))
-        pending_amount = ((ordered_qty - completed_qty) * unit_price).quantize(Decimal("0.000001"))
-        if pending_amount < Decimal("0"):
-            pending_amount = Decimal("0")
+        ordered_qty, completed_qty, completion_rate, _pending_qty = self._salesperson_progress(
+            plan=plan,
+            job_cards=context["job_card_map"].get(int(plan.id), []),
+        )
+        settled_amount = Decimal("0")
+        pending_amount = Decimal("0")
         if status in {"cancelled", "failed"}:
             performance_status = "risk"
             performance_status_name = "风险"
@@ -3964,6 +3928,28 @@ class ProductionService:
     def _completed_qty(cls, *, plan: LyProductionPlan, context: dict[str, Any]) -> Decimal:
         return sum((cls._dec(row.completed_qty) for row in context["job_card_map"].get(int(plan.id), [])), Decimal("0"))
 
+    @classmethod
+    def _salesperson_progress(
+        cls,
+        *,
+        plan: LyProductionPlan,
+        job_cards: list[LyProductionJobCardLink],
+    ) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+        ordered_qty = cls._dec(plan.planned_qty)
+        if ordered_qty < Decimal("0"):
+            ordered_qty = Decimal("0")
+        completed_qty = sum(
+            (cls._dec(row.completed_qty) for row in job_cards),
+            Decimal("0"),
+        ).quantize(Decimal("0.000001"))
+        if completed_qty < Decimal("0"):
+            completed_qty = Decimal("0")
+        completion_rate = cls._percent(completed_qty, ordered_qty)
+        pending_qty = ordered_qty - completed_qty
+        if pending_qty < Decimal("0"):
+            pending_qty = Decimal("0")
+        return ordered_qty, completed_qty, completion_rate, pending_qty
+
     @staticmethod
     def _report_suite_payment_status(
         *,
@@ -4085,12 +4071,21 @@ class ProductionService:
                 ProductionReportSuiteCompositionItem(label="可用数量", value=enough_total, color="#27AE60"),
             ]
         if report_key == "productionCostMaterialDetailReport":
-            settled_total = sum((ProductionService._dec(row.get("settledAmount")) for row in rows), Decimal("0"))
-            pending_total = sum((ProductionService._dec(row.get("pendingAmount")) for row in rows), Decimal("0"))
+            completed_total = sum((ProductionService._dec(row.get("completedQty")) for row in rows), Decimal("0"))
+            pending_total = sum(
+                (
+                    max(
+                        ProductionService._dec(row.get("orderedQty")) - ProductionService._dec(row.get("completedQty")),
+                        Decimal("0"),
+                    )
+                    for row in rows
+                ),
+                Decimal("0"),
+            )
             ordered_total = sum((ProductionService._dec(row.get("orderedQty")) for row in rows), Decimal("0"))
             return [
-                ProductionReportSuiteCompositionItem(label="状态折算业绩", value=settled_total, color="#4E88F3"),
-                ProductionReportSuiteCompositionItem(label="预测待完成", value=pending_total, color="#F5A623"),
+                ProductionReportSuiteCompositionItem(label="实际完成数", value=completed_total, color="#4E88F3"),
+                ProductionReportSuiteCompositionItem(label="待完成数", value=pending_total, color="#F5A623"),
                 ProductionReportSuiteCompositionItem(label="订单件数", value=ordered_total, color="#27AE60"),
             ]
         material_total = sum((ProductionService._dec(row.get("materialCost")) for row in rows), Decimal("0"))

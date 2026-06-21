@@ -687,7 +687,8 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         payload = response.json()["data"]
         self.assertEqual(payload["report_key"], "productionCostMaterialDetailReport")
         self.assertEqual(payload["title"], "业务员业绩分析报表")
-        self.assertEqual([item["label"] for item in payload["composition"]], ["状态折算业绩", "预测待完成", "订单件数"])
+        self.assertEqual([item["label"] for item in payload["composition"]], ["实际完成数", "待完成数", "订单件数"])
+        self.assertNotIn("状态折算业绩", response.text)
         row = payload["items"][0]
         self.assertNotIn("requiredQty", row)
         self.assertNotIn("availableQty", row)
@@ -696,12 +697,28 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(row["salesperson"], "merch.user")
         self.assertEqual(row["planNo"], "PP-RPT-001")
         self.assertEqual(Decimal(str(row["orderedQty"])), Decimal("80"))
-        self.assertEqual(Decimal(str(row["completedQty"])), Decimal("28.000000"))
-        self.assertEqual(Decimal(str(row["completionRate"])), Decimal("35.00"))
-        self.assertEqual(Decimal(str(row["settledAmount"])), Decimal("2940.000000"))
-        self.assertEqual(Decimal(str(row["pendingAmount"])), Decimal("5460.000000"))
+        self.assertEqual(Decimal(str(row["completedQty"])), Decimal("12.000000"))
+        self.assertEqual(Decimal(str(row["completionRate"])), Decimal("15.00"))
+        self.assertEqual(Decimal(str(row["settledAmount"])), Decimal("0"))
+        self.assertEqual(Decimal(str(row["pendingAmount"])), Decimal("0"))
         self.assertEqual(row["performanceStatus"], "attention")
         self.assertEqual(row["status"], "关注")
+
+    def test_salesperson_performance_endpoint_uses_job_card_completion_not_status_guess(self) -> None:
+        response = self.client.get(
+            "/api/production/salesperson-performance?item_code=STYLE-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        row = payload["items"][0]
+        self.assertEqual(row["salesperson"], "merch.user")
+        self.assertEqual(Decimal(str(row["ordered_qty"])), Decimal("80.000000"))
+        self.assertEqual(Decimal(str(row["completed_qty"])), Decimal("12.000000"))
+        self.assertEqual(Decimal(str(row["completion_rate"])), Decimal("15.00"))
+        self.assertEqual(Decimal(str(row["settled_amount"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(row["pending_amount"])), Decimal("0.000000"))
 
     def test_sample_compare_report_uses_converted_sample_costs(self) -> None:
         with self.SessionLocal() as session:
