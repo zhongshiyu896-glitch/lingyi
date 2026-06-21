@@ -243,6 +243,8 @@ class ProductionPlanTest(unittest.TestCase):
                 "sales_order_item": "SOI-001",
                 "item_code": "ITEM-A",
                 "qty": qty,
+                "color": "黑",
+                "size": "M",
             }
         ]
         with self.SessionLocal() as session:
@@ -283,6 +285,8 @@ class ProductionPlanTest(unittest.TestCase):
                         sales_order_item=line["sales_order_item"],
                         item_code=line["item_code"],
                         item_name=line.get("item_name") or line["item_code"],
+                        color=line.get("color"),
+                        size=line.get("size"),
                         qty=Decimal(str(line["qty"])),
                         planned_qty=Decimal("0"),
                         delivered_qty=Decimal("0"),
@@ -474,6 +478,16 @@ class ProductionPlanTest(unittest.TestCase):
         data_2 = response_2.json()["data"]
         self.assertEqual(data_1["plan_id"], data_2["plan_id"])
         self.assertEqual(data_1["status"], "planned")
+        self.assertEqual(data_1["sales_order_item"], "SOI-001")
+        self.assertEqual(data_2["sales_order_item"], "SOI-001")
+        self.assertEqual(data_1["color"], "黑")
+        self.assertEqual(data_2["color"], "黑")
+        self.assertEqual(data_1["size"], "M")
+        self.assertEqual(data_2["size"], "M")
+        self.assertEqual(Decimal(str(data_1["planned_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(data_2["planned_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(data_1["sales_order_item_qty"])), Decimal("100.000000"))
+        self.assertEqual(Decimal(str(data_2["sales_order_item_qty"])), Decimal("100.000000"))
 
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyProductionPlan).count(), 1)

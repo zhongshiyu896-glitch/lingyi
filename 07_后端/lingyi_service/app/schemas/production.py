@@ -49,6 +49,11 @@ class ProductionPlanCreateData(BaseModel):
     plan_no: str
     status: str
     company: str
+    sales_order_item: str
+    color: Optional[str] = None
+    size: Optional[str] = None
+    planned_qty: Decimal
+    sales_order_item_qty: Optional[Decimal] = None
 
 
 class ProductionPlanQuery(BaseModel):

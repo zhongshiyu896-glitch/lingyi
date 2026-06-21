@@ -252,6 +252,11 @@ class ProductionService:
                     plan_no=str(existing.plan_no),
                     status=str(existing.status),
                     company=str(existing.company),
+                    sales_order_item=str(target_item.name),
+                    color=str(target_item.color) if target_item.color else None,
+                    size=str(target_item.size) if target_item.size else None,
+                    planned_qty=Decimal(str(existing.planned_qty)),
+                    sales_order_item_qty=Decimal(str(target_item.qty)) if target_item.qty is not None else None,
                 )
             raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
 
@@ -301,6 +306,11 @@ class ProductionService:
             plan_no=plan_no,
             status="planned",
             company=company,
+            sales_order_item=str(target_item.name),
+            color=str(target_item.color) if target_item.color else None,
+            size=str(target_item.size) if target_item.size else None,
+            planned_qty=planned_qty,
+            sales_order_item_qty=Decimal(str(target_item.qty)) if target_item.qty is not None else None,
         )
 
     def resolve_create_scope(
@@ -6408,6 +6418,8 @@ class ProductionService:
                 name=str(row.sales_order_item),
                 item_code=str(row.item_code),
                 qty=Decimal(str(row.qty)),
+                color=str(row.color) if row.color else None,
+                size=str(row.size) if row.size else None,
             )
             for row in item_rows
         ]

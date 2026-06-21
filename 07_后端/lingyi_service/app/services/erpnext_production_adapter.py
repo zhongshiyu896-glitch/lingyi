@@ -27,6 +27,8 @@ class ERPNextSalesOrderItem:
     name: str
     item_code: str
     qty: Decimal
+    color: str | None = None
+    size: str | None = None
 
 
 @dataclass(frozen=True)
