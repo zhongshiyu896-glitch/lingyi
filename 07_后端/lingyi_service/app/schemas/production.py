@@ -31,7 +31,7 @@ class ProductionPlanCreateRequest(BaseModel):
     """Create production plan request."""
 
     sales_order: str = Field(..., min_length=1, max_length=140)
-    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    sales_order_item: str = Field(..., min_length=1, max_length=140)
     item_code: str = Field(..., min_length=1, max_length=140)
     bom_id: Optional[int] = Field(default=None, ge=1)
     planned_qty: Decimal = Field(..., gt=0)

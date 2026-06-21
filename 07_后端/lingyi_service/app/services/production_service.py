@@ -6798,20 +6798,14 @@ class ProductionService:
         item_code: str,
         sales_order_item: str | None,
     ) -> ERPNextSalesOrderItem:
-        if sales_order_item:
-            for row in sales_items:
-                if row.name == sales_order_item:
-                    if row.item_code != item_code:
-                        raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="Sales Order 行物料不匹配")
-                    return row
-            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="Sales Order 行不存在")
-
-        candidates = [row for row in sales_items if row.item_code == item_code]
-        if not candidates:
-            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="Sales Order 未找到该 item")
-        if len(candidates) > 1:
-            raise BusinessException(code=PRODUCTION_SO_ITEM_AMBIGUOUS, message="Sales Order 存在多行相同 item，必须指定 sales_order_item")
-        return candidates[0]
+        if not sales_order_item:
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="必须指定 Sales Order 明细行")
+        for row in sales_items:
+            if row.name == sales_order_item:
+                if row.item_code != item_code:
+                    raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="Sales Order 行物料不匹配")
+                return row
+        raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="Sales Order 行不存在")
 
     def _log_status(
         self,

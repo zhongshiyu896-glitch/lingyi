@@ -481,6 +481,31 @@ class ProductionPlanTest(unittest.TestCase):
             self.assertIsNotNone(line)
             self.assertEqual(Decimal(str(line.planned_qty)), Decimal("10.000000"))
 
+    def test_create_plan_requires_explicit_sales_order_item_even_for_single_line(self) -> None:
+        self._seed_sales_order()
+        missing_payload = self._payload(idempotency_key="idem-pp-missing-so-item", planned_qty="10")
+        missing_payload.pop("sales_order_item")
+        null_payload = self._payload(idempotency_key="idem-pp-null-so-item", planned_qty="10")
+        null_payload["sales_order_item"] = None
+
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
+            missing_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=missing_payload,
+            )
+            null_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=null_payload,
+            )
+            adapter_lookup.assert_not_called()
+
+        self.assertEqual(missing_response.status_code, 422, missing_response.text)
+        self.assertEqual(null_response.status_code, 422, null_response.text)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlan).count(), 0)
+
     def test_create_plan_rejects_missing_native_sales_order_without_adapter(self) -> None:
         self._clear_sales_orders()
         with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
