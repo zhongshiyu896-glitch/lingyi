@@ -5080,7 +5080,7 @@ class SalesInventoryService:
             )
             session.query(LyProductionPlanOperation).filter(
                 LyProductionPlanOperation.plan_id.in_(plan_ids),
-                LyProductionPlanOperation.operation == "material_check",
+                LyProductionPlanOperation.operation.in_(("material_check", "sales_order_material_check")),
             ).delete(synchronize_session=False)
             for plan in plans:
                 if str(plan.status or "") == "material_checked":

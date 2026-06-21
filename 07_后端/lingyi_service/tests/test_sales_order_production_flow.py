@@ -569,6 +569,46 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertEqual(session.query(LyProductionPlanOperation).filter(LyProductionPlanOperation.operation == "sales_order_material_check").count(), 1)
             self.assertIn("production:material_check", audit_actions)
 
+        update_order = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json={
+                **order_payload,
+                "operation": "update_draft",
+                "idempotency_key": "idem-so-a4-batch-mat-001-update-after-order-material-check",
+                "delivery_date": "2026-07-05",
+                "items": [
+                    {**order_payload["items"][0], "qty": 35},
+                    {**order_payload["items"][1], "qty": 25},
+                ],
+            },
+        )
+        self.assertEqual(update_order.status_code, 200, update_order.text)
+        self.assertEqual(
+            [row["ys_material_calc_state"] for row in update_order.json()["data"]["items"]],
+            ["待算料", "待算料"],
+        )
+
+        with self.SessionLocal() as session:
+            plans = session.query(LyProductionPlan).order_by(LyProductionPlan.id.asc()).all()
+            sales_items = session.query(LySalesOrderItem).order_by(LySalesOrderItem.id.asc()).all()
+            self.assertEqual([str(plan.status) for plan in plans], ["planned", "planned"])
+            self.assertEqual([item.ys_material_calc_state for item in sales_items], ["待算料", "待算料"])
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
+            self.assertEqual(
+                session.query(LyProductionPlanOperation)
+                .filter(LyProductionPlanOperation.operation == "material_check")
+                .count(),
+                0,
+            )
+            self.assertEqual(
+                session.query(LyProductionPlanOperation)
+                .filter(LyProductionPlanOperation.operation == "sales_order_material_check")
+                .count(),
+                0,
+            )
+
     def test_sales_order_material_check_matches_bom_by_color_size_and_purchase_requirements(self) -> None:
         self._seed_style_with_matrix_bom(
             style_no="STYLE-MATRIX",
