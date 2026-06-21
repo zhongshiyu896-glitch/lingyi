@@ -1233,6 +1233,38 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(create_plan.status_code, 200, create_plan.text)
         plan_id = int(create_plan.json()["data"]["plan_id"])
 
+        locked_color_update = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json={
+                **update_payload,
+                "idempotency_key": "idem-so-a4-sku-001-update-planned-color",
+                "items": [
+                    update_payload["items"][0],
+                    {**update_payload["items"][1], "color": "黑色"},
+                    update_payload["items"][2],
+                ],
+            },
+        )
+        self.assertEqual(locked_color_update.status_code, 409, locked_color_update.text)
+        self.assertEqual(locked_color_update.json()["code"], "SALES_ORDER_PLANNED_ITEM_LOCKED")
+
+        locked_size_update = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json={
+                **update_payload,
+                "idempotency_key": "idem-so-a4-sku-001-update-planned-size",
+                "items": [
+                    update_payload["items"][0],
+                    {**update_payload["items"][1], "size": "XL"},
+                    update_payload["items"][2],
+                ],
+            },
+        )
+        self.assertEqual(locked_size_update.status_code, 409, locked_size_update.text)
+        self.assertEqual(locked_size_update.json()["code"], "SALES_ORDER_PLANNED_ITEM_LOCKED")
+
         over_plan = self.client.post(
             "/api/production/plans",
             headers=self._headers(),

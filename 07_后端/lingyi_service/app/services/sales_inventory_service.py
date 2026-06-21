@@ -499,6 +499,22 @@ class SalesInventoryService:
                 and existing_style_master_id != int(row["style_master_id"])
             ):
                 raise SalesInventoryServiceError(409, "SALES_ORDER_PLANNED_ITEM_LOCKED", "已排产或已交付订单行不允许改款式主档")
+            if planned_qty > 0 or delivered_qty > 0:
+                locked_dimensions = (
+                    ("color", "颜色"),
+                    ("size", "尺码"),
+                    ("uom", "单位"),
+                    ("warehouse", "仓库"),
+                )
+                for field_name, field_label in locked_dimensions:
+                    existing_value = self._text(getattr(existing_item, field_name, None)) or ""
+                    next_value = self._text(row[field_name]) or ""
+                    if existing_value != next_value:
+                        raise SalesInventoryServiceError(
+                            409,
+                            "SALES_ORDER_PLANNED_ITEM_LOCKED",
+                            f"已排产或已交付订单行不允许改{field_label}",
+                        )
 
             existing_item.style_master_id = row["style_master_id"]
             existing_item.item_code = row["item_code"]
