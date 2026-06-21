@@ -137,6 +137,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
@@ -230,6 +231,17 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             "X-LY-Dev-Roles": "Purchasing Manager",
             "X-Request-ID": request_id,
         }
+
+    @staticmethod
+    def _enable_fastapi_material_purchase_actions(*, read: bool = False, write: bool = False) -> None:
+        actions: list[str] = []
+        if read:
+            actions.append("material_purchase:read")
+        if write:
+            actions.append("material_purchase:write")
+        os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"] = json.dumps(
+            {"roles": {"Purchasing Manager": actions}},
+        )
 
     def _submit_sales_order(self, *, draft_id: int, sales_order_no: str, suffix: str) -> None:
         submitted = self.client.post(
@@ -3371,6 +3383,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             warehouse="WH-A6-BLOCK",
         )
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        self._enable_fastapi_material_purchase_actions(read=True)
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
             {
                 "users": {
@@ -3454,6 +3467,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             allowed_line_id = int(allowed_line.id)
 
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        self._enable_fastapi_material_purchase_actions(read=True)
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
             {
                 "users": {
@@ -3502,6 +3516,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             warehouse=self.WAREHOUSE,
         )
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        self._enable_fastapi_material_purchase_actions(write=True)
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
             {
                 "users": {
@@ -3540,6 +3555,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
     def test_from_requirements_fastapi_permission_source_unavailable_does_not_mutate(self) -> None:
         requirement_id = self._seed_requirement(requirement_no="REQ-A6-SCOPE-SOURCE-DOWN")
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        self._enable_fastapi_material_purchase_actions(write=True)
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = "[]"
 
         response = self.client.post(
@@ -3566,6 +3582,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
     def test_from_requirements_fastapi_scope_allowed_creates_order(self) -> None:
         requirement_id = self._seed_requirement(requirement_no="REQ-A6-SCOPE-ALLOW-CREATE")
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        self._enable_fastapi_material_purchase_actions(write=True)
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
             {
                 "users": {
