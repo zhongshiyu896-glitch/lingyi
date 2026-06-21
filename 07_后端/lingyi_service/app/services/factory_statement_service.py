@@ -1585,6 +1585,7 @@ class FactoryStatementService:
         page_size: int,
         readable_companies: set[str] | None,
         readable_suppliers: set[str] | None,
+        readable_customers: set[str] | None,
     ) -> FactoryStatementCustomerUnpaidReportData:
         """Read-only customer unpaid report rows for `/factory-statements/list`."""
         normalized_report_no = self._normalize_text(report_no)
@@ -1692,9 +1693,17 @@ class FactoryStatementService:
 
             row_company = str(row["company"])
             row_supplier = str(row["supplier"])
+            row_customer = str(row["customer_name"])
+            row_customer_code = str(row["customer_code"])
             if readable_companies is not None and row_company not in readable_companies:
                 continue
             if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+            if (
+                readable_customers is not None
+                and row_customer not in readable_customers
+                and row_customer_code not in readable_customers
+            ):
                 continue
 
             row_date = row["due_date"]
@@ -1771,6 +1780,7 @@ class FactoryStatementService:
         page_size: int,
         readable_companies: set[str] | None,
         readable_suppliers: set[str] | None,
+        readable_customers: set[str] | None,
     ) -> FactoryStatementCustomerReceivableSummaryData:
         """Read-only customer receivable summary rows for `/factory-statements/list`."""
         normalized_summary_no = self._normalize_text(summary_no)
@@ -1787,6 +1797,7 @@ class FactoryStatementService:
             from_date=from_date,
             to_date=to_date,
             readable_companies=readable_companies,
+            readable_customers=readable_customers,
         )
 
         filtered_rows: list[dict[str, object]] = []
@@ -1804,9 +1815,15 @@ class FactoryStatementService:
                 continue
 
             row_company = str(row["company"])
+            row_customer = str(row["customer_name"])
+            row_customer_code = str(row["customer_code"])
             if readable_companies is not None and row_company not in readable_companies:
                 continue
-            if readable_suppliers is not None and not readable_suppliers:
+            if (
+                readable_customers is not None
+                and row_customer not in readable_customers
+                and row_customer_code not in readable_customers
+            ):
                 continue
 
             row_date = row["summary_date"]
@@ -4631,6 +4648,7 @@ class FactoryStatementService:
         from_date: date | None,
         to_date: date | None,
         readable_companies: set[str] | None,
+        readable_customers: set[str] | None,
     ) -> list[dict[str, object]]:
         query = self.session.query(LyDeliveryInvoice).filter(
             LyDeliveryInvoice.status != "cancelled",
@@ -4640,6 +4658,10 @@ class FactoryStatementService:
             if not readable_companies:
                 return []
             query = query.filter(LyDeliveryInvoice.company.in_(sorted(readable_companies)))
+        if readable_customers is not None:
+            if not readable_customers:
+                return []
+            query = query.filter(LyDeliveryInvoice.customer.in_(sorted(readable_customers)))
         if from_date:
             query = query.filter(LyDeliveryInvoice.posting_date >= from_date)
         if to_date:
@@ -4690,6 +4712,8 @@ class FactoryStatementService:
         )
         if readable_companies is not None:
             payment_query = payment_query.filter(LySalesPaymentEntry.company.in_(sorted(readable_companies)))
+        if readable_customers is not None:
+            payment_query = payment_query.filter(LySalesPaymentEntry.customer.in_(sorted(readable_customers)))
         if from_date:
             payment_query = payment_query.filter(LySalesPaymentEntry.posting_date >= from_date)
         if to_date:

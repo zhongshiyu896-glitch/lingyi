@@ -305,6 +305,35 @@ def _resolve_readable_scope(
     return readable_companies, readable_suppliers
 
 
+def _resolve_readable_scope_with_customers(
+    *,
+    permission_service: PermissionService,
+    current_user: CurrentUser,
+    request: Request,
+) -> tuple[set[str] | None, set[str] | None, set[str] | None]:
+    source = get_permission_source()
+    if source not in {"erpnext", "fastapi"}:
+        return None, None, None
+
+    permissions = permission_service.get_factory_statement_user_permissions(
+        current_user=current_user,
+        request_obj=request,
+        action=FACTORY_STATEMENT_READ,
+        resource_type="factory_statement",
+        resource_id=None,
+        resource_no=None,
+    )
+    if permissions is None or permissions.unrestricted:
+        return None, None, None
+
+    readable_companies = {item.strip() for item in permissions.allowed_companies if item and item.strip()}
+    readable_suppliers = {item.strip() for item in permissions.allowed_suppliers if item and item.strip()}
+    readable_customers = {item.strip() for item in permissions.allowed_customers if item and item.strip()}
+    if source == "erpnext":
+        return readable_companies or None, readable_suppliers or None, readable_customers or None
+    return readable_companies, readable_suppliers, readable_customers
+
+
 def _resolve_worker_scope(
     *,
     permission_service: PermissionService,
@@ -2240,7 +2269,7 @@ def list_customer_unpaid_reports(
             resource_type="factory_statement",
             resource_id=None,
         )
-        readable_companies, readable_suppliers = _resolve_readable_scope(
+        readable_companies, readable_suppliers, readable_customers = _resolve_readable_scope_with_customers(
             permission_service=permission_service,
             current_user=current_user,
             request=request,
@@ -2259,6 +2288,7 @@ def list_customer_unpaid_reports(
             page_size=page_size,
             readable_companies=readable_companies,
             readable_suppliers=readable_suppliers,
+            readable_customers=readable_customers,
         )
 
         audit.record_success(
@@ -2356,7 +2386,7 @@ def list_customer_receivable_summaries(
             resource_type="factory_statement",
             resource_id=None,
         )
-        readable_companies, readable_suppliers = _resolve_readable_scope(
+        readable_companies, readable_suppliers, readable_customers = _resolve_readable_scope_with_customers(
             permission_service=permission_service,
             current_user=current_user,
             request=request,
@@ -2375,6 +2405,7 @@ def list_customer_receivable_summaries(
             page_size=page_size,
             readable_companies=readable_companies,
             readable_suppliers=readable_suppliers,
+            readable_customers=readable_customers,
         )
 
         audit.record_success(

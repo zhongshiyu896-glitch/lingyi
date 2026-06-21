@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import json
 import os
 import unittest
 
@@ -76,6 +77,7 @@ class FactoryStatementFinancialSummaryTest(unittest.TestCase):
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LyFactoryStatementPayment).delete()
@@ -171,6 +173,37 @@ class FactoryStatementFinancialSummaryTest(unittest.TestCase):
                     source_ref="SRC-FIN-PE-001",
                     idempotency_key="idem-fin-pe-001",
                     request_hash="hash-fin-pe-001",
+                    payload={},
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+    def _seed_extra_customer_receivable(self, *, customer: str, suffix: str) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyDeliveryInvoice(
+                    company=self.COMPANY,
+                    delivery_note=f"DN-FIN-{suffix}",
+                    sales_invoice=f"SINV-FIN-{suffix}",
+                    sales_order=f"SO-FIN-{suffix}",
+                    customer=customer,
+                    item_code="STYLE-FIN",
+                    item_name="Finance style",
+                    warehouse="WH-FIN",
+                    delivered_qty=Decimal("1"),
+                    uom="件",
+                    rate=Decimal("111"),
+                    grand_total=Decimal("111"),
+                    paid_amount=Decimal("0"),
+                    outstanding_amount=Decimal("111"),
+                    posting_date=date(2026, 6, 23),
+                    due_date=date(2026, 6, 30),
+                    status="submitted",
+                    docstatus=1,
+                    source_ref=f"SRC-FIN-SINV-{suffix}",
+                    idempotency_key=f"idem-fin-sinv-{suffix}",
+                    request_hash=f"hash-fin-sinv-{suffix}",
                     payload={},
                     created_by="seed",
                 )
@@ -316,6 +349,48 @@ class FactoryStatementFinancialSummaryTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["current_receivable"])), Decimal("320.000000"))
         self.assertEqual(Decimal(str(row["received_amount"])), Decimal("120.000000"))
         self.assertEqual(Decimal(str(row["ending_receivable"])), Decimal("200.000000"))
+
+    def test_customer_receivable_summary_uses_fastapi_customer_scope(self) -> None:
+        self._seed_customer_receivable()
+        self._seed_extra_customer_receivable(customer="CUS-OUT", suffix="OUT")
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {"users": {"finance.summary.user": {"company": [self.COMPANY], "customer": ["CUS-FIN"]}}}
+        )
+
+        response = self.client.get(
+            "/api/factory-statements/customer-receivables",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["items"][0]["customer_name"], "CUS-FIN")
+
+    def test_customer_unpaid_reports_use_fastapi_customer_scope(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "finance.summary.user": {
+                        "company": ["凌云服饰"],
+                        "supplier": ["东莞卓越制衣厂"],
+                        "customer": ["CUS-0132"],
+                    }
+                }
+            }
+        )
+
+        response = self.client.get(
+            "/api/factory-statements/customer-unpaid-reports",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["items"][0]["customer_code"], "CUS-0132")
 
     def test_supplier_payable_summary_uses_purchase_invoice_and_payment_facts(self) -> None:
         self._seed_supplier_payable()
