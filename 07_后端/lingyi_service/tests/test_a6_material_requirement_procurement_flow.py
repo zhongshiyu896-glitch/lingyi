@@ -2305,11 +2305,35 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertGreater(Decimal(str(row["net_required_qty"])), Decimal("0"))
         self.assertEqual(net_required_by_material, expected_qty_by_material)
 
+        grouped_requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword={sales_order_no}&group_by_material=true&page=1&page_size=100",
+            headers=self._headers("req-a6-multi-sku-grouped-requirements"),
+        )
+        self.assertEqual(grouped_requirements.status_code, 200, grouped_requirements.text)
+        grouped_rows = grouped_requirements.json()["data"]["items"]
+        self.assertEqual(grouped_requirements.json()["data"]["total"], 3)
+        grouped_by_material = {row["material_item_code"]: row for row in grouped_rows}
+        self.assertEqual(set(grouped_by_material), set(expected_qty_by_material))
+        self.assertTrue(grouped_by_material[self.MATERIAL]["is_grouped"])
+        self.assertEqual(grouped_by_material[self.MATERIAL]["requirement_count"], 2)
+        self.assertEqual(
+            set(grouped_by_material[self.MATERIAL]["requirement_ids"]),
+            {int(row["id"]) for row in requirement_rows if row["material_item_code"] == self.MATERIAL},
+        )
+        self.assertEqual(Decimal(str(grouped_by_material[self.MATERIAL]["net_required_qty"])), Decimal("31.500000"))
+        self.assertIn("SO-A6-MULTI-SKU-001", grouped_by_material[self.MATERIAL]["sales_order"])
+
+        grouped_requirement_ids = [
+            requirement_id
+            for row in grouped_rows
+            for requirement_id in (row["requirement_ids"] or [row["id"]])
+        ]
+
         create_po = self.client.post(
             "/api/material-purchase/orders/from-requirements",
             headers=self._headers("req-a6-multi-sku-req-to-po"),
             json=self._from_requirements_payload(
-                requirement_ids=[int(row["id"]) for row in requirement_rows],
+                requirement_ids=[int(row_id) for row_id in grouped_requirement_ids],
                 idempotency_key="idem-a6-multi-sku-req-to-po",
                 purchase_no="PO-A6-MULTI-SKU-001",
                 supplier_name="SUP-A6",

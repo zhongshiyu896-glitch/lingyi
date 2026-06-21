@@ -323,6 +323,7 @@ class MaterialPurchaseService:
         status: str | None,
         page: int,
         page_size: int,
+        group_by_material: bool = False,
         allowed_companies: set[str] | None = None,
         allowed_materials: set[str] | None = None,
         allowed_suppliers: set[str] | None = None,
@@ -374,21 +375,25 @@ class MaterialPurchaseService:
                     | (func.lower(LyMaterialPurchaseRequirement.supplier_name).like(like_value))
                     | (func.lower(LyMaterialPurchaseRequirement.purchase_no).like(like_value))
                 )
-            total = int(query.count())
-            rows = (
-                query.order_by(
-                    LyMaterialPurchaseRequirement.status.asc(),
-                    LyMaterialPurchaseRequirement.created_at.desc(),
-                    LyMaterialPurchaseRequirement.id.desc(),
-                )
-                .offset(max(page - 1, 0) * page_size)
-                .limit(page_size)
-                .all()
+            ordered_query = query.order_by(
+                LyMaterialPurchaseRequirement.status.asc(),
+                LyMaterialPurchaseRequirement.created_at.desc(),
+                LyMaterialPurchaseRequirement.id.desc(),
             )
+            if group_by_material:
+                rows = ordered_query.all()
+                items = self._group_requirement_items_for_list(rows)
+                total = len(items)
+                start = max(page - 1, 0) * page_size
+                items = items[start : start + page_size]
+            else:
+                total = int(query.count())
+                rows = ordered_query.offset(max(page - 1, 0) * page_size).limit(page_size).all()
+                items = [self._requirement_item(row) for row in rows]
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
         return MaterialPurchaseRequirementListData(
-            items=[self._requirement_item(row) for row in rows],
+            items=items,
             total=total,
             page=page,
             page_size=page_size,
@@ -1931,6 +1936,111 @@ class MaterialPurchaseService:
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
+
+    def _group_requirement_items_for_list(
+        self,
+        rows: list[LyMaterialPurchaseRequirement],
+    ) -> list[MaterialPurchaseRequirementListItem]:
+        grouped: dict[tuple[str, str, str, str, str, str], list[LyMaterialPurchaseRequirement]] = {}
+        for row in rows:
+            key = (
+                str(row.status or ""),
+                self._optional_text(row.supplier_name) or "",
+                str(row.material_item_code),
+                str(row.warehouse),
+                str(row.uom or "米"),
+                self._optional_text(row.purchase_no) or "",
+            )
+            grouped.setdefault(key, []).append(row)
+
+        return [self._grouped_requirement_item(bucket) for bucket in grouped.values()]
+
+    def _grouped_requirement_item(
+        self,
+        rows: list[LyMaterialPurchaseRequirement],
+    ) -> MaterialPurchaseRequirementListItem:
+        first = rows[0]
+        base = self._requirement_item(first)
+        if len(rows) == 1:
+            return base.model_copy(
+                update={
+                    "requirement_ids": [int(first.id)],
+                    "requirement_count": 1,
+                    "is_grouped": False,
+                }
+            )
+
+        items = [self._requirement_item(row) for row in rows]
+        requirement_ids = [int(row.id) for row in rows]
+        required_qty = sum((item.required_qty for item in items), Decimal("0"))
+        available_qty = sum((item.available_qty for item in items), Decimal("0"))
+        net_required_qty = sum((item.net_required_qty for item in items), Decimal("0"))
+        purchased_qty = sum((item.purchased_qty for item in items), Decimal("0"))
+        received_qty = sum((item.received_qty for item in items), Decimal("0"))
+        purchase_nos = self._unique_texts(item.purchase_no for item in items)
+        sales_orders = self._unique_texts(item.sales_order for item in items)
+        source_nos = self._unique_texts(item.source_no for item in items)
+        sales_order_items = self._unique_texts(item.sales_order_item for item in items)
+        item_codes = self._unique_texts(item.item_code for item in items)
+        bom_colors = self._unique_texts(item.bom_color for item in items)
+        bom_sizes = self._unique_texts(item.bom_size for item in items)
+        bom_parts = self._unique_texts(item.bom_part for item in items)
+        unit_prices = {Decimal(str(item.unit_price or 0)) for item in items}
+        unit_price = unit_prices.pop() if len(unit_prices) == 1 else Decimal("0")
+
+        return MaterialPurchaseRequirementListItem(
+            id=int(first.id),
+            requirement_ids=requirement_ids,
+            requirement_count=len(rows),
+            is_grouped=True,
+            company=str(first.company),
+            requirement_no=f"合并需求({len(rows)})",
+            source_type="grouped_material_requirement",
+            source_id=",".join(str(row_id) for row_id in requirement_ids),
+            source_no=self._join_texts(source_nos),
+            plan_id=(int(first.plan_id) if len({row.plan_id for row in rows}) == 1 and first.plan_id is not None else None),
+            bom_item_id=None,
+            bom_color=self._join_texts(bom_colors),
+            bom_size=self._join_texts(bom_sizes),
+            bom_part=self._join_texts(bom_parts),
+            sales_order=self._join_texts(sales_orders),
+            sales_order_item=self._join_texts(sales_order_items),
+            item_code=self._join_texts(item_codes),
+            material_item_code=str(first.material_item_code),
+            material_name=str(first.material_name or first.material_item_code),
+            supplier_name=self._optional_text(first.supplier_name),
+            warehouse=str(first.warehouse),
+            required_qty=required_qty,
+            available_qty=available_qty,
+            net_required_qty=net_required_qty,
+            purchased_qty=purchased_qty,
+            received_qty=received_qty,
+            uom=str(first.uom or "米"),
+            unit_price=unit_price,
+            status=str(first.status),  # type: ignore[arg-type]
+            has_completed=all(item.has_completed for item in items),
+            purchase_no=self._join_texts(purchase_nos),
+            created_at=first.created_at,
+            updated_at=max((item.updated_at for item in items if item.updated_at is not None), default=first.updated_at),
+        )
+
+    @classmethod
+    def _unique_texts(cls, values: Any) -> list[str]:
+        seen: set[str] = set()
+        result: list[str] = []
+        for value in values:
+            text = cls._optional_text(value)
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            result.append(text)
+        return result
+
+    @classmethod
+    def _join_texts(cls, values: list[str]) -> str | None:
+        if not values:
+            return None
+        return "、".join(values[:3]) + (f"等{len(values)}项" if len(values) > 3 else "")
 
     def _get_order_by_no(self, *, company: str, purchase_no: str) -> LyMaterialPurchaseOrder | None:
         return (
