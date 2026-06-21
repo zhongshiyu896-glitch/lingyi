@@ -50,6 +50,8 @@ from app.core.permissions import PRODUCTION_WORK_ORDER_WORKER
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.schemas.production import ApiResponse
+from app.schemas.production import FactoryPackingCreateRequest
+from app.schemas.production import FactoryPackingData
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionFollowupTemplateListData
@@ -1829,6 +1831,104 @@ def list_production_order_io_quantities(
         return _app_err(exc)
     except Exception as exc:
         return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.post("/factory-packings", response_model=ApiResponse[FactoryPackingData])
+def create_factory_packing(
+    payload: FactoryPackingCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_PLAN_CREATE
+    resource_type = "factory_packing"
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    before_data: dict[str, Any] | None = None
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type=resource_type,
+            resource_id=None,
+        )
+        service = _service(session=session, request=request)
+        company, item = service.get_plan_resource(plan_id=payload.plan_id)
+        permission_service.ensure_production_resource_permission(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            item_code=item,
+            company=company,
+            resource_type=resource_type,
+            resource_id=payload.plan_id,
+            resource_no=str(payload.plan_id),
+            enforce_action=False,
+        )
+        before_data = {
+            "plan_id": payload.plan_id,
+            "company": company,
+            "item_code": item,
+            "inbound_qty": str(payload.inbound_qty),
+            "outbound_qty": str(payload.outbound_qty),
+        }
+        data = service.create_factory_packing(payload=payload, operator=current_user.username)
+        audit.record_success(
+            module="production",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type=resource_type,
+            resource_id=int(data.id),
+            resource_no=str(data.packing_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type=resource_type,
+            resource_id=payload.plan_id,
+            resource_no=payload.idempotency_key,
+            before_data=before_data,
+            after_data={"plan_id": payload.plan_id},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type=resource_type,
+            resource_id=payload.plan_id,
+            resource_no=payload.idempotency_key,
+            before_data=before_data,
+            after_data={"plan_id": payload.plan_id},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
 
 
 @router.get("/salesperson-performance", response_model=ApiResponse[ProductionSalespersonPerformanceListData])

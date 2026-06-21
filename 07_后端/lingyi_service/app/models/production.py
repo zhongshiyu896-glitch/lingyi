@@ -106,6 +106,46 @@ class LyProductionPlanOperation(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class LyFactoryPacking(Base):
+    """FastAPI-native in/out quantity registration for the existing factory packing page."""
+
+    __tablename__ = "ly_factory_packing"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_factory_packing"),
+        Index("uk_ly_factory_packing_no", "company", "packing_no", unique=True),
+        Index("uk_ly_factory_packing_idem", "company", "idempotency_key", unique=True),
+        Index("idx_ly_factory_packing_plan", "plan_id", "status"),
+        Index("idx_ly_factory_packing_order_item", "company", "sales_order", "item_code", "status"),
+        CheckConstraint("inbound_qty >= 0", name="ck_ly_factory_packing_inbound_qty_nonnegative"),
+        CheckConstraint("outbound_qty >= 0", name="ck_ly_factory_packing_outbound_qty_nonnegative"),
+        CheckConstraint("carton_qty >= 0", name="ck_ly_factory_packing_carton_qty_nonnegative"),
+        CheckConstraint("status IN ('active','cancelled')", name="ck_ly_factory_packing_status"),
+        {"schema": "ly_schema", "comment": "下单进出数量手工登记"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    packing_no = Column(String(64), nullable=False)
+    company = Column(String(140), nullable=False)
+    plan_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_plan.id"), nullable=False)
+    plan_no = Column(String(64), nullable=False)
+    sales_order = Column(String(140), nullable=False)
+    sales_order_item = Column(String(140), nullable=False)
+    customer = Column(String(140), nullable=True)
+    item_code = Column(String(140), nullable=False)
+    inbound_qty = Column(Numeric(18, 6), nullable=False, server_default="0")
+    outbound_qty = Column(Numeric(18, 6), nullable=False, server_default="0")
+    carton_qty = Column(Numeric(18, 6), nullable=False, server_default="0")
+    box_spec = Column(String(140), nullable=False, server_default="")
+    source_ref = Column(String(140), nullable=False, server_default="")
+    remark = Column(String(500), nullable=False, server_default="")
+    status = Column(String(32), nullable=False, server_default="active")
+    idempotency_key = Column(String(128), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
 class LyProductionWorkOrderLink(Base):
     """生产计划与 ERPNext Work Order 映射。"""
 

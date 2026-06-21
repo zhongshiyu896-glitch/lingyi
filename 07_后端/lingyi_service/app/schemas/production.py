@@ -665,6 +665,46 @@ class ProductionOrderIOQuantityQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
+class FactoryPackingCreateRequest(BaseModel):
+    """Create one FastAPI-native factory packing in/out registration."""
+
+    plan_id: int = Field(..., ge=1)
+    company: Optional[str] = Field(default=None, max_length=140)
+    packing_no: Optional[str] = Field(default=None, max_length=64)
+    inbound_qty: Decimal = Field(default=Decimal("0"), ge=0)
+    outbound_qty: Decimal = Field(default=Decimal("0"), ge=0)
+    carton_qty: Decimal = Field(default=Decimal("0"), ge=0)
+    box_spec: Optional[str] = Field(default=None, max_length=140)
+    source_ref: Optional[str] = Field(default=None, max_length=140)
+    remark: Optional[str] = Field(default=None, max_length=500)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class FactoryPackingData(BaseModel):
+    """Factory packing registration returned to the UI."""
+
+    id: int
+    packing_no: str
+    company: str
+    plan_id: int
+    plan_no: str
+    sales_order: str
+    sales_order_item: str
+    customer: Optional[str] = None
+    item_code: str
+    inbound_qty: Decimal
+    outbound_qty: Decimal
+    carton_qty: Decimal
+    box_spec: str = ""
+    source_ref: str = ""
+    remark: str = ""
+    status: str
+    created_by: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
 class ProductionOrderIOQuantityListItem(BaseModel):
     """Production order in/out quantity row."""
 

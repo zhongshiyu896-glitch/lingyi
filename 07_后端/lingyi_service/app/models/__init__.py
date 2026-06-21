@@ -1,6 +1,7 @@
 """Model package exports."""
 
 from app.models.production import LyProductionJobCardLink
+from app.models.production import LyFactoryPacking
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
@@ -31,6 +32,7 @@ __all__ = [
     "LyProductionPlan",
     "LyProductionPlanMaterial",
     "LyProductionPlanOperation",
+    "LyFactoryPacking",
     "LyProductionQuote",
     "LyProductionQuoteOperation",
     "LyProductionWorkOrderLink",

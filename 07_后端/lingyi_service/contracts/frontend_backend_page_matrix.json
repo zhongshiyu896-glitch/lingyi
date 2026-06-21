@@ -592,11 +592,15 @@
       "api_path": "/api/production/order-io-quantities",
       "backend_status": "real_backend_route",
       "backend_class": "A",
-      "contract_schemas": [],
-      "field_gaps": [
-        "FactoryPacking: 契约无 FactoryPacking schema；api模式只读绑定 ProductionOrderIOQuantityListData，箱数/装箱流水待B期"
+      "contract_schemas": [
+        "ProductionOrderIOQuantityListData",
+        "FactoryPackingCreateRequest",
+        "FactoryPackingData"
       ],
-      "priority": "P4_hold"
+      "field_gaps": [
+        "api模式读取进出聚合，新增登记写入 /api/production/factory-packings 真落库并回算数量"
+      ],
+      "priority": "P1_first_readonly_connect"
     },
     {
       "index": 54,

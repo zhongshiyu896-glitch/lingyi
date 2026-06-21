@@ -23,6 +23,7 @@ from app.core.error_codes import PRODUCTION_BOM_NOT_FOUND
 from app.core.error_codes import PRODUCTION_COMPANY_REQUIRED
 from app.core.error_codes import PRODUCTION_FOLLOWUP_TEMPLATE_CONFLICT
 from app.core.error_codes import PRODUCTION_FOLLOWUP_TEMPLATE_NOT_FOUND
+from app.core.error_codes import PRODUCTION_FACTORY_PACKING_CONFLICT
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_KEY_REQUIRED
 from app.core.error_codes import PRODUCTION_MATERIAL_CHECK_STATUS_INVALID
@@ -53,6 +54,7 @@ from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.material_purchase import LyMaterialPurchasePayment
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.master_data import LyMasterDataRecord
+from app.models.production import LyFactoryPacking
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionFollowupTemplate
 from app.models.production import LyProductionFollowupTemplateNode
@@ -83,6 +85,8 @@ from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
+from app.schemas.production import FactoryPackingCreateRequest
+from app.schemas.production import FactoryPackingData
 from app.schemas.production import ProductionFollowupTemplateListData
 from app.schemas.production import ProductionFollowupTemplateListItem
 from app.schemas.production import ProductionFollowupTemplateActionRequest
@@ -2683,6 +2687,38 @@ class ProductionService:
                         ref_field="outbound_refs",
                         ref_no=f"{row.delivery_note}/{row.sales_invoice}",
                     )
+
+            if self._has_sqlite_tables({LyFactoryPacking.__tablename__}):
+                plan_ids = {int(plan.id) for plan in plans}
+                packing_query = self.session.query(LyFactoryPacking).filter(LyFactoryPacking.status == "active")
+                if plan_ids:
+                    packing_query = packing_query.filter(LyFactoryPacking.plan_id.in_(sorted(plan_ids)))
+                if companies:
+                    packing_query = packing_query.filter(LyFactoryPacking.company.in_(sorted(companies)))
+                if item_codes:
+                    packing_query = packing_query.filter(LyFactoryPacking.item_code.in_(sorted(item_codes)))
+                for row in packing_query.all():
+                    plan_id = int(row.plan_id)
+                    plan_fact = facts.setdefault(
+                        plan_id,
+                        {
+                            "inbound_qty": Decimal("0"),
+                            "outbound_qty": Decimal("0"),
+                            "inbound_refs": set(),
+                            "outbound_refs": set(),
+                        },
+                    )
+                    ref_no = str(row.source_ref or row.packing_no or "").strip()
+                    inbound_qty = Decimal(str(row.inbound_qty or 0))
+                    outbound_qty = Decimal(str(row.outbound_qty or 0))
+                    if inbound_qty > Decimal("0"):
+                        plan_fact["inbound_qty"] = plan_fact.get("inbound_qty", Decimal("0")) + inbound_qty
+                        if ref_no:
+                            plan_fact.setdefault("inbound_refs", set()).add(ref_no)
+                    if outbound_qty > Decimal("0"):
+                        plan_fact["outbound_qty"] = plan_fact.get("outbound_qty", Decimal("0")) + outbound_qty
+                        if ref_no:
+                            plan_fact.setdefault("outbound_refs", set()).add(ref_no)
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
         return facts
@@ -5635,6 +5671,96 @@ class ProductionService:
         row = self._must_get_plan(plan_id=plan_id)
         return str(row.company), str(row.item_code)
 
+    def create_factory_packing(
+        self,
+        *,
+        payload: FactoryPackingCreateRequest,
+        operator: str,
+    ) -> FactoryPackingData:
+        """Persist one FastAPI-native in/out quantity registration for the existing page."""
+
+        plan = self._must_get_plan(plan_id=payload.plan_id)
+        company = str(plan.company)
+        requested_company = str(payload.company or "").strip()
+        if requested_company and requested_company != company:
+            raise BusinessException(code=PRODUCTION_FACTORY_PACKING_CONFLICT, message="登记公司与生产计划公司不一致")
+
+        inbound_qty = Decimal(str(payload.inbound_qty or 0)).quantize(Decimal("0.000001"))
+        outbound_qty = Decimal(str(payload.outbound_qty or 0)).quantize(Decimal("0.000001"))
+        carton_qty = Decimal(str(payload.carton_qty or 0)).quantize(Decimal("0.000001"))
+        if inbound_qty <= Decimal("0") and outbound_qty <= Decimal("0"):
+            raise BusinessException(code=PRODUCTION_FACTORY_PACKING_CONFLICT, message="入库数和出库数不能同时为 0")
+
+        operation = str(payload.operation or "factory_packing_create").strip() or "factory_packing_create"
+        request_hash = self._production_operation_request_hash(
+            {
+                "operation": operation,
+                "company": company,
+                "plan_id": int(plan.id),
+                "packing_no": payload.packing_no,
+                "inbound_qty": inbound_qty,
+                "outbound_qty": outbound_qty,
+                "carton_qty": carton_qty,
+                "box_spec": payload.box_spec,
+                "source_ref": payload.source_ref,
+                "remark": payload.remark,
+            }
+        )
+        existing_operation = self._get_plan_operation(
+            company=company,
+            operation=operation,
+            idempotency_key=payload.idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash) != request_hash:
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突，且请求内容不一致")
+            return self._factory_packing_data_from_json(dict(existing_operation.response_json or {}))
+
+        row = LyFactoryPacking(
+            packing_no=str(payload.packing_no or self._next_factory_packing_no()),
+            company=company,
+            plan_id=int(plan.id),
+            plan_no=str(plan.plan_no),
+            sales_order=str(plan.sales_order),
+            sales_order_item=str(plan.sales_order_item),
+            customer=(str(plan.customer) if plan.customer else None),
+            item_code=str(plan.item_code),
+            inbound_qty=inbound_qty,
+            outbound_qty=outbound_qty,
+            carton_qty=carton_qty,
+            box_spec=str(payload.box_spec or "").strip(),
+            source_ref=str(payload.source_ref or "").strip(),
+            remark=str(payload.remark or "").strip(),
+            status="active",
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+            created_by=operator,
+        )
+        try:
+            self.session.add(row)
+            self.session.flush()
+            self.session.refresh(row)
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+
+        data = self._factory_packing_data(row)
+        self.session.add(
+            LyProductionPlanOperation(
+                plan_id=int(plan.id),
+                company=company,
+                operation=operation,
+                idempotency_key=payload.idempotency_key,
+                request_hash=request_hash,
+                response_json=data.model_dump(mode="json"),
+                created_by=operator,
+            )
+        )
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return data
+
     def get_work_order_resource(self, *, work_order: str) -> tuple[int, str, str]:
         """Return `(plan_id, company, item_code)` from work-order local mapping."""
         try:
@@ -5990,6 +6116,36 @@ class ProductionService:
     def _production_operation_request_hash(payload: dict[str, Any]) -> str:
         raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
+
+    @classmethod
+    def _factory_packing_data_from_json(cls, payload: dict[str, Any]) -> FactoryPackingData:
+        if hasattr(FactoryPackingData, "model_validate"):
+            return FactoryPackingData.model_validate(payload)
+        return FactoryPackingData.parse_obj(payload)
+
+    @staticmethod
+    def _factory_packing_data(row: LyFactoryPacking) -> FactoryPackingData:
+        return FactoryPackingData(
+            id=int(row.id),
+            packing_no=str(row.packing_no),
+            company=str(row.company),
+            plan_id=int(row.plan_id),
+            plan_no=str(row.plan_no),
+            sales_order=str(row.sales_order),
+            sales_order_item=str(row.sales_order_item),
+            customer=(str(row.customer) if row.customer else None),
+            item_code=str(row.item_code),
+            inbound_qty=Decimal(str(row.inbound_qty or 0)).quantize(Decimal("0.000001")),
+            outbound_qty=Decimal(str(row.outbound_qty or 0)).quantize(Decimal("0.000001")),
+            carton_qty=Decimal(str(row.carton_qty or 0)).quantize(Decimal("0.000001")),
+            box_spec=str(row.box_spec or ""),
+            source_ref=str(row.source_ref or ""),
+            remark=str(row.remark or ""),
+            status=str(row.status),
+            created_by=str(row.created_by),
+            created_at=row.created_at or datetime.utcnow(),
+            updated_at=row.updated_at,
+        )
 
     @staticmethod
     def _production_model_to_json(model: Any) -> dict[str, Any]:
@@ -7627,6 +7783,11 @@ class ProductionService:
     def _next_plan_no() -> str:
         ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         return f"PP-{ts}"
+
+    @staticmethod
+    def _next_factory_packing_no() -> str:
+        ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+        return f"FP-{ts}"
 
     @staticmethod
     def _extract_supplier_from_remark(remark: str | None) -> str | None:

@@ -28,6 +28,7 @@ from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.master_data import Base as MasterDataBase
 from app.models.master_data import LyMasterDataRecord
 from app.models.production import Base as ProductionBase
+from app.models.production import LyFactoryPacking
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
@@ -135,6 +136,7 @@ class ProductionPlanTest(unittest.TestCase):
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyProductionTrackingNodeEvent).delete()
+            session.query(LyFactoryPacking).delete()
             session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionWorkOrderOutbox).delete()
@@ -945,6 +947,56 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(matched["inbound_refs"], [plan_no])
         self.assertEqual(matched["outbound_refs"], ["DN-REAL-IO-001/SI-REAL-IO-001"])
         self.assertEqual(matched["io_status"], "in_progress")
+
+    def test_factory_packing_create_is_idempotent_and_feeds_order_io_quantities(self) -> None:
+        plan_id = self._seed_orphan_plan(status="planned")
+
+        payload = {
+            "plan_id": plan_id,
+            "company": "COMP-A",
+            "inbound_qty": "3",
+            "outbound_qty": "2",
+            "carton_qty": "1",
+            "box_spec": "1箱",
+            "source_ref": "FP-SMOKE-001",
+            "remark": "api smoke factory packing",
+            "operation": "factory_packing_create",
+            "idempotency_key": "idem-factory-packing-001",
+        }
+
+        response = self.client.post("/api/production/factory-packings", headers=self._headers(), json=payload)
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()["data"]
+        self.assertEqual(data["plan_id"], plan_id)
+        self.assertEqual(data["source_ref"], "FP-SMOKE-001")
+        self.assertEqual(Decimal(str(data["inbound_qty"])), Decimal("3.000000"))
+        self.assertEqual(Decimal(str(data["outbound_qty"])), Decimal("2.000000"))
+
+        replay_response = self.client.post("/api/production/factory-packings", headers=self._headers(), json=payload)
+        self.assertEqual(replay_response.status_code, 200, replay_response.text)
+        self.assertEqual(replay_response.json()["data"], data)
+
+        conflict_payload = dict(payload)
+        conflict_payload["inbound_qty"] = "4"
+        conflict_response = self.client.post("/api/production/factory-packings", headers=self._headers(), json=conflict_payload)
+        self.assertEqual(conflict_response.status_code, 409, conflict_response.text)
+        self.assertEqual(conflict_response.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
+
+        list_response = self.client.get(
+            "/api/production/order-io-quantities?keyword=SO-TEST-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(list_response.status_code, 200, list_response.text)
+        rows = list_response.json()["data"]["items"]
+        matched = next(row for row in rows if int(row["plan_id"]) == plan_id)
+        self.assertEqual(Decimal(str(matched["inbound_qty"])), Decimal("3.000000"))
+        self.assertEqual(Decimal(str(matched["outbound_qty"])), Decimal("2.000000"))
+        self.assertEqual(matched["inbound_refs"], ["FP-SMOKE-001"])
+        self.assertEqual(matched["outbound_refs"], ["FP-SMOKE-001"])
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyFactoryPacking).count(), 1)
+            self.assertEqual(session.query(LyProductionPlanOperation).count(), 1)
 
     def test_material_check_requires_warehouse(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
