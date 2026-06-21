@@ -20,6 +20,7 @@ from app.core.exceptions import DatabaseReadFailed
 from app.schemas.style_profit import StyleProfitSnapshotCreateRequest
 from app.schemas.style_profit import StyleProfitSnapshotSelectorRequest
 from app.services.erpnext_style_profit_adapter import ERPNextStyleProfitAdapter
+from app.services.erpnext_style_profit_adapter import StyleProfitLocalSourceAdapter
 
 
 class StyleProfitApiSourceCollector:
@@ -46,11 +47,11 @@ class StyleProfitApiSourceCollector:
         session: Session,
         *,
         request_obj: Any | None = None,
-        adapter: ERPNextStyleProfitAdapter | None = None,
+        adapter: ERPNextStyleProfitAdapter | StyleProfitLocalSourceAdapter | None = None,
     ):
         self.session = session
         self.request_obj = request_obj
-        self.adapter = adapter or ERPNextStyleProfitAdapter(session=session, request_obj=request_obj)
+        self.adapter = adapter or StyleProfitLocalSourceAdapter(session=session, request_obj=request_obj)
 
     def collect(self, selector: StyleProfitSnapshotSelectorRequest) -> StyleProfitSnapshotCreateRequest:
         """Build service request with trusted server-side source rows only."""

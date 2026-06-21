@@ -3881,6 +3881,9 @@ def read_diagnostic(
         module="sales_inventory",
         resource_type="diagnostic",
     )
+    if get_permission_source() == "fastapi":
+        return _ok(DiagnosticData(source="fastapi", status="ok", checked_at=datetime.now(UTC)))
+
     try:
         ERPNextSalesInventoryAdapter(request_obj=request).ping()
     except ERPNextAdapterException as exc:

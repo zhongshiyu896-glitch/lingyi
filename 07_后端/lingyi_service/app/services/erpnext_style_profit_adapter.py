@@ -843,3 +843,26 @@ class ERPNextStyleProfitAdapter:
     @staticmethod
     def _source_unavailable(message: str) -> BusinessException:
         return BusinessException(code=STYLE_PROFIT_SOURCE_UNAVAILABLE, message=message)
+
+
+class StyleProfitLocalSourceAdapter(ERPNextStyleProfitAdapter):
+    """FastAPI-native style-profit source adapter.
+
+    The snapshot collector uses this adapter by default so current API-mode
+    pages cannot accidentally reach ERPNext. The legacy class remains for
+    compatibility tests and any explicitly reviewed legacy path.
+    """
+
+    def __init__(self, *, session: Session, request_obj: Request | None = None) -> None:
+        super().__init__(session=session, request_obj=request_obj)
+        self.base_url = ""
+
+    def _request_json(
+        self,
+        *,
+        method: str,
+        path: str,
+        allow_404: bool,
+    ) -> dict[str, Any] | None:
+        _ = method, path, allow_404
+        raise self._source_unavailable("FastAPI 利润来源不访问 ERPNext")

@@ -194,6 +194,21 @@ class SalesInventoryApiBase(unittest.TestCase):
 class SalesInventoryApiTest(SalesInventoryApiBase):
     """Read-only API behavior."""
 
+    def test_fastapi_diagnostic_does_not_construct_erpnext_adapter(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        with patch(
+            "app.routers.sales_inventory.ERPNextSalesInventoryAdapter",
+            side_effect=AssertionError("ERPNext must not be used in fastapi diagnostic"),
+        ):
+            response = self.client.get("/api/sales-inventory/diagnostic", headers=self._headers(role="System Manager"))
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        self.assertEqual(payload["data"]["source"], "fastapi")
+        self.assertEqual(payload["data"]["status"], "ok")
+        self.assertIn("checked_at", payload["data"])
+
     def test_list_sales_orders_success(self) -> None:
         with patch.object(
             ERPNextSalesInventoryAdapter,
