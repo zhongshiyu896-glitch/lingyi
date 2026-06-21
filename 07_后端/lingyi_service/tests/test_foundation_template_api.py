@@ -198,3 +198,51 @@ class FoundationTemplateApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             failed = session.query(LyOperationAuditLog).filter(LyOperationAuditLog.result == "failed").one()
             self.assertEqual(failed.error_code, "BOM_TEMPLATE_IDEMPOTENCY_CONFLICT")
+
+    def test_template_and_node_without_code_auto_generate(self) -> None:
+        template_payload = {
+            "company": "COMP-TPL",
+            "template_code": "",
+            "name": "自动编码工艺模板",
+            "scene": "款式资料",
+            "idempotency_key": "IDEM-WK-TPL-AUTO",
+        }
+        created = self.client.post(
+            "/api/bom/process-requirement-templates",
+            headers=self._headers(request_id="WK-TPL-AUTO-CREATE"),
+            json=template_payload,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        template_data = created.json()["data"]
+        self.assertRegex(template_data["template_code"], r"^WK-TPL-\d{6}$")
+
+        replay = self.client.post(
+            "/api/bom/process-requirement-templates",
+            headers=self._headers(request_id="WK-TPL-AUTO-REPLAY"),
+            json=template_payload,
+        )
+        self.assertEqual(replay.status_code, 201, replay.text)
+        self.assertEqual(replay.json()["data"]["template_code"], template_data["template_code"])
+
+        node_payload = {
+            "company": "COMP-TPL",
+            "code": "",
+            "name": "自动编码节点",
+            "node_type": "确认项",
+            "required": True,
+            "sort_no": 10,
+            "owner": "版房",
+            "idempotency_key": "IDEM-WK-NODE-AUTO",
+        }
+        node = self.client.post(
+            f"/api/bom/process-requirement-templates/{template_data['id']}/nodes",
+            headers=self._headers(request_id="WK-NODE-AUTO-CREATE"),
+            json=node_payload,
+        )
+        self.assertEqual(node.status_code, 201, node.text)
+        node_data = node.json()["data"]
+        self.assertRegex(node_data["code"], r"^WK-NODE-\d{6}$")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyFoundationTemplate).count(), 1)
+            self.assertEqual(session.query(LyFoundationTemplateNode).count(), 1)

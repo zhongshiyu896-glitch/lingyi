@@ -543,7 +543,7 @@ class FoundationTemplateCreateRequest(BaseModel):
 
     operation: str = Field(default="create")
     company: str = Field(..., min_length=1, max_length=140)
-    template_code: str = Field(..., min_length=1, max_length=140)
+    template_code: Optional[str] = Field(default=None, max_length=140)
     name: str = Field(..., min_length=1, max_length=255)
     scene: str = Field(default="业务配置", min_length=1, max_length=140)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
@@ -575,7 +575,7 @@ class FoundationTemplateNodeCreateRequest(BaseModel):
 
     operation: str = Field(default="create_node")
     company: str = Field(..., min_length=1, max_length=140)
-    code: str = Field(..., min_length=1, max_length=140)
+    code: Optional[str] = Field(default=None, max_length=140)
     name: str = Field(..., min_length=1, max_length=255)
     node_type: str = Field(..., min_length=1, max_length=100)
     required: bool = False

@@ -133,6 +133,61 @@ class MasterDataApiTest(unittest.TestCase):
             self.assertEqual(audit.action, "create")
             self.assertEqual(audit.result, "success")
 
+    def test_create_supplier_without_code_auto_generates_and_replays(self) -> None:
+        payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "name": "自动编码供应商",
+            "idempotency_key": "IDEMP-SUP-AUTO-001",
+            "payload": {"owner": "purchase"},
+        }
+        response = self.client.post(
+            "/api/master-data/suppliers",
+            headers=self._headers(request_id="MASTER-DATA-SUP-AUTO-001"),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        body = response.json()
+        self.assertEqual(body["code"], "0")
+        self.assertRegex(body["data"]["code"], r"^SUP-\d{6}$")
+        generated_code = body["data"]["code"]
+
+        replay = self.client.post(
+            "/api/master-data/suppliers",
+            headers=self._headers(request_id="MASTER-DATA-SUP-AUTO-002"),
+            json=payload,
+        )
+        self.assertEqual(replay.status_code, 201, replay.text)
+        self.assertEqual(replay.json()["data"]["code"], generated_code)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMasterDataRecord).filter_by(entity_type="supplier").count(), 1)
+
+    def test_create_material_without_code_syncs_generated_code_to_payload(self) -> None:
+        self._seed_supplier(code="SUP-MAT-AUTO", name="自动物料供应商")
+        payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "code": "",
+            "name": "自动编码辅料",
+            "idempotency_key": "IDEMP-MAT-AUTO-001",
+            "payload": {
+                "material_kind": "accessory",
+                "material_item_code": "",
+                "supplier_code": "SUP-MAT-AUTO",
+                "uom": "米",
+            },
+        }
+        response = self.client.post(
+            "/api/master-data/materials",
+            headers=self._headers(request_id="MASTER-DATA-MAT-AUTO-001"),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        data = response.json()["data"]
+        self.assertRegex(data["code"], r"^ACC-\d{6}$")
+        self.assertEqual(data["payload"]["material_item_code"], data["code"])
+        self.assertEqual(data["payload"]["supplier_code"], "SUP-MAT-AUTO")
+
     def test_create_idempotency_retry_returns_same_record(self) -> None:
         first = self.client.post(
             "/api/master-data/suppliers",

@@ -49,6 +49,29 @@ ENTITY_PATH_TO_TYPE = {
 ENTITY_TYPES = set(ENTITY_PATH_TO_TYPE.values())
 WAREHOUSE_LOCATION_KINDS = {"warehouse", "area"}
 MATERIAL_SUPPLIER_BOUND_KINDS = {"fabric", "accessory"}
+ENTITY_CODE_PREFIXES = {
+    "customer": "CUST",
+    "supplier": "SUP",
+    "factory": "FAC",
+    "warehouse": "WH",
+    "material": "MAT",
+    "sample_type": "ST",
+    "common_address": "ADDR",
+    "trade_term": "TERM",
+    "invoice_type": "INV",
+    "cost_type": "COST",
+    "size_sort": "SIZE",
+    "distribution_channel": "CHAN",
+    "bank_account": "BANK",
+}
+MATERIAL_KIND_CODE_PREFIXES = {
+    "fabric": "FAB",
+    "accessory": "ACC",
+    "gallery": "PIC",
+    "processing": "PROC",
+    "category": "MT",
+    "unit": "MU",
+}
 
 
 @dataclass(frozen=True)
@@ -133,27 +156,15 @@ class MasterDataService:
     ) -> MasterDataMutationResult:
         normalized_entity_type = self._normalize_entity_type(entity_type)
         company = self._require_text(payload.company, "company")
-        code = self._require_text(payload.code, "code")
+        requested_code = self._optional_text(payload.code)
         name = self._require_text(payload.name, "name")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         next_payload = self._clean_payload(payload.payload)
-        if normalized_entity_type == "warehouse":
-            next_payload = self._normalize_warehouse_payload(
-                company=company,
-                code=code,
-                payload=next_payload,
-                current_record_id=None,
-            )
-        if normalized_entity_type == "material":
-            next_payload = self._normalize_material_payload(
-                company=company,
-                payload=next_payload,
-            )
         request_hash = self._request_hash(
             operation="create",
             entity_type=normalized_entity_type,
             company=company,
-            code=code,
+            requested_code=requested_code,
             name=name,
             payload=next_payload,
         )
@@ -167,6 +178,21 @@ class MasterDataService:
             row = self._get_record_by_id(existing_idem.record_id)
             after = self._snapshot(row)
             return MasterDataMutationResult(item=self._to_item(row), before=after, after=after, idempotent=True)
+
+        code = requested_code or self._next_code(entity_type=normalized_entity_type, company=company, payload=next_payload)
+        next_payload = self._sync_code_payload(entity_type=normalized_entity_type, code=code, payload=next_payload)
+        if normalized_entity_type == "warehouse":
+            next_payload = self._normalize_warehouse_payload(
+                company=company,
+                code=code,
+                payload=next_payload,
+                current_record_id=None,
+            )
+        if normalized_entity_type == "material":
+            next_payload = self._normalize_material_payload(
+                company=company,
+                payload=next_payload,
+            )
 
         active_conflict = self._get_record_by_code(
             entity_type=normalized_entity_type,
@@ -384,6 +410,59 @@ class MasterDataService:
         if not payload:
             return {}
         return json.loads(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str))
+
+    def _next_code(self, *, entity_type: str, company: str, payload: dict[str, Any]) -> str:
+        prefix = self._code_prefix(entity_type=entity_type, payload=payload)
+        existing_codes = {
+            str(row[0])
+            for row in self.session.query(LyMasterDataRecord.code)
+            .filter(
+                LyMasterDataRecord.entity_type == entity_type,
+                LyMasterDataRecord.company == company,
+                LyMasterDataRecord.code.like(f"{prefix}-%"),
+            )
+            .all()
+        }
+        next_number = len(existing_codes) + 1
+        while next_number < 1_000_000:
+            candidate = f"{prefix}-{next_number:06d}"
+            if candidate not in existing_codes:
+                return candidate
+            next_number += 1
+        raise BusinessException(code=MASTER_DATA_CONFLICT, message=f"{prefix} 自动编码已用尽")
+
+    def _code_prefix(self, *, entity_type: str, payload: dict[str, Any]) -> str:
+        if entity_type == "material":
+            material_kind = (
+                self._optional_text(payload.get("material_kind"))
+                or self._optional_text(payload.get("materialKind"))
+                or ""
+            )
+            return MATERIAL_KIND_CODE_PREFIXES.get(material_kind, ENTITY_CODE_PREFIXES["material"])
+        return ENTITY_CODE_PREFIXES.get(entity_type, "MD")
+
+    def _sync_code_payload(self, *, entity_type: str, code: str, payload: dict[str, Any]) -> dict[str, Any]:
+        normalized = dict(payload)
+        if entity_type != "material":
+            return self._clean_payload(normalized)
+
+        self._fill_payload_text(normalized, "material_item_code", code)
+        material_kind = (
+            self._optional_text(normalized.get("material_kind"))
+            or self._optional_text(normalized.get("materialKind"))
+            or ""
+        )
+        if material_kind == "processing":
+            self._fill_payload_text(normalized, "process_type_code", code)
+        elif material_kind == "category":
+            self._fill_payload_text(normalized, "material_type_code", code)
+        elif material_kind == "unit":
+            self._fill_payload_text(normalized, "unit_code", code)
+        return self._clean_payload(normalized)
+
+    def _fill_payload_text(self, payload: dict[str, Any], key: str, value: str) -> None:
+        if self._optional_text(payload.get(key)) is None:
+            payload[key] = value
 
     def _normalize_warehouse_payload(
         self,

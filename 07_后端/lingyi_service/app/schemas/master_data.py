@@ -49,7 +49,7 @@ class MasterDataCreateRequest(BaseModel):
 
     operation: Literal["create"] = "create"
     company: str = Field(..., min_length=1, max_length=140)
-    code: str = Field(..., min_length=1, max_length=140)
+    code: str | None = Field(default=None, max_length=140)
     name: str = Field(..., min_length=1, max_length=255)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     payload: dict[str, Any] = Field(default_factory=dict)

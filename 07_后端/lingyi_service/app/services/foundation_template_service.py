@@ -41,6 +41,14 @@ TEMPLATE_PATH_TO_TYPE = {
 TEMPLATE_TYPES = set(TEMPLATE_PATH_TO_TYPE.values())
 ACTIVE_STATUS = "active"
 INACTIVE_STATUS = "inactive"
+TEMPLATE_CODE_PREFIXES = {
+    "workmanship": "WK-TPL",
+    "size_spec": "SZ-TPL",
+}
+NODE_CODE_PREFIXES = {
+    "workmanship": "WK-NODE",
+    "size_spec": "SZ-NODE",
+}
 
 
 @dataclass(frozen=True)
@@ -124,7 +132,7 @@ class FoundationTemplateService:
     ) -> FoundationTemplateMutationResult:
         normalized_type = self._normalize_template_type(template_type)
         company = self._require_text(payload.company, "company")
-        template_code = self._require_text(payload.template_code, "template_code")
+        requested_template_code = self._optional_text(payload.template_code)
         name = self._require_text(payload.name, "name")
         scene = self._optional_text(payload.scene) or "业务配置"
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
@@ -132,7 +140,7 @@ class FoundationTemplateService:
             operation="create",
             template_type=normalized_type,
             company=company,
-            template_code=template_code,
+            requested_template_code=requested_template_code,
             name=name,
             scene=scene,
         )
@@ -147,6 +155,8 @@ class FoundationTemplateService:
             row = self._get_template_by_id(existing.record_id)
             after = self._snapshot_template(row)
             return FoundationTemplateMutationResult(item=self._to_template_item(row), before=after, after=after, idempotent=True)
+
+        template_code = requested_template_code or self._next_template_code(company=company, template_type=normalized_type)
         if self._get_template_by_code(company=company, template_type=normalized_type, template_code=template_code) is not None:
             raise BusinessException(code=BOM_TEMPLATE_CONFLICT, message=f"{template_code} 已存在")
 
@@ -317,7 +327,7 @@ class FoundationTemplateService:
         normalized_type = self._normalize_template_type(template_type)
         company = self._require_text(payload.company, "company")
         template = self._get_template_for_mutation(template_id=template_id, company=company, template_type=normalized_type)
-        code = self._require_text(payload.code, "code")
+        requested_code = self._optional_text(payload.code)
         name = self._require_text(payload.name, "name")
         node_type = self._require_text(payload.node_type, "node_type")
         owner = self._optional_text(payload.owner) or "业务"
@@ -327,7 +337,7 @@ class FoundationTemplateService:
             template_type=normalized_type,
             template_id=template_id,
             company=company,
-            code=code,
+            requested_code=requested_code,
             name=name,
             node_type=node_type,
             required=bool(payload.required),
@@ -345,6 +355,8 @@ class FoundationTemplateService:
             node = self._get_node_by_id(existing.record_id)
             after = self._snapshot_node(node)
             return FoundationTemplateMutationResult(item=self._to_node_item(node), before=after, after=after, idempotent=True)
+
+        code = requested_code or self._next_node_code(template_id=int(template.id), template_type=normalized_type)
         if self._get_node_by_code(template_id=int(template.id), code=code) is not None:
             raise BusinessException(code=BOM_TEMPLATE_CONFLICT, message=f"{code} 已存在")
 
@@ -591,6 +603,43 @@ class FoundationTemplateService:
             .filter(LyFoundationTemplateNode.template_id == int(template_id), LyFoundationTemplateNode.code == code)
             .first()
         )
+
+    def _next_template_code(self, *, company: str, template_type: str) -> str:
+        prefix = TEMPLATE_CODE_PREFIXES.get(template_type, "TPL")
+        existing_codes = {
+            str(row[0])
+            for row in self.session.query(LyFoundationTemplate.template_code)
+            .filter(
+                LyFoundationTemplate.company == company,
+                LyFoundationTemplate.template_type == template_type,
+                LyFoundationTemplate.template_code.like(f"{prefix}-%"),
+            )
+            .all()
+        }
+        return self._next_prefixed_code(prefix=prefix, existing_codes=existing_codes)
+
+    def _next_node_code(self, *, template_id: int, template_type: str) -> str:
+        prefix = NODE_CODE_PREFIXES.get(template_type, "NODE")
+        existing_codes = {
+            str(row[0])
+            for row in self.session.query(LyFoundationTemplateNode.code)
+            .filter(
+                LyFoundationTemplateNode.template_id == int(template_id),
+                LyFoundationTemplateNode.code.like(f"{prefix}-%"),
+            )
+            .all()
+        }
+        return self._next_prefixed_code(prefix=prefix, existing_codes=existing_codes)
+
+    @staticmethod
+    def _next_prefixed_code(*, prefix: str, existing_codes: set[str]) -> str:
+        next_number = len(existing_codes) + 1
+        while next_number < 1_000_000:
+            candidate = f"{prefix}-{next_number:06d}"
+            if candidate not in existing_codes:
+                return candidate
+            next_number += 1
+        raise BusinessException(code=BOM_TEMPLATE_CONFLICT, message=f"{prefix} 自动编码已用尽")
 
     def _get_idempotency(
         self,
