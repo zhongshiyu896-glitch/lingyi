@@ -98,6 +98,14 @@ class DashboardService:
             warehouse=warehouse_summary,
             kanban=kanban,
         )
+        source_status.append(
+            DashboardSourceStatusData(
+                module="dashboard_config",
+                status="ok",
+                source_type="config",
+                source_note="看板流程节点、快捷筛选、按钮文案为系统配置项，不代表业务闭环完成。",
+            )
+        )
 
         return DashboardOverviewData(
             company=company,

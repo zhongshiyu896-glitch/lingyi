@@ -53,6 +53,8 @@ class DashboardSourceStatusData(BaseModel):
 
     module: str
     status: str
+    source_type: str = "actual"
+    source_note: str | None = None
 
 
 class DashboardKanbanFlowNodeData(BaseModel):

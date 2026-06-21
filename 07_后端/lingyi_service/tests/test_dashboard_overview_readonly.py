@@ -165,7 +165,14 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(payload["warehouse"]["alert_count"], 0)
         self.assertEqual(payload["warehouse"]["critical_alert_count"], 0)
         self.assertEqual(payload["warehouse"]["warning_alert_count"], 0)
-        self.assertEqual([row["module"] for row in payload["source_status"]], ["quality", "sales_inventory", "warehouse"])
+        self.assertEqual(
+            [row["module"] for row in payload["source_status"]],
+            ["quality", "sales_inventory", "warehouse", "dashboard_config"],
+        )
+        self.assertEqual([row["source_type"] for row in payload["source_status"][:3]], ["actual", "actual", "actual"])
+        self.assertEqual(payload["source_status"][3]["source_type"], "config")
+        self.assertIn("配置项", payload["source_status"][3]["source_note"])
+        self.assertIn("不代表业务闭环完成", payload["source_status"][3]["source_note"])
         self.assertNotIn("local_dev_static_fallback", response.text)
         self.assertIn("home_overview", payload)
         self.assertGreaterEqual(len(payload["home_overview"]["metric_cards"]), 4)
@@ -314,7 +321,9 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(payload["sales_inventory"]["item_count"], 1)
         self.assertEqual(Decimal(str(payload["sales_inventory"]["total_actual_qty"])), Decimal("7.000000"))
         self.assertEqual(payload["warehouse"]["alert_count"], 0)
-        self.assertEqual([row["status"] for row in payload["source_status"]], ["ok", "ok", "ok"])
+        self.assertEqual([row["status"] for row in payload["source_status"]], ["ok", "ok", "ok", "ok"])
+        self.assertEqual(payload["source_status"][-1]["module"], "dashboard_config")
+        self.assertEqual(payload["source_status"][-1]["source_type"], "config")
 
     def test_fastapi_dashboard_inventory_alerts_read_material_thresholds(self) -> None:
         with self.SessionLocal() as session:
