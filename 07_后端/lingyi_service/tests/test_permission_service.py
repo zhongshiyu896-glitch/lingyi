@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 import unittest
 from unittest.mock import patch
 
@@ -24,6 +25,7 @@ from app.models.audit import Base as AuditBase
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.permission_service import PermissionService
+from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 
 
 def _build_request() -> Request:
@@ -310,6 +312,112 @@ class PermissionServiceFailClosedTest(unittest.TestCase):
         ):
             readable = self._service().get_readable_item_codes(current_user=current_user, request_obj=request_obj)
         self.assertIsNone(readable)
+
+
+class PermissionServiceFastApiActionsTest(unittest.TestCase):
+    """Cover FastAPI-native action aggregation without static fallback."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._old_source = os.getenv("LINGYI_PERMISSION_SOURCE")
+        cls._old_role_actions = os.getenv(FASTAPI_ROLE_ACTIONS_ENV)
+        engine = create_engine(
+            "sqlite://",
+            future=True,
+            execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
+        )
+        AuditBase.metadata.create_all(bind=engine)
+        cls._SessionLocal = sessionmaker(bind=engine, future=True)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if cls._old_source is None:
+            os.environ.pop("LINGYI_PERMISSION_SOURCE", None)
+        else:
+            os.environ["LINGYI_PERMISSION_SOURCE"] = cls._old_source
+        if cls._old_role_actions is None:
+            os.environ.pop(FASTAPI_ROLE_ACTIONS_ENV, None)
+        else:
+            os.environ[FASTAPI_ROLE_ACTIONS_ENV] = cls._old_role_actions
+
+    def _service(self) -> PermissionService:
+        return PermissionService(session=self._SessionLocal())
+
+    @staticmethod
+    def _current_user(*, username: str = "fastapi.user", roles: list[str] | None = None) -> CurrentUser:
+        return CurrentUser(
+            username=username,
+            roles=roles or [],
+            is_service_account=False,
+            source="dev_header",
+        )
+
+    def test_fastapi_actions_use_native_role_config_without_erpnext(self) -> None:
+        payload = {
+            "roles": {
+                "BOM Editor": ["bom:read", "bom:submit"],
+                "Style Viewer": {"actions": ["style_master:read"]},
+            },
+            "users": {
+                "fastapi.user": ["bom:update"],
+            },
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_ROLE_ACTIONS_ENV: json.dumps(payload),
+            },
+            clear=False,
+        ):
+            with (
+                patch.object(
+                    ERPNextPermissionAdapter,
+                    "get_user_roles",
+                    side_effect=AssertionError("ERPNext must not be used"),
+                ),
+                patch.object(
+                    ERPNextPermissionAdapter,
+                    "get_user_permissions",
+                    side_effect=AssertionError("ERPNext must not be used"),
+                ),
+            ):
+                agg = self._service().get_actions(
+                    current_user=self._current_user(roles=["BOM Editor", "Style Viewer"]),
+                    request_obj=_build_request(),
+                    module="bom",
+                )
+        self.assertEqual(set(agg.actions), {"bom:read", "bom:publish", "bom:submit", "bom:update"})
+
+    def test_fastapi_actions_missing_native_config_fails_closed_without_static_fallback(self) -> None:
+        with patch.dict(os.environ, {"LINGYI_PERMISSION_SOURCE": "fastapi"}, clear=False):
+            os.environ.pop(FASTAPI_ROLE_ACTIONS_ENV, None)
+            agg = self._service().get_actions(
+                current_user=self._current_user(roles=["BOM Editor", "System Manager"]),
+                request_obj=_build_request(),
+                module="bom",
+            )
+        self.assertEqual(set(agg.actions), set())
+        self.assertFalse(agg.button_permissions["read"])
+        self.assertFalse(agg.button_permissions["create"])
+
+    def test_fastapi_actions_invalid_native_config_returns_503(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_ROLE_ACTIONS_ENV: "{not-json",
+            },
+            clear=False,
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                self._service().get_actions(
+                    current_user=self._current_user(roles=["BOM Editor"]),
+                    request_obj=_build_request(),
+                    module="bom",
+                )
+        self.assertEqual(ctx.exception.status_code, 503)
+        self.assertEqual(ctx.exception.detail["code"], PERMISSION_SOURCE_UNAVAILABLE_CODE)
 
 
 if __name__ == "__main__":

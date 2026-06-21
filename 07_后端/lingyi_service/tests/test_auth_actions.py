@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -16,6 +17,7 @@ import app.main as main_module
 from app.main import app
 from app.models.audit import Base as AuditBase
 from app.routers.auth import get_db_session as auth_db_dep
+from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 
 
 class AuthActionsTest(unittest.TestCase):
@@ -76,6 +78,39 @@ class AuthActionsTest(unittest.TestCase):
         actions = set(payload["data"]["actions"])
         self.assertIn("subcontract:create", actions)
         self.assertNotIn("subcontract:stock_sync_worker", actions)
+
+    def test_fastapi_auth_actions_use_native_role_config_without_static_fallback(self) -> None:
+        role_actions = {
+            "roles": {
+                "BOM Editor": ["bom:read", "bom:update"],
+                "Style Viewer": ["style_master:read"],
+            },
+            "users": {
+                "api.user": ["bom:submit"],
+            },
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_ROLE_ACTIONS_ENV: json.dumps(role_actions),
+            },
+            clear=False,
+        ):
+            with patch(
+                "app.services.permission_service.PermissionService._actions_from_static",
+                side_effect=AssertionError("static actions must not be used for fastapi source"),
+            ):
+                response = self.client.get(
+                    "/api/auth/actions?module=bom",
+                    headers=self._headers(user="api.user", role="BOM Editor,Style Viewer"),
+                )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        actions = set(payload["data"]["actions"])
+        self.assertEqual(actions, {"bom:read", "bom:update", "bom:submit", "bom:publish"})
 
     def test_auth_actions_dev_header_denied_in_production_even_when_flag_enabled(self) -> None:
         with patch.dict(

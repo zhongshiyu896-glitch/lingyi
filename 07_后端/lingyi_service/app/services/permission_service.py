@@ -154,6 +154,7 @@ RESOURCE_SCOPE_FIELD_NAMES = (
 )
 
 FASTAPI_RESOURCE_PERMISSIONS_ENV = "LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"
+FASTAPI_ROLE_ACTIONS_ENV = "LINGYI_FASTAPI_ROLE_ACTIONS_JSON"
 FASTAPI_SCOPE_FIELD_TO_ALLOWED_ATTR = {
     "company": "allowed_companies",
     "item_code": "allowed_items",
@@ -417,6 +418,8 @@ class PermissionService:
                     resource_status=resource_status,
                     resource_no=resource_no,
                 )
+            elif source == "fastapi":
+                action_set = self._actions_from_fastapi(current_user=current_user)
             else:
                 action_set = self._actions_from_static(current_user=current_user)
         except PermissionSourceUnavailable as exc:
@@ -2082,6 +2085,98 @@ class PermissionService:
             logger.warning("LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产")
             PermissionService._static_warning_emitted = True
         return get_static_actions_for_roles(current_user.roles)
+
+    def _load_fastapi_role_action_config(self) -> dict[str, Any]:
+        raw = os.getenv(FASTAPI_ROLE_ACTIONS_ENV, "").strip()
+        if not raw:
+            return {}
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            self._raise_fastapi_permission_config_unavailable(
+                f"{FASTAPI_ROLE_ACTIONS_ENV} json decode failed: {exc.msg}"
+            )
+        if not isinstance(payload, dict):
+            self._raise_fastapi_permission_config_unavailable(
+                f"{FASTAPI_ROLE_ACTIONS_ENV} must be a json object"
+            )
+        return payload
+
+    def _all_registered_actions(self) -> set[str]:
+        actions: set[str] = set()
+        for module_actions in MODULE_ACTION_REGISTRY.values():
+            actions.update(module_actions)
+        return normalize_actions(actions)
+
+    def _parse_fastapi_action_values(self, value: Any, *, key: str) -> set[str]:
+        if value is None:
+            return set()
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                return set()
+            if normalized == "*":
+                return self._all_registered_actions()
+            return {normalized}
+        if not isinstance(value, list):
+            self._raise_fastapi_permission_config_unavailable(f"{key} must be a string or list")
+
+        actions: set[str] = set()
+        for item in value:
+            if not isinstance(item, str):
+                self._raise_fastapi_permission_config_unavailable(f"{key} must contain only strings")
+            normalized = item.strip()
+            if not normalized:
+                continue
+            if normalized == "*":
+                actions.update(self._all_registered_actions())
+            else:
+                actions.add(normalized)
+        return normalize_actions(actions)
+
+    def _actions_from_fastapi_entry(self, entry: Any, *, key: str) -> set[str]:
+        if entry is None:
+            return set()
+        if isinstance(entry, (str, list)):
+            return self._parse_fastapi_action_values(entry, key=key)
+        if not isinstance(entry, dict):
+            self._raise_fastapi_permission_config_unavailable(f"{key} must be a string, list, or object")
+
+        if bool(entry.get("all_actions")) or bool(entry.get("unrestricted")):
+            return self._all_registered_actions()
+        return self._parse_fastapi_action_values(entry.get("actions", []), key=f"{key}.actions")
+
+    def _actions_from_fastapi(self, *, current_user: CurrentUser) -> set[str]:
+        payload = self._load_fastapi_role_action_config()
+        users = payload.get("users", {})
+        roles = payload.get("roles", {})
+        if users is None:
+            users = {}
+        if roles is None:
+            roles = {}
+        if not isinstance(users, dict):
+            self._raise_fastapi_permission_config_unavailable("users must be an object")
+        if not isinstance(roles, dict):
+            self._raise_fastapi_permission_config_unavailable("roles must be an object")
+
+        action_set: set[str] = set()
+        action_set.update(
+            self._actions_from_fastapi_entry(
+                users.get(current_user.username),
+                key=f"users.{current_user.username}",
+            )
+        )
+        for role in current_user.roles:
+            role_name = role.strip()
+            if not role_name:
+                continue
+            action_set.update(
+                self._actions_from_fastapi_entry(
+                    roles.get(role_name),
+                    key=f"roles.{role_name}",
+                )
+            )
+        return normalize_actions(action_set)
 
     def _actions_from_current_roles_only(self, *, current_user: CurrentUser) -> set[str]:
         """Resolve role actions without external permission-source dependency."""
