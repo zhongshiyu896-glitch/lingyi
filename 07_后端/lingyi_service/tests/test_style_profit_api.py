@@ -404,6 +404,51 @@ class StyleProfitApiTest(StyleProfitApiBase):
         self.assertEqual(body["code"], "0")
         self.assertIn("snapshot_no", body["data"])
 
+    def test_create_in_non_local_db_env_is_not_blocked_by_local_db_gate(self) -> None:
+        scenario_tag = "Z003-STYLE-PROFIT-20260621-001"
+        sales_order = "SO-API-PROD-001"
+        payload = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": sales_order,
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "idempotency_key": f"{scenario_tag}-idem-prod-create",
+            "scenario_tag": scenario_tag,
+            "source_ref": "|".join(
+                [
+                    scenario_tag,
+                    "COMP-A",
+                    "STYLE-A",
+                    sales_order,
+                    "actual_first",
+                    "STYLE_PROFIT_V1",
+                    "create",
+                ]
+            ),
+            "status_action": "create",
+        }
+        headers = self._headers()
+        headers["X-Request-ID"] = scenario_tag
+
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "postgresql://style-profit-write"}, clear=False), patch.object(
+            StyleProfitApiSourceCollector,
+            "collect",
+            side_effect=lambda *args, **kwargs: self._trusted_request(args[-1]),
+        ):
+            response = self.client.post(
+                "/api/reports/style-profit/snapshots",
+                json=payload,
+                headers=headers,
+            )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["code"], "0")
+        self.assertIn("snapshot_no", body["data"])
+
 
 if __name__ == "__main__":
     unittest.main()

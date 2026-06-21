@@ -157,7 +157,7 @@
 | D | GET | `/api/reports/diagnostic` | 否 | 是 | 否 | not_for_page_direct_use | - | 诊断接口; 运维排障用途 |
 | A | GET | `/api/reports/employee-task-statistics` | 否 | 是 | 否 | candidate | employee_id, employee_name, department, pending_tasks, in_progress_tasks, completed_tasks, overdue_tasks, completion_rate, latest_task_no, latest_task_title, latest_due_date, updated_at, ... | 真实业务只读接口候选 |
 | A | GET | `/api/reports/style-profit/snapshots` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
-| A | POST | `/api/reports/style-profit/snapshots` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
+| A | POST | `/api/reports/style-profit/snapshots` | 否 | 是 | 是 | verified_real_write | code, message, data, data.snapshot_id, data.snapshot_no, data.actual_total_cost, data.profit_amount, data.idempotency_key | 已接订单利润报表现有页; 后端落库/权限/审计/幂等/非本地 DB 环境写入已由 style-profit API 与 API smoke 验证 |
 | A | GET | `/api/reports/style-profit/snapshots/{snapshot_id}` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/aggregation` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/sales-inventory/customer-return-applications` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |

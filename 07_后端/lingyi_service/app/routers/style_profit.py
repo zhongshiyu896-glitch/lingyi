@@ -170,9 +170,8 @@ def _validate_local_style_profit_write_gate(
     request_obj: Request,
     payload: dict[str, Any],
 ) -> dict[str, str]:
-    if not _is_local_style_profit_write_enabled():
-        _raise_style_profit_idempotency_conflict("仅允许本地开发测试库执行款式利润快照写入")
-
+    # Kept under the historical name for tests; this validates write carriers,
+    # while local DB gating is now limited to the development fallback source path.
     request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
     if not request_id_header:
         _raise_style_profit_idempotency_conflict("request_id 不能为空")
