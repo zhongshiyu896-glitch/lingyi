@@ -4293,6 +4293,9 @@ class ProductionService:
             material_snapshots=[
                 ProductionPlanMaterialSnapshotItem(
                     bom_item_id=(int(row.bom_item_id) if row.bom_item_id is not None else None),
+                    bom_color=self._text(getattr(row, "bom_color", None)),
+                    bom_size=self._text(getattr(row, "bom_size", None)),
+                    bom_part=self._text(getattr(row, "bom_part", None)),
                     material_item_code=str(row.material_item_code),
                     warehouse=(str(row.warehouse) if getattr(row, "warehouse", None) is not None else None),
                     qty_per_piece=Decimal(str(row.qty_per_piece)),
@@ -4896,11 +4899,17 @@ class ProductionService:
             available_qty = min(required_qty, max(available_budget[availability_key], Decimal("0")))
             available_budget[availability_key] -= available_qty
             shortage_qty = max(Decimal("0"), required_qty - available_qty)
+            bom_color = self._text(getattr(row, "color", None))
+            bom_size = self._text(getattr(row, "size", None))
+            bom_part = self._text(getattr(row, "part", None))
 
             self.session.add(
                 LyProductionPlanMaterial(
                     plan_id=int(plan.id),
                     bom_item_id=(int(row.id) if isinstance(row, LyApparelBomItem) else None),
+                    bom_color=bom_color,
+                    bom_size=bom_size,
+                    bom_part=bom_part,
                     material_item_code=material_item_code,
                     warehouse=warehouse,
                     uom=uom,
@@ -4915,6 +4924,9 @@ class ProductionService:
             snapshot_items.append(
                 ProductionPlanMaterialSnapshotItem(
                     bom_item_id=(int(row.id) if isinstance(row, LyApparelBomItem) else None),
+                    bom_color=bom_color,
+                    bom_size=bom_size,
+                    bom_part=bom_part,
                     material_item_code=material_item_code,
                     warehouse=warehouse,
                     uom=uom,

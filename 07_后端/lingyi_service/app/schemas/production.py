@@ -840,6 +840,9 @@ class ProductionPlanMaterialSnapshotItem(BaseModel):
     """Material check snapshot row."""
 
     bom_item_id: Optional[int] = None
+    bom_color: Optional[str] = None
+    bom_size: Optional[str] = None
+    bom_part: Optional[str] = None
     material_item_code: str
     warehouse: Optional[str] = None
     uom: str = "米"

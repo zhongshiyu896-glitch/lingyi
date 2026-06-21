@@ -114,6 +114,9 @@ class MaterialPurchaseRequirementListItem(BaseModel):
     source_no: str | None = None
     plan_id: int | None = None
     bom_item_id: int | None = None
+    bom_color: str | None = None
+    bom_size: str | None = None
+    bom_part: str | None = None
     sales_order: str | None = None
     sales_order_item: str | None = None
     item_code: str | None = None

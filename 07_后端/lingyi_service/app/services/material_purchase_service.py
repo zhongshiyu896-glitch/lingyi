@@ -441,11 +441,17 @@ class MaterialPurchaseService:
                 available_qty = Decimal(str(snapshot.available_qty or 0))
                 net_required_qty = max(Decimal("0"), required_qty - available_qty)
                 bom_item = bom_items.get(int(snapshot.bom_item_id)) if snapshot.bom_item_id is not None else None
+                bom_color = self._optional_text(getattr(snapshot, "bom_color", None))
+                bom_size = self._optional_text(getattr(snapshot, "bom_size", None))
+                bom_part = self._optional_text(getattr(snapshot, "bom_part", None))
                 existing = self._get_requirement_by_source(
                     company=str(plan.company),
                     source_type="production_plan",
                     source_id=str(plan.id),
                     bom_item_id=(int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None),
+                    bom_color=bom_color,
+                    bom_size=bom_size,
+                    bom_part=bom_part,
                     material_item_code=material_code,
                     warehouse=warehouse,
                 )
@@ -459,6 +465,9 @@ class MaterialPurchaseService:
                         source_no=str(plan.plan_no),
                         plan_id=int(plan.id),
                         bom_item_id=(int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None),
+                        bom_color=bom_color,
+                        bom_size=bom_size,
+                        bom_part=bom_part,
                         material_item_code=material_code,
                         warehouse=warehouse,
                         status="pending",
@@ -466,6 +475,9 @@ class MaterialPurchaseService:
                     )
                     self.session.add(row)
                 row.source_no = str(plan.plan_no)
+                row.bom_color = bom_color
+                row.bom_size = bom_size
+                row.bom_part = bom_part
                 row.sales_order = self._optional_text(plan.sales_order)
                 row.sales_order_item = self._optional_text(plan.sales_order_item)
                 row.item_code = self._optional_text(plan.item_code)
@@ -480,6 +492,9 @@ class MaterialPurchaseService:
                 row.unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
                 row.payload = {
                     "uom": row.uom,
+                    "bom_color": row.bom_color,
+                    "bom_size": row.bom_size,
+                    "bom_part": row.bom_part,
                     "qty_per_piece": str(snapshot.qty_per_piece or 0),
                     "loss_rate": str(snapshot.loss_rate or 0),
                     "checked_at": snapshot.checked_at.isoformat() if snapshot.checked_at else None,
@@ -1854,6 +1869,9 @@ class MaterialPurchaseService:
             source_no=self._optional_text(row.source_no),
             plan_id=(int(row.plan_id) if row.plan_id is not None else None),
             bom_item_id=(int(row.bom_item_id) if row.bom_item_id is not None else None),
+            bom_color=self._optional_text(row.bom_color),
+            bom_size=self._optional_text(row.bom_size),
+            bom_part=self._optional_text(row.bom_part),
             sales_order=self._optional_text(row.sales_order),
             sales_order_item=self._optional_text(row.sales_order_item),
             item_code=self._optional_text(row.item_code),
@@ -1977,6 +1995,9 @@ class MaterialPurchaseService:
         source_type: str,
         source_id: str,
         bom_item_id: int | None,
+        bom_color: str | None,
+        bom_size: str | None,
+        bom_part: str | None,
         material_item_code: str,
         warehouse: str,
     ) -> LyMaterialPurchaseRequirement | None:
@@ -1991,6 +2012,12 @@ class MaterialPurchaseService:
             query = query.filter(LyMaterialPurchaseRequirement.bom_item_id.is_(None))
         else:
             query = query.filter(LyMaterialPurchaseRequirement.bom_item_id == bom_item_id)
+        for column, value in (
+            (LyMaterialPurchaseRequirement.bom_color, bom_color),
+            (LyMaterialPurchaseRequirement.bom_size, bom_size),
+            (LyMaterialPurchaseRequirement.bom_part, bom_part),
+        ):
+            query = query.filter(column == value) if value is not None else query.filter(column.is_(None))
         return query.first()
 
     def _group_requirements_for_order(
@@ -2164,6 +2191,12 @@ class MaterialPurchaseService:
             query = query.filter(LyProductionPlanMaterial.bom_item_id.is_(None))
         else:
             query = query.filter(LyProductionPlanMaterial.bom_item_id == int(requirement.bom_item_id))
+        for column, value in (
+            (LyProductionPlanMaterial.bom_color, self._optional_text(requirement.bom_color)),
+            (LyProductionPlanMaterial.bom_size, self._optional_text(requirement.bom_size)),
+            (LyProductionPlanMaterial.bom_part, self._optional_text(requirement.bom_part)),
+        ):
+            query = query.filter(column == value) if value is not None else query.filter(column.is_(None))
         snapshot = query.first()
         if snapshot is None:
             return

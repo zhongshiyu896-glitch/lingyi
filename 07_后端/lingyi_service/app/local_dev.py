@@ -106,6 +106,7 @@ def _create_local_tables() -> None:
     _ensure_local_factory_statement_payment_pending_approval_status()
     _ensure_local_bom_company_style_columns()
     _ensure_local_production_material_uom_column()
+    _ensure_local_bom_dimension_columns()
     _ensure_local_production_quote_operation_supports_quote_actions()
     _ensure_local_production_followup_node_operation_supports_edit()
     _seed_local_finance_approval_templates()
@@ -821,6 +822,31 @@ def _ensure_local_production_material_uom_column() -> None:
             conn.execute(
                 "ALTER TABLE ly_production_plan_material ADD COLUMN uom VARCHAR(32) NOT NULL DEFAULT '米'"
             )
+
+
+def _ensure_local_bom_dimension_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    table_columns = {
+        "ly_production_plan_material": ("bom_color", "bom_size", "bom_part"),
+        "ly_material_purchase_requirement": ("bom_color", "bom_size", "bom_part"),
+    }
+    with sqlite3.connect(database_path) as conn:
+        for table_name, column_names in table_columns.items():
+            table_exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                (table_name,),
+            ).fetchone()
+            if not table_exists:
+                continue
+            existing_columns = {
+                str(row[1])
+                for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+            }
+            for column_name in column_names:
+                if column_name not in existing_columns:
+                    conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} VARCHAR(100)")
 
 
 def _ensure_local_production_quote_operation_supports_quote_actions() -> None:

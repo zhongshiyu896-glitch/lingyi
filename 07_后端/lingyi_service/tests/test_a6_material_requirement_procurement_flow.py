@@ -2729,6 +2729,92 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(preserved.purchased_qty)), Decimal("54.000000"))
             self.assertEqual(Decimal(str(preserved.received_qty)), Decimal("54.000000"))
 
+    def test_sync_requirements_preserves_sample_bom_dimensions_without_bom_item_id(self) -> None:
+        with self.SessionLocal() as session:
+            plan = LyProductionPlan(
+                id=9602,
+                plan_no="PP-A6-DIM-001",
+                company=self.COMPANY,
+                sales_order="SO-A6-DIM",
+                sales_order_item="SO-A6-DIM-ITEM",
+                customer="CUST-A6",
+                item_code=self.STYLE,
+                bom_id=601,
+                bom_version="SAMPLE",
+                planned_qty=Decimal("10"),
+                status="material_checked",
+                idempotency_key="idem-a6-dim-plan",
+                request_hash="hash-a6-dim-plan",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.add_all(
+                [
+                    LyProductionPlanMaterial(
+                        plan_id=9602,
+                        bom_item_id=None,
+                        bom_color="黑",
+                        bom_size="M",
+                        bom_part="门襟",
+                        material_item_code=self.MATERIAL,
+                        warehouse=self.WAREHOUSE,
+                        uom="米",
+                        qty_per_piece=Decimal("1"),
+                        loss_rate=Decimal("0"),
+                        required_qty=Decimal("10"),
+                        available_qty=Decimal("0"),
+                        shortage_qty=Decimal("10"),
+                    ),
+                    LyProductionPlanMaterial(
+                        plan_id=9602,
+                        bom_item_id=None,
+                        bom_color="黑",
+                        bom_size="M",
+                        bom_part="袖口",
+                        material_item_code=self.MATERIAL,
+                        warehouse=self.WAREHOUSE,
+                        uom="米",
+                        qty_per_piece=Decimal("0.5"),
+                        loss_rate=Decimal("0"),
+                        required_qty=Decimal("5"),
+                        available_qty=Decimal("0"),
+                        shortage_qty=Decimal("5"),
+                    ),
+                ]
+            )
+            session.commit()
+
+            synced = MaterialPurchaseService(session).sync_requirements_from_production_plan(plan=plan, actor="a6.procurement.user")
+            session.commit()
+
+            self.assertEqual(len(synced), 2)
+            snapshots = {
+                str(row.bom_part): row
+                for row in session.query(LyProductionPlanMaterial).filter_by(plan_id=9602).all()
+            }
+            snapshots["袖口"].required_qty = Decimal("7")
+            snapshots["袖口"].shortage_qty = Decimal("7")
+            snapshots["门襟"].required_qty = Decimal("13")
+            snapshots["门襟"].shortage_qty = Decimal("13")
+            session.commit()
+
+            resynced = MaterialPurchaseService(session).sync_requirements_from_production_plan(plan=plan, actor="a6.procurement.user")
+            session.commit()
+
+            requirement_rows = (
+                session.query(LyMaterialPurchaseRequirement)
+                .filter_by(plan_id=9602)
+                .order_by(LyMaterialPurchaseRequirement.bom_part.asc())
+                .all()
+            )
+
+        self.assertEqual(len(resynced), 2)
+        self.assertEqual(len(requirement_rows), 2)
+        self.assertEqual([str(row.bom_part) for row in requirement_rows], ["袖口", "门襟"])
+        self.assertEqual({str(row.bom_color) for row in requirement_rows}, {"黑"})
+        self.assertEqual({str(row.bom_size) for row in requirement_rows}, {"M"})
+        self.assertEqual([Decimal(str(row.net_required_qty)) for row in requirement_rows], [Decimal("7.000000"), Decimal("13.000000")])
+
     def test_from_requirements_group_by_material_merges_cross_order_demands_and_receipts(self) -> None:
         requirement_a = self._seed_requirement(
             requirement_no="REQ-A6-GROUP-A",
