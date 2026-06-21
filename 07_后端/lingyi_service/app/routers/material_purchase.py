@@ -134,6 +134,41 @@ def _ensure_requirement_resource_scope(
         )
 
 
+def _ensure_invoice_payment_resource_scope(
+    *,
+    permission_service: PermissionService,
+    request: Request,
+    current_user: CurrentUser,
+    action: str,
+    resource_type: str,
+    resource_scope: dict[str, Any],
+    resource_id: int | None = None,
+    resource_no: str | None = None,
+) -> None:
+    user_permissions = permission_service.get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        resource_no=resource_no,
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=action,
+        resource_scope=resource_scope,
+        required_fields=("company", "item_code", "warehouse"),
+        resource_type=resource_type,
+        resource_id=resource_id,
+        resource_no=resource_no,
+        enforce_action=False,
+        user_permissions=user_permissions,
+    )
+
+
 @router.get("/orders")
 def list_material_purchase_orders(
     request: Request,
@@ -418,6 +453,14 @@ def list_purchase_invoices(
         action=MATERIAL_PURCHASE_READ,
         resource_type="MATERIAL_PURCHASE_INVOICE",
     )
+    permission_service = PermissionService(session=session)
+    permissions = permission_service.get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_INVOICE",
+    )
     try:
         data = MaterialPurchaseService(session).list_purchase_invoices(
             company=company,
@@ -426,6 +469,7 @@ def list_purchase_invoices(
             status=status,
             page=page,
             page_size=page_size,
+            **_material_purchase_scope_filters(permissions),
         )
     except AppException as exc:
         return _err(exc)
@@ -447,8 +491,18 @@ def create_purchase_invoice(
         resource_type="MATERIAL_PURCHASE_INVOICE",
     )
     audit = AuditService(session)
+    service = MaterialPurchaseService(session)
     try:
-        result = MaterialPurchaseService(session).create_purchase_invoice(payload=payload, actor=current_user.username)
+        _ensure_invoice_payment_resource_scope(
+            permission_service=PermissionService(session=session),
+            request=request,
+            current_user=current_user,
+            action=MATERIAL_PURCHASE_WRITE,
+            resource_type="MATERIAL_PURCHASE_INVOICE",
+            resource_scope=service.get_purchase_invoice_create_scope_for_permission(payload=payload),
+            resource_no=payload.purchase_invoice or payload.purchase_no,
+        )
+        result = service.create_purchase_invoice(payload=payload, actor=current_user.username)
         audit.record_success(
             module="material_purchase",
             action=MATERIAL_PURCHASE_WRITE,
@@ -465,6 +519,9 @@ def create_purchase_invoice(
     except AuditWriteFailed as exc:
         session.rollback()
         return _err(exc)
+    except HTTPException:
+        session.rollback()
+        raise
     except AppException as exc:
         session.rollback()
         audit.record_failure(
@@ -504,6 +561,14 @@ def list_purchase_payments(
         action=MATERIAL_PURCHASE_READ,
         resource_type="MATERIAL_PURCHASE_PAYMENT",
     )
+    permission_service = PermissionService(session=session)
+    permissions = permission_service.get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="material_purchase",
+        action=MATERIAL_PURCHASE_READ,
+        resource_type="MATERIAL_PURCHASE_PAYMENT",
+    )
     try:
         data = MaterialPurchaseService(session).list_purchase_payments(
             company=company,
@@ -512,6 +577,7 @@ def list_purchase_payments(
             status=status,
             page=page,
             page_size=page_size,
+            **_material_purchase_scope_filters(permissions),
         )
     except AppException as exc:
         return _err(exc)
@@ -533,8 +599,18 @@ def create_purchase_payment(
         resource_type="MATERIAL_PURCHASE_PAYMENT",
     )
     audit = AuditService(session)
+    service = MaterialPurchaseService(session)
     try:
-        result = MaterialPurchaseService(session).create_purchase_payment(payload=payload, actor=current_user.username)
+        _ensure_invoice_payment_resource_scope(
+            permission_service=PermissionService(session=session),
+            request=request,
+            current_user=current_user,
+            action=MATERIAL_PURCHASE_WRITE,
+            resource_type="MATERIAL_PURCHASE_PAYMENT",
+            resource_scope=service.get_purchase_payment_create_scope_for_permission(payload=payload),
+            resource_no=payload.payment_entry or payload.purchase_invoice,
+        )
+        result = service.create_purchase_payment(payload=payload, actor=current_user.username)
         audit.record_success(
             module="material_purchase",
             action=MATERIAL_PURCHASE_WRITE,
@@ -551,6 +627,9 @@ def create_purchase_payment(
     except AuditWriteFailed as exc:
         session.rollback()
         return _err(exc)
+    except HTTPException:
+        session.rollback()
+        raise
     except AppException as exc:
         session.rollback()
         audit.record_failure(
@@ -588,8 +667,22 @@ def cancel_purchase_payment(
         resource_id=payment_id,
     )
     audit = AuditService(session)
+    service = MaterialPurchaseService(session)
     try:
-        result = MaterialPurchaseService(session).cancel_purchase_payment(
+        _ensure_invoice_payment_resource_scope(
+            permission_service=PermissionService(session=session),
+            request=request,
+            current_user=current_user,
+            action=MATERIAL_PURCHASE_WRITE,
+            resource_type="MATERIAL_PURCHASE_PAYMENT",
+            resource_scope=service.get_purchase_payment_cancel_scope_for_permission(
+                payment_id=payment_id,
+                payload=payload,
+            ),
+            resource_id=payment_id,
+            resource_no=payload.purchase_invoice,
+        )
+        result = service.cancel_purchase_payment(
             payment_id=payment_id,
             payload=payload,
             actor=current_user.username,
@@ -610,6 +703,9 @@ def cancel_purchase_payment(
     except AuditWriteFailed as exc:
         session.rollback()
         return _err(exc)
+    except HTTPException:
+        session.rollback()
+        raise
     except AppException as exc:
         session.rollback()
         audit.record_failure(

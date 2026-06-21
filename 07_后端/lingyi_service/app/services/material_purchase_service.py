@@ -874,9 +874,33 @@ class MaterialPurchaseService:
         status: str | None,
         page: int,
         page_size: int,
+        allowed_companies: set[str] | None = None,
+        allowed_materials: set[str] | None = None,
+        allowed_suppliers: set[str] | None = None,
+        allowed_warehouses: set[str] | None = None,
     ) -> MaterialPurchaseInvoiceListData:
         try:
             query = self.session.query(LyMaterialPurchaseInvoice)
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseInvoice.company,
+                allowed_values=allowed_companies,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseInvoice.material_item_code,
+                allowed_values=allowed_materials,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseInvoice.supplier_name,
+                allowed_values=allowed_suppliers,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseInvoice.warehouse,
+                allowed_values=allowed_warehouses,
+            )
             normalized_company = self._optional_text(company)
             if normalized_company:
                 query = query.filter(LyMaterialPurchaseInvoice.company == normalized_company)
@@ -911,6 +935,51 @@ class MaterialPurchaseService:
             page=page,
             page_size=page_size,
         )
+
+    def get_purchase_invoice_create_scope_for_permission(
+        self,
+        *,
+        payload: MaterialPurchaseInvoiceCreateRequest,
+    ) -> dict[str, Any]:
+        company = self._require_text(payload.company, "company")
+        purchase_no = self._require_text(payload.purchase_no, "purchase_no")
+        order = self._get_order_by_no(company=company, purchase_no=purchase_no)
+        if order is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购单不存在")
+        line = self._select_invoice_line(order_id=int(order.id), material_item_code=payload.material_item_code)
+        return {
+            "company": company,
+            "item_code": str(line.material_item_code),
+            "supplier": str(order.supplier_name),
+            "warehouse": self._optional_text(line.warehouse),
+        }
+
+    def get_purchase_payment_create_scope_for_permission(
+        self,
+        *,
+        payload: MaterialPurchasePaymentCreateRequest,
+    ) -> dict[str, Any]:
+        company = self._require_text(payload.company, "company")
+        purchase_invoice = self._require_text(payload.purchase_invoice, "purchase_invoice")
+        invoice = self._get_purchase_invoice_by_no(company=company, purchase_invoice=purchase_invoice)
+        if invoice is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购发票不存在")
+        return self._invoice_scope(invoice)
+
+    def get_purchase_payment_cancel_scope_for_permission(
+        self,
+        *,
+        payment_id: int,
+        payload: MaterialPurchasePaymentCancelRequest,
+    ) -> dict[str, Any]:
+        company = self._require_text(payload.company, "company")
+        payment = self._get_purchase_payment_by_id(company=company, payment_id=payment_id)
+        if payment is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购付款单不存在")
+        invoice = self._get_purchase_invoice_by_no(company=company, purchase_invoice=str(payment.purchase_invoice))
+        if invoice is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购发票不存在")
+        return self._invoice_scope(invoice)
 
     def create_purchase_invoice(
         self,
@@ -1061,9 +1130,36 @@ class MaterialPurchaseService:
         status: str | None,
         page: int,
         page_size: int,
+        allowed_companies: set[str] | None = None,
+        allowed_materials: set[str] | None = None,
+        allowed_suppliers: set[str] | None = None,
+        allowed_warehouses: set[str] | None = None,
     ) -> MaterialPurchasePaymentListData:
         try:
-            query = self.session.query(LyMaterialPurchasePayment)
+            query = self.session.query(LyMaterialPurchasePayment).join(
+                LyMaterialPurchaseInvoice,
+                LyMaterialPurchaseInvoice.id == LyMaterialPurchasePayment.purchase_invoice_id,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchasePayment.company,
+                allowed_values=allowed_companies,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseInvoice.material_item_code,
+                allowed_values=allowed_materials,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchasePayment.supplier_name,
+                allowed_values=allowed_suppliers,
+            )
+            query = self._apply_required_scope_filter(
+                query=query,
+                column=LyMaterialPurchaseInvoice.warehouse,
+                allowed_values=allowed_warehouses,
+            )
             normalized_company = self._optional_text(company)
             if normalized_company:
                 query = query.filter(LyMaterialPurchasePayment.company == normalized_company)
@@ -2161,6 +2257,14 @@ class MaterialPurchaseService:
             )
             .first()
         )
+
+    def _invoice_scope(self, invoice: LyMaterialPurchaseInvoice) -> dict[str, Any]:
+        return {
+            "company": str(invoice.company),
+            "item_code": str(invoice.material_item_code),
+            "supplier": str(invoice.supplier_name),
+            "warehouse": self._optional_text(invoice.warehouse),
+        }
 
     def _get_purchase_invoice_by_idempotency(
         self,

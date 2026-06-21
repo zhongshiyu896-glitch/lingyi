@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import json
 import os
 import unittest
 
@@ -93,6 +94,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
@@ -344,6 +346,29 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         payload.update(overrides)
         return payload
 
+    @classmethod
+    def _set_fastapi_scope(
+        cls,
+        *,
+        companies: list[str] | None = None,
+        item_codes: list[str] | None = None,
+        suppliers: list[str] | None = None,
+        warehouses: list[str] | None = None,
+    ) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
+            {
+                "users": {
+                    "b2.purchase.user": {
+                        "companies": companies if companies is not None else [cls.COMPANY],
+                        "item_codes": item_codes if item_codes is not None else [cls.ITEM_CODE],
+                        "suppliers": suppliers if suppliers is not None else ["SUP-B2"],
+                        "warehouses": warehouses if warehouses is not None else [cls.WAREHOUSE],
+                    }
+                }
+            }
+        )
+
     def _approve_purchase_invoice(self, invoice_id: int, *, suffix: str = "001") -> dict[str, object]:
         created = self.client.post(
             "/api/finance/approval-tasks",
@@ -401,6 +426,102 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         self.assertEqual(approved.status_code, 200, approved.text)
         self.assertEqual(approved.json()["data"]["status"], "approved")
         return approved.json()["data"]
+
+    def test_purchase_invoice_create_denies_fastapi_resource_scope_and_does_not_write(self) -> None:
+        self._create_received_purchase_order()
+        self._set_fastapi_scope(item_codes=["FAB-OTHER"], warehouses=[self.WAREHOUSE])
+
+        response = self.client.post(
+            "/api/material-purchase/purchase-invoices",
+            headers=self._headers(role="Purchasing Manager", request_id="req-b2-pinv-scope-deny"),
+            json=self._invoice_payload(idempotency_key="idem-b2-pinv-scope-deny", source_ref="SRC-B2-PINV-SCOPE-DENY"),
+        )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseInvoice).count(), 0)
+            security = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(security)
+            self.assertEqual(security.event_type, "RESOURCE_ACCESS_DENIED")
+            self.assertEqual(security.resource_type, "MATERIAL_PURCHASE_INVOICE")
+            self.assertEqual(security.resource_no, "PINV-B2-001")
+
+    def test_purchase_invoice_and_payment_lists_filter_fastapi_resource_scope(self) -> None:
+        self._create_received_purchase_order()
+        invoice = self.client.post(
+            "/api/material-purchase/purchase-invoices",
+            headers=self._headers(),
+            json=self._invoice_payload(),
+        )
+        self.assertEqual(invoice.status_code, 201, invoice.text)
+        self._approve_purchase_invoice(invoice.json()["data"]["id"], suffix="scope-list")
+        payment = self.client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=self._headers(),
+            json=self._payment_payload(),
+        )
+        self.assertEqual(payment.status_code, 201, payment.text)
+
+        self._set_fastapi_scope()
+        allowed_headers = self._headers(role="Purchasing Manager", request_id="req-b2-list-scope-allow")
+        invoices_allowed = self.client.get("/api/material-purchase/purchase-invoices?company=COMP-B2", headers=allowed_headers)
+        payments_allowed = self.client.get("/api/material-purchase/purchase-payments?company=COMP-B2", headers=allowed_headers)
+        self.assertEqual(invoices_allowed.status_code, 200, invoices_allowed.text)
+        self.assertEqual(payments_allowed.status_code, 200, payments_allowed.text)
+        self.assertEqual(invoices_allowed.json()["data"]["total"], 1)
+        self.assertEqual(payments_allowed.json()["data"]["total"], 1)
+
+        self._set_fastapi_scope(suppliers=["SUP-OTHER"])
+        denied_headers = self._headers(role="Purchasing Manager", request_id="req-b2-list-scope-deny")
+        invoices_denied = self.client.get("/api/material-purchase/purchase-invoices?company=COMP-B2", headers=denied_headers)
+        payments_denied = self.client.get("/api/material-purchase/purchase-payments?company=COMP-B2", headers=denied_headers)
+        self.assertEqual(invoices_denied.status_code, 200, invoices_denied.text)
+        self.assertEqual(payments_denied.status_code, 200, payments_denied.text)
+        self.assertEqual(invoices_denied.json()["data"]["total"], 0)
+        self.assertEqual(payments_denied.json()["data"]["total"], 0)
+
+    def test_purchase_payment_cancel_denies_fastapi_resource_scope_and_does_not_reverse(self) -> None:
+        self._create_received_purchase_order()
+        invoice = self.client.post(
+            "/api/material-purchase/purchase-invoices",
+            headers=self._headers(),
+            json=self._invoice_payload(),
+        )
+        self.assertEqual(invoice.status_code, 201, invoice.text)
+        self._approve_purchase_invoice(invoice.json()["data"]["id"], suffix="scope-cancel")
+        payment = self.client.post(
+            "/api/material-purchase/purchase-payments",
+            headers=self._headers(),
+            json=self._payment_payload(),
+        )
+        self.assertEqual(payment.status_code, 201, payment.text)
+        self._approve_purchase_payment(payment.json()["data"]["id"], suffix="scope-cancel")
+
+        self._set_fastapi_scope(warehouses=["WH-OTHER"])
+        response = self.client.post(
+            f"/api/material-purchase/purchase-payments/{payment.json()['data']['id']}/cancel",
+            headers=self._headers(role="Purchasing Manager", request_id="req-b2-pp-cancel-scope-deny"),
+            json=self._payment_cancel_payload(
+                idempotency_key="idem-b2-pp-cancel-scope-deny",
+                scenario_tag="B2-PURCHASE-PAYMENT-CANCEL-SCOPE-DENY",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        with self.SessionLocal() as session:
+            invoice_row = session.query(LyMaterialPurchaseInvoice).one()
+            payment_row = session.query(LyMaterialPurchasePayment).one()
+            self.assertEqual(str(invoice_row.status), "partly_paid")
+            self.assertEqual(Decimal(str(invoice_row.paid_amount)), Decimal("100.000000"))
+            self.assertEqual(str(payment_row.status), "submitted")
+            self.assertEqual(session.query(LyMaterialPurchasePaymentOperation).count(), 0)
+            security = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(security)
+            self.assertEqual(security.event_type, "RESOURCE_ACCESS_DENIED")
+            self.assertEqual(security.resource_type, "MATERIAL_PURCHASE_PAYMENT")
+            self.assertEqual(security.resource_no, "PINV-B2-001")
 
     def test_purchase_invoice_and_payment_reduce_payable(self) -> None:
         self._create_received_purchase_order()
