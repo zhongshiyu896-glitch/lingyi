@@ -219,7 +219,7 @@ class BomService:
 
             total = sql.with_entities(func.count(LyApparelBom.id)).scalar() or 0
             rows = (
-                sql.order_by(LyApparelBom.id.desc())
+                sql.order_by(LyApparelBom.created_at.desc(), LyApparelBom.id.desc())
                 .offset((query.page - 1) * query.page_size)
                 .limit(query.page_size)
                 .all()
