@@ -305,6 +305,134 @@ class BomApiWriteFlowTest(unittest.TestCase):
             ["BOM-GALLERY-NEWER-CREATED", "BOM-GALLERY-OLDER-CREATED-LARGER-ID"],
         )
 
+    def test_processing_types_order_by_parent_bom_created_time(self) -> None:
+        newer_item_code = "STYLE-BOM-PROC-NEWER"
+        older_item_code = "STYLE-BOM-PROC-OLDER"
+        with self.SessionLocal() as session:
+            session.add_all([self._style(newer_item_code), self._style(older_item_code)])
+            newer_bom = LyApparelBom(
+                bom_no="BOM-PROC-NEWER-CREATED",
+                company=self.COMPANY,
+                item_code=newer_item_code,
+                version_no="V1",
+                is_default=False,
+                status="draft",
+                created_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(newer_bom)
+            session.flush()
+            session.add(
+                LyBomOperation(
+                    bom_id=int(newer_bom.id),
+                    process_name="新 BOM 工序",
+                    sequence_no=10,
+                    is_subcontract=False,
+                    wage_rate=Decimal("1.00"),
+                )
+            )
+            older_bom = LyApparelBom(
+                bom_no="BOM-PROC-OLDER-CREATED-LARGER-ID",
+                company=self.COMPANY,
+                item_code=older_item_code,
+                version_no="V1",
+                is_default=False,
+                status="draft",
+                created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(older_bom)
+            session.flush()
+            session.add(
+                LyBomOperation(
+                    bom_id=int(older_bom.id),
+                    process_name="旧 BOM 工序",
+                    sequence_no=1,
+                    is_subcontract=False,
+                    wage_rate=Decimal("1.00"),
+                )
+            )
+            session.commit()
+
+        response = self.client.get(
+            "/api/bom/processing-types?page=1&page_size=20",
+            headers=self._headers(item_code=newer_item_code, bom_ref="BOM-PROC", role="System Manager"),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 2)
+        self.assertEqual(
+            [item["bom_no"] for item in payload["items"]],
+            ["BOM-PROC-NEWER-CREATED", "BOM-PROC-OLDER-CREATED-LARGER-ID"],
+        )
+
+    def test_material_units_order_by_parent_bom_created_time(self) -> None:
+        newer_item_code = "STYLE-BOM-UNIT-NEWER"
+        older_item_code = "STYLE-BOM-UNIT-OLDER"
+        with self.SessionLocal() as session:
+            session.add_all([self._style(newer_item_code), self._style(older_item_code)])
+            newer_bom = LyApparelBom(
+                bom_no="BOM-UNIT-NEWER-CREATED",
+                company=self.COMPANY,
+                item_code=newer_item_code,
+                version_no="V1",
+                is_default=False,
+                status="draft",
+                created_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(newer_bom)
+            session.flush()
+            session.add(
+                LyApparelBomItem(
+                    bom_id=int(newer_bom.id),
+                    material_item_code="MAT-UNIT-NEWER",
+                    qty_per_piece=Decimal("1.00"),
+                    loss_rate=Decimal("0.00"),
+                    uom="米",
+                )
+            )
+            older_bom = LyApparelBom(
+                bom_no="BOM-UNIT-OLDER-CREATED-LARGER-ID",
+                company=self.COMPANY,
+                item_code=older_item_code,
+                version_no="V1",
+                is_default=False,
+                status="draft",
+                created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(older_bom)
+            session.flush()
+            session.add(
+                LyApparelBomItem(
+                    bom_id=int(older_bom.id),
+                    material_item_code="MAT-UNIT-OLDER",
+                    qty_per_piece=Decimal("1.00"),
+                    loss_rate=Decimal("0.00"),
+                    uom="个",
+                )
+            )
+            session.commit()
+
+        response = self.client.get(
+            "/api/bom/material-units?page=1&page_size=20",
+            headers=self._headers(item_code=newer_item_code, bom_ref="BOM-UNIT", role="System Manager"),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 2)
+        self.assertEqual(
+            [item["bom_no"] for item in payload["items"]],
+            ["BOM-UNIT-NEWER-CREATED", "BOM-UNIT-OLDER-CREATED-LARGER-ID"],
+        )
+
     def test_create_bom_http_success_and_duplicate_conflict(self) -> None:
         item_code = "STYLE-BOM-API-001"
         source_ref = f"{self.SCENARIO}:SRC:{item_code}"

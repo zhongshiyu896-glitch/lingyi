@@ -268,6 +268,14 @@ class BomService:
         return (LyApparelBom.created_at.desc(), LyApparelBom.id.desc(), LyApparelBomItem.id.desc())
 
     @staticmethod
+    def _bom_operation_parent_created_ordering() -> tuple[Any, ...]:
+        return (LyApparelBom.created_at.desc(), LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc())
+
+    @staticmethod
+    def _bom_item_parent_created_ordering() -> tuple[Any, ...]:
+        return (LyApparelBom.created_at.desc(), LyApparelBom.id.desc(), LyApparelBomItem.id.asc())
+
+    @staticmethod
     def _is_fabric_material(material_item_code: str, remark: str | None) -> bool:
         remark_text = (remark or "").strip()
         if "面料" in remark_text:
@@ -921,9 +929,7 @@ class BomService:
                     return BomProcessingTypeData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            rows: list[tuple[LyBomOperation, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc()).all()
-            )
+            rows: list[tuple[LyBomOperation, LyApparelBom]] = sql.order_by(*self._bom_operation_parent_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -1009,9 +1015,7 @@ class BomService:
                     return BomMaterialProcessingData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            rows: list[tuple[LyBomOperation, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc()).all()
-            )
+            rows: list[tuple[LyBomOperation, LyApparelBom]] = sql.order_by(*self._bom_operation_parent_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -1108,9 +1112,7 @@ class BomService:
                     return BomMaterialProcessingInboundData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            operation_rows: list[tuple[LyBomOperation, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc()).all()
-            )
+            operation_rows: list[tuple[LyBomOperation, LyApparelBom]] = sql.order_by(*self._bom_operation_parent_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -1226,9 +1228,7 @@ class BomService:
                     return BomMaterialDeductionData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            operation_rows: list[tuple[LyBomOperation, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc()).all()
-            )
+            operation_rows: list[tuple[LyBomOperation, LyApparelBom]] = sql.order_by(*self._bom_operation_parent_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -1339,9 +1339,7 @@ class BomService:
                     return BomMaterialSalesOutboundData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.asc()).all()
-            )
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = sql.order_by(*self._bom_item_parent_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -1457,9 +1455,7 @@ class BomService:
                     return BomMaterialTypeData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.asc()).all()
-            )
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = sql.order_by(*self._bom_item_parent_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
@@ -1544,9 +1540,7 @@ class BomService:
                     return BomMaterialUnitData(items=[], total=0, page=query.page, page_size=query.page_size)
                 sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
 
-            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
-                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.asc()).all()
-            )
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = sql.order_by(*self._bom_item_parent_created_ordering()).all()
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
 
