@@ -24,7 +24,6 @@ from app.schemas.dashboard import DashboardKanbanFlowNodeData
 from app.schemas.dashboard import DashboardHomeMetricCardData
 from app.schemas.dashboard import DashboardHomeOverviewData
 from app.schemas.dashboard import DashboardHomeTodoItemData
-from app.schemas.dashboard import DashboardHomeTrendPointData
 from app.schemas.dashboard import DashboardKanbanMessageRowData
 from app.schemas.dashboard import DashboardQualityOverviewData
 from app.schemas.dashboard import DashboardSalesInventoryOverviewData
@@ -194,44 +193,24 @@ class DashboardService:
             for row in kanban.messages[:5]
         ]
 
-        trend_points = [
-            DashboardHomeTrendPointData(
-                period="W1",
-                forecast_sales=Decimal("120000"),
-                forecast_cost=Decimal("86000"),
-                forecast_profit=Decimal("34000"),
-            ),
-            DashboardHomeTrendPointData(
-                period="W2",
-                forecast_sales=Decimal("132000"),
-                forecast_cost=Decimal("93000"),
-                forecast_profit=Decimal("39000"),
-            ),
-            DashboardHomeTrendPointData(
-                period="W3",
-                forecast_sales=Decimal("126000"),
-                forecast_cost=Decimal("90500"),
-                forecast_profit=Decimal("35500"),
-            ),
-            DashboardHomeTrendPointData(
-                period="W4",
-                forecast_sales=Decimal("138000"),
-                forecast_cost=Decimal("96400"),
-                forecast_profit=Decimal("41600"),
-            ),
-        ]
+        warnings: list[str] = []
+        if overdue_count > 0:
+            warnings.append(f"存在 {overdue_count} 条超期订单动态")
+        if int(sales_inventory.below_reorder_count) > 0:
+            warnings.append(f"低于补货线款号 {int(sales_inventory.below_reorder_count)} 个")
+        if int(warehouse.critical_alert_count) > 0:
+            warnings.append(f"仓储高危预警 {int(warehouse.critical_alert_count)} 条")
+        elif warning_total > 0:
+            warnings.append(f"仓储预警 {warning_total} 条")
 
         return DashboardHomeOverviewData(
             summary_title="首页经营总览（P1）",
             metric_cards=metric_cards,
             todo_items=todo_items,
-            warnings=[
-                "写入类动作在本地首版保持受控，不触发真实提交。",
-                "导出/下载/打印在本页仅提供语义按钮。",
-            ],
+            warnings=warnings,
             business_summary=business_summary,
             recent_activities=recent_activities,
-            trend_points=trend_points,
+            trend_points=[],
             primary_actions=["查看动态", "刷新指标", "导出概览"],
         )
 

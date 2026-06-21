@@ -170,7 +170,11 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertIn("home_overview", payload)
         self.assertGreaterEqual(len(payload["home_overview"]["metric_cards"]), 4)
         self.assertGreaterEqual(len(payload["home_overview"]["todo_items"]), 3)
+        self.assertEqual(payload["home_overview"]["warnings"], [])
+        self.assertEqual(payload["home_overview"]["trend_points"], [])
         self.assertIn("查看动态", payload["home_overview"]["primary_actions"])
+        self.assertNotIn("120000", response.text)
+        self.assertNotIn("写入类动作", response.text)
 
     def test_dashboard_kanban_messages_are_built_from_local_orders_and_plans(self) -> None:
         with self.SessionLocal() as session:
@@ -377,6 +381,7 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(payload["sales_inventory"]["below_reorder_count"], 1)
         self.assertEqual(payload["warehouse"]["alert_count"], 1)
         self.assertEqual(payload["warehouse"]["critical_alert_count"], 1)
+        self.assertEqual(payload["home_overview"]["warnings"], ["低于补货线款号 1 个", "仓储高危预警 1 条"])
 
     def test_module_read_actions_cannot_replace_dashboard_read(self) -> None:
         for role in ("quality:read", "sales_inventory:read", "warehouse:read", "inventory:read"):
