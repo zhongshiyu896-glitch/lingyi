@@ -3351,6 +3351,8 @@ class ProductionService:
                 requirements=purchase_requirement_by_purchase.get(purchase_key, []),
             )
 
+        order_io_quantity_facts = self._production_order_io_quantity_facts(plans)
+
         return {
             "sales_map": sales_map,
             "sales_header_map": sales_header_map,
@@ -3370,6 +3372,7 @@ class ProductionService:
             "purchase_requirement_map": purchase_requirement_map,
             "purchase_invoice_amount_map": purchase_invoice_amount_map,
             "purchase_payment_amount_map": purchase_payment_amount_map,
+            "order_io_quantity_facts": order_io_quantity_facts,
         }
 
     def _allocate_purchase_ledger_amount(
@@ -3424,7 +3427,8 @@ class ProductionService:
         qty = self._dec(base["qty"])
         planned_qty = self._dec(plan.planned_qty)
         finished_qty = self._completed_qty(plan=plan, context=context)
-        stocked_qty = Decimal("0")
+        quantity_fact = context.get("order_io_quantity_facts", {}).get(int(plan.id), {})
+        stocked_qty = self._dec(quantity_fact.get("inbound_qty")).quantize(Decimal("0.000001"))
         return {
             **base,
             "id": f"OQ-{int(plan.id)}",

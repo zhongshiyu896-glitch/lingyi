@@ -30,6 +30,7 @@ from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionWorkOrderLink
+from app.models.quality import Base as QualityBase
 from app.models.sample import Base as SampleBase
 from app.models.sample import LySampleCostLine
 from app.models.sample import LySampleOrder
@@ -40,6 +41,8 @@ from app.models.sales_order import LySalesOrderItem
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.style_profit import Base as StyleProfitBase
 from app.models.style_profit import LyStyleProfitSnapshot
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
 
@@ -57,7 +60,16 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
             execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
-        for base in (AuditBase, BomBase, SalesOrderBase, ProductionBase, StyleProfitBase, MaterialPurchaseBase, SampleBase):
+        for base in (
+            AuditBase,
+            BomBase,
+            SalesOrderBase,
+            ProductionBase,
+            StyleProfitBase,
+            MaterialPurchaseBase,
+            SampleBase,
+            QualityBase,
+        ):
             base.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -103,6 +115,8 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
                 LyBomOperation,
                 LyApparelBomItem,
                 LyApparelBom,
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraft,
                 LySalesOrderItem,
                 LySalesOrder,
             ):
@@ -378,6 +392,82 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(row["financialLedgerCostAmount"])), Decimal("1140"))
         self.assertEqual(Decimal(str(row["financialLedgerGrossProfit"])), Decimal("660"))
         self.assertEqual(row["financialLedgerStatus"], "posted")
+
+    def test_order_quantity_report_uses_finished_goods_inbound_stock_drafts(self) -> None:
+        with self.SessionLocal() as session:
+            matching = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="finished_goods_inbound",
+                source_id="PP-RPT-001",
+                target_warehouse="FG-A",
+                status="pending_outbox",
+                created_by="warehouse.user",
+                idempotency_key="fg-inbound-rpt-idem",
+                event_key="fg-inbound-rpt-event",
+            )
+            cancelled = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="finished_goods_inbound",
+                source_id="PP-RPT-001",
+                target_warehouse="FG-A",
+                status="cancelled",
+                created_by="warehouse.user",
+                idempotency_key="fg-inbound-rpt-cancel-idem",
+                event_key="fg-inbound-rpt-cancel-event",
+            )
+            unrelated = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type="finished_goods_inbound",
+                source_id="PP-OTHER-001",
+                target_warehouse="FG-A",
+                status="pending_outbox",
+                created_by="warehouse.user",
+                idempotency_key="fg-inbound-rpt-other-idem",
+                event_key="fg-inbound-rpt-other-event",
+            )
+            session.add_all([matching, cancelled, unrelated])
+            session.flush()
+            session.add_all(
+                [
+                    LyWarehouseStockEntryDraftItem(
+                        draft_id=int(matching.id),
+                        company="COMP-A",
+                        item_code="STYLE-A",
+                        qty=Decimal("31"),
+                        uom="件",
+                        target_warehouse="FG-A",
+                    ),
+                    LyWarehouseStockEntryDraftItem(
+                        draft_id=int(cancelled.id),
+                        company="COMP-A",
+                        item_code="STYLE-A",
+                        qty=Decimal("99"),
+                        uom="件",
+                        target_warehouse="FG-A",
+                    ),
+                    LyWarehouseStockEntryDraftItem(
+                        draft_id=int(unrelated.id),
+                        company="COMP-A",
+                        item_code="STYLE-A",
+                        qty=Decimal("88"),
+                        uom="件",
+                        target_warehouse="FG-A",
+                    ),
+                ]
+            )
+            session.commit()
+
+        response = self.client.get(
+            "/api/production/report-suite?report_key=orderQuantityReport&company=COMP-A",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        row = response.json()["data"]["items"][0]
+        self.assertEqual(row["planNo"], "PP-RPT-001")
+        self.assertEqual(Decimal(str(row["stockedQty"])), Decimal("31.000000"))
 
     def test_profit_report_uses_delivery_invoice_revenue_without_snapshot(self) -> None:
         with self.SessionLocal() as session:
