@@ -13,6 +13,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseOrder
+from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.quality import Base as QualityBase
 from app.models.quality import LyQualityInspection
 from app.models.quality_outbox import LyQualityOutbox
@@ -44,6 +47,7 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         QualityBase.metadata.create_all(bind=cls.engine)
+        MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         SubcontractBase.metadata.create_all(bind=cls.engine)
 
     @classmethod
@@ -62,6 +66,8 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
             session.query(LySubcontractMaterial).delete()
             session.query(LySubcontractStockOutbox).delete()
             session.query(LySubcontractOrder).delete()
+            session.query(LyMaterialPurchaseOrderItem).delete()
+            session.query(LyMaterialPurchaseOrder).delete()
             session.query(LyWarehouseInventoryCountItem).delete()
             session.query(LyWarehouseInventoryCount).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
@@ -80,13 +86,14 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         source_warehouse: str | None = None,
         target_warehouse: str | None = None,
         item_code: str = "FAB-A",
+        source_type: str = "manual",
         status: str = "pending_outbox",
     ) -> None:
         created_at = datetime.combine(business_date, datetime.min.time(), timezone.utc)
         draft = LyWarehouseStockEntryDraft(
             company="COMP-A",
             purpose=purpose,
-            source_type="manual",
+            source_type=source_type,
             source_id=source_id,
             source_warehouse=source_warehouse,
             target_warehouse=target_warehouse,
@@ -191,6 +198,80 @@ class WarehouseLocalStockBalanceTest(unittest.TestCase):
         summary_by_warehouse = {row.warehouse: Decimal(str(row.actual_qty)) for row in summary.items}
         self.assertEqual(summary_by_warehouse, {"WH-A": Decimal("5.000000"), "WH-B": Decimal("2.000000")})
         self.assertTrue(all(row.threshold_missing for row in summary.items))
+
+    def test_material_purchase_receipt_draft_waits_for_audit_before_stock_readback(self) -> None:
+        with self.SessionLocal() as session:
+            self._add_draft(
+                session,
+                source_id="PO-DRAFT-001",
+                purpose="Material Receipt",
+                target_warehouse="WH-A",
+                qty="10",
+                business_date=date(2026, 6, 1),
+                source_type="material_purchase_order",
+                status="draft",
+            )
+            session.commit()
+
+            service = WarehouseService(session=session)
+            ledger = service.list_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-A",
+                item_code="FAB-A",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            summary = service.get_stock_summary(company="COMP-A", warehouse="WH-A", item_code="FAB-A")
+            receipts = service.list_local_purchase_receipts(
+                company="COMP-A",
+                warehouse="WH-A",
+                item_code=None,
+                material_item_code="FAB-A",
+                purchase_no=None,
+                supplier_name=None,
+                status=None,
+                page=1,
+                page_size=20,
+            )
+
+            self.assertEqual(ledger.total, 0)
+            self.assertEqual(summary.items, [])
+            self.assertEqual(receipts.total, 0)
+
+            draft = session.query(LyWarehouseStockEntryDraft).filter_by(source_id="PO-DRAFT-001").one()
+            draft.status = "pending_outbox"
+            session.commit()
+
+            ledger_after_audit = service.list_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-A",
+                item_code="FAB-A",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            summary_after_audit = service.get_stock_summary(company="COMP-A", warehouse="WH-A", item_code="FAB-A")
+            receipts_after_audit = service.list_local_purchase_receipts(
+                company="COMP-A",
+                warehouse="WH-A",
+                item_code=None,
+                material_item_code="FAB-A",
+                purchase_no=None,
+                supplier_name=None,
+                status=None,
+                page=1,
+                page_size=20,
+            )
+
+        self.assertEqual(ledger_after_audit.total, 1)
+        self.assertEqual(Decimal(str(ledger_after_audit.items[0].actual_qty)), Decimal("10.000000"))
+        self.assertEqual(len(summary_after_audit.items), 1)
+        self.assertEqual(Decimal(str(summary_after_audit.items[0].actual_qty)), Decimal("10.000000"))
+        self.assertEqual(receipts_after_audit.total, 1)
+        self.assertEqual(Decimal(str(receipts_after_audit.items[0].received_qty)), Decimal("10.000000"))
 
     def test_date_filter_keeps_running_balance_from_prior_movements(self) -> None:
         self._seed_movements()

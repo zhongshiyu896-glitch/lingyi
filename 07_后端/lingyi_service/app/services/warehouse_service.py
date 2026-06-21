@@ -331,7 +331,7 @@ class WarehouseService:
                     LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
                 )
                 .filter(
-                    LyWarehouseStockEntryDraft.status != "cancelled",
+                    LyWarehouseStockEntryDraft.status == "pending_outbox",
                     LyWarehouseStockEntryDraft.purpose == "Material Receipt",
                     LyWarehouseStockEntryDraft.source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE,
                 )
@@ -741,6 +741,8 @@ class WarehouseService:
             )
 
         for draft, item in query.all():
+            if not self._draft_counts_in_local_stock(draft=draft):
+                continue
             qty = Decimal(str(item.qty or 0))
             purpose = str(draft.purpose)
             if purpose == "Material Issue":
@@ -790,6 +792,17 @@ class WarehouseService:
 
         movements.sort(key=lambda row: (row.sort_at, row.source_id, row.line_id, row.sequence, row.warehouse))
         return movements
+
+    @staticmethod
+    def _draft_counts_in_local_stock(*, draft: LyWarehouseStockEntryDraft) -> bool:
+        if str(draft.status) == "cancelled":
+            return False
+        if (
+            str(draft.source_type) == MaterialPurchaseService.PURCHASE_SOURCE_TYPE
+            and str(draft.purpose) == "Material Receipt"
+        ):
+            return str(draft.status) == "pending_outbox"
+        return True
 
     def _append_quality_stock_movements(
         self,
