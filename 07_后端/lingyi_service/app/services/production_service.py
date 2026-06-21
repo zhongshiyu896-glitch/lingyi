@@ -588,12 +588,20 @@ class ProductionService:
     ) -> list[Any]:
         order_color = cls._normalized_dimension(getattr(sales_order_item, "color", None))
         order_size = cls._normalized_dimension(getattr(sales_order_item, "size", None))
-        matched_rows = [
-            row
-            for row in bom_rows
-            if cls._dimension_matches(getattr(row, "color", None), order_color)
-            and cls._dimension_matches(getattr(row, "size", None), order_size)
-        ]
+        if not order_color and not order_size:
+            matched_rows = [
+                row
+                for row in bom_rows
+                if not cls._normalized_dimension(getattr(row, "color", None))
+                and not cls._normalized_dimension(getattr(row, "size", None))
+            ]
+        else:
+            matched_rows = [
+                row
+                for row in bom_rows
+                if cls._dimension_matches(getattr(row, "color", None), order_color)
+                and cls._dimension_matches(getattr(row, "size", None), order_size)
+            ]
         best_score_by_usage: dict[str, int] = {}
         scored_rows: list[tuple[Any, str, int]] = []
         for row in matched_rows:

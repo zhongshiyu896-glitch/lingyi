@@ -817,6 +817,72 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(material_check.json()["code"], "PRODUCTION_BOM_NOT_FOUND")
         self.assertIn("匹配当前颜色/尺码", material_check.json()["message"])
 
+    def test_sales_order_material_check_unset_dimensions_only_match_universal_bom_rows(self) -> None:
+        self._seed_style_with_matrix_bom(
+            style_no="STYLE-UNSET-DIM",
+            style_name="Unset Dimension Tee",
+            bom_id=31,
+            bom_items=[
+                {"material_item_code": "THREAD-UNIVERSAL", "part": "全款通用线", "qty_per_piece": "0.2", "loss_rate": "0"},
+                {"material_item_code": "FAB-BLACK-S", "color": "黑", "size": "S", "part": "面料主身", "qty_per_piece": "1", "loss_rate": "0"},
+                {"material_item_code": "FAB-WHITE-M", "color": "白", "size": "M", "part": "面料主身", "qty_per_piece": "2", "loss_rate": "0"},
+            ],
+        )
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-BOM-UNSET-DIM-001",
+            "source_order_ref": "SO-A4-BOM-UNSET-DIM-001",
+            "idempotency_key": "idem-so-a4-bom-unset-dim-001",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "STYLE-UNSET-DIM",
+                    "item_name": "Unset Dimension Tee",
+                    "qty": 10,
+                    "rate": 80,
+                    "uom": "件",
+                }
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-BOM-UNSET-DIM-001",
+            key="idem-so-a4-bom-unset-dim-001-submit",
+        )
+
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            material_check = self.client.post(
+                "/api/production/sales-orders/SO-A4-BOM-UNSET-DIM-001/material-check",
+                headers={**self._headers(), "X-Request-ID": "req-a4-bom-unset-dim-check"},
+                json={
+                    "warehouse": "WH-BOM-UNSET-DIM",
+                    "company": "COMP-A",
+                    "planned_start_date": "2026-06-18",
+                    "operation": "sales_order_material_check",
+                    "idempotency_key": "idem-sales-order-material-check-a4-bom-unset-dim-001",
+                },
+            )
+        self.assertEqual(material_check.status_code, 200, material_check.text)
+        self.assertEqual(material_check.json()["data"]["snapshot_count"], 1)
+        self.assertEqual(Decimal(str(material_check.json()["data"]["required_qty_total"])), Decimal("2.000000"))
+        with self.SessionLocal() as session:
+            snapshots = session.query(LyProductionPlanMaterial).order_by(LyProductionPlanMaterial.id.asc()).all()
+            requirements = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.id.asc()).all()
+            self.assertEqual([row.material_item_code for row in snapshots], ["THREAD-UNIVERSAL"])
+            self.assertEqual([row.material_item_code for row in requirements], ["THREAD-UNIVERSAL"])
+            self.assertEqual(Decimal(str(snapshots[0].required_qty)), Decimal("2.000000"))
+
     def test_sales_order_draft_can_create_plan_and_blocks_overplanning(self) -> None:
         order_payload = {
             "company": "COMP-A",

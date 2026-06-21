@@ -469,6 +469,7 @@ class SampleService:
                 idempotent=True,
             )
 
+        self._ensure_unique_material_bom_items(items=payload.items)
         self._ensure_material_bom_items_active(company=company, items=payload.items)
         bom = self._find_sample_material_bom(order=order)
         source_bom_id = int(bom.source_bom_id) if bom and bom.source_bom_id is not None else None
@@ -547,6 +548,7 @@ class SampleService:
         if not source_items:
             raise BusinessException(code=BOM_NOT_FOUND, message="款式用料 BOM 明细为空，无法复制到样板")
 
+        self._ensure_unique_material_bom_items(items=source_items)
         self._ensure_material_bom_items_active(company=company, items=source_items)
         request_hash = self._request_hash(
             operation="sample_material_bom_copy_from_style",
@@ -1406,6 +1408,24 @@ class SampleService:
                 code=STYLE_MASTER_INVALID_REFERENCE,
                 message=f"物料主数据不存在或已停用: {', '.join(invalid_codes)}",
             )
+
+    def _ensure_unique_material_bom_items(self, *, items: list[Any]) -> None:
+        seen: set[tuple[str, str, str, str]] = set()
+        for item in items:
+            material_code = self._require_text(getattr(item, "material_item_code", ""), "material_item_code")
+            color = self._optional_text(getattr(item, "color", None)) or ""
+            size = self._optional_text(getattr(item, "size", None)) or ""
+            part = self._optional_text(getattr(item, "part", None)) or ""
+            key = (material_code.lower(), color.lower(), size.lower(), part.lower())
+            if key in seen:
+                raise BusinessException(
+                    code=SAMPLE_CONFLICT,
+                    message=(
+                        "打样用料 BOM 行重复: "
+                        f"{material_code} / {color or '全部颜色'} / {size or '全部尺码'} / {part or '未填部位'}"
+                    ),
+                )
+            seen.add(key)
 
     def _ensure_sample_bom_source_items(self, *, source_bom_id: int | None, items: list[Any]) -> None:
         source_item_ids = sorted(

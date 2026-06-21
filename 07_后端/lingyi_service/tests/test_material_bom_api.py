@@ -224,6 +224,8 @@ class MaterialBomApiTest(unittest.TestCase):
                 sales_order_item="SOI-MB-001",
                 item_code="ST-MB-001",
                 item_name="BOM 测试款",
+                color="黑",
+                size="M",
                 qty=Decimal("50"),
                 planned_qty=Decimal("0"),
                 delivered_qty=Decimal("0"),
@@ -299,6 +301,22 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyApparelBom).count(), 0)
             self.assertEqual(session.query(LyApparelBomItem).count(), 0)
             self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 0)
+
+    def test_style_material_bom_rejects_duplicate_dimension_rows(self) -> None:
+        style_id = self._seed_style()
+        payload = self._style_bom_payload(idempotency_key="IDEMP-STYLE-MB-DUP")
+        payload["items"].append({**payload["items"][0], "qty_per_piece": "3"})
+        response = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="STYLE-MB-DUPLICATE-ROWS"),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "STYLE_MASTER_CONFLICT")
+        self.assertIn("重复", response.json()["message"])
+        self.assertIn("FAB-BLK-001", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyApparelBomItem).count(), 0)
 
     def test_style_material_bom_upsert_explode_and_style_no_sync(self) -> None:
         style_id = self._seed_style()
@@ -511,6 +529,60 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LySampleMaterialBom).count(), 1)
             self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
             self.assertEqual(session.query(LyApparelBomItem).one().material_item_code, "FAB-BLK-001")
+
+    def test_sample_material_bom_rejects_duplicate_dimension_rows(self) -> None:
+        style_id = self._seed_style()
+        with self.SessionLocal() as session:
+            order = LySampleOrder(
+                company="COMP-MB",
+                sample_no="SMP-MB-DUP",
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="建档",
+                progress=0,
+                status="draft",
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.commit()
+            order_id = int(order.id)
+
+        item = {
+            "material_item_code": "FAB-BLK-001",
+            "color": "黑",
+            "size": "M",
+            "part": "袖口",
+            "qty_per_piece": "1.5",
+            "loss_rate": "0.10",
+            "uom": "米",
+            "is_alternative": False,
+            "replace_group": None,
+            "remark": "主料",
+        }
+        response = self.client.put(
+            f"/api/sample/orders/{order_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-DUPLICATE-ROWS"),
+            json={
+                "operation": "upsert",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-DUP",
+                "version_no": "S1",
+                "items": [item, {**item, "qty_per_piece": "2"}],
+            },
+        )
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "SAMPLE_CONFLICT")
+        self.assertIn("重复", response.json()["message"])
+        self.assertIn("FAB-BLK-001", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleMaterialBomItem).count(), 0)
 
     def test_sample_material_bom_can_be_cleared_with_empty_items(self) -> None:
         style_id = self._seed_style()

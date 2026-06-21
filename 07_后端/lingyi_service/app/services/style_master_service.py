@@ -650,6 +650,7 @@ class StyleMasterService:
                 idempotent=True,
             )
 
+        self._ensure_unique_style_material_bom_items(items=payload.items)
         self._ensure_style_bom_materials_active(company=company, items=payload.items)
         existing = self._find_style_material_bom(style=style)
         before = self._style_material_bom_data(style=style, bom=existing).model_dump(mode="json") if existing else None
@@ -1214,6 +1215,24 @@ class StyleMasterService:
                 code=STYLE_MASTER_INVALID_REFERENCE,
                 message=f"物料主数据不存在或已停用: {', '.join(invalid_codes)}",
             )
+
+    def _ensure_unique_style_material_bom_items(self, *, items: list[Any]) -> None:
+        seen: set[tuple[str, str, str, str]] = set()
+        for item in items:
+            material_code = self._require_text(getattr(item, "material_item_code", ""), "material_item_code")
+            color = self._optional_text(getattr(item, "color", None)) or ""
+            size = self._optional_text(getattr(item, "size", None)) or ""
+            part = self._optional_text(getattr(item, "part", None)) or ""
+            key = (material_code.lower(), color.lower(), size.lower(), part.lower())
+            if key in seen:
+                raise BusinessException(
+                    code=STYLE_MASTER_CONFLICT,
+                    message=(
+                        "款用料 BOM 行重复: "
+                        f"{material_code} / {color or '全部颜色'} / {size or '全部尺码'} / {part or '未填部位'}"
+                    ),
+                )
+            seen.add(key)
 
     def _style_material_bom_data(self, *, style: LyStyleMaster, bom: LyApparelBom) -> StyleMaterialBomData:
         items = (
