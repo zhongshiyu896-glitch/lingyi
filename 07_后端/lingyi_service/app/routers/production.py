@@ -2044,7 +2044,7 @@ def get_production_report_suite(
             page=page,
             page_size=page_size,
         )
-        data = _service(session=session, request=request).get_report_suite(
+        data = ProductionService(session=session).get_report_suite(
             query=query,
             readable_companies=readable_companies,
             readable_item_codes=readable_items,

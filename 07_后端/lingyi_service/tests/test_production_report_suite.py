@@ -6,6 +6,7 @@ from datetime import date
 from decimal import Decimal
 import os
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -468,6 +469,16 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         row = response.json()["data"]["items"][0]
         self.assertEqual(row["planNo"], "PP-RPT-001")
         self.assertEqual(Decimal(str(row["stockedQty"])), Decimal("31.000000"))
+
+    def test_report_suite_does_not_construct_erpnext_adapter_for_native_read(self) -> None:
+        with patch("app.routers.production.ERPNextProductionAdapter", side_effect=AssertionError("erpnext adapter")):
+            response = self.client.get(
+                "/api/production/report-suite?report_key=orderQuantityReport&company=COMP-A",
+                headers=self._headers(),
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        row = response.json()["data"]["items"][0]
+        self.assertEqual(row["planNo"], "PP-RPT-001")
 
     def test_profit_report_uses_delivery_invoice_revenue_without_snapshot(self) -> None:
         with self.SessionLocal() as session:
