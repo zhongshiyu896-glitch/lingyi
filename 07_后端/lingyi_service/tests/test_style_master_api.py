@@ -506,6 +506,24 @@ class StyleMasterApiTest(unittest.TestCase):
         self.assertEqual(created.status_code, 201)
         style_id = int(created.json()["data"]["id"])
 
+        external_gallery = self.client.post(
+            "/api/style-master/style-gallery",
+            headers=self._headers(request_id="STYLE-GALLERY-CREATE-EXTERNAL-REJECT"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-001-G-EXT",
+                "style_master_id": style_id,
+                "image_url": "https://example.test/style-main.jpg",
+                "thumbnail_url": "https://example.test/style-main-thumb.jpg",
+                "image_name": "外链主图",
+                "image_type": "main",
+                "is_primary": True,
+            },
+        )
+        self.assertEqual(external_gallery.status_code, 409)
+        self.assertEqual(external_gallery.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+
         gallery = self.client.post(
             "/api/style-master/style-gallery",
             headers=self._headers(request_id="STYLE-GALLERY-CREATE-001"),
@@ -514,8 +532,8 @@ class StyleMasterApiTest(unittest.TestCase):
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-001-G-C",
                 "style_master_id": style_id,
-                "image_url": "https://example.test/style-main.jpg",
-                "thumbnail_url": "https://example.test/style-main-thumb.jpg",
+                "image_url": "/uploads/images/style_gallery/style-main.jpg",
+                "thumbnail_url": "/uploads/images/style_gallery/style-main-thumb.jpg",
                 "image_name": "主图",
                 "image_type": "main",
                 "is_primary": True,
@@ -536,8 +554,8 @@ class StyleMasterApiTest(unittest.TestCase):
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-001-G-C",
                 "style_master_id": style_id,
-                "image_url": "https://example.test/style-main.jpg",
-                "thumbnail_url": "https://example.test/style-main-thumb.jpg",
+                "image_url": "/uploads/images/style_gallery/style-main.jpg",
+                "thumbnail_url": "/uploads/images/style_gallery/style-main-thumb.jpg",
                 "image_name": "主图",
                 "image_type": "main",
                 "is_primary": True,
@@ -554,7 +572,7 @@ class StyleMasterApiTest(unittest.TestCase):
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-001-G-C",
                 "style_master_id": style_id,
-                "image_url": "https://example.test/style-other.jpg",
+                "image_url": "/uploads/images/style_gallery/style-other.jpg",
                 "image_type": "main",
                 "is_primary": True,
             },
@@ -576,8 +594,8 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         self.assertEqual(styles.status_code, 200)
         style_item = styles.json()["data"]["items"][0]
-        self.assertEqual(style_item["primary_thumbnail_url"], "https://example.test/style-main-thumb.jpg")
-        self.assertEqual(style_item["primary_image_url"], "https://example.test/style-main.jpg")
+        self.assertEqual(style_item["primary_thumbnail_url"], "/uploads/images/style_gallery/style-main-thumb.jpg")
+        self.assertEqual(style_item["primary_image_url"], "/uploads/images/style_gallery/style-main.jpg")
         self.assertEqual(style_item["gallery_count"], 1)
 
         second_primary = self.client.post(
@@ -588,8 +606,8 @@ class StyleMasterApiTest(unittest.TestCase):
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-001-G-C-2",
                 "style_master_id": style_id,
-                "image_url": "https://example.test/style-main-2.jpg",
-                "thumbnail_url": "https://example.test/style-main-2-thumb.jpg",
+                "image_url": "/uploads/images/style_gallery/style-main-2.jpg",
+                "thumbnail_url": "/uploads/images/style_gallery/style-main-2-thumb.jpg",
                 "image_name": "主图2",
                 "image_type": "main",
                 "is_primary": True,
@@ -614,8 +632,8 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         self.assertEqual(styles_after_primary_replace.status_code, 200)
         style_after_primary_replace = styles_after_primary_replace.json()["data"]["items"][0]
-        self.assertEqual(style_after_primary_replace["primary_thumbnail_url"], "https://example.test/style-main-2-thumb.jpg")
-        self.assertEqual(style_after_primary_replace["primary_image_url"], "https://example.test/style-main-2.jpg")
+        self.assertEqual(style_after_primary_replace["primary_thumbnail_url"], "/uploads/images/style_gallery/style-main-2-thumb.jpg")
+        self.assertEqual(style_after_primary_replace["primary_image_url"], "/uploads/images/style_gallery/style-main-2.jpg")
         self.assertEqual(style_after_primary_replace["gallery_count"], 2)
 
         updated_gallery = self.client.patch(
@@ -625,15 +643,15 @@ class StyleMasterApiTest(unittest.TestCase):
                 "operation": "update",
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-001-G-U",
-                "image_url": "https://example.test/style-main-updated.jpg",
-                "thumbnail_url": "https://example.test/style-main-updated-thumb.jpg",
+                "image_url": "/uploads/images/style_gallery/style-main-updated.jpg",
+                "thumbnail_url": "/uploads/images/style_gallery/style-main-updated-thumb.jpg",
                 "image_name": "主图更新",
                 "image_type": "detail",
                 "is_primary": True,
             },
         )
         self.assertEqual(updated_gallery.status_code, 200)
-        self.assertEqual(updated_gallery.json()["data"]["image_url"], "https://example.test/style-main-updated.jpg")
+        self.assertEqual(updated_gallery.json()["data"]["image_url"], "/uploads/images/style_gallery/style-main-updated.jpg")
         update_retry = self.client.patch(
             f"/api/style-master/style-gallery/{gallery_id}",
             headers=self._headers(request_id="STYLE-GALLERY-UPDATE-001-R"),
@@ -641,8 +659,8 @@ class StyleMasterApiTest(unittest.TestCase):
                 "operation": "update",
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-001-G-U",
-                "image_url": "https://example.test/style-main-updated.jpg",
-                "thumbnail_url": "https://example.test/style-main-updated-thumb.jpg",
+                "image_url": "/uploads/images/style_gallery/style-main-updated.jpg",
+                "thumbnail_url": "/uploads/images/style_gallery/style-main-updated-thumb.jpg",
                 "image_name": "主图更新",
                 "image_type": "detail",
                 "is_primary": True,
@@ -721,7 +739,7 @@ class StyleMasterApiTest(unittest.TestCase):
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-SORT-001",
                 "style_master_id": style_id,
-                "image_url": "https://example.test/sort-first.jpg",
+                "image_url": "/uploads/images/style_gallery/sort-first.jpg",
                 "image_name": "先建图库",
                 "image_type": "detail",
                 "is_primary": False,
@@ -736,7 +754,7 @@ class StyleMasterApiTest(unittest.TestCase):
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-SORT-002",
                 "style_master_id": style_id,
-                "image_url": "https://example.test/sort-second.jpg",
+                "image_url": "/uploads/images/style_gallery/sort-second.jpg",
                 "image_name": "后建图库",
                 "image_type": "other",
                 "is_primary": False,
@@ -751,7 +769,7 @@ class StyleMasterApiTest(unittest.TestCase):
                 "company": "COMP-A",
                 "idempotency_key": "IDEMP-ST-GAL-SORT-003",
                 "style_master_id": style_id,
-                "image_url": "https://example.test/sort-third.jpg",
+                "image_url": "/uploads/images/style_gallery/sort-third.jpg",
                 "image_name": "同时间图库",
                 "image_type": "other",
                 "is_primary": False,

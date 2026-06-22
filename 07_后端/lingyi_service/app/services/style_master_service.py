@@ -61,6 +61,7 @@ STYLE_STATUSES = {"draft", "enabled", "disabled"}
 DICTIONARY_TYPES = {"season", "year", "brand", "color", "size"}
 DICTIONARY_STATUSES = {"active", "inactive"}
 GALLERY_IMAGE_TYPES = {"main", "detail", "color", "process", "other"}
+STYLE_GALLERY_UPLOAD_PREFIX = "/uploads/images/style_gallery/"
 
 
 @dataclass(frozen=True)
@@ -203,12 +204,17 @@ class StyleMasterService:
         company = self._require_text(payload.company, "company")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         style = self._get_style_for_read(style_id=payload.style_master_id, company=company)
-        image_url = self._require_text(payload.image_url, "image_url")
+        image_url = self._normalize_style_gallery_upload_url(payload.image_url, "image_url")
         image_type = self._normalize_gallery_image_type(payload.image_type)
+        thumbnail_url = (
+            self._normalize_style_gallery_upload_url(payload.thumbnail_url, "thumbnail_url")
+            if self._optional_text(payload.thumbnail_url)
+            else image_url
+        )
         values = {
             "style_master_id": int(style.id),
             "image_url": image_url,
-            "thumbnail_url": self._optional_text(payload.thumbnail_url) or image_url,
+            "thumbnail_url": thumbnail_url,
             "image_name": self._optional_text(payload.image_name),
             "image_type": image_type,
             "is_primary": bool(payload.is_primary),
@@ -266,13 +272,23 @@ class StyleMasterService:
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         row = self._get_gallery_for_mutation(gallery_id=gallery_id, company=company)
         style = self._get_style_for_read(style_id=int(row.style_master_id), company=company)
-        values = {
-            "image_url": self._require_text(payload.image_url, "image_url") if payload.image_url is not None else str(row.image_url),
-            "thumbnail_url": (
-                self._optional_text(payload.thumbnail_url) or (self._require_text(payload.image_url, "image_url") if payload.image_url is not None else str(row.image_url))
+        image_url = (
+            self._normalize_style_gallery_upload_url(payload.image_url, "image_url")
+            if payload.image_url is not None
+            else str(row.image_url)
+        )
+        thumbnail_url = (
+            self._normalize_style_gallery_upload_url(payload.thumbnail_url, "thumbnail_url")
+            if self._optional_text(payload.thumbnail_url)
+            else (
+                image_url
                 if payload.thumbnail_url is not None
-                else (row.thumbnail_url or row.image_url)
-            ),
+                else str(row.thumbnail_url or row.image_url)
+            )
+        )
+        values = {
+            "image_url": image_url,
+            "thumbnail_url": thumbnail_url,
             "image_name": self._optional_text(payload.image_name) if payload.image_name is not None else row.image_name,
             "image_type": self._normalize_gallery_image_type(payload.image_type or str(row.image_type)),
             "is_primary": bool(payload.is_primary) if payload.is_primary is not None else bool(row.is_primary),
@@ -1605,6 +1621,19 @@ class StyleMasterService:
         normalized = self._require_text(value, "image_type")
         if normalized not in GALLERY_IMAGE_TYPES:
             raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="图片类型非法")
+        return normalized
+
+    def _normalize_style_gallery_upload_url(self, value: str | None, field_name: str) -> str:
+        normalized = self._require_text(value, field_name)
+        if (
+            not normalized.startswith(STYLE_GALLERY_UPLOAD_PREFIX)
+            or ".." in normalized
+            or "\\" in normalized
+        ):
+            raise BusinessException(
+                code=STYLE_MASTER_INVALID_REFERENCE,
+                message=f"{field_name} 必须来自款式图库图片上传",
+            )
         return normalized
 
     def _request_hash(self, **payload: Any) -> str:

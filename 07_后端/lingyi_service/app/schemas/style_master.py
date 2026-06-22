@@ -122,7 +122,7 @@ class StyleMasterListData(BaseModel):
 
 
 class StyleGalleryCreateRequest(BaseModel):
-    """Create one URL-backed style gallery record."""
+    """Create one uploaded-image-backed style gallery record."""
 
     operation: Literal["create"] = "create"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
