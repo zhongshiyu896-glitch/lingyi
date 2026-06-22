@@ -221,7 +221,11 @@ class ProductionService:
             raise BusinessException(code=PRODUCTION_BOM_ITEM_MISMATCH, message="BOM 与 Sales Order 行 item 不一致")
 
         planned_qty = Decimal(str(payload.planned_qty))
-        remaining_qty = self._remaining_plannable_qty(company=company, sales_order_item=target_item)
+        remaining_qty = self._remaining_plannable_qty(
+            company=company,
+            sales_order=str(sales_order.name),
+            sales_order_item=target_item,
+        )
         if planned_qty > remaining_qty:
             raise BusinessException(code=PRODUCTION_PLANNED_QTY_EXCEEDED, message="计划数量超过可计划剩余数量")
 
@@ -6904,12 +6908,13 @@ class ProductionService:
         )
         return link
 
-    def _remaining_plannable_qty(self, *, company: str, sales_order_item: ERPNextSalesOrderItem) -> Decimal:
+    def _remaining_plannable_qty(self, *, company: str, sales_order: str, sales_order_item: ERPNextSalesOrderItem) -> Decimal:
         try:
             local_sum = (
                 self.session.query(func.coalesce(func.sum(LyProductionPlan.planned_qty), 0))
                 .filter(
                     LyProductionPlan.company == company,
+                    LyProductionPlan.sales_order == sales_order,
                     LyProductionPlan.sales_order_item == sales_order_item.name,
                     LyProductionPlan.status != "cancelled",
                 )

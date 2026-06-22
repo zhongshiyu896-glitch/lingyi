@@ -23,6 +23,7 @@ import app.main as main_module
 from app.main import app
 from app.models.audit import Base as AuditBase
 from app.routers.auth import get_db_session as auth_db_dep
+from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 
 
 class _FakeERPNextHeaders:
@@ -216,6 +217,49 @@ class AuthSessionTest(unittest.TestCase):
             me_response = self.client.get("/api/auth/me")
             self.assertEqual(me_response.status_code, 200)
             self.assertEqual(me_response.json()["data"]["source"], "fastapi_session")
+
+    def test_production_fastapi_actions_without_native_role_config_fail_closed(self) -> None:
+        def _fake_urlopen(req, timeout=0):
+            raise AssertionError(f"unexpected ERPNext URL: {req.full_url}")
+
+        users = {
+            "users": {
+                "fastapi.actions@example.com": {
+                    "password_hash": auth_core.make_fastapi_password_hash(
+                        "secret-pass",
+                        salt="auth-action-test-salt",
+                        iterations=1_000,
+                    ),
+                    "roles": ["System Manager", "BOM Editor"],
+                }
+            }
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_FASTAPI_AUTH_USERS_JSON": json.dumps(users),
+            },
+            clear=False,
+        ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
+            os.environ.pop(FASTAPI_ROLE_ACTIONS_ENV, None)
+            login_response = self.client.post(
+                "/api/auth/login",
+                json={"username": "fastapi.actions@example.com", "password": "secret-pass"},
+            )
+            self.assertEqual(login_response.status_code, 200)
+            actions_response = self.client.get("/api/auth/actions?module=bom")
+
+        self.assertEqual(actions_response.status_code, 200)
+        payload = actions_response.json()
+        self.assertEqual(payload["code"], "0")
+        self.assertEqual(payload["data"]["actions"], [])
+        self.assertFalse(payload["data"]["button_permissions"]["read"])
+        self.assertFalse(payload["data"]["button_permissions"]["create"])
 
     def test_production_fastapi_login_fail_closed_on_bad_password(self) -> None:
         def _fake_urlopen(req, timeout=0):

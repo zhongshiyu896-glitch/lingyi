@@ -49,6 +49,7 @@ from app.routers.production import get_db_session as production_db_dep
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
 from app.services.erpnext_production_adapter import ERPNextSalesOrder
 from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
+from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 
 
 class ProductionPlanTest(unittest.TestCase):
@@ -129,6 +130,7 @@ class ProductionPlanTest(unittest.TestCase):
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
+        os.environ.pop(FASTAPI_ROLE_ACTIONS_ENV, None)
 
         with self.SessionLocal() as session:
             session.query(LyMaterialPurchaseRequirement).delete()
@@ -174,6 +176,7 @@ class ProductionPlanTest(unittest.TestCase):
 
     def test_fastapi_work_order_worker_dry_run_does_not_construct_erpnext_adapter(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ[FASTAPI_ROLE_ACTIONS_ENV] = json.dumps({"roles": {"System Manager": ["production:work_order_worker"]}})
         with patch("app.routers.production.ERPNextProductionAdapter", side_effect=AssertionError("erpnext adapter")):
             response = self.client.post(
                 "/api/production/internal/work-order-sync/run-once",
@@ -187,6 +190,7 @@ class ProductionPlanTest(unittest.TestCase):
 
     def test_fastapi_work_order_worker_sync_is_disabled_even_when_env_enabled(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ[FASTAPI_ROLE_ACTIONS_ENV] = json.dumps({"roles": {"System Manager": ["production:work_order_worker"]}})
         os.environ["PRODUCTION_ENABLE_WORK_ORDER_WORKER_SYNC"] = "true"
         with patch("app.routers.production.ERPNextProductionAdapter", side_effect=AssertionError("erpnext adapter")):
             response = self.client.post(
@@ -602,6 +606,95 @@ class ProductionPlanTest(unittest.TestCase):
                 .one()
             )
             self.assertEqual(Decimal(str(line_a.planned_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(line_b.planned_qty)), Decimal("20.000000"))
+
+    def test_create_plan_remaining_qty_is_scoped_by_sales_order_and_item(self) -> None:
+        shared_item = "SOI-SHARED-001"
+        self._seed_sales_order(
+            sales_order_no="SO-SHARED-A",
+            company="COMP-A",
+            qty="10",
+            items=[{"sales_order_item": shared_item, "item_code": "ITEM-A", "qty": "10"}],
+        )
+        self._seed_sales_order(
+            sales_order_no="SO-SHARED-B",
+            company="COMP-A",
+            qty="20",
+            items=[{"sales_order_item": shared_item, "item_code": "ITEM-A", "qty": "20"}],
+        )
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-SHARED-A",
+                    company="COMP-A",
+                    sales_order="SO-SHARED-A",
+                    sales_order_item=shared_item,
+                    customer="CUST-A",
+                    item_code="ITEM-A",
+                    bom_id=101,
+                    bom_version="v1",
+                    planned_qty=Decimal("10"),
+                    status="planned",
+                    idempotency_key="seed-shared-plan-a",
+                    request_hash="seed-shared-plan-a",
+                    created_by="seed",
+                )
+            )
+            line_a = (
+                session.query(LySalesOrderItem)
+                .join(LySalesOrder, LySalesOrder.id == LySalesOrderItem.sales_order_id)
+                .filter(
+                    LySalesOrder.sales_order_no == "SO-SHARED-A",
+                    LySalesOrderItem.sales_order_item == shared_item,
+                )
+                .one()
+            )
+            line_a.planned_qty = Decimal("10")
+            session.commit()
+
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json={
+                    **self._payload(
+                        idempotency_key="idem-pp-shared-b",
+                        planned_qty="20",
+                        sales_order_item=shared_item,
+                    ),
+                    "sales_order": "SO-SHARED-B",
+                    "company": "COMP-A",
+                },
+            )
+            adapter_lookup.assert_not_called()
+
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()["data"]
+        self.assertEqual(data["sales_order_item"], shared_item)
+        self.assertEqual(Decimal(str(data["sales_order_item_qty"])), Decimal("20.000000"))
+        with self.SessionLocal() as session:
+            plan_b = session.query(LyProductionPlan).filter(LyProductionPlan.id == int(data["plan_id"])).one()
+            self.assertEqual(plan_b.sales_order, "SO-SHARED-B")
+            self.assertEqual(plan_b.sales_order_item, shared_item)
+            line_a = (
+                session.query(LySalesOrderItem)
+                .join(LySalesOrder, LySalesOrder.id == LySalesOrderItem.sales_order_id)
+                .filter(
+                    LySalesOrder.sales_order_no == "SO-SHARED-A",
+                    LySalesOrderItem.sales_order_item == shared_item,
+                )
+                .one()
+            )
+            line_b = (
+                session.query(LySalesOrderItem)
+                .join(LySalesOrder, LySalesOrder.id == LySalesOrderItem.sales_order_id)
+                .filter(
+                    LySalesOrder.sales_order_no == "SO-SHARED-B",
+                    LySalesOrderItem.sales_order_item == shared_item,
+                )
+                .one()
+            )
+            self.assertEqual(Decimal(str(line_a.planned_qty)), Decimal("10.000000"))
             self.assertEqual(Decimal(str(line_b.planned_qty)), Decimal("20.000000"))
 
     def test_create_plan_requires_explicit_sales_order_item_even_for_single_line(self) -> None:

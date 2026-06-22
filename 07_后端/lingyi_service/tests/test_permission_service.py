@@ -401,6 +401,24 @@ class PermissionServiceFastApiActionsTest(unittest.TestCase):
         self.assertFalse(agg.button_permissions["read"])
         self.assertFalse(agg.button_permissions["create"])
 
+    def test_fastapi_actions_empty_native_config_fails_closed_without_static_fallback(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_ROLE_ACTIONS_ENV: json.dumps({}),
+            },
+            clear=False,
+        ):
+            agg = self._service().get_actions(
+                current_user=self._current_user(roles=["BOM Editor", "System Manager"]),
+                request_obj=_build_request(),
+                module="bom",
+            )
+        self.assertEqual(set(agg.actions), set())
+        self.assertFalse(agg.button_permissions["read"])
+        self.assertFalse(agg.button_permissions["create"])
+
     def test_fastapi_actions_invalid_native_config_returns_503(self) -> None:
         with patch.dict(
             os.environ,

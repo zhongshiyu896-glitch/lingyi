@@ -2148,7 +2148,6 @@ class PermissionService:
 
     def _actions_from_fastapi(self, *, current_user: CurrentUser) -> set[str]:
         payload = self._load_fastapi_role_action_config()
-        use_builtin_role_defaults = not payload
         users = payload.get("users", {})
         roles = payload.get("roles", {})
         if users is None:
@@ -2174,8 +2173,6 @@ class PermissionService:
             if ":" in role_name:
                 action_set.add(role_name)
                 continue
-            if use_builtin_role_defaults:
-                action_set.update(DEFAULT_STATIC_ROLE_ACTIONS.get(role_name, set()))
             action_set.update(
                 self._actions_from_fastapi_entry(
                     roles.get(role_name),
