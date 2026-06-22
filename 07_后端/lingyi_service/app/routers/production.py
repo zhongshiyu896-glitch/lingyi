@@ -30,6 +30,7 @@ from app.core.error_codes import DATABASE_WRITE_FAILED
 from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_INTERNAL_ERROR
+from app.core.error_codes import PRODUCTION_SO_NOT_FOUND
 from app.core.error_codes import status_of
 from app.core.exceptions import AppException
 from app.core.exceptions import AuditWriteFailed
@@ -849,6 +850,7 @@ def list_production_quotes(
     request: Request,
     quote_no: str | None = Query(default=None),
     sales_order: str | None = Query(default=None),
+    company: str | None = Query(default=None),
     keyword: str | None = Query(default=None),
     turnover_no: str | None = Query(default=None),
     item_code: str | None = Query(default=None),
@@ -883,6 +885,7 @@ def list_production_quotes(
         query = ProductionQuoteQuery(
             quote_no=quote_no,
             sales_order=sales_order,
+            company=company,
             keyword=keyword,
             turnover_no=turnover_no,
             item_code=item_code,
@@ -2124,6 +2127,7 @@ def list_production_material_issues(
 def get_production_plan_detail(
     plan_id: int,
     request: Request,
+    company: str | None = Query(default=None),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -2140,13 +2144,16 @@ def get_production_plan_detail(
             resource_id=plan_id,
         )
         service = _service(session=session, request=request)
-        company, item = service.get_plan_resource(plan_id=plan_id)
+        plan_company, item = service.get_plan_resource(plan_id=plan_id)
+        requested_company = str(company or "").strip()
+        if requested_company and requested_company != plan_company:
+            return _err(PRODUCTION_SO_NOT_FOUND, "生产计划不存在", status_code=404)
         permission_service.ensure_production_resource_permission(
             current_user=current_user,
             request_obj=request,
             action=action,
             item_code=item,
-            company=company,
+            company=plan_company,
             resource_type="production_plan",
             resource_id=plan_id,
             resource_no=str(plan_id),

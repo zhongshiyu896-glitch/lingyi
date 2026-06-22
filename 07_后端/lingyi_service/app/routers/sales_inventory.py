@@ -925,6 +925,7 @@ def list_sales_orders(
 def get_sales_order_detail(
     name: str,
     request: Request,
+    company: str | None = Query(default=None),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -937,13 +938,16 @@ def get_sales_order_detail(
         module="sales_inventory",
         resource_type="sales_order",
     )
-    local_first = _write_service(session).get_local_sales_order(name=name)
+    scoped_company = _scope_text(company)
+    local_first = _write_service(session).get_local_sales_order(name=name, company=scoped_company)
     if local_first is not None:
         data = local_first
+    elif scoped_company:
+        _raise_hidden_sales_order_not_found()
     elif get_permission_source() == "fastapi":
         _raise_hidden_sales_order_not_found()
     elif _is_local_sales_inventory_read_enabled():
-        data = _write_service(session).get_local_sales_order(name=name)
+        data = _write_service(session).get_local_sales_order(name=name, company=scoped_company)
         if data is None:
             _raise_hidden_sales_order_not_found()
     else:
@@ -951,7 +955,7 @@ def get_sales_order_detail(
             data = _service(request).get_sales_order(name=name)
         except ERPNextAdapterException as exc:
             if _is_local_sales_order_write_enabled():
-                local_detail = _write_service(session).get_local_sales_order(name=name)
+                local_detail = _write_service(session).get_local_sales_order(name=name, company=scoped_company)
                 if local_detail is not None:
                     data = local_detail
                 else:
@@ -974,6 +978,8 @@ def get_sales_order_detail(
                     resource_type="SalesOrder",
                     resource_no=name,
                 )
+    if scoped_company and str(data.company) != scoped_company:
+        _raise_hidden_sales_order_not_found()
     try:
         permission_service.ensure_resource_scope_permission(
             current_user=current_user,

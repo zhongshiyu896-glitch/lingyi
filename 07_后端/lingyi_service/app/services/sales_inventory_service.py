@@ -247,6 +247,7 @@ class SalesInventoryService:
                 grand_total += amount
             line_rows.append(
                 {
+                    "sales_order_item": self._text(line.sales_order_item),
                     "style_master_id": int(style.id),
                     "requested_style_master_id": requested_style_master_id,
                     "item_code": str(style.ys_style_no),
@@ -410,6 +411,7 @@ class SalesInventoryService:
                 grand_total += amount
             line_rows.append(
                 {
+                    "sales_order_item": self._text(line.sales_order_item),
                     "style_master_id": int(style.id),
                     "requested_style_master_id": requested_style_master_id,
                     "item_code": str(style.ys_style_no),
@@ -456,16 +458,52 @@ class SalesInventoryService:
         self._ensure_sales_order_not_material_issued(order=order)
         self._reset_sales_order_material_calculation_for_edit(order=order)
 
-        existing_items = {int(item.line_no): item for item in self._native_sales_order_items(order_id=int(order.id))}
+        existing_item_rows = self._native_sales_order_items(order_id=int(order.id))
+        existing_items = {int(item.line_no): item for item in existing_item_rows}
+        existing_items_by_name = {str(item.sales_order_item): item for item in existing_item_rows}
+        uses_stable_item_identity = any(self._text(row.get("sales_order_item")) for row in line_rows)
+        if uses_stable_item_identity:
+            for temp_index, existing_item in enumerate(existing_item_rows, start=1):
+                existing_item.line_no = -temp_index
+            session.flush()
+
+        consumed_existing_item_ids: set[int] = set()
+        reserved_sales_order_items = {str(item.sales_order_item) for item in existing_item_rows}
+        next_sales_order_item_suffix = len(existing_item_rows) + 1
+
+        def _next_sales_order_item_name(preferred_index: int) -> str:
+            nonlocal next_sales_order_item_suffix
+            preferred = f"{order.sales_order_no}-{preferred_index:03d}"
+            if preferred not in reserved_sales_order_items:
+                reserved_sales_order_items.add(preferred)
+                return preferred
+            while True:
+                candidate = f"{order.sales_order_no}-{next_sales_order_item_suffix:03d}"
+                next_sales_order_item_suffix += 1
+                if candidate not in reserved_sales_order_items:
+                    reserved_sales_order_items.add(candidate)
+                    return candidate
+
         for index, row in enumerate(line_rows, start=1):
-            existing_item = existing_items.get(index)
+            requested_sales_order_item = self._text(row.get("sales_order_item"))
+            existing_item = None
+            if requested_sales_order_item:
+                existing_item = existing_items_by_name.get(requested_sales_order_item)
+                if existing_item is None:
+                    raise SalesInventoryServiceError(404, "SALES_ORDER_ITEM_NOT_FOUND", "订单明细行不存在")
+                if int(existing_item.id) in consumed_existing_item_ids:
+                    raise SalesInventoryServiceError(409, "SALES_ORDER_ITEM_DUPLICATED", "订单明细行重复提交")
+            elif not uses_stable_item_identity:
+                existing_item = existing_items.get(index)
+                if existing_item is not None and int(existing_item.id) in consumed_existing_item_ids:
+                    existing_item = None
             if existing_item is None:
                 session.add(
                     LySalesOrderItem(
                         sales_order_id=int(order.id),
                         company=company,
                         line_no=index,
-                        sales_order_item=f"{order.sales_order_no}-{index:03d}",
+                        sales_order_item=_next_sales_order_item_name(index),
                         style_master_id=row["style_master_id"],
                         item_code=row["item_code"],
                         item_name=row["item_name"],
@@ -484,6 +522,7 @@ class SalesInventoryService:
                 )
                 continue
 
+            consumed_existing_item_ids.add(int(existing_item.id))
             planned_qty = Decimal(str(existing_item.planned_qty or 0))
             delivered_qty = Decimal(str(existing_item.delivered_qty or 0))
             if planned_qty > row["qty"]:
@@ -516,6 +555,7 @@ class SalesInventoryService:
                             f"已排产或已交付订单行不允许改{field_label}",
                         )
 
+            existing_item.line_no = index
             existing_item.style_master_id = row["style_master_id"]
             existing_item.item_code = row["item_code"]
             existing_item.item_name = row["item_name"]
@@ -529,8 +569,8 @@ class SalesInventoryService:
             existing_item.delivery_date = row["delivery_date"] or payload.delivery_date
             existing_item.ys_material_calc_state = "待算料"
 
-        for line_no, existing_item in existing_items.items():
-            if line_no <= len(line_rows):
+        for existing_item in existing_item_rows:
+            if int(existing_item.id) in consumed_existing_item_ids:
                 continue
             planned_qty = Decimal(str(existing_item.planned_qty or 0))
             delivered_qty = Decimal(str(existing_item.delivered_qty or 0))
@@ -1023,17 +1063,16 @@ class SalesInventoryService:
             )
         return items
 
-    def get_local_sales_order(self, *, name: str) -> SalesOrderDetailData | None:
+    def get_local_sales_order(self, *, name: str, company: str | None = None) -> SalesOrderDetailData | None:
         session = self._require_session()
+        normalized_company = self._text(company)
         try:
-            native_order = (
-                session.query(LySalesOrder)
-                .filter(
-                    (LySalesOrder.sales_order_no == name) | (LySalesOrder.source_order_ref == name),
-                )
-                .order_by(LySalesOrder.id.desc())
-                .first()
+            native_query = session.query(LySalesOrder).filter(
+                (LySalesOrder.sales_order_no == name) | (LySalesOrder.source_order_ref == name),
             )
+            if normalized_company:
+                native_query = native_query.filter(LySalesOrder.company == normalized_company)
+            native_order = native_query.order_by(LySalesOrder.id.desc()).first()
         except Exception as exc:
             if self._is_missing_native_sales_order_table(exc):
                 native_order = None
@@ -1046,9 +1085,10 @@ class SalesInventoryService:
             drafts = (
                 session.query(LyWarehouseStockEntryDraft)
                 .filter(LyWarehouseStockEntryDraft.source_type == self._LOCAL_SALES_ORDER_SOURCE_TYPE)
-                .order_by(LyWarehouseStockEntryDraft.id.desc())
-                .all()
             )
+            if normalized_company:
+                drafts = drafts.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+            drafts = drafts.order_by(LyWarehouseStockEntryDraft.id.desc()).all()
         except Exception as exc:
             if self._is_missing_legacy_sales_order_table(exc):
                 return None
@@ -1834,7 +1874,7 @@ class SalesInventoryService:
         )
         rows: list[SalesOrderFulfillmentItem] = []
         for order in local_orders:
-            detail = self.get_local_sales_order(name=order.name)
+            detail = self.get_local_sales_order(name=order.name, company=order.company)
             if detail is None:
                 continue
             for line in detail.items:
@@ -1895,7 +1935,7 @@ class SalesInventoryService:
         )
         report_rows: list[FinishedGoodsReportItem] = []
         for order in local_orders:
-            detail = self.get_local_sales_order(name=order.name)
+            detail = self.get_local_sales_order(name=order.name, company=order.company)
             if detail is None:
                 continue
             for line in detail.items:
@@ -5334,6 +5374,7 @@ class SalesInventoryService:
     @staticmethod
     def _native_sales_order_line_hash_item(row: dict[str, Any]) -> dict[str, Any]:
         item = {
+            "sales_order_item": row.get("sales_order_item"),
             "item_code": row["item_code"],
             "item_name": row["item_name"],
             "color": row["color"],

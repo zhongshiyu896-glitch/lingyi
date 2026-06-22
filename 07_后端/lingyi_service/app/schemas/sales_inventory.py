@@ -291,6 +291,7 @@ class SalesOrderDetailData(BaseModel):
 class SalesOrderDraftLineItemCreateRequest(BaseModel):
     """Create local sales-order draft line payload."""
 
+    sales_order_item: str | None = None
     style_master_id: int | None = None
     item_code: str
     item_name: str | None = None

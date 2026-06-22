@@ -1452,6 +1452,8 @@ class ProductionService:
             )
             if query.sales_order:
                 sql = sql.filter(LyProductionQuote.sales_order == query.sales_order)
+            if query.company:
+                sql = sql.filter(LyProductionQuote.company == query.company)
             if query.turnover_no:
                 sql = sql.filter(LyProductionQuote.sales_order_item.like(f"%{query.turnover_no.strip()}%"))
             if query.item_code:
@@ -1505,6 +1507,8 @@ class ProductionService:
                 plan_sql = plan_sql.filter(~LyProductionPlan.id.in_(sorted(exclude_plan_ids)))
             if query.sales_order:
                 plan_sql = plan_sql.filter(LyProductionPlan.sales_order == query.sales_order)
+            if query.company:
+                plan_sql = plan_sql.filter(LyProductionPlan.company == query.company)
             if query.keyword:
                 keyword = f"%{query.keyword.strip()}%"
                 plan_sql = plan_sql.filter(

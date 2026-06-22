@@ -392,6 +392,7 @@ class ProductionQuoteQuery(BaseModel):
 
     quote_no: Optional[str] = Field(default=None, max_length=140)
     sales_order: Optional[str] = None
+    company: Optional[str] = Field(default=None, max_length=140)
     keyword: Optional[str] = Field(default=None, max_length=140)
     turnover_no: Optional[str] = Field(default=None, max_length=140)
     item_code: Optional[str] = Field(default=None, max_length=140)

@@ -161,6 +161,68 @@ class ProductionQuoteApiTest(unittest.TestCase):
             session.commit()
             return int(plan.id)
 
+    def _seed_plan_for_company(self, *, company: str, plan_id: int, style_no: str, plan_no: str, sales_order: str) -> int:
+        with self.SessionLocal() as session:
+            session.add(
+                LyStyleMaster(
+                    id=plan_id * 10,
+                    company=company,
+                    ys_style_no=style_no,
+                    ys_style_name_cn=f"报价款{company}",
+                    ys_season="夏",
+                    ys_year="2026",
+                    ys_brand="LY",
+                    ys_style_status="enabled",
+                    colors=[],
+                    sizes=[],
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            bom = LyApparelBom(
+                id=plan_id * 10 + 1,
+                bom_no=f"BOM-{plan_no}",
+                company=company,
+                item_code=style_no,
+                version_no="V1",
+                is_default=True,
+                status="active",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(bom)
+            session.add(
+                LyApparelBomItem(
+                    id=plan_id * 10 + 2,
+                    bom_id=plan_id * 10 + 1,
+                    material_item_code=f"MAT-{style_no}",
+                    qty_per_piece=Decimal("1.00"),
+                    loss_rate=Decimal("0.00"),
+                    uom="米",
+                    remark="unit_price=1",
+                )
+            )
+            plan = LyProductionPlan(
+                id=plan_id,
+                plan_no=plan_no,
+                company=company,
+                sales_order=sales_order,
+                sales_order_item=f"SOI-{plan_no}",
+                customer=f"客户{company}",
+                item_code=style_no,
+                bom_id=plan_id * 10 + 1,
+                bom_version="V1",
+                planned_qty=Decimal("10"),
+                planned_start_date=date(2026, 6, 26),
+                status="planned",
+                idempotency_key=f"idem-{plan_no}",
+                request_hash=f"hash-{plan_no}",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.commit()
+            return int(plan.id)
+
     def _payload(self, idem: str) -> dict[str, object]:
         return {
             "company": "COMP-Q",
@@ -213,6 +275,41 @@ class ProductionQuoteApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyProductionQuote).count(), 1)
             self.assertEqual(session.query(LyProductionQuoteOperation).count(), 1)
             self.assertGreaterEqual(session.query(LyOperationAuditLog).filter_by(resource_type="production_quote").count(), 1)
+
+    def test_list_quotes_filters_saved_and_derived_rows_by_company(self) -> None:
+        self._seed_plan_for_company(
+            company="COMP-Q-OTHER",
+            plan_id=913,
+            style_no="STYLE-QUOTE-OTHER",
+            plan_no="PP-QUOTE-OTHER",
+            sales_order="SO-QUOTE-OTHER",
+        )
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-COMPANY-CREATE"),
+            json=self._payload("IDEM-PROD-QUOTE-COMPANY"),
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+
+        filtered = self.client.get(
+            "/api/production/quotes?company=COMP-Q&page=1&page_size=10",
+            headers=self._headers(request_id="PROD-QUOTE-COMPANY-LIST"),
+        )
+        self.assertEqual(filtered.status_code, 200, filtered.text)
+        filtered_items = filtered.json()["data"]["items"]
+        self.assertTrue(filtered_items)
+        self.assertTrue(all(item["company"] == "COMP-Q" for item in filtered_items))
+        self.assertNotIn("PP-QUOTE-OTHER", {item["plan_no"] for item in filtered_items})
+
+        other = self.client.get(
+            "/api/production/quotes?company=COMP-Q-OTHER&page=1&page_size=10",
+            headers=self._headers(request_id="PROD-QUOTE-COMPANY-OTHER"),
+        )
+        self.assertEqual(other.status_code, 200, other.text)
+        other_items = other.json()["data"]["items"]
+        self.assertEqual(len(other_items), 1)
+        self.assertEqual(other_items[0]["company"], "COMP-Q-OTHER")
+        self.assertEqual(other_items[0]["source"], "derived")
 
     def test_quote_create_idempotency_conflict_and_permission_fail_closed(self) -> None:
         created = self.client.post(

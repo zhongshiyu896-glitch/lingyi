@@ -575,6 +575,11 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(data["company"], "COMP-B")
         self.assertEqual(data["sales_order_item"], sales_order_item)
         self.assertEqual(Decimal(str(data["sales_order_item_qty"])), Decimal("20.000000"))
+        detail_b = self.client.get(f"/api/production/plans/{data['plan_id']}?company=COMP-B", headers=self._headers())
+        self.assertEqual(detail_b.status_code, 200, detail_b.text)
+        self.assertEqual(detail_b.json()["data"]["company"], "COMP-B")
+        detail_a = self.client.get(f"/api/production/plans/{data['plan_id']}?company=COMP-A", headers=self._headers())
+        self.assertEqual(detail_a.status_code, 404, detail_a.text)
         with self.SessionLocal() as session:
             line_a = (
                 session.query(LySalesOrderItem)
@@ -1301,6 +1306,43 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["code"], "PRODUCTION_SO_NOT_FOUND")
         with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
+
+    def test_material_check_rejects_mismatched_sales_order_item_carrier(self) -> None:
+        self._seed_sales_order(
+            items=[
+                {"sales_order_item": "SOI-001", "item_code": "ITEM-A", "qty": "100", "color": "黑", "size": "M"},
+                {"sales_order_item": "SOI-002", "item_code": "ITEM-A", "qty": "50", "color": "黑", "size": "L"},
+            ],
+        )
+        create_response = self.client.post(
+            "/api/production/plans",
+            headers=self._headers(),
+            json=self._payload(idempotency_key="idem-pp-material-mismatch-carrier", planned_qty="12"),
+        )
+        self.assertEqual(create_response.status_code, 200, create_response.text)
+        plan_id = int(create_response.json()["data"]["plan_id"])
+
+        payload = self._material_check_payload(
+            plan_id=plan_id,
+            idempotency_key="idem-material-mismatch-carrier",
+        )
+        payload["sales_order_item"] = "SOI-002"
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", side_effect=AssertionError("ERP adapter must not be called")) as adapter_lookup:
+            response = self.client.post(
+                f"/api/production/plans/{plan_id}/material-check",
+                headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+                json=payload,
+            )
+            adapter_lookup.assert_not_called()
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
+        self.assertIn("mismatched_business_carrier", response.json()["message"])
+        with self.SessionLocal() as session:
+            plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one()
+            self.assertEqual(plan.status, "planned")
             self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
             self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
 
