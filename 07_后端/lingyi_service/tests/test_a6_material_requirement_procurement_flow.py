@@ -69,6 +69,7 @@ from app.routers.sample import get_db_session as sample_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
 from app.services.material_purchase_service import MaterialPurchaseService
+from app.services.production_service import ProductionService
 
 
 class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
@@ -4170,6 +4171,20 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(summary_by_part["前片"]["actual_qty"])), Decimal("5.000000"))
         self.assertEqual(Decimal(str(summary_by_part["后片"]["actual_qty"])), Decimal("10.000000"))
         self.assertEqual(sum(Decimal(str(row["actual_qty"])) for row in summary_rows), Decimal("15.000000"))
+        self._assert_balanced_inventory_reconciliation(
+            item_code=self.MATERIAL,
+            expected_qty=Decimal("15.000000"),
+            suffix="split-bom-parts",
+        )
+        with self.SessionLocal() as session:
+            self.assertEqual(
+                ProductionService(session=session)._local_material_stock_balance(
+                    company=self.COMPANY,
+                    item_code=self.MATERIAL,
+                    warehouse=self.WAREHOUSE,
+                ),
+                Decimal("15.000000"),
+            )
 
         receipts = self.client.get(
             f"/api/warehouse/purchase-receipts?company={self.COMPANY}&purchase_no=PO-A6-SPLIT&page=1&page_size=100",

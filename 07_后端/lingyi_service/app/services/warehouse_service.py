@@ -954,7 +954,11 @@ class WarehouseService:
         item_code: str | None,
     ) -> dict[tuple[str, str, str], Decimal]:
         summary = self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
-        return {(str(row.company), str(row.warehouse), str(row.item_code)): Decimal(str(row.actual_qty)) for row in summary.items}
+        balances: dict[tuple[str, str, str], Decimal] = {}
+        for row in summary.items:
+            key = (str(row.company), str(row.warehouse), str(row.item_code))
+            balances[key] = balances.get(key, Decimal("0")) + Decimal(str(row.actual_qty or 0))
+        return balances
 
     @staticmethod
     def _inventory_reconciliation_status(

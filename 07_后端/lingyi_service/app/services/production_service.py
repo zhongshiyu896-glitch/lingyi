@@ -6173,10 +6173,11 @@ class ProductionService:
             )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
+        balance = Decimal("0")
         for row in summary.items:
             if str(row.company) == company and str(row.warehouse) == warehouse and str(row.item_code) == item_code:
-                return Decimal(str(row.actual_qty or 0))
-        return Decimal("0")
+                balance += Decimal(str(row.actual_qty or 0))
+        return balance
 
     def _reserved_material_stock_for_open_plans(
         self,
