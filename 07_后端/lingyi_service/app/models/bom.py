@@ -117,7 +117,10 @@ class LyApparelBomWriteOperation(Base):
     __table_args__ = (
         Index("uk_ly_apparel_bom_write_operation_idem", "company", "operation", "idempotency_key", unique=True),
         Index("idx_ly_apparel_bom_write_operation_bom", "bom_id", "operation"),
-        CheckConstraint("operation IN ('style_material_bom_upsert')", name="ck_ly_apparel_bom_write_operation"),
+        CheckConstraint(
+            "operation IN ('style_material_bom_upsert','bom:create','bom:update','bom:set_default','bom:activate','bom:deactivate')",
+            name="ck_ly_apparel_bom_write_operation",
+        ),
         {"schema": "ly_schema", "comment": "款式用料BOM写操作幂等账本"},
     )
 

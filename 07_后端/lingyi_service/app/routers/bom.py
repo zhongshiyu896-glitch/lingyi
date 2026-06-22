@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+import hashlib
+import json
 import logging
 import os
 import re
@@ -41,6 +43,7 @@ from app.core.permissions import BOM_READ
 from app.core.permissions import BOM_SET_DEFAULT
 from app.core.permissions import BOM_UPDATE
 from app.core.permissions import MATERIAL_PURCHASE_READ
+from app.models.bom import LyApparelBomWriteOperation
 from app.schemas.bom import BomActivateData
 from app.schemas.bom import BomAccessoriesPackagingData
 from app.schemas.bom import BomAccessoriesPackagingQuery
@@ -253,6 +256,73 @@ def _validate_local_bom_request_gate(
     if carrier_tags[0] != header_tag:
         _raise_bom_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
     return header_tag
+
+
+def _bom_write_request_hash(*, action: str, payload: Any, resource_id: int | None) -> str:
+    payload_json = payload.model_dump(mode="json") if hasattr(payload, "model_dump") else payload
+    dumped = json.dumps(
+        {"action": action, "resource_id": resource_id, "payload": payload_json},
+        ensure_ascii=False,
+        sort_keys=True,
+        default=str,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(dumped.encode("utf-8")).hexdigest()
+
+
+def _replay_bom_write_if_idempotent(
+    *,
+    session: Session,
+    company: str,
+    action: str,
+    idempotency_key: str,
+    request_hash: str,
+) -> dict[str, Any] | None:
+    try:
+        row = (
+            session.query(LyApparelBomWriteOperation)
+            .filter(
+                LyApparelBomWriteOperation.company == company,
+                LyApparelBomWriteOperation.operation == action,
+                LyApparelBomWriteOperation.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+    except SQLAlchemyError as exc:
+        raise DatabaseWriteFailed() from exc
+    if row is None:
+        return None
+    if str(row.request_hash) != request_hash:
+        _raise_bom_idempotency_conflict("idempotency_key 已用于不同请求")
+    try:
+        response = json.loads(str(row.response_json))
+    except json.JSONDecodeError as exc:
+        raise DatabaseWriteFailed() from exc
+    return response
+
+
+def _record_bom_write_idempotency(
+    *,
+    session: Session,
+    bom_id: int,
+    company: str,
+    action: str,
+    idempotency_key: str,
+    request_hash: str,
+    response_data: dict[str, Any],
+    actor: str,
+) -> None:
+    session.add(
+        LyApparelBomWriteOperation(
+            bom_id=bom_id,
+            company=company,
+            operation=action,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            response_json=json.dumps(response_data, ensure_ascii=False, sort_keys=True, default=str),
+            created_by=actor,
+        )
+    )
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -522,10 +592,24 @@ def create_bom(
             expected_bom_ref=payload.source_ref,
             expected_reason=None,
         )
+        company = payload.company or "默认公司"
+        request_hash = _bom_write_request_hash(action=action, payload=payload, resource_id=None)
+        replayed = _replay_bom_write_if_idempotent(
+            session=session,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+        )
+        if replayed is not None:
+            return _ok(replayed)
         result = service.create_bom(payload=payload, operator=current_user.username)
         created_bom = service.get_bom_by_no(result.name)
         resource_id = int(created_bom.id) if created_bom else None
+        if resource_id is None:
+            raise DatabaseWriteFailed()
         after_data = audit.snapshot_resource(resource_type="bom", resource_id=resource_id)
+        response_data = result.model_dump(mode="json")
         audit.record_success(
             module="bom",
             action=action,
@@ -538,8 +622,18 @@ def create_bom(
             after_data=after_data,
             context=context,
         )
+        _record_bom_write_idempotency(
+            session=session,
+            bom_id=resource_id,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+            response_data=response_data,
+            actor=current_user.username,
+        )
         _commit_or_raise_write_error(session=session, request=request, action=action)
-        return _ok(result.model_dump())
+        return _ok(response_data)
     except AuditWriteFailed as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _app_err(exc)
@@ -2132,12 +2226,24 @@ def update_bom_draft(
             expected_bom_ref=snapshot_bom_no,
             expected_reason=None,
         )
+        company = payload.company or "默认公司"
+        request_hash = _bom_write_request_hash(action=action, payload=payload, resource_id=bom_id)
+        replayed = _replay_bom_write_if_idempotent(
+            session=session,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+        )
+        if replayed is not None:
+            return _ok(replayed)
         data: BomUpdateData = service.update_bom_draft(
             bom_id=bom_id,
             payload=payload,
             operator=current_user.username,
         )
         after_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
+        response_data = data.model_dump(mode="json")
         audit.record_success(
             module="bom",
             action=action,
@@ -2150,8 +2256,18 @@ def update_bom_draft(
             after_data=after_data,
             context=context,
         )
+        _record_bom_write_idempotency(
+            session=session,
+            bom_id=bom_id,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+            response_data=response_data,
+            actor=current_user.username,
+        )
         _commit_or_raise_write_error(session=session, request=request, action=action)
-        return _ok(data.model_dump())
+        return _ok(response_data)
     except AuditWriteFailed as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _app_err(exc)
@@ -2236,8 +2352,20 @@ def set_default_bom(
             expected_bom_ref=snapshot_bom_no,
             expected_reason=None,
         )
+        company = payload.company or "默认公司"
+        request_hash = _bom_write_request_hash(action=action, payload=payload, resource_id=bom_id)
+        replayed = _replay_bom_write_if_idempotent(
+            session=session,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+        )
+        if replayed is not None:
+            return _ok(replayed)
         data: BomSetDefaultData = service.set_default(bom_id=bom_id, operator=current_user.username)
         after_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
+        response_data = data.model_dump(mode="json")
         audit.record_success(
             module="bom",
             action=action,
@@ -2250,8 +2378,18 @@ def set_default_bom(
             after_data=after_data,
             context=context,
         )
+        _record_bom_write_idempotency(
+            session=session,
+            bom_id=bom_id,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+            response_data=response_data,
+            actor=current_user.username,
+        )
         _commit_or_raise_write_error(session=session, request=request, action=action)
-        return _ok(data.model_dump())
+        return _ok(response_data)
     except AuditWriteFailed as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _app_err(exc)
@@ -2338,8 +2476,20 @@ def activate_bom(
             expected_bom_ref=snapshot_bom_no,
             expected_reason=None,
         )
+        company = payload.company or "默认公司"
+        request_hash = _bom_write_request_hash(action=action, payload=payload, resource_id=bom_id)
+        replayed = _replay_bom_write_if_idempotent(
+            session=session,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+        )
+        if replayed is not None:
+            return _ok(replayed)
         data: BomActivateData = service.activate(bom_id=bom_id, operator=current_user.username)
         after_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
+        response_data = data.model_dump(mode="json")
         audit.record_success(
             module="bom",
             action=action,
@@ -2352,8 +2502,18 @@ def activate_bom(
             after_data=after_data,
             context=context,
         )
+        _record_bom_write_idempotency(
+            session=session,
+            bom_id=bom_id,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+            response_data=response_data,
+            actor=current_user.username,
+        )
         _commit_or_raise_write_error(session=session, request=request, action=action)
-        return _ok(data.model_dump())
+        return _ok(response_data)
     except AuditWriteFailed as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _app_err(exc)
@@ -2438,12 +2598,24 @@ def deactivate_bom(
             expected_bom_ref=snapshot_bom_no,
             expected_reason=payload.reason,
         )
+        company = payload.company or "默认公司"
+        request_hash = _bom_write_request_hash(action=action, payload=payload, resource_id=bom_id)
+        replayed = _replay_bom_write_if_idempotent(
+            session=session,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+        )
+        if replayed is not None:
+            return _ok(replayed)
         data: BomDeactivateData = service.deactivate(
             bom_id=bom_id,
             reason=payload.reason,
             operator=current_user.username,
         )
         after_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
+        response_data = data.model_dump(mode="json")
         audit.record_success(
             module="bom",
             action=action,
@@ -2456,8 +2628,18 @@ def deactivate_bom(
             after_data=after_data,
             context=context,
         )
+        _record_bom_write_idempotency(
+            session=session,
+            bom_id=bom_id,
+            company=company,
+            action=action,
+            idempotency_key=payload.idempotency_key,
+            request_hash=request_hash,
+            response_data=response_data,
+            actor=current_user.username,
+        )
         _commit_or_raise_write_error(session=session, request=request, action=action)
-        return _ok(data.model_dump())
+        return _ok(response_data)
     except AuditWriteFailed as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _app_err(exc)

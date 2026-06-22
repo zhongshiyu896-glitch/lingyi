@@ -20,9 +20,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.main as main_module
-from app.core.error_codes import BOM_DEFAULT_CONFLICT
-from app.core.error_codes import BOM_PUBLISHED_LOCKED
-from app.core.error_codes import BOM_STATUS_INVALID
 from app.core.error_codes import WORKSHOP_IDEMPOTENCY_CONFLICT
 from app.main import app
 from app.models.audit import Base as AuditBase
@@ -30,6 +27,7 @@ from app.models.audit import LyOperationAuditLog
 from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
+from app.models.bom import LyApparelBomWriteOperation
 from app.models.bom import LyBomOperation
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseOrder
@@ -91,6 +89,7 @@ class BomApiWriteFlowTest(unittest.TestCase):
             session.query(LyOperationAuditLog).delete()
             session.query(LyMaterialPurchaseOrderItem).delete()
             session.query(LyMaterialPurchaseOrder).delete()
+            session.query(LyApparelBomWriteOperation).delete()
             session.query(LyBomOperation).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
@@ -589,7 +588,7 @@ class BomApiWriteFlowTest(unittest.TestCase):
             ["PO-BOM-NEWER-CREATED", "PO-BOM-OLDER-CREATED-LARGER-ID"],
         )
 
-    def test_create_bom_http_success_and_duplicate_conflict(self) -> None:
+    def test_create_bom_http_success_and_idempotent_replay(self) -> None:
         item_code = "STYLE-BOM-API-001"
         source_ref = f"{self.SCENARIO}:SRC:{item_code}"
         self._seed_style(item_code)
@@ -609,13 +608,41 @@ class BomApiWriteFlowTest(unittest.TestCase):
         self.assertEqual(created.status_code, 200, created.text)
         self.assertEqual(created.json()["code"], "0")
         self.assertTrue(created.json()["data"]["name"].startswith("BOM-STYLE-BOM-API-001-V1-"))
-        self.assertEqual(duplicate.status_code, 409)
-        self.assertEqual(duplicate.json()["code"], BOM_DEFAULT_CONFLICT)
+        self.assertEqual(duplicate.status_code, 200, duplicate.text)
+        self.assertEqual(duplicate.json()["data"], created.json()["data"])
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyApparelBom).count(), 1)
             self.assertEqual(session.query(LyApparelBomItem).count(), 1)
             self.assertEqual(session.query(LyBomOperation).count(), 1)
+            self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 1)
             self.assertIn("bom:create", {row.action for row in session.query(LyOperationAuditLog).all()})
+
+    def test_create_bom_rejects_same_idempotency_key_with_different_payload(self) -> None:
+        item_code = "STYLE-BOM-API-IDEM-CONFLICT"
+        source_ref = f"{self.SCENARIO}:SRC:{item_code}"
+        self._seed_style(item_code)
+        payload = self._create_payload(item_code=item_code, source_ref=source_ref)
+        created = self.client.post(
+            "/api/bom/",
+            headers=self._headers(item_code=item_code, bom_ref=source_ref),
+            json=payload,
+        )
+        changed_payload = {
+            **payload,
+            "bom_items": [{**payload["bom_items"][0], "qty_per_piece": "2.00"}],
+        }
+        rejected = self.client.post(
+            "/api/bom/",
+            headers=self._headers(item_code=item_code, bom_ref=source_ref),
+            json=changed_payload,
+        )
+
+        self.assertEqual(created.status_code, 200, created.text)
+        self.assertEqual(rejected.status_code, 409)
+        self.assertEqual(rejected.json()["code"], WORKSHOP_IDEMPOTENCY_CONFLICT)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyApparelBom).count(), 1)
+            self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 1)
 
     def test_create_bom_rejects_carrier_mismatch_without_writing(self) -> None:
         item_code = "STYLE-BOM-API-GATE"
@@ -635,7 +662,56 @@ class BomApiWriteFlowTest(unittest.TestCase):
             self.assertEqual(session.query(LyApparelBom).count(), 0)
             self.assertEqual(session.query(LyOperationAuditLog).count(), 0)
 
-    def test_activate_and_deactivate_http_success_then_state_conflicts(self) -> None:
+    def test_update_bom_draft_is_idempotent_and_conflicts_on_payload_change(self) -> None:
+        item_code = f"STYLE-{self.SCENARIO}-UPDATE"
+        source_ref = f"{self.SCENARIO}:SRC:{item_code}"
+        self._seed_style(item_code)
+        created = self.client.post(
+            "/api/bom/",
+            headers=self._headers(item_code=item_code, bom_ref=source_ref),
+            json=self._create_payload(item_code=item_code, source_ref=source_ref),
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        bom_no = str(created.json()["data"]["name"])
+        with self.SessionLocal() as session:
+            bom_id = int(session.query(LyApparelBom).filter(LyApparelBom.bom_no == bom_no).one().id)
+
+        update_payload = {
+            **self._create_payload(item_code=item_code, source_ref=bom_no, idem="update"),
+            "bom_no": bom_no,
+            "version_no": "V2",
+        }
+        updated = self.client.put(
+            f"/api/bom/{bom_id}",
+            headers=self._headers(item_code=item_code, bom_ref=bom_no, role="System Manager"),
+            json=update_payload,
+        )
+        replayed = self.client.put(
+            f"/api/bom/{bom_id}",
+            headers=self._headers(item_code=item_code, bom_ref=bom_no, role="System Manager"),
+            json=update_payload,
+        )
+        changed_payload = {
+            **update_payload,
+            "bom_items": [{**update_payload["bom_items"][0], "qty_per_piece": "2.50"}],
+        }
+        rejected = self.client.put(
+            f"/api/bom/{bom_id}",
+            headers=self._headers(item_code=item_code, bom_ref=bom_no, role="System Manager"),
+            json=changed_payload,
+        )
+
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(replayed.status_code, 200, replayed.text)
+        self.assertEqual(replayed.json()["data"], updated.json()["data"])
+        self.assertEqual(rejected.status_code, 409)
+        self.assertEqual(rejected.json()["code"], WORKSHOP_IDEMPOTENCY_CONFLICT)
+        with self.SessionLocal() as session:
+            bom = session.query(LyApparelBom).filter(LyApparelBom.bom_no == bom_no).one()
+            self.assertEqual(str(bom.version_no), "V2")
+            self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 2)
+
+    def test_activate_and_deactivate_http_success_then_idempotent_replay(self) -> None:
         item_code = f"STYLE-{self.SCENARIO}-ACT"
         source_ref = f"{self.SCENARIO}:SRC:{item_code}"
         reason = f"{self.SCENARIO}:retire api bom"
@@ -661,6 +737,17 @@ class BomApiWriteFlowTest(unittest.TestCase):
             headers=self._headers(item_code=item_code, bom_ref=bom_no, role="System Manager"),
             json=activate_payload,
         )
+        set_default_payload = self._carrier_payload(item_code=item_code, bom_no=bom_no, idem="set-default")
+        set_default = self.client.post(
+            f"/api/bom/{bom_id}/set-default",
+            headers=self._headers(item_code=item_code, bom_ref=bom_no, role="System Manager"),
+            json=set_default_payload,
+        )
+        set_default_again = self.client.post(
+            f"/api/bom/{bom_id}/set-default",
+            headers=self._headers(item_code=item_code, bom_ref=bom_no, role="System Manager"),
+            json=set_default_payload,
+        )
         deactivate_payload = self._carrier_payload(
             item_code=item_code,
             bom_no=bom_no,
@@ -680,12 +767,16 @@ class BomApiWriteFlowTest(unittest.TestCase):
 
         self.assertEqual(activated.status_code, 200, activated.text)
         self.assertEqual(activated.json()["data"]["status"], "active")
-        self.assertEqual(activate_again.status_code, 409)
-        self.assertEqual(activate_again.json()["code"], BOM_PUBLISHED_LOCKED)
+        self.assertEqual(activate_again.status_code, 200, activate_again.text)
+        self.assertEqual(activate_again.json()["data"], activated.json()["data"])
+        self.assertEqual(set_default.status_code, 200, set_default.text)
+        self.assertTrue(set_default.json()["data"]["is_default"])
+        self.assertEqual(set_default_again.status_code, 200, set_default_again.text)
+        self.assertEqual(set_default_again.json()["data"], set_default.json()["data"])
         self.assertEqual(deactivated.status_code, 200, deactivated.text)
         self.assertEqual(deactivated.json()["data"]["status"], "inactive")
-        self.assertEqual(deactivate_again.status_code, 409)
-        self.assertEqual(deactivate_again.json()["code"], BOM_STATUS_INVALID)
+        self.assertEqual(deactivate_again.status_code, 200, deactivate_again.text)
+        self.assertEqual(deactivate_again.json()["data"], deactivated.json()["data"])
         with self.SessionLocal() as session:
             bom = session.query(LyApparelBom).filter(LyApparelBom.bom_no == bom_no).one()
             self.assertEqual(str(bom.status), "inactive")
@@ -693,6 +784,8 @@ class BomApiWriteFlowTest(unittest.TestCase):
             self.assertIn("bom:create", audit_actions)
             self.assertIn("bom:activate", audit_actions)
             self.assertIn("bom:deactivate", audit_actions)
+            self.assertIn("bom:set_default", audit_actions)
+            self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 4)
 
 
 if __name__ == "__main__":

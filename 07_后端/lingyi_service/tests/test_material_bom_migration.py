@@ -13,9 +13,11 @@ from sqlalchemy import MetaData
 from sqlalchemy import Table
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
+from sqlalchemy import text
 from sqlalchemy.pool import StaticPool
 
 from migrations.versions import task_071a_create_material_bom_write_tables as migration_071a
+from migrations.versions import task_095a_extend_apparel_bom_write_operations as migration_095a
 
 
 class MaterialBomMigrationTest(unittest.TestCase):
@@ -63,6 +65,28 @@ class MaterialBomMigrationTest(unittest.TestCase):
                 migration_071a.downgrade()
             finally:
                 migration_071a.op = previous_op
+
+    def _run_095a_upgrade(self) -> None:
+        with self.engine.begin() as conn:
+            context = MigrationContext.configure(conn)
+            operations = Operations(context)
+            previous_op = migration_095a.op
+            migration_095a.op = operations
+            try:
+                migration_095a.upgrade()
+            finally:
+                migration_095a.op = previous_op
+
+    def _run_095a_downgrade(self) -> None:
+        with self.engine.begin() as conn:
+            context = MigrationContext.configure(conn)
+            operations = Operations(context)
+            previous_op = migration_095a.op
+            migration_095a.op = operations
+            try:
+                migration_095a.downgrade()
+            finally:
+                migration_095a.op = previous_op
 
     def test_upgrade_creates_style_write_ledger_and_sample_bom_tables(self) -> None:
         self._run_upgrade()
@@ -143,3 +167,29 @@ class MaterialBomMigrationTest(unittest.TestCase):
     def test_migration_does_not_depend_on_metadata_create_all(self) -> None:
         source = Path(migration_071a.__file__).read_text(encoding="utf-8")
         self.assertNotIn("metadata.create_all", source)
+
+    def test_095a_extends_apparel_bom_write_operation_constraint(self) -> None:
+        self._run_upgrade()
+        self._run_095a_upgrade()
+
+        insert_sql = text(
+            """
+            INSERT INTO ly_apparel_bom_write_operation
+                (bom_id, company, operation, idempotency_key, request_hash, response_json, created_by)
+            VALUES
+                (1, 'COMP-MB', 'bom:create', 'idem-bom-create', 'hash-bom-create', '{}', 'migration-test')
+            """
+        )
+        with self.engine.begin() as conn:
+            conn.execute(insert_sql)
+            count = conn.execute(text("SELECT count(*) FROM ly_apparel_bom_write_operation")).scalar_one()
+        self.assertEqual(count, 1)
+
+        self._run_095a_downgrade()
+        with self.engine.begin() as conn:
+            count_after_downgrade = conn.execute(text("SELECT count(*) FROM ly_apparel_bom_write_operation")).scalar_one()
+        self.assertEqual(count_after_downgrade, 0)
+
+        with self.assertRaises(Exception):
+            with self.engine.begin() as conn:
+                conn.execute(insert_sql)
