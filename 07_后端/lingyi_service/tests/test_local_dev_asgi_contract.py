@@ -140,6 +140,48 @@ class LocalDevAsgiContractTest(unittest.TestCase):
         self.assertTrue(self._temp_db_path.exists())
         self._assert_repo_db_stats_unchanged()
 
+    def test_local_dev_seeds_clean_api_report_and_purchase_requirement_rows(self) -> None:
+        local_dev_module = self._load_local_dev_module()
+        headers = {
+            "X-LY-Dev-User": "local.dev.contract",
+            "X-LY-Dev-Roles": "System Manager",
+        }
+
+        with TestClient(local_dev_module.app) as client:
+            report_response = client.get(
+                "/api/production/report-suite",
+                params={"report_key": "productOrderProfitReport"},
+                headers=headers,
+            )
+            requirement_response = client.get(
+                "/api/material-purchase/requirements",
+                params={"status": "pending"},
+                headers=headers,
+            )
+
+        self.assertEqual(report_response.status_code, 200, report_response.text)
+        report_payload = report_response.json()
+        self.assertEqual(report_payload["code"], "0")
+        report_data = report_payload["data"]
+        self.assertEqual(report_data["report_key"], "productOrderProfitReport")
+        self.assertGreater(len(report_data["items"]), 0)
+        demo_row = next(
+            item for item in report_data["items"] if item["sales_order"] == "SO-LOCAL-DEMO-001"
+        )
+        self.assertEqual(demo_row["styleNo"], "DEMO-TEE")
+        self.assertGreater(float(demo_row["amount"]), 0)
+        self.assertGreater(float(demo_row["totalCost"]), 0)
+
+        self.assertEqual(requirement_response.status_code, 200, requirement_response.text)
+        requirement_payload = requirement_response.json()
+        self.assertEqual(requirement_payload["code"], "0")
+        requirement_data = requirement_payload["data"]
+        self.assertGreater(len(requirement_data["items"]), 0)
+        self.assertTrue(
+            any(item["sales_order"] == "SO-LOCAL-DEMO-001" for item in requirement_data["items"])
+        )
+        self._assert_repo_db_stats_unchanged()
+
     def test_local_dev_migrates_legacy_sales_order_item_style_master_column(self) -> None:
         with sqlite3.connect(self._temp_db_path) as connection:
             connection.execute(

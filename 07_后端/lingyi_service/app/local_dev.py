@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import date
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 import json
@@ -40,11 +41,16 @@ from app.models.finance_approval import Base as FinanceApprovalBase  # noqa: E40
 from app.models.master_data import Base as MasterDataBase  # noqa: E402
 from app.models.master_data import LyMasterDataRecord  # noqa: E402
 from app.models.material_purchase import Base as MaterialPurchaseBase  # noqa: E402
+from app.models.material_purchase import LyMaterialPurchaseRequirement  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
+from app.models.production import LyProductionPlan  # noqa: E402
+from app.models.production import LyProductionPlanMaterial  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 import app.models.quality_outbox  # noqa: E402,F401
 from app.models.sample import Base as SampleBase  # noqa: E402
 from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
+from app.models.sales_order import LySalesOrder  # noqa: E402
+from app.models.sales_order import LySalesOrderItem  # noqa: E402
 from app.models.style_master import Base as StyleMasterBase  # noqa: E402
 from app.models.style_master import LyStyleDictionary  # noqa: E402
 from app.models.style_master import LyStyleMaster  # noqa: E402
@@ -1167,7 +1173,7 @@ def _seed_local_bom() -> None:
                 qty_per_piece=1.2,
                 loss_rate=0.03,
                 uom="米",
-                remark="本地开发演示物料",
+                remark="本地开发演示物料；unit_price=18.50",
             ),
             LyApparelBomItem(
                 id=2,
@@ -1178,7 +1184,7 @@ def _seed_local_bom() -> None:
                 qty_per_piece=5,
                 loss_rate=0,
                 uom="粒",
-                remark="本地开发演示辅料",
+                remark="本地开发演示辅料；unit_price=0.20",
             ),
         ]
         bom.operations = [
@@ -1207,8 +1213,259 @@ def _seed_local_bom() -> None:
         session.commit()
 
 
+def _seed_local_report_chain() -> None:
+    """Seed a tiny FastAPI-native order -> plan -> material-read chain for clean API smoke."""
+    company = "默认公司"
+    actor = "local.dev"
+    style_no = "DEMO-TEE"
+    sales_order_no = "SO-LOCAL-DEMO-001"
+    sales_order_item = "SO-LOCAL-DEMO-001-001"
+    plan_no = "PLAN-LOCAL-DEMO-001"
+    planned_qty = Decimal("24")
+    unit_rate = Decimal("90")
+    request_hash = "local-dev-seed".ljust(64, "0")[:64]
+    unit_prices = {
+        "FABRIC-COTTON": Decimal("18.50"),
+        "TRIM-BUTTON": Decimal("0.20"),
+    }
+
+    with main_module.SessionLocal() as session:
+        style = (
+            session.query(LyStyleMaster)
+            .filter(
+                LyStyleMaster.company == company,
+                LyStyleMaster.ys_style_no == style_no,
+            )
+            .first()
+        )
+        bom = (
+            session.query(LyApparelBom)
+            .filter(
+                LyApparelBom.company == company,
+                LyApparelBom.item_code == style_no,
+                LyApparelBom.status == "active",
+            )
+            .order_by(LyApparelBom.is_default.desc(), LyApparelBom.id.desc())
+            .first()
+        )
+        if style is None or bom is None:
+            return
+
+        bom_items = (
+            session.query(LyApparelBomItem)
+            .filter(LyApparelBomItem.bom_id == int(bom.id))
+            .order_by(LyApparelBomItem.id.asc())
+            .all()
+        )
+        for bom_item in bom_items:
+            price = unit_prices.get(str(bom_item.material_item_code))
+            remark = str(bom_item.remark or "").strip()
+            if price is not None and "unit_price" not in remark.lower() and "单价" not in remark:
+                bom_item.remark = f"{remark}；unit_price={price}" if remark else f"unit_price={price}"
+
+        order = (
+            session.query(LySalesOrder)
+            .filter(
+                LySalesOrder.company == company,
+                LySalesOrder.sales_order_no == sales_order_no,
+            )
+            .first()
+        )
+        if order is None:
+            order = LySalesOrder(
+                sales_order_no=sales_order_no,
+                company=company,
+                customer="本地演示客户",
+                status="planned",
+                docstatus=1,
+                transaction_date=date.today(),
+                delivery_date=date.today(),
+                grand_total=planned_qty * unit_rate,
+                idempotency_key="local-dev-sales-order-demo",
+                request_hash=request_hash,
+                scenario_tag="LOCAL-DEV-SMOKE",
+                payload={"seed": "local_dev_report_chain"},
+                created_by=actor,
+                updated_by=actor,
+            )
+            session.add(order)
+        else:
+            order.customer = order.customer or "本地演示客户"
+            order.status = "planned"
+            order.docstatus = 1
+            order.transaction_date = order.transaction_date or date.today()
+            order.delivery_date = order.delivery_date or date.today()
+            order.grand_total = planned_qty * unit_rate
+            order.updated_by = actor
+        session.flush()
+
+        order_item = (
+            session.query(LySalesOrderItem)
+            .filter(
+                LySalesOrderItem.sales_order_id == int(order.id),
+                LySalesOrderItem.sales_order_item == sales_order_item,
+            )
+            .first()
+        )
+        if order_item is None:
+            order_item = LySalesOrderItem(
+                sales_order_id=int(order.id),
+                company=company,
+                line_no=1,
+                sales_order_item=sales_order_item,
+                style_master_id=int(style.id),
+                item_code=style_no,
+                item_name="本地演示T恤",
+                color="白色",
+                size="M",
+                qty=planned_qty,
+                planned_qty=planned_qty,
+                delivered_qty=Decimal("0"),
+                ys_material_calc_state="已算料",
+                rate=unit_rate,
+                amount=planned_qty * unit_rate,
+                uom="件",
+                delivery_date=order.delivery_date,
+            )
+            session.add(order_item)
+        else:
+            order_item.style_master_id = int(style.id)
+            order_item.item_code = style_no
+            order_item.item_name = order_item.item_name or "本地演示T恤"
+            order_item.color = "白色"
+            order_item.size = "M"
+            order_item.qty = planned_qty
+            order_item.planned_qty = planned_qty
+            order_item.ys_material_calc_state = "已算料"
+            order_item.rate = unit_rate
+            order_item.amount = planned_qty * unit_rate
+            order_item.uom = "件"
+            order_item.delivery_date = order.delivery_date
+
+        plan = (
+            session.query(LyProductionPlan)
+            .filter(
+                LyProductionPlan.company == company,
+                LyProductionPlan.plan_no == plan_no,
+            )
+            .first()
+        )
+        if plan is None:
+            plan = LyProductionPlan(
+                plan_no=plan_no,
+                company=company,
+                sales_order=sales_order_no,
+                sales_order_item=sales_order_item,
+                customer="本地演示客户",
+                item_code=style_no,
+                bom_id=int(bom.id),
+                bom_version=str(bom.version_no or ""),
+                planned_qty=planned_qty,
+                planned_start_date=date.today(),
+                status="planned",
+                idempotency_key="local-dev-production-plan-demo",
+                request_hash=request_hash,
+                created_by=actor,
+            )
+            session.add(plan)
+        else:
+            plan.sales_order = sales_order_no
+            plan.sales_order_item = sales_order_item
+            plan.customer = plan.customer or "本地演示客户"
+            plan.item_code = style_no
+            plan.bom_id = int(bom.id)
+            plan.bom_version = str(bom.version_no or "")
+            plan.planned_qty = planned_qty
+            plan.planned_start_date = plan.planned_start_date or date.today()
+            plan.status = "planned"
+        session.flush()
+
+        existing_materials = {
+            int(row.bom_item_id): row
+            for row in session.query(LyProductionPlanMaterial)
+            .filter(
+                LyProductionPlanMaterial.plan_id == int(plan.id),
+                LyProductionPlanMaterial.bom_item_id.isnot(None),
+            )
+            .all()
+        }
+        for bom_index, bom_item in enumerate(bom_items, start=1):
+            qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+            loss_rate = Decimal(str(bom_item.loss_rate or 0))
+            required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+            material_snapshot = existing_materials.get(int(bom_item.id))
+            if material_snapshot is None:
+                material_snapshot = LyProductionPlanMaterial(
+                    plan_id=int(plan.id),
+                    bom_item_id=int(bom_item.id),
+                    material_item_code=str(bom_item.material_item_code),
+                    warehouse="默认仓库",
+                )
+                session.add(material_snapshot)
+            material_snapshot.bom_color = bom_item.color
+            material_snapshot.bom_size = bom_item.size
+            material_snapshot.bom_part = bom_item.part
+            material_snapshot.material_item_code = str(bom_item.material_item_code)
+            material_snapshot.warehouse = "默认仓库"
+            material_snapshot.uom = str(bom_item.uom or "米")
+            material_snapshot.qty_per_piece = qty_per_piece
+            material_snapshot.loss_rate = loss_rate
+            material_snapshot.required_qty = required_qty
+            material_snapshot.available_qty = Decimal("0")
+            material_snapshot.shortage_qty = required_qty
+
+            requirement_no = f"REQ-LOCAL-DEMO-{bom_index:03d}"
+            requirement = (
+                session.query(LyMaterialPurchaseRequirement)
+                .filter(
+                    LyMaterialPurchaseRequirement.company == company,
+                    LyMaterialPurchaseRequirement.requirement_no == requirement_no,
+                )
+                .first()
+            )
+            if requirement is None:
+                requirement = LyMaterialPurchaseRequirement(
+                    company=company,
+                    requirement_no=requirement_no,
+                    source_type="production_plan_material_check",
+                    source_id=str(int(plan.id)),
+                    material_item_code=str(bom_item.material_item_code),
+                    warehouse="默认仓库",
+                    created_by=actor,
+                    updated_by=actor,
+                )
+                session.add(requirement)
+            requirement.source_type = "production_plan_material_check"
+            requirement.source_id = str(int(plan.id))
+            requirement.source_no = plan_no
+            requirement.plan_id = int(plan.id)
+            requirement.bom_item_id = int(bom_item.id)
+            requirement.bom_color = bom_item.color
+            requirement.bom_size = bom_item.size
+            requirement.bom_part = bom_item.part
+            requirement.sales_order = sales_order_no
+            requirement.sales_order_item = sales_order_item
+            requirement.item_code = style_no
+            requirement.material_item_code = str(bom_item.material_item_code)
+            requirement.material_name = str(bom_item.material_item_code)
+            requirement.warehouse = "默认仓库"
+            requirement.required_qty = required_qty
+            requirement.available_qty = Decimal("0")
+            requirement.net_required_qty = required_qty
+            requirement.purchased_qty = Decimal("0")
+            requirement.received_qty = Decimal("0")
+            requirement.uom = str(bom_item.uom or "米")
+            requirement.unit_price = unit_prices.get(str(bom_item.material_item_code), Decimal("0"))
+            requirement.status = "pending"
+            requirement.payload = {"seed": "local_dev_report_chain", "plan_no": plan_no}
+            requirement.updated_by = actor
+
+        session.commit()
+
+
 _create_local_tables()
 _seed_local_bom()
+_seed_local_report_chain()
 
 app = main_module.app
 
