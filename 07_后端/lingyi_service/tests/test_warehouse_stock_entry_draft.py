@@ -18,6 +18,8 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.quality import Base as QualityBase
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
@@ -49,6 +51,7 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
+        MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -79,6 +82,7 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LyMaterialPurchaseRequirement).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.commit()
@@ -581,6 +585,115 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
                 .one()
             )
             self.assertEqual(audit.after_data["items"][0]["purchase_requirement_id"], 987654)
+
+    def test_purchase_requirement_context_is_derived_on_receipt_draft_readbacks(self) -> None:
+        with self.SessionLocal() as session:
+            requirement = LyMaterialPurchaseRequirement(
+                company="COMP-A",
+                requirement_no=f"MR-{self.SCENARIO_TAG}-001",
+                source_type="production_plan",
+                source_id="PLAN-CTX-001",
+                source_no="PP-CTX-001",
+                plan_id=1001,
+                bom_item_id=2001,
+                bom_color="黑",
+                bom_size="M",
+                bom_part="前片",
+                sales_order="SO-CTX-001",
+                sales_order_item="SO-CTX-001-002",
+                item_code="STYLE-CTX-001",
+                material_item_code=self.ITEM_CODE,
+                material_name="上下文面料",
+                supplier_name="上下文供应商",
+                warehouse=self.WAREHOUSE,
+                required_qty=Decimal("9"),
+                available_qty=Decimal("0"),
+                net_required_qty=Decimal("9"),
+                purchased_qty=Decimal("9"),
+                received_qty=Decimal("0"),
+                uom="Nos",
+                unit_price=Decimal("0"),
+                status="purchased",
+                purchase_no=f"PO-{self.SCENARIO_TAG}-001",
+                created_by="warehouse.writer",
+            )
+            session.add(requirement)
+            session.flush()
+            requirement_id = int(requirement.id)
+            session.commit()
+
+        payload = self._material_receipt_payload(qty="9")
+        payload["source_type"] = "material_purchase_inbound"
+        payload["source_id"] = f"{self.SCENARIO_TAG}-PUR-IN-CTX"
+        payload["source_ref"] = f"{self.SCENARIO_TAG}-PUR-IN-CTX"
+        payload["idempotency_key"] = f"{self.SCENARIO_TAG}-IDEM-PUR-IN-CTX"
+        payload["items"][0]["purchase_requirement_id"] = requirement_id
+
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        body = response.json()["data"]
+        draft_id = int(body["id"])
+        created_item = body["items"][0]
+        self.assertEqual(created_item["purchase_requirement_id"], requirement_id)
+        self.assertEqual(created_item["sales_order_item"], "SO-CTX-001-002")
+        self.assertEqual(created_item["bom_color"], "黑")
+        self.assertEqual(created_item["bom_size"], "M")
+        self.assertEqual(created_item["bom_part"], "前片")
+
+        detail = self.client.get(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        detail_item = detail.json()["data"]["items"][0]
+        self.assertEqual(detail_item["sales_order_item"], "SO-CTX-001-002")
+        self.assertEqual(detail_item["bom_color"], "黑")
+        self.assertEqual(detail_item["bom_size"], "M")
+        self.assertEqual(detail_item["bom_part"], "前片")
+
+        listed = self.client.get(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:read"),
+            params={"company": "COMP-A", "source_type": "material_purchase_inbound"},
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        listed_item = listed.json()["data"]["items"][0]["items"][0]
+        self.assertEqual(listed_item["sales_order_item"], "SO-CTX-001-002")
+        self.assertEqual(listed_item["bom_color"], "黑")
+        self.assertEqual(listed_item["bom_size"], "M")
+        self.assertEqual(listed_item["bom_part"], "前片")
+
+        with self.SessionLocal() as session:
+            item = (
+                session.query(LyWarehouseStockEntryDraftItem)
+                .filter(LyWarehouseStockEntryDraftItem.draft_id == draft_id)
+                .one()
+            )
+            self.assertEqual(int(item.purchase_requirement_id), requirement_id)
+            self.assertFalse(hasattr(item, "sales_order_item"))
+
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:stock_entry_draft",
+                    LyOperationAuditLog.result == "success",
+                    LyOperationAuditLog.resource_id == draft_id,
+                )
+                .one()
+            )
+            audit_item = audit.after_data["items"][0]
+            self.assertEqual(audit_item["sales_order_item"], "SO-CTX-001-002")
+            self.assertEqual(audit_item["bom_color"], "黑")
+            self.assertEqual(audit_item["bom_size"], "M")
+            self.assertEqual(audit_item["bom_part"], "前片")
 
     def test_create_material_issue_persists_item_outbox_payload_and_audit(self) -> None:
         payload = self._material_issue_payload(qty="7")

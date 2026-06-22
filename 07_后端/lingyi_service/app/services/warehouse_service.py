@@ -30,6 +30,7 @@ from app.core.permissions import get_permission_source
 from app.models.master_data import LyMasterDataRecord
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
+from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.quality_outbox import LyQualityOutbox
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
@@ -3588,6 +3589,22 @@ class WarehouseService:
             .order_by(LyWarehouseStockEntryDraftItem.id.asc())
             .all()
         )
+        purchase_requirement_ids = [
+            int(item.purchase_requirement_id)
+            for item in items
+            if item.purchase_requirement_id is not None
+        ]
+        purchase_requirements = {}
+        if purchase_requirement_ids:
+            purchase_requirements = {
+                int(row.id): row
+                for row in session.query(LyMaterialPurchaseRequirement)
+                .filter(
+                    LyMaterialPurchaseRequirement.id.in_(purchase_requirement_ids),
+                    LyMaterialPurchaseRequirement.company == str(draft.company),
+                )
+                .all()
+            }
         outbox = self._latest_outbox_for_draft(draft_id)
         allocation_mode: str | None = None
         strict_failure_reason: str | None = None
@@ -3601,6 +3618,29 @@ class WarehouseService:
             raw_show_completed = payload.get("show_completed_forced")
             if isinstance(raw_show_completed, bool):
                 show_completed_forced = raw_show_completed
+
+        def purchase_requirement_context(item: LyWarehouseStockEntryDraftItem) -> dict[str, str | None]:
+            if item.purchase_requirement_id is None:
+                return {
+                    "sales_order_item": None,
+                    "bom_color": None,
+                    "bom_size": None,
+                    "bom_part": None,
+                }
+            requirement = purchase_requirements.get(int(item.purchase_requirement_id))
+            if requirement is None:
+                return {
+                    "sales_order_item": None,
+                    "bom_color": None,
+                    "bom_size": None,
+                    "bom_part": None,
+                }
+            return {
+                "sales_order_item": self._text(requirement.sales_order_item),
+                "bom_color": self._text(requirement.bom_color),
+                "bom_size": self._text(requirement.bom_size),
+                "bom_part": self._text(requirement.bom_part),
+            }
 
         return WarehouseStockEntryDraftData(
             id=draft_id,
@@ -3634,6 +3674,7 @@ class WarehouseService:
                     source_warehouse=self._text(item.source_warehouse),
                     target_warehouse=self._text(item.target_warehouse),
                     purchase_requirement_id=(int(item.purchase_requirement_id) if item.purchase_requirement_id is not None else None),
+                    **purchase_requirement_context(item),
                 )
                 for item in items
             ],
