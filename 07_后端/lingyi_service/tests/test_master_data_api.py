@@ -108,6 +108,28 @@ class MasterDataApiTest(unittest.TestCase):
             )
             session.commit()
 
+    def _seed_material_unit(self, *, code: str, name: str, status: str = "active", company: str = "COMP-A") -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company=company,
+                    code=code,
+                    name=name,
+                    status=status,
+                    payload={
+                        "material_kind": "unit",
+                        "unit_code": code,
+                        "unit_name": name,
+                        "status": status,
+                    },
+                    version=1,
+                    created_by="test.seed",
+                    updated_by="test.seed",
+                )
+            )
+            session.commit()
+
     def test_create_customer_persists_and_lists_with_audit(self) -> None:
         response = self.client.post(
             "/api/master-data/customers",
@@ -227,6 +249,7 @@ class MasterDataApiTest(unittest.TestCase):
 
     def test_create_material_without_code_syncs_generated_code_to_payload(self) -> None:
         self._seed_supplier(code="SUP-MAT-AUTO", name="自动物料供应商")
+        self._seed_material_unit(code="MU-METER", name="米")
         payload = {
             "operation": "create",
             "company": "COMP-A",
@@ -250,6 +273,8 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertRegex(data["code"], r"^ACC-\d{6}$")
         self.assertEqual(data["payload"]["material_item_code"], data["code"])
         self.assertEqual(data["payload"]["supplier_code"], "SUP-MAT-AUTO")
+        self.assertEqual(data["payload"]["uom"], "米")
+        self.assertEqual(data["payload"]["unit_code"], "MU-METER")
 
     def test_create_idempotency_retry_returns_same_record(self) -> None:
         first = self.client.post(
@@ -514,6 +539,7 @@ class MasterDataApiTest(unittest.TestCase):
     def test_material_payload_update_and_deactivate(self) -> None:
         self._seed_supplier(code="SUP-QH", name="青禾面辅料")
         self._seed_supplier(code="SUP-JC", name="锦程纺织")
+        self._seed_material_unit(code="MU-METER", name="米")
 
         created = self.client.post(
             "/api/master-data/materials",
@@ -602,15 +628,17 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertEqual(deactivated.status_code, 200)
         self.assertTrue(deactivated.json()["data"]["disabled"])
         with self.SessionLocal() as session:
-            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "material").count(), 1)
+            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "material").count(), 2)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "master_data").count(), 3)
 
     def test_material_supplier_payload_rejects_missing_or_inactive_supplier(self) -> None:
         self._seed_supplier(code="SUP-INACTIVE", name="停用供应商", status="inactive")
+        self._seed_material_unit(code="MU-METER", name="米")
 
         for request_no, supplier_name in (
             ("MASTER-DATA-MAT-SUP-001", "不存在供应商"),
             ("MASTER-DATA-MAT-SUP-002", "停用供应商"),
+            ("MASTER-DATA-MAT-SUP-003", ""),
         ):
             response = self.client.post(
                 "/api/master-data/materials",
@@ -625,7 +653,7 @@ class MasterDataApiTest(unittest.TestCase):
                         "material_kind": "fabric",
                         "material_item_code": f"FAB-{request_no[-3:]}",
                         "fabric_name": "校验面料",
-                        "supplier_name": supplier_name,
+                        **({"supplier_name": supplier_name} if supplier_name else {}),
                         "uom": "米",
                         "qty_per_piece": 1,
                         "loss_rate": 0,
@@ -638,8 +666,46 @@ class MasterDataApiTest(unittest.TestCase):
             self.assertIn("供应商主数据未启用或不存在", response.json()["message"])
 
         with self.SessionLocal() as session:
-            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "material").count(), 0)
-            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.result == "failed").count(), 2)
+            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "material").count(), 1)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.result == "failed").count(), 3)
+
+    def test_material_payload_rejects_missing_or_inactive_unit(self) -> None:
+        self._seed_supplier(code="SUP-UNIT", name="单位校验供应商")
+        self._seed_material_unit(code="MU-INACTIVE", name="停用单位", status="inactive")
+
+        for request_no, uom in (
+            ("MASTER-DATA-MAT-UNIT-001", "不存在单位"),
+            ("MASTER-DATA-MAT-UNIT-002", "停用单位"),
+            ("MASTER-DATA-MAT-UNIT-003", ""),
+        ):
+            response = self.client.post(
+                "/api/master-data/materials",
+                headers=self._headers(request_id=request_no),
+                json={
+                    "operation": "create",
+                    "company": "COMP-A",
+                    "code": f"FAB-{request_no[-3:]}",
+                    "name": "单位校验面料",
+                    "idempotency_key": f"IDEMP-{request_no}-C",
+                    "payload": {
+                        "material_kind": "fabric",
+                        "material_item_code": f"FAB-{request_no[-3:]}",
+                        "fabric_name": "单位校验面料",
+                        "supplier_code": "SUP-UNIT",
+                        **({"uom": uom} if uom else {}),
+                        "qty_per_piece": 1,
+                        "loss_rate": 0,
+                        "status": "active",
+                    },
+                },
+            )
+            self.assertEqual(response.status_code, 409)
+            self.assertEqual(response.json()["code"], "MASTER_DATA_CONFLICT")
+            self.assertIn("物料单位主数据未启用或不存在", response.json()["message"])
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "material").count(), 1)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.result == "failed").count(), 3)
 
     def test_sample_type_dictionary_crud_uses_master_data(self) -> None:
         created = self.client.post(

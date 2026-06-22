@@ -551,18 +551,6 @@ class MasterDataService:
         if material_kind not in MATERIAL_SUPPLIER_BOUND_KINDS:
             return self._clean_payload(normalized)
 
-        has_supplier_key = any(
-            key in normalized
-            for key in (
-                "supplier_name",
-                "supplierName",
-                "supplier_code",
-                "supplierCode",
-            )
-        )
-        if not has_supplier_key:
-            return self._clean_payload(normalized)
-
         supplier_name = self._optional_text(normalized.get("supplier_name")) or self._optional_text(normalized.get("supplierName"))
         supplier_code = self._optional_text(normalized.get("supplier_code")) or self._optional_text(normalized.get("supplierCode"))
         supplier = self._get_active_supplier_by_code_or_name(company=company, value=supplier_code) if supplier_code else None
@@ -576,6 +564,26 @@ class MasterDataService:
         normalized["supplier_code"] = str(supplier.code)
         normalized.pop("supplierName", None)
         normalized.pop("supplierCode", None)
+
+        unit_code = self._optional_text(normalized.get("unit_code")) or self._optional_text(normalized.get("unitCode"))
+        unit_name = (
+            self._optional_text(normalized.get("uom"))
+            or self._optional_text(normalized.get("base_unit"))
+            or self._optional_text(normalized.get("baseUnit"))
+            or self._optional_text(normalized.get("unit_name"))
+            or self._optional_text(normalized.get("unitName"))
+        )
+        unit = self._get_active_material_unit_by_code_or_name(company=company, value=unit_code) if unit_code else None
+        if unit is None and unit_name:
+            unit = self._get_active_material_unit_by_code_or_name(company=company, value=unit_name)
+        if unit is None:
+            unit_value = unit_code or unit_name or "空"
+            raise BusinessException(code=MASTER_DATA_CONFLICT, message=f"物料单位主数据未启用或不存在：{unit_value}")
+        normalized["uom"] = str(unit.name)
+        normalized["unit_code"] = str(unit.code)
+        normalized.pop("unitCode", None)
+        normalized.pop("baseUnit", None)
+        normalized.pop("unitName", None)
         return self._clean_payload(normalized)
 
     def _ensure_no_warehouse_parent_cycle(
@@ -696,6 +704,31 @@ class MasterDataService:
             )
             .first()
         )
+
+    def _get_active_material_unit_by_code_or_name(self, *, company: str, value: str | None) -> LyMasterDataRecord | None:
+        normalized = self._optional_text(value)
+        if normalized is None:
+            return None
+        candidates = (
+            self.session.query(LyMasterDataRecord)
+            .filter(
+                LyMasterDataRecord.entity_type == "material",
+                LyMasterDataRecord.company == company,
+                LyMasterDataRecord.status == "active",
+                (LyMasterDataRecord.code == normalized) | (LyMasterDataRecord.name == normalized),
+            )
+            .all()
+        )
+        for row in candidates:
+            payload = dict(row.payload or {})
+            material_kind = (
+                self._optional_text(payload.get("material_kind"))
+                or self._optional_text(payload.get("materialKind"))
+                or ""
+            )
+            if material_kind == "unit":
+                return row
+        return None
 
     def _get_idempotency(
         self,
