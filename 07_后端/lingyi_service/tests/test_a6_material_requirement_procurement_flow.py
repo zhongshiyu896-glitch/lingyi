@@ -2162,6 +2162,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                         material_item_code="FAB-A6-BLK-S",
                         color="黑",
                         size="S",
+                        part="面料主身",
                         qty_per_piece=Decimal("1"),
                         loss_rate=Decimal("0.1"),
                         uom="米",
@@ -2173,6 +2174,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                         material_item_code="FAB-A6-BLK-M",
                         color="黑",
                         size="M",
+                        part="门襟拉链",
                         qty_per_piece=Decimal("2"),
                         loss_rate=Decimal("0.2"),
                         uom="米",
@@ -2282,6 +2284,23 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         plan_s = create_checked_plan(size="S", planned_qty="5", sequence="1")
         plan_m = create_checked_plan(size="M", planned_qty="10", sequence="2")
 
+        tracking = self.client.get(
+            f"/api/production/plans?sales_order={sales_order_no}&page=1&page_size=20",
+            headers=self._headers("req-a6-multi-sku-tracking"),
+        )
+        self.assertEqual(tracking.status_code, 200, tracking.text)
+        tracking_rows = tracking.json()["data"]["items"]
+        self.assertEqual(len(tracking_rows), 2)
+        tracking_by_size = {row["size"]: row for row in tracking_rows}
+        self.assertEqual(set(tracking_by_size), {"S", "M"})
+        self.assertEqual(tracking_by_size["S"]["sales_order_item"], sales_item_by_size["S"])
+        self.assertEqual(tracking_by_size["M"]["sales_order_item"], sales_item_by_size["M"])
+        self.assertEqual({row["color"] for row in tracking_rows}, {"黑"})
+        self.assertEqual(Decimal(str(tracking_by_size["S"]["planned_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(tracking_by_size["M"]["planned_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(tracking_by_size["S"]["sales_order_item_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(tracking_by_size["M"]["sales_order_item_qty"])), Decimal("10.000000"))
+
         requirements = self.client.get(
             f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword={sales_order_no}&page=1&page_size=100",
             headers=self._headers("req-a6-multi-sku-requirements"),
@@ -2291,6 +2310,22 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(len(requirement_rows), 4)
         self.assertNotIn("FAB-A6-WHT-M", {row["material_item_code"] for row in requirement_rows})
         self.assertEqual({row["sales_order_item"] for row in requirement_rows}, set(sales_item_by_size.values()))
+        dimensions_by_material: dict[str, set[tuple[object, object, object, str]]] = {}
+        for row in requirement_rows:
+            dimensions_by_material.setdefault(row["material_item_code"], set()).add(
+                (row["bom_color"], row["bom_size"], row["bom_part"], row["sales_order_item"])
+            )
+        self.assertEqual(
+            dimensions_by_material,
+            {
+                self.MATERIAL: {
+                    (None, None, None, sales_item_by_size["S"]),
+                    (None, None, None, sales_item_by_size["M"]),
+                },
+                "FAB-A6-BLK-S": {("黑", "S", "面料主身", sales_item_by_size["S"])},
+                "FAB-A6-BLK-M": {("黑", "M", "门襟拉链", sales_item_by_size["M"])},
+            },
+        )
 
         expected_qty_by_material = {
             self.MATERIAL: Decimal("31.500000"),
@@ -2386,10 +2421,15 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(completed.status_code, 200, completed.text)
         completed_rows = completed.json()["data"]["items"]
         self.assertEqual(len(completed_rows), 4)
+        completed_dimensions_by_material: dict[str, set[tuple[object, object, object, str]]] = {}
         for row in completed_rows:
             self.assertTrue(row["has_completed"])
             self.assertEqual(row["status"], "completed")
             self.assertEqual(Decimal(str(row["received_qty"])), Decimal(str(row["net_required_qty"])))
+            completed_dimensions_by_material.setdefault(row["material_item_code"], set()).add(
+                (row["bom_color"], row["bom_size"], row["bom_part"], row["sales_order_item"])
+            )
+        self.assertEqual(completed_dimensions_by_material, dimensions_by_material)
 
         for plan_id in [plan_s, plan_m]:
             ready_detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers(f"req-a6-multi-sku-ready-{plan_id}"))
