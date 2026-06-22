@@ -305,6 +305,112 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         )
         self.assertEqual(missing.status_code, 404, missing.text)
 
+    def test_sales_order_list_orders_native_and_legacy_by_latest_created(self) -> None:
+        with self.SessionLocal() as session:
+            native_order = LySalesOrder(
+                company="COMP-A",
+                sales_order_no="SO-A4-SORT-NATIVE-001",
+                source_order_ref="SO-A4-SORT-NATIVE-001",
+                customer="CUST-SORT-NATIVE",
+                status="draft",
+                docstatus=0,
+                transaction_date=date(2026, 6, 20),
+                delivery_date=date(2026, 7, 20),
+                currency="CNY",
+                grand_total=Decimal("100"),
+                idempotency_key="idem-so-a4-sort-native",
+                request_hash="hash-so-a4-sort-native",
+                scenario_tag="",
+                payload={},
+                created_by="seed",
+                created_at=datetime(2026, 6, 20, 8, 0, tzinfo=timezone.utc),
+                updated_at=datetime(2026, 6, 22, 8, 0, tzinfo=timezone.utc),
+            )
+            session.add(native_order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(native_order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-A4-SORT-NATIVE-001-001",
+                    item_code="DEMO-TEE",
+                    item_name="Demo Tee",
+                    color="白",
+                    size="M",
+                    qty=Decimal("1"),
+                    planned_qty=Decimal("0"),
+                    delivered_qty=Decimal("0"),
+                    ys_material_calc_state="待算料",
+                    rate=Decimal("100"),
+                    amount=Decimal("100"),
+                    uom="件",
+                )
+            )
+
+            legacy_created_at = datetime(2026, 6, 21, 8, 0, tzinfo=timezone.utc)
+            legacy_draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Issue",
+                source_type="sales_order_local",
+                source_id="SO-A4-SORT-LEGACY-001",
+                status="pending_outbox",
+                created_by="seed",
+                created_at=legacy_created_at,
+                idempotency_key="idem-so-a4-sort-legacy",
+                event_key="event-so-a4-sort-legacy",
+            )
+            session.add(legacy_draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(legacy_draft.id),
+                    company="COMP-A",
+                    item_code="DEMO-TEE",
+                    qty=Decimal("2"),
+                    uom="件",
+                    source_warehouse="WH-SORT",
+                )
+            )
+            session.add(
+                LyWarehouseStockEntryOutboxEvent(
+                    draft_id=int(legacy_draft.id),
+                    event_type="sales_order_write_sync",
+                    event_key="event-so-a4-sort-legacy",
+                    payload={
+                        "sales_order_no": "SO-A4-SORT-LEGACY-001",
+                        "source_order_ref": "SO-A4-SORT-LEGACY-001",
+                        "company": "COMP-A",
+                        "customer": "CUST-SORT-LEGACY",
+                        "currency": "CNY",
+                        "transaction_date": "2026-06-21",
+                        "delivery_date": "2026-07-21",
+                        "grand_total": "200",
+                        "items": [
+                            {
+                                "item_code": "DEMO-TEE",
+                                "qty": "2",
+                                "rate": "100",
+                                "amount": "200",
+                                "uom": "件",
+                            }
+                        ],
+                    },
+                    status="in_pending",
+                    retry_count=0,
+                    created_at=legacy_created_at,
+                )
+            )
+            session.commit()
+
+        response = self.client.get(
+            "/api/sales-inventory/sales-orders?keyword=SO-A4-SORT",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        names = [row["name"] for row in response.json()["data"]["items"]]
+        self.assertEqual(names[:2], ["SO-A4-SORT-LEGACY-001", "SO-A4-SORT-NATIVE-001"])
+
     def _add_stock_entry(
         self,
         *,

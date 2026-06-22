@@ -975,7 +975,14 @@ class SalesInventoryService:
         normalized_item_code = self._text(item_code)
         normalized_item_name = self._text(item_name)
 
-        items: list[SalesOrderListItem] = []
+        def created_at_sort_value(value: Any) -> float:
+            if isinstance(value, datetime):
+                normalized = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+                return normalized.timestamp()
+            return 0.0
+
+        sortable_items: list[tuple[float, int, SalesOrderListItem]] = []
+        seen_sales_order_names: set[str] = set()
         try:
             native_query = session.query(LySalesOrder)
             if company:
@@ -1013,12 +1020,14 @@ class SalesInventoryService:
                 self._contains_like(item.item_name or item.item_code, normalized_item_name) for item in order_items
             ):
                 continue
-            items.append(self._build_native_sales_order_list_item(order))
+            item = self._build_native_sales_order_list_item(order)
+            sortable_items.append((created_at_sort_value(order.created_at), int(order.id or 0), item))
+            seen_sales_order_names.add(str(item.name))
 
         for draft in rows:
             payload = self._sales_order_payload_for_draft(draft_id=int(draft.id))
             sales_order_no = self._text(payload.get("sales_order_no")) or str(draft.source_id)
-            if any(existing.name == sales_order_no for existing in items):
+            if sales_order_no in seen_sales_order_names:
                 continue
             if normalized_order_no and normalized_order_no.lower() not in sales_order_no.lower():
                 continue
@@ -1049,21 +1058,23 @@ class SalesInventoryService:
             ):
                 continue
 
-            items.append(
-                SalesOrderListItem(
-                    id=int(draft.id),
-                    name=sales_order_no,
-                    company=str(draft.company),
-                    customer=payload_customer,
-                    transaction_date=tx_date,
-                    delivery_date=self._parse_optional_iso_date(self._text(payload.get("delivery_date"))),
-                    status=("Cancelled" if str(draft.status) == "cancelled" else "Draft"),
-                    docstatus=(2 if str(draft.status) == "cancelled" else 0),
-                    grand_total=self._decimal_or_none(payload.get("grand_total")),
-                    currency=self._text(payload.get("currency")) or "CNY",
-                )
+            item = SalesOrderListItem(
+                id=int(draft.id),
+                name=sales_order_no,
+                company=str(draft.company),
+                customer=payload_customer,
+                transaction_date=tx_date,
+                delivery_date=self._parse_optional_iso_date(self._text(payload.get("delivery_date"))),
+                status=("Cancelled" if str(draft.status) == "cancelled" else "Draft"),
+                docstatus=(2 if str(draft.status) == "cancelled" else 0),
+                grand_total=self._decimal_or_none(payload.get("grand_total")),
+                currency=self._text(payload.get("currency")) or "CNY",
             )
-        return items
+            sortable_items.append(
+                (created_at_sort_value(draft.created_at), int(draft.id or 0), item)
+            )
+        sortable_items.sort(key=lambda row: (row[0], row[1]), reverse=True)
+        return [item for _created_at, _id, item in sortable_items]
 
     def get_local_sales_order(self, *, name: str, company: str | None = None) -> SalesOrderDetailData | None:
         session = self._require_session()
