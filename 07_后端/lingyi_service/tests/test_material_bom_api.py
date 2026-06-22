@@ -562,6 +562,56 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
             self.assertEqual(session.query(LyApparelBomItem).one().material_item_code, "FAB-BLK-001")
 
+    def test_sample_create_auto_copies_style_material_bom_snapshot(self) -> None:
+        style_id = self._seed_style()
+        seeded = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-AUTO-SEED-STYLE"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-AUTO-SEED-STYLE"),
+        )
+        self.assertEqual(seeded.status_code, 200, seeded.text)
+        style_bom_item_id = seeded.json()["data"]["items"][0]["id"]
+
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-MB-AUTO-CREATE"),
+            json={
+                "operation": "create",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-AUTO-CREATE",
+                "sample_no": "SMP-MB-AUTO",
+                "style_master_id": style_id,
+                "customer": "BOM 客户",
+                "factory": "样衣组",
+                "sample_type": "初样",
+                "stage": "建档",
+                "progress": 0,
+                "status": "draft",
+                "image_tone": "blue",
+                "owner_note": "自动复制款用料",
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        order_id = int(created.json()["data"]["id"])
+
+        readback = self.client.get(
+            f"/api/sample/orders/{order_id}/material-bom?company=COMP-MB",
+            headers=self._headers(request_id="SAMPLE-MB-AUTO-READBACK"),
+        )
+        self.assertEqual(readback.status_code, 200, readback.text)
+        self.assertEqual(readback.json()["data"]["bom"]["source_bom_id"], seeded.json()["data"]["bom"]["id"])
+        self.assertEqual(readback.json()["data"]["items"][0]["source_bom_item_id"], style_bom_item_id)
+        self.assertEqual(readback.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+        self.assertEqual(readback.json()["data"]["items"][0]["material_name"], "黑色主面料")
+        self.assertEqual(readback.json()["data"]["items"][0]["color"], "黑")
+        self.assertEqual(readback.json()["data"]["items"][0]["size"], "M")
+        self.assertEqual(readback.json()["data"]["items"][0]["part"], "前片")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleMaterialBom).count(), 1)
+            self.assertEqual(session.query(LySampleMaterialBomItem).count(), 1)
+            self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 1)
+
     def test_sample_material_bom_rejects_duplicate_dimension_rows(self) -> None:
         style_id = self._seed_style()
         with self.SessionLocal() as session:
@@ -828,6 +878,93 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(bom.style_master_id, next_style_id)
             self.assertEqual(bom.item_code, "ST-MB-002")
             self.assertEqual(session.query(LySampleMaterialBomItem).count(), 0)
+
+    def test_sample_style_change_auto_copies_new_style_material_bom_snapshot(self) -> None:
+        style_id = self._seed_style()
+        seeded = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-AUTO-SEED-OLD"),
+            json=self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-STYLE-CHANGE-AUTO-SEED-OLD"),
+        )
+        self.assertEqual(seeded.status_code, 200, seeded.text)
+        next_style_id = self._seed_style(style_no="ST-MB-002")
+        next_payload = self._style_bom_payload(idempotency_key="IDEMP-SAMPLE-MB-STYLE-CHANGE-AUTO-SEED-NEW")
+        next_payload["items"][0]["material_item_code"] = "FAB-ALT-001"
+        next_payload["items"][0]["part"] = "后片"
+        next_seeded = self.client.put(
+            f"/api/style-master/styles/{next_style_id}/material-bom",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-AUTO-SEED-NEW"),
+            json=next_payload,
+        )
+        self.assertEqual(next_seeded.status_code, 200, next_seeded.text)
+        next_style_bom_id = next_seeded.json()["data"]["bom"]["id"]
+        next_style_bom_item_id = next_seeded.json()["data"]["items"][0]["id"]
+
+        with self.SessionLocal() as session:
+            order = LySampleOrder(
+                company="COMP-MB",
+                sample_no="SMP-MB-STYLE-CHANGE-AUTO",
+                style_no="ST-MB-001",
+                style_name="BOM 测试款",
+                style_master_id=style_id,
+                customer="BOM 客户",
+                factory="样衣组",
+                sample_type="初样",
+                stage="建档",
+                progress=0,
+                status="draft",
+                image_tone="blue",
+                owner_note="",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(order)
+            session.commit()
+            order_id = int(order.id)
+
+        copied = self.client.post(
+            f"/api/sample/orders/{order_id}/material-bom/copy-from-style",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-AUTO-COPY-OLD"),
+            json={
+                "operation": "copy_from_style",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-STYLE-CHANGE-AUTO-COPY-OLD",
+            },
+        )
+        self.assertEqual(copied.status_code, 200, copied.text)
+        self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+
+        updated = self.client.patch(
+            f"/api/sample/orders/{order_id}",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-AUTO-UPDATE"),
+            json={
+                "operation": "update",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-STYLE-CHANGE-AUTO-UPDATE",
+                "style_master_id": next_style_id,
+            },
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["data"]["style_master_id"], next_style_id)
+        self.assertEqual(updated.json()["data"]["style_no"], "ST-MB-002")
+
+        bom_after = self.client.get(
+            f"/api/sample/orders/{order_id}/material-bom?company=COMP-MB",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-CHANGE-AUTO-GET"),
+        )
+        self.assertEqual(bom_after.status_code, 200, bom_after.text)
+        self.assertEqual(bom_after.json()["data"]["bom"]["style_master_id"], next_style_id)
+        self.assertEqual(bom_after.json()["data"]["bom"]["item_code"], "ST-MB-002")
+        self.assertEqual(bom_after.json()["data"]["bom"]["source_bom_id"], next_style_bom_id)
+        self.assertEqual(bom_after.json()["data"]["items"][0]["source_bom_item_id"], next_style_bom_item_id)
+        self.assertEqual(bom_after.json()["data"]["items"][0]["material_item_code"], "FAB-ALT-001")
+        self.assertEqual(bom_after.json()["data"]["items"][0]["material_name"], "可替代面料")
+        self.assertEqual(bom_after.json()["data"]["items"][0]["part"], "后片")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySampleMaterialBom).count(), 1)
+            self.assertEqual(session.query(LySampleMaterialBomItem).count(), 1)
+            self.assertEqual(session.query(LySampleMaterialBomOperation).count(), 2)
 
     def test_sample_material_bom_copy_edit_feeds_converted_bulk_material_check(self) -> None:
         style_id = self._seed_style()
