@@ -428,6 +428,11 @@ class StockLedgerItem(BaseModel):
     company: str
     item_code: str
     warehouse: str
+    purchase_requirement_id: int | None = None
+    sales_order_item: str | None = None
+    bom_color: str | None = None
+    bom_size: str | None = None
+    bom_part: str | None = None
     posting_date: date
     posting_time: str | None = None
     actual_qty: Decimal

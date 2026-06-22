@@ -103,6 +103,11 @@ class SalesInventoryApiBase(unittest.TestCase):
         purpose: str = "Material Receipt",
         source_warehouse: str | None = None,
         target_warehouse: str | None = None,
+        purchase_requirement_id: int | None = None,
+        sales_order_item: str | None = None,
+        bom_color: str | None = None,
+        bom_size: str | None = None,
+        bom_part: str | None = None,
         event_key: str = "EVT-SALES-INV-STOCK-001",
         created_at: datetime | None = None,
     ) -> None:
@@ -142,6 +147,11 @@ class SalesInventoryApiBase(unittest.TestCase):
                     uom="PCS",
                     source_warehouse=source_wh,
                     target_warehouse=target_wh,
+                    purchase_requirement_id=purchase_requirement_id,
+                    sales_order_item=sales_order_item,
+                    bom_color=bom_color,
+                    bom_size=bom_size,
+                    bom_part=bom_part,
                 )
             )
             session.commit()
@@ -365,6 +375,34 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
             for row in summary.json()["data"]["items"]
         }
         self.assertEqual(summary_rows, {"WH-A": Decimal("4.000000"), "WH-B": Decimal("2.000000")})
+
+    def test_stock_ledger_local_fallback_preserves_requirement_context(self) -> None:
+        self._seed_stock_entry(
+            qty="10",
+            purpose="Material Receipt",
+            purchase_requirement_id=101,
+            sales_order_item="SO-CONTEXT-001",
+            bom_color="黑",
+            bom_size="L",
+            bom_part="前片",
+            event_key="EVT-SALES-INV-STOCK-CONTEXT-001",
+            created_at=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        )
+        external_down = ERPNextAdapterException(error_code="EXTERNAL_SERVICE_UNAVAILABLE", safe_message="down")
+        with patch.object(ERPNextSalesInventoryAdapter, "list_stock_ledger", side_effect=external_down):
+            ledger = self.client.get(
+                "/api/sales-inventory/items/ITEM-A/stock-ledger?company=COMP-A&page=1&page_size=20",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        ledger_items = ledger.json()["data"]["items"]
+        self.assertEqual(len(ledger_items), 1)
+        self.assertEqual(ledger_items[0]["purchase_requirement_id"], 101)
+        self.assertEqual(ledger_items[0]["sales_order_item"], "SO-CONTEXT-001")
+        self.assertEqual(ledger_items[0]["bom_color"], "黑")
+        self.assertEqual(ledger_items[0]["bom_size"], "L")
+        self.assertEqual(ledger_items[0]["bom_part"], "前片")
 
     def test_stock_reads_fastapi_use_local_source_without_adapter(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"

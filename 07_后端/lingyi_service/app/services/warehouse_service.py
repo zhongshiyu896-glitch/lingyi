@@ -552,6 +552,22 @@ class WarehouseService:
             row.bom_part,
         )
 
+    @staticmethod
+    def _stock_dimension_sort_key(
+        key: tuple[str, str, str, int | None, str | None, str | None, str | None, str | None],
+    ) -> tuple[str, str, str, int, str, str, str, str]:
+        company, warehouse, item_code, purchase_requirement_id, sales_order_item, bom_color, bom_size, bom_part = key
+        return (
+            company,
+            warehouse,
+            item_code,
+            purchase_requirement_id if purchase_requirement_id is not None else -1,
+            sales_order_item or "",
+            bom_color or "",
+            bom_size or "",
+            bom_part or "",
+        )
+
     def _stock_ledger_source_key_for_entry(self, row: LyWarehouseStockLedgerEntry) -> tuple[str, str, str, str, int]:
         return (
             self._text(row.company),
@@ -1541,7 +1557,7 @@ class WarehouseService:
                     threshold=material_thresholds.get((company_key, item_key), {}).get("safety_stock"),
                 ),
             )
-            for summary_key in sorted(summary_keys)
+            for summary_key in sorted(summary_keys, key=self._stock_dimension_sort_key)
             for company_key, warehouse_key, item_key, purchase_requirement_id, sales_order_item, bom_color, bom_size, bom_part in [summary_key]
         ]
         return WarehouseStockSummaryData(
