@@ -1285,6 +1285,10 @@ class SampleService:
             .order_by(LySampleMaterialBomItem.id.asc())
             .all()
         )
+        material_names = self._material_name_lookup(
+            company=str(bom.company),
+            material_codes=[str(item.material_item_code) for item in items],
+        )
         return SampleMaterialBomData(
             bom=SampleMaterialBomHeader(
                 id=int(bom.id),
@@ -1303,6 +1307,7 @@ class SampleService:
                     id=int(item.id),
                     source_bom_item_id=int(item.source_bom_item_id) if item.source_bom_item_id is not None else None,
                     material_item_code=str(item.material_item_code),
+                    material_name=material_names.get(str(item.material_item_code)),
                     color=item.color,
                     size=getattr(item, "size", None),
                     part=item.part,
@@ -1316,6 +1321,24 @@ class SampleService:
                 for item in items
             ],
         )
+
+    def _material_name_lookup(self, *, company: str, material_codes: list[str]) -> dict[str, str]:
+        codes = [code for code in dict.fromkeys(material_codes) if code]
+        if not codes:
+            return {}
+        try:
+            rows = (
+                self.session.query(LyMasterDataRecord.code, LyMasterDataRecord.name)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code.in_(codes),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return {str(row.code): self._optional_text(row.name) or str(row.code) for row in rows}
 
     def _upsert_sample_material_bom_header(
         self,

@@ -329,6 +329,7 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(upserted.json()["data"]["bom"]["item_code"], "ST-MB-001")
         self.assertEqual(upserted.json()["data"]["items"][0]["part"], "前片")
         self.assertEqual(upserted.json()["data"]["items"][0]["size"], "M")
+        self.assertEqual(upserted.json()["data"]["items"][0]["material_name"], "黑色主面料")
 
         exploded = self.client.post(
             f"/api/style-master/styles/{style_id}/material-bom/explode?company=COMP-MB",
@@ -461,6 +462,7 @@ class MaterialBomApiTest(unittest.TestCase):
         )
         self.assertEqual(copied.status_code, 200, copied.text)
         self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
+        self.assertEqual(copied.json()["data"]["items"][0]["material_name"], "黑色主面料")
         self.assertEqual(copied.json()["data"]["items"][0]["size"], "M")
         copied_source_item_id = copied.json()["data"]["items"][0]["source_bom_item_id"]
         self.assertIsNotNone(copied_source_item_id)
@@ -473,6 +475,7 @@ class MaterialBomApiTest(unittest.TestCase):
         copied_readback_item = copied_readback.json()["data"]["items"][0]
         self.assertEqual(copied_readback_item["source_bom_item_id"], copied_source_item_id)
         self.assertEqual(copied_readback_item["material_item_code"], "FAB-BLK-001")
+        self.assertEqual(copied_readback_item["material_name"], "黑色主面料")
         self.assertEqual(copied_readback_item["color"], "黑")
         self.assertEqual(copied_readback_item["size"], "M")
         self.assertEqual(copied_readback_item["part"], "前片")
@@ -516,6 +519,7 @@ class MaterialBomApiTest(unittest.TestCase):
         edited_readback_item = edited_readback.json()["data"]["items"][0]
         self.assertEqual(edited_readback_item["source_bom_item_id"], copied_source_item_id)
         self.assertEqual(edited_readback_item["material_item_code"], "FAB-ALT-001")
+        self.assertEqual(edited_readback_item["material_name"], "可替代面料")
         self.assertEqual(edited_readback_item["color"], "黑")
         self.assertEqual(edited_readback_item["size"], "M")
         self.assertEqual(edited_readback_item["part"], "袖口")

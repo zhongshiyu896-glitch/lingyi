@@ -350,6 +350,7 @@ class StyleMaterialBomItem(BaseModel):
 
     id: int
     material_item_code: str
+    material_name: str | None = None
     color: str | None = None
     size: str | None = None
     part: str | None = None

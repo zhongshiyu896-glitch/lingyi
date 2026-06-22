@@ -344,6 +344,7 @@ class SampleMaterialBomItem(BaseModel):
     id: int
     source_bom_item_id: int | None = None
     material_item_code: str
+    material_name: str | None = None
     color: str | None = None
     size: str | None = None
     part: str | None = None

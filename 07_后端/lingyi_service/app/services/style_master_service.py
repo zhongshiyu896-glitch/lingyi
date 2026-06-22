@@ -1234,12 +1234,34 @@ class StyleMasterService:
                 )
             seen.add(key)
 
+    def _material_name_lookup(self, *, company: str, material_codes: list[str]) -> dict[str, str]:
+        codes = [code for code in dict.fromkeys(material_codes) if code]
+        if not codes:
+            return {}
+        try:
+            rows = (
+                self.session.query(LyMasterDataRecord.code, LyMasterDataRecord.name)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code.in_(codes),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return {str(row.code): self._optional_text(row.name) or str(row.code) for row in rows}
+
     def _style_material_bom_data(self, *, style: LyStyleMaster, bom: LyApparelBom) -> StyleMaterialBomData:
         items = (
             self.session.query(LyApparelBomItem)
             .filter(LyApparelBomItem.bom_id == int(bom.id))
             .order_by(LyApparelBomItem.id.asc())
             .all()
+        )
+        material_names = self._material_name_lookup(
+            company=str(bom.company),
+            material_codes=[str(item.material_item_code) for item in items],
         )
         return StyleMaterialBomData(
             bom=StyleMaterialBomHeader(
@@ -1257,6 +1279,7 @@ class StyleMasterService:
                 StyleMaterialBomItem(
                     id=int(item.id),
                     material_item_code=str(item.material_item_code),
+                    material_name=material_names.get(str(item.material_item_code)),
                     color=item.color,
                     size=getattr(item, "size", None),
                     part=getattr(item, "part", None),
