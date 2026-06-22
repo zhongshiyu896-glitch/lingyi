@@ -459,9 +459,15 @@ class SalesInventoryService:
         self._reset_sales_order_material_calculation_for_edit(order=order)
 
         existing_item_rows = self._native_sales_order_items(order_id=int(order.id))
-        existing_items = {int(item.line_no): item for item in existing_item_rows}
         existing_items_by_name = {str(item.sales_order_item): item for item in existing_item_rows}
-        uses_stable_item_identity = any(self._text(row.get("sales_order_item")) for row in line_rows)
+        uses_stable_item_identity = bool(existing_item_rows)
+        has_requested_item_identity = any(self._text(row.get("sales_order_item")) for row in line_rows)
+        if existing_item_rows and not has_requested_item_identity:
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_ORDER_ITEM_REQUIRED",
+                "编辑已有订单明细必须提交 sales_order_item，新增明细可留空",
+            )
         if uses_stable_item_identity:
             for temp_index, existing_item in enumerate(existing_item_rows, start=1):
                 existing_item.line_no = -temp_index
@@ -493,10 +499,6 @@ class SalesInventoryService:
                     raise SalesInventoryServiceError(404, "SALES_ORDER_ITEM_NOT_FOUND", "订单明细行不存在")
                 if int(existing_item.id) in consumed_existing_item_ids:
                     raise SalesInventoryServiceError(409, "SALES_ORDER_ITEM_DUPLICATED", "订单明细行重复提交")
-            elif not uses_stable_item_identity:
-                existing_item = existing_items.get(index)
-                if existing_item is not None and int(existing_item.id) in consumed_existing_item_ids:
-                    existing_item = None
             if existing_item is None:
                 session.add(
                     LySalesOrderItem(
@@ -5350,6 +5352,7 @@ class SalesInventoryService:
                 SalesOrderDraftLineItemData(
                     id=int(item.id),
                     draft_id=int(order.id),
+                    sales_order_item=str(item.sales_order_item),
                     style_master_id=int(item.style_master_id) if item.style_master_id is not None else None,
                     item_code=str(item.item_code),
                     item_name=self._text(item.item_name) or str(item.item_code),

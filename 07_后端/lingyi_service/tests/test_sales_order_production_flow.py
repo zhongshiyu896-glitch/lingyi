@@ -510,7 +510,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             "operation": "update_draft",
             "idempotency_key": "idem-so-a4-reset-001-update",
             "delivery_date": "2026-07-05",
-            "items": [{**order_payload["items"][0], "qty": 150}],
+            "items": [{**order_payload["items"][0], "sales_order_item": sales_order_item, "qty": 150}],
         }
         update_order = self.client.patch(
             f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
@@ -686,8 +686,16 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                 "idempotency_key": "idem-so-a4-batch-mat-001-update-after-order-material-check",
                 "delivery_date": "2026-07-05",
                 "items": [
-                    {**order_payload["items"][0], "qty": 35},
-                    {**order_payload["items"][1], "qty": 25},
+                    {
+                        **order_payload["items"][0],
+                        "sales_order_item": detail_after_material_check.json()["data"]["items"][0]["name"],
+                        "qty": 35,
+                    },
+                    {
+                        **order_payload["items"][1],
+                        "sales_order_item": detail_after_material_check.json()["data"]["items"][1]["name"],
+                        "qty": 25,
+                    },
                 ],
             },
         )
@@ -1101,6 +1109,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             "currency": "CNY",
             "items": [
                 {
+                    "sales_order_item": sales_order_item,
                     "item_code": "DEMO-TEE",
                     "item_name": "Ignored Name Again",
                     "color": "白色",
@@ -1407,11 +1416,32 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(detail.status_code, 200, detail.text)
         detail_items = detail.json()["data"]["items"]
         self.assertEqual(len(detail_items), 3)
+        self.assertEqual(create_order.json()["data"]["items"][0]["sales_order_item"], "SO-A4-SKU-001-001")
+        self.assertEqual(create_order.json()["data"]["items"][1]["sales_order_item"], "SO-A4-SKU-001-002")
+        self.assertEqual(create_order.json()["data"]["items"][2]["sales_order_item"], "SO-A4-SKU-001-003")
         self.assertEqual([(row["item_code"], row["color"], row["size"]) for row in detail_items], [
             ("DEMO-TEE", "白色", "M"),
             ("DEMO-TEE", "白色", "L"),
             ("DEMO-NOBOM", "黑色", "M"),
         ])
+
+        missing_identity_update = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json={
+                **order_payload,
+                "operation": "update_draft",
+                "sales_order_no_or_source_order_ref": "SO-A4-SKU-001",
+                "idempotency_key": "idem-so-a4-sku-001-update-missing-identity",
+                "items": [
+                    order_payload["items"][1],
+                    order_payload["items"][0],
+                    order_payload["items"][2],
+                ],
+            },
+        )
+        self.assertEqual(missing_identity_update.status_code, 409, missing_identity_update.text)
+        self.assertEqual(missing_identity_update.json()["code"], "SALES_ORDER_ITEM_REQUIRED")
 
         update_payload = {
             **order_payload,
@@ -1419,9 +1449,9 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             "sales_order_no_or_source_order_ref": "SO-A4-SKU-001",
             "idempotency_key": "idem-so-a4-sku-001-update",
             "items": [
-                order_payload["items"][0],
-                {**order_payload["items"][1], "qty": 35},
-                order_payload["items"][2],
+                {**order_payload["items"][0], "sales_order_item": detail_items[0]["name"]},
+                {**order_payload["items"][1], "sales_order_item": detail_items[1]["name"], "qty": 35},
+                {**order_payload["items"][2], "sales_order_item": detail_items[2]["name"]},
             ],
         }
         update_order = self.client.patch(
@@ -1604,6 +1634,23 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             "SO-A4-STABLE-001-002",
             "SO-A4-STABLE-001-003",
         ])
+
+        missing_identity_update = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json={
+                **order_payload,
+                "operation": "update_draft",
+                "sales_order_no_or_source_order_ref": "SO-A4-STABLE-001",
+                "idempotency_key": "idem-so-a4-stable-001-missing-identity",
+                "items": [
+                    order_payload["items"][2],
+                    order_payload["items"][0],
+                ],
+            },
+        )
+        self.assertEqual(missing_identity_update.status_code, 409, missing_identity_update.text)
+        self.assertEqual(missing_identity_update.json()["code"], "SALES_ORDER_ITEM_REQUIRED")
 
         update_order = self.client.patch(
             f"/api/sales-inventory/sales-orders/drafts/{draft_id}",

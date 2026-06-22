@@ -362,6 +362,7 @@ class SalesOrderDraftLineItemData(BaseModel):
 
     id: int
     draft_id: int
+    sales_order_item: str | None = None
     style_master_id: int | None = None
     item_code: str
     item_name: str | None = None
