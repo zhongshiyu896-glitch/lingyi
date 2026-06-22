@@ -85,6 +85,10 @@ class LyWarehouseStockEntryDraftItem(Base):
     source_warehouse = Column(String(140), nullable=True)
     target_warehouse = Column(String(140), nullable=True)
     purchase_requirement_id = Column(IDType, nullable=True)
+    sales_order_item = Column(String(140), nullable=True)
+    bom_color = Column(String(100), nullable=True)
+    bom_size = Column(String(100), nullable=True)
+    bom_part = Column(String(100), nullable=True)
 
 
 class LyWarehouseStockEntryOutboxEvent(Base):

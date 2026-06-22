@@ -677,7 +677,10 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
                 .one()
             )
             self.assertEqual(int(item.purchase_requirement_id), requirement_id)
-            self.assertFalse(hasattr(item, "sales_order_item"))
+            self.assertEqual(item.sales_order_item, "SO-CTX-001-002")
+            self.assertEqual(item.bom_color, "黑")
+            self.assertEqual(item.bom_size, "M")
+            self.assertEqual(item.bom_part, "前片")
 
             audit = (
                 session.query(LyOperationAuditLog)

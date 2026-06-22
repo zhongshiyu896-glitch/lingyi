@@ -889,10 +889,18 @@ def _ensure_local_stock_entry_purchase_requirement_column() -> None:
             str(row[1])
             for row in conn.execute("PRAGMA table_info(ly_warehouse_stock_entry_draft_item)").fetchall()
         }
-        if "purchase_requirement_id" not in existing_columns:
-            conn.execute(
-                "ALTER TABLE ly_warehouse_stock_entry_draft_item ADD COLUMN purchase_requirement_id BIGINT"
-            )
+        column_defs = {
+            "purchase_requirement_id": "BIGINT",
+            "sales_order_item": "VARCHAR(140)",
+            "bom_color": "VARCHAR(100)",
+            "bom_size": "VARCHAR(100)",
+            "bom_part": "VARCHAR(100)",
+        }
+        for column_name, column_type in column_defs.items():
+            if column_name not in existing_columns:
+                conn.execute(
+                    f"ALTER TABLE ly_warehouse_stock_entry_draft_item ADD COLUMN {column_name} {column_type}"
+                )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ly_whse_stock_entry_item_requirement "
             "ON ly_warehouse_stock_entry_draft_item(purchase_requirement_id)"

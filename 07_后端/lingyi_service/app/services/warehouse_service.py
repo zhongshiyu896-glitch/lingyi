@@ -2835,6 +2835,7 @@ class WarehouseService:
                 fallback_source_warehouse=source_warehouse,
                 fallback_target_warehouse=target_warehouse,
             )
+        self._attach_purchase_requirement_contexts(company=company, item_rows=item_rows)
 
         expected_outbox_payload = self._build_stock_entry_replay_payload(
             company=company,
@@ -2934,6 +2935,10 @@ class WarehouseService:
                     source_warehouse=row.get("source_warehouse"),
                     target_warehouse=row.get("target_warehouse"),
                     purchase_requirement_id=row.get("purchase_requirement_id"),
+                    sales_order_item=row.get("sales_order_item"),
+                    bom_color=row.get("bom_color"),
+                    bom_size=row.get("bom_size"),
+                    bom_part=row.get("bom_part"),
                 )
             )
 
@@ -3620,26 +3625,22 @@ class WarehouseService:
                 show_completed_forced = raw_show_completed
 
         def purchase_requirement_context(item: LyWarehouseStockEntryDraftItem) -> dict[str, str | None]:
+            stored_context = {
+                "sales_order_item": self._text(getattr(item, "sales_order_item", None)),
+                "bom_color": self._text(getattr(item, "bom_color", None)),
+                "bom_size": self._text(getattr(item, "bom_size", None)),
+                "bom_part": self._text(getattr(item, "bom_part", None)),
+            }
             if item.purchase_requirement_id is None:
-                return {
-                    "sales_order_item": None,
-                    "bom_color": None,
-                    "bom_size": None,
-                    "bom_part": None,
-                }
+                return stored_context
             requirement = purchase_requirements.get(int(item.purchase_requirement_id))
             if requirement is None:
-                return {
-                    "sales_order_item": None,
-                    "bom_color": None,
-                    "bom_size": None,
-                    "bom_part": None,
-                }
+                return stored_context
             return {
-                "sales_order_item": self._text(requirement.sales_order_item),
-                "bom_color": self._text(requirement.bom_color),
-                "bom_size": self._text(requirement.bom_size),
-                "bom_part": self._text(requirement.bom_part),
+                "sales_order_item": stored_context["sales_order_item"] or self._text(requirement.sales_order_item),
+                "bom_color": stored_context["bom_color"] or self._text(requirement.bom_color),
+                "bom_size": stored_context["bom_size"] or self._text(requirement.bom_size),
+                "bom_part": stored_context["bom_part"] or self._text(requirement.bom_part),
             }
 
         return WarehouseStockEntryDraftData(
@@ -4630,10 +4631,44 @@ class WarehouseService:
                     "source_warehouse": source_warehouse,
                     "target_warehouse": target_warehouse,
                     "purchase_requirement_id": purchase_requirement_id,
+                    "sales_order_item": self._text(item.sales_order_item),
+                    "bom_color": self._text(item.bom_color),
+                    "bom_size": self._text(item.bom_size),
+                    "bom_part": self._text(item.bom_part),
                 }
             )
 
         return normalized_rows
+
+    def _attach_purchase_requirement_contexts(self, *, company: str, item_rows: list[dict[str, Any]]) -> None:
+        requirement_ids = {
+            int(row["purchase_requirement_id"])
+            for row in item_rows
+            if row.get("purchase_requirement_id") is not None
+        }
+        if not requirement_ids:
+            return
+        requirements = {
+            int(row.id): row
+            for row in self._require_session()
+            .query(LyMaterialPurchaseRequirement)
+            .filter(
+                LyMaterialPurchaseRequirement.id.in_(sorted(requirement_ids)),
+                LyMaterialPurchaseRequirement.company == company,
+            )
+            .all()
+        }
+        for row in item_rows:
+            raw_requirement_id = row.get("purchase_requirement_id")
+            if raw_requirement_id is None:
+                continue
+            requirement = requirements.get(int(raw_requirement_id))
+            if requirement is None:
+                continue
+            row["sales_order_item"] = self._text(requirement.sales_order_item)
+            row["bom_color"] = self._text(requirement.bom_color)
+            row["bom_size"] = self._text(requirement.bom_size)
+            row["bom_part"] = self._text(requirement.bom_part)
 
     def _resolve_finished_goods_item_rows(
         self,
