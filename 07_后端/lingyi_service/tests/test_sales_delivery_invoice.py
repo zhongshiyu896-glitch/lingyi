@@ -29,6 +29,7 @@ from app.models.sales_order import LySalesOrderItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.services.warehouse_service import WarehouseService
@@ -84,6 +85,7 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
             session.query(LyDeliveryInvoice).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
+            session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
@@ -326,6 +328,18 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(summary.items[0].actual_qty)), Decimal("6.000000"))
             self.assertEqual(Decimal(str(summary.items[0].actual_qty)), Decimal(str(ledger.items[-1].qty_after_transaction)))
             self.assertEqual(Decimal(str(summary.items[0].actual_qty)), sum(Decimal(str(row.actual_qty)) for row in ledger.items))
+            durable_rows = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == "COMP-A",
+                    LyWarehouseStockLedgerEntry.warehouse == "WH-FG",
+                    LyWarehouseStockLedgerEntry.item_code == "DEMO-TEE",
+                )
+                .order_by(LyWarehouseStockLedgerEntry.sort_at.asc(), LyWarehouseStockLedgerEntry.id.asc())
+                .all()
+            )
+            self.assertEqual([Decimal(str(row.actual_qty)) for row in durable_rows], [Decimal("10.000000"), Decimal("-4.000000")])
+            self.assertEqual([str(row.status) for row in durable_rows], ["active", "active"])
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("sales_inventory:write", audit_actions)
 

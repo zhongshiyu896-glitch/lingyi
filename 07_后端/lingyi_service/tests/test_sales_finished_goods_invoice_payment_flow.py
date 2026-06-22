@@ -29,6 +29,7 @@ from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
@@ -100,6 +101,7 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
             session.query(LyStyleMaster).delete()
+            session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
@@ -407,6 +409,18 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
                 .one()
             )
             self.assertEqual(str(issue_draft.status), "cancelled")
+            durable_rows = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == self.COMPANY,
+                    LyWarehouseStockLedgerEntry.warehouse == self.WAREHOUSE,
+                    LyWarehouseStockLedgerEntry.item_code == self.ITEM_CODE,
+                )
+                .order_by(LyWarehouseStockLedgerEntry.sort_at.asc(), LyWarehouseStockLedgerEntry.id.asc())
+                .all()
+            )
+            self.assertEqual([Decimal(str(row.actual_qty)) for row in durable_rows], [Decimal("10.000000"), Decimal("-4.000000")])
+            self.assertEqual([str(row.status) for row in durable_rows], ["active", "voided"])
             issue_event = (
                 session.query(LyWarehouseStockEntryOutboxEvent)
                 .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(issue_draft.id))

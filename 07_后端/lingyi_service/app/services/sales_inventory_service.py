@@ -5720,6 +5720,8 @@ class SalesInventoryService:
             if str(event.status) in {"in_pending", "processing", "failed"}:
                 event.status = "cancelled"
                 event.processed_at = cancelled_at
+        session.flush()
+        WarehouseService(session=session)._refresh_projected_ledger_for_draft(draft)
 
     def _find_sales_payment_entry_by_id(
         self,
@@ -6097,6 +6099,7 @@ class SalesInventoryService:
             )
         )
         session.flush()
+        WarehouseService(session=session)._refresh_projected_ledger_for_draft(draft)
         return draft
 
     @staticmethod

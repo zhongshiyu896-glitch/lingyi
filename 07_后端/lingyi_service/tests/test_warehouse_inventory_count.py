@@ -28,6 +28,7 @@ from app.models.warehouse import LyWarehouseInventoryCountItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
 
@@ -79,6 +80,7 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
         os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyWarehouseInventoryCountItem).delete()
@@ -692,6 +694,18 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
                 .count(),
                 1,
             )
+            durable_rows = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == "COMP-A",
+                    LyWarehouseStockLedgerEntry.warehouse == "WH-A",
+                    LyWarehouseStockLedgerEntry.item_code == "ITEM-A",
+                )
+                .order_by(LyWarehouseStockLedgerEntry.sort_at.asc(), LyWarehouseStockLedgerEntry.id.asc())
+                .all()
+            )
+            self.assertEqual([Decimal(str(row.actual_qty)) for row in durable_rows], [Decimal("10.000000"), Decimal("-2.000000")])
+            self.assertEqual([str(row.status) for row in durable_rows], ["active", "active"])
 
     def test_cancel_confirmed_inventory_count_creates_reversal_and_restores_balance(self) -> None:
         create_resp = self.client.post(
@@ -806,6 +820,21 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
             self.assertEqual(reversal_outbox.status, "in_pending")
             self.assertEqual(reversal_outbox.payload["source_type"], "inventory_count_adjustment_reversal")
             self.assertEqual(reversal_outbox.payload["reverses_source_id"], original_source_id)
+            durable_rows = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == "COMP-A",
+                    LyWarehouseStockLedgerEntry.warehouse == "WH-A",
+                    LyWarehouseStockLedgerEntry.item_code == "ITEM-A",
+                )
+                .order_by(LyWarehouseStockLedgerEntry.sort_at.asc(), LyWarehouseStockLedgerEntry.id.asc())
+                .all()
+            )
+            self.assertEqual(
+                [Decimal(str(row.actual_qty)) for row in durable_rows],
+                [Decimal("10.000000"), Decimal("-2.000000"), Decimal("2.000000")],
+            )
+            self.assertEqual([str(row.status) for row in durable_rows], ["active", "active", "active"])
 
         cancel_again = self.client.post(
             f"/api/warehouse/inventory-counts/{count_id}/cancel",

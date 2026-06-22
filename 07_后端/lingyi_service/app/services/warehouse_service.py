@@ -4166,6 +4166,7 @@ class WarehouseService:
                 .first()
             )
             if existing is not None:
+                self._refresh_projected_ledger_for_draft(existing)
                 continue
 
             purpose = "Material Receipt" if diff_qty > 0 else "Material Issue"
@@ -4239,6 +4240,8 @@ class WarehouseService:
                     created_at=posting_at,
                 )
             )
+            session.flush()
+            self._refresh_projected_ledger_for_draft(draft)
 
     def _create_inventory_count_reversal_adjustments(
         self,
@@ -4283,6 +4286,7 @@ class WarehouseService:
                 .first()
             )
             if existing is not None:
+                self._refresh_projected_ledger_for_draft(existing)
                 continue
 
             original_purpose = str(original_draft.purpose)
@@ -4374,6 +4378,8 @@ class WarehouseService:
                     created_at=posting_at,
                 )
             )
+            session.flush()
+            self._refresh_projected_ledger_for_draft(reversal_draft)
 
     def _inventory_count_adjustment_uom(self, *, company: str, warehouse: str, item_code: str) -> str:
         session = self._require_session()
