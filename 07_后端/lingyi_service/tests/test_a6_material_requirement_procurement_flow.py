@@ -336,7 +336,24 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
     def _seed_master_data(self, *, session) -> None:
         self._seed_master_data_record(session=session, entity_type="supplier", code="SUP-A6", name="SUP-A6")
         self._seed_master_data_record(session=session, entity_type="material", code=self.MATERIAL, name="A6 棉布")
+        self._seed_material_unit(session=session, code="MU-METER", name="米")
+        self._seed_material_unit(session=session, code="MU-PCS", name="件")
+        self._seed_material_unit(session=session, code="MU-YARD", name="码")
         self._seed_master_data_record(session=session, entity_type="warehouse", code=self.WAREHOUSE, name=self.WAREHOUSE)
+
+    def _seed_material_unit(self, *, session, code: str, name: str, status: str = "active") -> None:
+        session.add(
+            LyMasterDataRecord(
+                entity_type="material",
+                company=self.COMPANY,
+                code=code,
+                name=name,
+                status=status,
+                payload={"material_kind": "unit", "unit_code": code, "unit_name": name, "base_unit": name},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
 
     def _seed_master_data_record(
         self,
@@ -396,6 +413,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         bom_color: str | None = None,
         bom_size: str | None = None,
         bom_part: str | None = None,
+        uom: str = "米",
     ) -> int:
         material_code = material_item_code or self.MATERIAL
         target_warehouse = warehouse or self.WAREHOUSE
@@ -423,7 +441,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 net_required_qty=Decimal(net_required_qty),
                 purchased_qty=Decimal("0"),
                 received_qty=Decimal("0"),
-                uom="米",
+                uom=uom,
                 unit_price=Decimal(unit_price),
                 status=status,
                 created_by="seed",
@@ -3741,6 +3759,30 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
         self.assertIn("仓库不存在或已停用", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            requirement = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertEqual(str(requirement.status), "pending")
+            self.assertIsNone(requirement.purchase_order_id)
+
+    def test_from_requirements_rejects_missing_or_inactive_unit_master(self) -> None:
+        with self.SessionLocal() as session:
+            self._seed_material_unit(session=session, code="MU-INACTIVE-YARD", name="英码", status="inactive")
+            session.commit()
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-UOM-OFF", uom="英码")
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-inactive-uom"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-inactive-uom",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("物料单位不存在或已停用", response.json()["message"])
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
             requirement = session.query(LyMaterialPurchaseRequirement).one()

@@ -220,6 +220,7 @@ class MaterialPurchaseService:
 
         supplier_name = self._require_text(payload.supplier_name, "supplier_name")
         material_codes = [self._require_text(line.material_item_code, "material_item_code") for line in payload.items]
+        uoms = [self._optional_text(line.uom) or "米" for line in payload.items]
         warehouses = [warehouse for line in payload.items if (warehouse := self._optional_text(line.warehouse))]
         self._ensure_active_master_records(
             company=company,
@@ -235,6 +236,7 @@ class MaterialPurchaseService:
             label="物料",
             match_name=False,
         )
+        self._ensure_active_material_units(company=company, values=uoms)
         if warehouses:
             self._ensure_active_master_records(
                 company=company,
@@ -642,6 +644,10 @@ class MaterialPurchaseService:
             values=[str(requirement.material_item_code) for requirement in requirements],
             label="物料",
             match_name=False,
+        )
+        self._ensure_active_material_units(
+            company=company,
+            values=[self._optional_text(requirement.uom) or "米" for requirement in requirements],
         )
         warehouses = [warehouse for requirement in requirements if (warehouse := self._optional_text(requirement.warehouse))]
         if warehouses:
@@ -2527,6 +2533,51 @@ class MaterialPurchaseService:
             raise BusinessException(
                 code=MATERIAL_PURCHASE_CONFLICT,
                 message=f"{label}不存在或已停用: {', '.join(invalid_values)}",
+            )
+
+    def _ensure_active_material_units(self, *, company: str, values: list[str]) -> None:
+        normalized_values: list[str] = []
+        for value in values:
+            normalized = self._require_text(value, "物料单位")
+            if normalized not in normalized_values:
+                normalized_values.append(normalized)
+        if not normalized_values:
+            return
+        try:
+            rows = (
+                self.session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.status == "active",
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+
+        active_values: set[str] = set()
+        for row in rows:
+            payload = row.payload if isinstance(row.payload, dict) else {}
+            material_kind = self._optional_text(payload.get("material_kind") or payload.get("kind"))
+            if material_kind != "unit":
+                continue
+            for candidate in (
+                row.code,
+                row.name,
+                payload.get("unit_code"),
+                payload.get("unit_name"),
+                payload.get("uom"),
+                payload.get("base_unit"),
+            ):
+                text = self._optional_text(candidate)
+                if text:
+                    active_values.add(text)
+        invalid_values = [value for value in normalized_values if value not in active_values]
+        if invalid_values:
+            raise BusinessException(
+                code=MATERIAL_PURCHASE_CONFLICT,
+                message=f"物料单位不存在或已停用: {', '.join(invalid_values)}",
             )
 
     def _invoiced_qty(self, *, company: str, purchase_no: str, material_item_code: str) -> Decimal:

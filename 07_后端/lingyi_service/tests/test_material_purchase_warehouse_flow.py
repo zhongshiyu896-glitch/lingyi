@@ -187,6 +187,18 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 updated_by="seed",
             )
         )
+        session.add(
+            LyMasterDataRecord(
+                entity_type="material",
+                company=company,
+                code="MU-METER",
+                name="米",
+                status="active",
+                payload={"material_kind": "unit", "unit_code": "MU-METER", "unit_name": "米", "base_unit": "米"},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
 
     @staticmethod
     def _headers(*, request_id: str = "req-a5-material-purchase") -> dict[str, str]:
@@ -547,6 +559,48 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
         self.assertIn("仓库不存在或已停用", response.json()["message"])
+
+    def test_create_purchase_order_rejects_missing_or_inactive_unit_master(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code="MU-YARD-OFF",
+                    name="码",
+                    status="inactive",
+                    payload={"material_kind": "unit", "unit_code": "MU-YARD-OFF", "unit_name": "码", "base_unit": "码"},
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        purchase_payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "purchase_no": "PO-A5-INACTIVE-UOM",
+            "supplier_name": "SUP-A",
+            "transaction_date": "2026-06-16",
+            "currency": "CNY",
+            "idempotency_key": "idem-po-a5-inactive-uom",
+            "items": [
+                {
+                    "material_item_code": self.ITEM_CODE,
+                    "material_name": "棉布",
+                    "qty": "10",
+                    "uom": "码",
+                    "unit_price": "12.5",
+                    "warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+
+        response = self.client.post("/api/material-purchase/orders", headers=self._headers(), json=purchase_payload)
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("物料单位不存在或已停用", response.json()["message"])
 
     def test_stock_entry_draft_rejects_inactive_material_master(self) -> None:
         inactive_material = "FAB-STOCK-INACTIVE"
