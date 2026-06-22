@@ -1946,6 +1946,7 @@ class SampleService:
             sample_no=row.sample_no,
             sample_idempotency_key=idempotency_key,
         )
+        converted_color, converted_size = self._sample_convert_dimensions_from_bom(order=row)
         return SalesInventoryService(session=self.session).create_sales_order_draft(
             payload=SalesOrderDraftCreateRequest(
                 company=row.company,
@@ -1963,6 +1964,8 @@ class SampleService:
                         style_master_id=int(row.style_master_id) if row.style_master_id is not None else None,
                         item_code=row.style_no,
                         item_name=row.style_name,
+                        color=converted_color,
+                        size=converted_size,
                         qty=Decimal("1"),
                         rate=None,
                         uom="件",
@@ -1973,6 +1976,26 @@ class SampleService:
             current_user=actor,
             scenario_tag="sample_convert",
         )
+
+    def _sample_convert_dimensions_from_bom(self, *, order: LySampleOrder) -> tuple[str | None, str | None]:
+        """Infer the single converted bulk line dimensions from the sample BOM snapshot."""
+        bom = self._find_sample_material_bom(order=order)
+        if bom is None:
+            return None, None
+        items = (
+            self.session.query(LySampleMaterialBomItem)
+            .filter(LySampleMaterialBomItem.bom_id == int(bom.id))
+            .order_by(LySampleMaterialBomItem.id.asc())
+            .all()
+        )
+        color: str | None = None
+        size: str | None = None
+        for item in items:
+            color = color or self._optional_text(getattr(item, "color", None))
+            size = size or self._optional_text(getattr(item, "size", None))
+            if color and size:
+                break
+        return color, size
 
     @classmethod
     def _sales_draft_idempotency_key(cls, *, company: str, sample_no: str, sample_idempotency_key: str) -> str:

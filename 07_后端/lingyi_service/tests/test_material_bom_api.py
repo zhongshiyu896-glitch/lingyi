@@ -911,13 +911,14 @@ class MaterialBomApiTest(unittest.TestCase):
             headers=self._headers(request_id="SAMPLE-MB-BULK-DETAIL"),
         )
         self.assertEqual(detail.status_code, 200, detail.text)
-        sales_order_item = detail.json()["data"]["items"][0]["name"]
+        detail_item = detail.json()["data"]["items"][0]
+        sales_order_item = detail_item["name"]
+        self.assertEqual(detail_item["color"], "黑")
+        self.assertEqual(detail_item["size"], "M")
         with self.SessionLocal() as session:
             sales_order = session.query(LySalesOrder).filter_by(sales_order_no=bulk_no).one()
             sales_order.status = "draft"
             sales_order.docstatus = 1
-            line = session.query(LySalesOrderItem).filter_by(sales_order_item=sales_order_item).one()
-            line.size = "M"
             session.commit()
 
         created_plan = self.client.post(
