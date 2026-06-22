@@ -36,6 +36,8 @@ from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseInventoryCount
+from app.models.warehouse import LyWarehouseInventoryCountItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.material_purchase import get_db_session as material_purchase_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
@@ -114,6 +116,8 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             session.query(LySubcontractMaterial).delete()
             session.query(LySubcontractStockOutbox).delete()
             session.query(LySubcontractOrder).delete()
+            session.query(LyWarehouseInventoryCountItem).delete()
+            session.query(LyWarehouseInventoryCount).delete()
             session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
@@ -797,6 +801,209 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 .count()
             )
             self.assertEqual(audit_count, 1)
+
+    def test_purchase_receipt_then_material_issue_then_count_is_balanced(self) -> None:
+        purchase_payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "purchase_no": "PO-A5-BALANCED-001",
+            "supplier_name": "SUP-A",
+            "transaction_date": "2026-06-16",
+            "expected_delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "idempotency_key": "idem-po-a5-balanced-001",
+            "items": [
+                {
+                    "material_item_code": self.ITEM_CODE,
+                    "material_name": "棉布",
+                    "qty": "20",
+                    "uom": "米",
+                    "unit_price": "12.5",
+                    "warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+        create_po = self.client.post("/api/material-purchase/orders", headers=self._headers(), json=purchase_payload)
+        self.assertEqual(create_po.status_code, 201, create_po.text)
+
+        receipt_idem = f"{self.SCENARIO_TAG}:idem-whse-po-balanced-001"
+        receipt_source_ref = f"{self.SCENARIO_TAG}:purchase:PO-A5-BALANCED-001"
+        receipt_payload = {
+            "company": "COMP-A",
+            "purpose": "Material Receipt",
+            "source_type": "material_purchase_order",
+            "source_id": receipt_source_ref,
+            "source_ref": receipt_source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "create_stock_entry_draft",
+            "quantity": "20",
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "create",
+            "scenario_tag": self.SCENARIO_TAG,
+            "target_warehouse": self.WAREHOUSE,
+            "idempotency_key": receipt_idem,
+            "items": [
+                {
+                    "item_code": self.ITEM_CODE,
+                    "qty": "20",
+                    "uom": "米",
+                    "target_warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+        receipt = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                )
+            ),
+            json=receipt_payload,
+        )
+        self.assertEqual(receipt.status_code, 201, receipt.text)
+        self.assertEqual(receipt.json()["data"]["status"], "draft")
+        receipt_draft_id = int(receipt.json()["data"]["id"])
+        audit_response = self.client.post(
+            f"/api/warehouse/stock-entry-drafts/{receipt_draft_id}/audit",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                    operation="audit_stock_entry_draft",
+                    status_action="audit",
+                )
+            ),
+            json={
+                "reason": "采购入库审核后继续出库盘点",
+                "idempotency_key": receipt_idem,
+                "source_ref": receipt_source_ref,
+                "warehouse": self.WAREHOUSE,
+                "item_code": self.ITEM_CODE,
+                "operation": "audit_stock_entry_draft",
+                "quantity": "20",
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "audit",
+                "scenario_tag": self.SCENARIO_TAG,
+            },
+        )
+        self.assertEqual(audit_response.status_code, 200, audit_response.text)
+        self.assertEqual(audit_response.json()["data"]["status"], "pending_outbox")
+
+        issue_idem = f"{self.SCENARIO_TAG}:idem-whse-issue-after-po-balanced"
+        issue_source_ref = f"{self.SCENARIO_TAG}:issue-after-po-balanced"
+        issue_payload = {
+            "company": "COMP-A",
+            "purpose": "Material Issue",
+            "source_type": "material_sale_outbound",
+            "source_id": issue_source_ref,
+            "source_ref": issue_source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "create_stock_entry_draft",
+            "quantity": "5",
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "create",
+            "scenario_tag": self.SCENARIO_TAG,
+            "source_warehouse": self.WAREHOUSE,
+            "target_warehouse": None,
+            "idempotency_key": issue_idem,
+            "items": [
+                {
+                    "item_code": self.ITEM_CODE,
+                    "qty": "5",
+                    "uom": "米",
+                    "source_warehouse": self.WAREHOUSE,
+                    "target_warehouse": None,
+                }
+            ],
+        }
+        issue = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=issue_idem,
+                    source_ref=issue_source_ref,
+                    quantity="5",
+                )
+            ),
+            json=issue_payload,
+        )
+        self.assertEqual(issue.status_code, 201, issue.text)
+        self.assertEqual(issue.json()["data"]["purpose"], "Material Issue")
+        self.assertEqual(issue.json()["data"]["source_warehouse"], self.WAREHOUSE)
+
+        stock_ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company=COMP-A&warehouse={self.WAREHOUSE}&item_code={self.ITEM_CODE}",
+            headers=self._headers(request_id="req-purchase-receipt-issue-ledger"),
+        )
+        stock_summary = self.client.get(
+            f"/api/warehouse/stock-summary?company=COMP-A&warehouse={self.WAREHOUSE}&item_code={self.ITEM_CODE}",
+            headers=self._headers(request_id="req-purchase-receipt-issue-summary"),
+        )
+        self.assertEqual(stock_ledger.status_code, 200, stock_ledger.text)
+        ledger_items = stock_ledger.json()["data"]["items"]
+        self.assertEqual(stock_ledger.json()["data"]["total"], 2)
+        self.assertEqual(
+            [row["voucher_type"] for row in ledger_items],
+            ["Stock Entry Draft/Material Receipt", "Stock Entry Draft/Material Issue"],
+        )
+        self.assertEqual(
+            [Decimal(str(row["actual_qty"])) for row in ledger_items],
+            [Decimal("20.000000"), Decimal("-5.000000")],
+        )
+        self.assertEqual(
+            [Decimal(str(row["qty_after_transaction"])) for row in ledger_items],
+            [Decimal("20.000000"), Decimal("15.000000")],
+        )
+        self.assertEqual(stock_summary.status_code, 200, stock_summary.text)
+        summary_items = stock_summary.json()["data"]["items"]
+        self.assertEqual(len(summary_items), 1)
+        self.assertEqual(Decimal(str(summary_items[0]["actual_qty"])), Decimal("15.000000"))
+
+        count_scenario_tag = "Z002-WAREHOUSE-COUNT-20260616-102"
+        count_request_id = (
+            f"{count_scenario_tag}-REQ-COUNT-"
+            f"W{self._carrier_code(self.WAREHOUSE, length=8)}-"
+            f"D{date.fromisoformat(self.BUSINESS_DATE).strftime('%Y%m%d')}"
+        )
+        inventory_count = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers(request_id=count_request_id),
+            json={
+                "company": "COMP-A",
+                "warehouse": self.WAREHOUSE,
+                "count_date": self.BUSINESS_DATE,
+                "idempotency_key": f"{count_scenario_tag}:inventory-count-after-issue",
+                "source_ref": f"{count_scenario_tag}:inventory-count-after-issue",
+                "remark": "采购入库出库后账实平抽盘",
+                "items": [
+                    {
+                        "item_code": self.ITEM_CODE,
+                        "batch_no": None,
+                        "serial_no": None,
+                        "system_qty": "15",
+                        "counted_qty": "15",
+                        "variance_reason": "账实一致",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(inventory_count.status_code, 201, inventory_count.text)
+        inventory_reconciliation = self.client.get(
+            f"/api/warehouse/inventory-balance-reconciliation?company=COMP-A&warehouse={self.WAREHOUSE}&item_code={self.ITEM_CODE}",
+            headers=self._headers(request_id="req-purchase-receipt-issue-balanced-reconciliation"),
+        )
+        self.assertEqual(inventory_reconciliation.status_code, 200, inventory_reconciliation.text)
+        reconciliation_rows = inventory_reconciliation.json()["data"]["items"]
+        self.assertEqual(inventory_reconciliation.json()["data"]["total"], 1)
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["book_qty"])), Decimal("15.000000"))
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["actual_qty"])), Decimal("15.000000"))
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["diff_qty"])), Decimal("0.000000"))
+        self.assertEqual(reconciliation_rows[0]["status"], "balanced")
 
     def test_purchase_receipt_audit_fastapi_permission_source_unavailable_does_not_mutate(self) -> None:
         purchase_payload = {
