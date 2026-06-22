@@ -122,7 +122,7 @@
 | A | POST | `/api/production/plans` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.plan_id, data.plan_no, data.status, data.company | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/production/plans/{plan_id}` | 否 | 是 | 否 | candidate | code, message, data, data.id, data.plan_no, data.company, data.sales_order, data.sales_order_item, data.customer, data.item_code, data.bom_id, data.bom_version, ... | 真实业务只读接口候选 |
 | A | POST | `/api/production/plans/{plan_id}/create-work-order` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.plan_id, data.outbox_id, data.event_key, data.sync_status, data.work_order | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
-| A | POST | `/api/production/plans/{plan_id}/material-check` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.plan_id, data.snapshot_count, data.items, data.items.bom_item_id, data.items.material_item_code, data.items.warehouse, data.items.qty_per_piece, data.items.loss_rate, data.items.required_qty, ... | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
+| A | POST | `/api/production/plans/{plan_id}/material-check` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.plan_id, data.sales_order, data.sales_order_item, data.item_code, data.color, data.size, data.planned_qty, data.snapshot_count, data.items, ... | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | POST | `/api/production/plans/{plan_id}/material-issue` | 否 | 是 | 是 | needs_dedicated_write_task | code, message, data, data.plan_id, data.draft_id, data.source_id, data.stock_entry_status, data.event_key, data.items, data.items.material_item_code, data.items.warehouse, data.items.qty, ... | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/production/quotes` | 是 | 是 | 否 | candidate | code, message, data, data.items, data.items.plan_id, data.items.quote_no, data.items.plan_no, data.items.company, data.items.sales_order, data.items.sales_order_item, data.items.customer, data.items.item_code, ... | 真实业务只读接口候选 |
 | C | POST | `/api/production/readiness/inventory-finance-flow` | 否 | 是 | 否 | do_not_connect_as_write | reservation_no, delivery_note, sales_invoice, summary_no, warehouse, item_code, inbound_qty, delivered_qty, book_qty, actual_qty, diff_qty, outstanding_amount, ... | readiness flow 回执桩; 不得当作真实写接口 |
@@ -295,7 +295,7 @@
 | A | POST | `/api/warehouse/stock-entry-drafts/{draft_id}/cancel` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/warehouse/stock-entry-drafts/{draft_id}/outbox-status` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | POST | `/api/warehouse/stock-entry-drafts/{draft_id}/release-hold` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
-| A | GET | `/api/warehouse/stock-ledger` | 是 | 是 | 否 | candidate | company, warehouse, item_code, posting_date, voucher_type, voucher_no, actual_qty, qty_after_transaction, valuation_rate | 真实业务只读接口候选 |
+| A | GET | `/api/warehouse/stock-ledger` | 是 | 是 | 否 | candidate | company, warehouse, item_code, posting_date, posting_time, voucher_type, voucher_no, actual_qty, qty_after_transaction, valuation_rate | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/stock-summary` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/traceability` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/workshop/daily-wages` | 是 | 是 | 否 | candidate | employee, work_date, process_name, item_code, register_qty, reversal_qty, net_qty, wage_amount | 真实业务只读接口候选 |

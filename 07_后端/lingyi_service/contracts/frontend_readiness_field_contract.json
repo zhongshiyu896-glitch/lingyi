@@ -60,6 +60,7 @@
       "warehouse",
       "item_code",
       "posting_date",
+      "posting_time",
       "voucher_type",
       "voucher_no",
       "actual_qty",

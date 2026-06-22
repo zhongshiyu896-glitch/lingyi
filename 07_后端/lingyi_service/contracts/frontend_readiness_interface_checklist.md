@@ -8,7 +8,7 @@
 | `GET /api/sales-inventory/customers` | `name, customer_name, disabled` | 就绪，已验证 page_size=2 |
 | `GET /api/dashboard/overview` | `company, from_date, to_date, generated_at, quality, sales_inventory, warehouse, source_status, kanban, home_overview` | 就绪，dev/test 无 company 走默认 company |
 | `GET /api/bom/` | `id, bom_no, item_code, version_no, is_default, status, effective_date` | 既有只读端点 |
-| `GET /api/warehouse/stock-ledger` | `company, warehouse, item_code, posting_date, voucher_type, voucher_no, actual_qty, qty_after_transaction, valuation_rate` | 既有只读契约字段 |
+| `GET /api/warehouse/stock-ledger` | `company, warehouse, item_code, posting_date, posting_time, voucher_type, voucher_no, actual_qty, qty_after_transaction, valuation_rate` | 既有只读契约字段 |
 | `GET /api/subcontract/` | `id, subcontract_no, supplier, item_code, company, bom_id, process_name, planned_qty, status, created_at` | 既有只读端点 |
 | `GET /api/sales-inventory/sales-order-fulfillment` | `company, items.sales_order, items.item_code, items.warehouse, items.ordered_qty, items.actual_qty, items.fulfillment_rate, total, page, page_size` | 既有只读端点，Task4 已补分页 |
 | `GET /api/subcontract/factories` | `company, supplier, factory_name, factory_code, review_status, follow_up_status` | dev-gated 只读就绪 |

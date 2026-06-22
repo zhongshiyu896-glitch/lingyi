@@ -95,6 +95,16 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertEqual(material_issue_row["frontend_connect_status"], "needs_dedicated_write_task")
         self.assertIn("data.draft_id", material_issue_row["response_fields"])
 
+        material_check_row = catalog[
+            ("POST", "/api/production/plans/{plan_id}/material-check", "app.routers.production")
+        ]
+        self.assertIn("data.sales_order_item", material_check_row["response_fields"])
+        self.assertIn("data.item_code", material_check_row["response_fields"])
+        self.assertIn("data.planned_qty", material_check_row["response_fields"])
+
+        stock_ledger_row = catalog[("GET", "/api/warehouse/stock-ledger", "app.routers.warehouse")]
+        self.assertIn("posting_time", stock_ledger_row["response_fields"])
+
     def test_readiness_routes_are_dev_enabled_and_production_disabled(self) -> None:
         dev_app = load_app_for_env("test")
         dev_paths = {(method, route.path) for route in dev_app.routes for method in getattr(route, "methods", set())}
@@ -233,6 +243,14 @@ class BackendContractAssetsTest(unittest.TestCase):
         self.assertEqual(material_issue_read_row["frontend_connect_status"], "candidate")
         self.assertIn("material_item_code", material_issue_read_row["response_fields"])
         self.assertIn("issued_qty", material_issue_read_row["response_fields"])
+
+        material_check_row = route_map[("POST", "/api/production/plans/{plan_id}/material-check")]
+        self.assertIn("data.sales_order_item", material_check_row["response_fields"])
+        self.assertIn("data.item_code", material_check_row["response_fields"])
+        self.assertIn("data.planned_qty", material_check_row["response_fields"])
+
+        stock_ledger_row = route_map[("GET", "/api/warehouse/stock-ledger")]
+        self.assertIn("posting_time", stock_ledger_row["response_fields"])
 
 
 if __name__ == "__main__":
