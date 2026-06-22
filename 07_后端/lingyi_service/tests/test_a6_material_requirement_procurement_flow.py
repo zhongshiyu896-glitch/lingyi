@@ -3918,6 +3918,104 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(line.received_qty)), Decimal("0.000000"))
             self.assertEqual(str(order.status), "draft")
 
+    def test_grouped_material_can_receive_same_po_item_by_requirement_source_scope(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-SPLIT-A",
+            net_required_qty="5",
+            sales_order="SO-A6-SPLIT-001",
+            sales_order_item="SO-A6-SPLIT-001-ITEM",
+            bom_color="黑",
+            bom_size="L",
+            bom_part="前片",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-SPLIT-B",
+            net_required_qty="10",
+            sales_order="SO-A6-SPLIT-001",
+            sales_order_item="SO-A6-SPLIT-001-ITEM",
+            bom_color="黑",
+            bom_size="L",
+            bom_part="后片",
+        )
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-split-material"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_a, requirement_b],
+                idempotency_key="idem-a6-split-material",
+                purchase_no="PO-A6-SPLIT",
+            ),
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        purchase_order = response.json()["data"]["purchase_order"]
+        self.assertEqual(len(purchase_order["items"]), 1)
+        self.assertEqual(purchase_order["items"][0]["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(purchase_order["items"][0]["qty"])), Decimal("15.000000"))
+
+        draft_a = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-SPLIT:{self.MATERIAL}:req:{requirement_a}",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-SPLIT:req-a",
+            qty="5",
+            purchase_requirement_id=requirement_a,
+        )
+        draft_b = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-SPLIT:{self.MATERIAL}:req:{requirement_b}",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-SPLIT:req-b",
+            qty="10",
+            purchase_requirement_id=requirement_b,
+        )
+        self.assertNotEqual(draft_a["id"], draft_b["id"])
+        self.assertIn(f":req:{requirement_a}", draft_a["source_id"])
+        self.assertIn(f":req:{requirement_b}", draft_b["source_id"])
+
+        completed = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed&keyword=PO-A6-SPLIT&page=1&page_size=100",
+            headers=self._headers("req-a6-split-completed"),
+        )
+        self.assertEqual(completed.status_code, 200, completed.text)
+        completed_rows = completed.json()["data"]["items"]
+        self.assertEqual(len(completed_rows), 2)
+        completed_by_part = {str(row["bom_part"]): row for row in completed_rows}
+        self.assertEqual(set(completed_by_part), {"前片", "后片"})
+        self.assertTrue(all(row["has_completed"] for row in completed_rows))
+        self.assertEqual(Decimal(str(completed_by_part["前片"]["received_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(completed_by_part["后片"]["received_qty"])), Decimal("10.000000"))
+
+        ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-split-ledger"),
+        )
+        summary = self.client.get(
+            f"/api/warehouse/stock-summary?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-split-summary"),
+        )
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        self.assertEqual(summary.status_code, 200, summary.text)
+        ledger_rows = ledger.json()["data"]["items"]
+        self.assertEqual(ledger.json()["data"]["total"], 2)
+        self.assertEqual([Decimal(str(row["actual_qty"])) for row in ledger_rows], [Decimal("5.000000"), Decimal("10.000000")])
+        self.assertEqual(Decimal(str(ledger_rows[-1]["qty_after_transaction"])), Decimal("15.000000"))
+        self.assertEqual(Decimal(str(summary.json()["data"]["items"][0]["actual_qty"])), Decimal("15.000000"))
+
+        with self.SessionLocal() as session:
+            req_a = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_a).one()
+            req_b = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_b).one()
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-SPLIT").one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).one()
+            draft_count = session.query(LyWarehouseStockEntryDraft).filter(
+                LyWarehouseStockEntryDraft.source_id.like(f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-SPLIT:%")
+            ).count()
+
+            self.assertEqual(draft_count, 2)
+            self.assertEqual(str(req_a.status), "completed")
+            self.assertEqual(str(req_b.status), "completed")
+            self.assertEqual(Decimal(str(req_a.received_qty)), Decimal("5.000000"))
+            self.assertEqual(Decimal(str(req_b.received_qty)), Decimal("10.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("15.000000"))
+            self.assertEqual(str(order.status), "received")
+
     def test_from_requirements_rejects_mixed_unit_prices_when_grouping_by_material(self) -> None:
         requirement_a = self._seed_requirement(
             requirement_no="REQ-A6-GROUP-PRICE-A",
