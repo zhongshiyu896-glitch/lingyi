@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy import false
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -448,6 +449,11 @@ class MaterialPurchaseService:
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
 
+        material_names = self._material_name_lookup(
+            company=str(plan.company),
+            material_codes=[str(row.material_item_code) for row in snapshots if row.material_item_code],
+        )
+
         synced: list[LyMaterialPurchaseRequirement] = []
         pending_by_key: dict[
             tuple[str, str, str, int | None, str | None, str | None, str | None, str, str],
@@ -518,7 +524,7 @@ class MaterialPurchaseService:
                 row.sales_order = self._optional_text(plan.sales_order)
                 row.sales_order_item = self._optional_text(plan.sales_order_item)
                 row.item_code = self._optional_text(plan.item_code)
-                row.material_name = material_code
+                row.material_name = material_names.get(material_code, material_code)
                 row.supplier_name = self._extract_supplier_from_remark(bom_item.remark if bom_item is not None else None)
                 row.required_qty = required_qty
                 row.available_qty = available_qty
@@ -2542,6 +2548,35 @@ class MaterialPurchaseService:
                 code=MATERIAL_PURCHASE_CONFLICT,
                 message=f"{label}不存在或已停用: {', '.join(invalid_values)}",
             )
+
+    def _material_name_lookup(self, *, company: str, material_codes: list[str]) -> dict[str, str]:
+        codes: list[str] = []
+        for code in material_codes:
+            normalized = str(code or "").strip()
+            if normalized and normalized not in codes:
+                codes.append(normalized)
+        if not codes or not self._has_sqlite_tables({LyMasterDataRecord.__tablename__}):
+            return {}
+        try:
+            rows = (
+                self.session.query(LyMasterDataRecord.code, LyMasterDataRecord.name)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code.in_(codes),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        return {str(row.code): str(row.name) for row in rows if str(row.name or "").strip()}
+
+    def _has_sqlite_tables(self, table_names: set[str]) -> bool:
+        bind = self.session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        existing_tables = set(inspect(self.session.connection()).get_table_names())
+        return table_names.issubset(existing_tables)
 
     def _ensure_active_material_units(self, *, company: str, values: list[str]) -> None:
         normalized_values: list[str] = []

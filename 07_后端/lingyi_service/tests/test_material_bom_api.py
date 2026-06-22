@@ -1004,6 +1004,7 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(str(snapshot.required_qty), "3.300000")
             self.assertEqual(requirement.sales_order, bulk_no)
             self.assertEqual(requirement.material_item_code, "FAB-ALT-001")
+            self.assertEqual(requirement.material_name, "可替代面料")
             self.assertEqual(requirement.uom, "码")
             self.assertEqual(str(requirement.net_required_qty), "3.300000")
 

@@ -3221,6 +3221,23 @@ class ProductionService:
                     if getattr(row, "material_item_code", None)
                 }
             )
+            material_name_map: dict[tuple[str, str], str] = {}
+            if (
+                companies
+                and material_item_codes
+                and self._has_sqlite_tables({LyMasterDataRecord.__tablename__})
+            ):
+                material_master_rows = (
+                    self.session.query(LyMasterDataRecord.company, LyMasterDataRecord.code, LyMasterDataRecord.name)
+                    .filter(LyMasterDataRecord.entity_type == "material")
+                    .filter(LyMasterDataRecord.company.in_(companies))
+                    .filter(LyMasterDataRecord.code.in_(material_item_codes))
+                    .all()
+                )
+                for material in material_master_rows:
+                    name = str(material.name or "").strip()
+                    if name:
+                        material_name_map[(str(material.company), str(material.code))] = name
             if (
                 companies
                 and material_item_codes
@@ -3487,6 +3504,7 @@ class ProductionService:
             "job_card_map": job_card_map,
             "work_order_map": work_order_map,
             "snapshot_map": snapshot_map,
+            "material_name_map": material_name_map,
             "purchase_unit_price_map": purchase_unit_price_map,
             "sample_cost_map": sample_cost_map,
             "sample_cost_count_map": sample_cost_count_map,
@@ -3662,12 +3680,17 @@ class ProductionService:
                         remark=bom_item.remark if bom_item is not None else None,
                         context=context,
                     )
+                    material_name = self._material_display_name(
+                        company=str(plan.company),
+                        material_item_code=material_code,
+                        context=context,
+                    )
                     rows.append(
                         {
                             **base,
                             "id": f"MD-{int(plan.id)}-{int(snapshot.id)}",
                             "item_code": material_code,
-                            "materialName": material_code,
+                            "materialName": material_name,
                             "category": "物料",
                             "requiredQty": required_qty,
                             "unit": str(bom_item.uom) if bom_item is not None else "",
@@ -3683,21 +3706,27 @@ class ProductionService:
                 continue
 
             for bom_item in context["bom_item_map"].get(int(plan.bom_id), []):
+                material_code = str(bom_item.material_item_code)
                 qty_per_piece = self._dec(bom_item.qty_per_piece)
                 loss_rate = self._dec(bom_item.loss_rate)
                 required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
                 unit_price = self._material_unit_price(
-                    material_item_code=str(bom_item.material_item_code),
+                    material_item_code=material_code,
                     company=str(plan.company),
                     remark=bom_item.remark,
+                    context=context,
+                )
+                material_name = self._material_display_name(
+                    company=str(plan.company),
+                    material_item_code=material_code,
                     context=context,
                 )
                 rows.append(
                     {
                         **base,
                         "id": f"MD-{int(plan.id)}-BOM-{int(bom_item.id)}",
-                        "item_code": str(bom_item.material_item_code),
-                        "materialName": str(bom_item.material_item_code),
+                        "item_code": material_code,
+                        "materialName": material_name,
                         "category": "物料",
                         "requiredQty": required_qty,
                         "unit": str(bom_item.uom),
@@ -4045,6 +4074,12 @@ class ProductionService:
             return remark_price
         purchase_prices: dict[tuple[str, str], Decimal] = context.get("purchase_unit_price_map", {})
         return self._dec(purchase_prices.get((company, material_item_code)))
+
+    @staticmethod
+    def _material_display_name(*, company: str, material_item_code: str, context: dict[str, Any]) -> str:
+        names: dict[tuple[str, str], str] = context.get("material_name_map", {})
+        name = str(names.get((company, material_item_code)) or "").strip()
+        return name or material_item_code
 
     def _has_sqlite_tables(self, table_names: set[str]) -> bool:
         bind = self.session.get_bind()

@@ -26,6 +26,8 @@ from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchasePayment
 from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionJobCardLink
 from app.models.production import LyProductionPlan
@@ -67,6 +69,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
             SalesOrderBase,
             ProductionBase,
             StyleProfitBase,
+            MasterDataBase,
             MaterialPurchaseBase,
             SampleBase,
             QualityBase,
@@ -118,10 +121,24 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
                 LyApparelBom,
                 LyWarehouseStockEntryDraftItem,
                 LyWarehouseStockEntryDraft,
+                LyMasterDataRecord,
                 LySalesOrderItem,
                 LySalesOrder,
             ):
                 session.query(model).delete()
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code="FAB-A",
+                    name="黑色主面料",
+                    status="active",
+                    payload={"material_item_code": "FAB-A", "fabric_name": "黑色主面料", "uom": "米"},
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
             session.commit()
             self._seed(session)
             session.commit()
@@ -777,6 +794,7 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual([item["label"] for item in payload["composition"]], ["物料金额", "缺口数量", "可用数量"])
         row = payload["items"][0]
         self.assertEqual(row["item_code"], "FAB-A")
+        self.assertEqual(row["materialName"], "黑色主面料")
         self.assertEqual(Decimal(str(row["requiredQty"])), Decimal("176"))
         self.assertEqual(Decimal(str(row["availableQty"])), Decimal("150"))
         self.assertEqual(Decimal(str(row["gapQty"])), Decimal("-26"))
