@@ -4154,8 +4154,25 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         ledger_rows = ledger.json()["data"]["items"]
         self.assertEqual(ledger.json()["data"]["total"], 2)
         self.assertEqual([Decimal(str(row["actual_qty"])) for row in ledger_rows], [Decimal("5.000000"), Decimal("10.000000")])
-        self.assertEqual(Decimal(str(ledger_rows[-1]["qty_after_transaction"])), Decimal("15.000000"))
-        self.assertEqual(Decimal(str(summary.json()["data"]["items"][0]["actual_qty"])), Decimal("15.000000"))
+        ledger_by_part = {str(row["bom_part"]): row for row in ledger_rows}
+        self.assertEqual(set(ledger_by_part), {"前片", "后片"})
+        self.assertEqual(ledger_by_part["前片"]["purchase_requirement_id"], requirement_a)
+        self.assertEqual(ledger_by_part["后片"]["purchase_requirement_id"], requirement_b)
+        self.assertEqual(ledger_by_part["前片"]["sales_order_item"], "SO-A6-SPLIT-001-ITEM")
+        self.assertEqual(ledger_by_part["后片"]["sales_order_item"], "SO-A6-SPLIT-001-ITEM")
+        self.assertEqual(ledger_by_part["前片"]["bom_color"], "黑")
+        self.assertEqual(ledger_by_part["后片"]["bom_color"], "黑")
+        self.assertEqual(ledger_by_part["前片"]["bom_size"], "L")
+        self.assertEqual(ledger_by_part["后片"]["bom_size"], "L")
+        self.assertEqual(Decimal(str(ledger_by_part["前片"]["qty_after_transaction"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(ledger_by_part["后片"]["qty_after_transaction"])), Decimal("10.000000"))
+        summary_rows = summary.json()["data"]["items"]
+        self.assertEqual(len(summary_rows), 2)
+        summary_by_part = {str(row["bom_part"]): row for row in summary_rows}
+        self.assertEqual(set(summary_by_part), {"前片", "后片"})
+        self.assertEqual(Decimal(str(summary_by_part["前片"]["actual_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(summary_by_part["后片"]["actual_qty"])), Decimal("10.000000"))
+        self.assertEqual(sum(Decimal(str(row["actual_qty"])) for row in summary_rows), Decimal("15.000000"))
 
         receipts = self.client.get(
             f"/api/warehouse/purchase-receipts?company={self.COMPANY}&purchase_no=PO-A6-SPLIT&page=1&page_size=100",

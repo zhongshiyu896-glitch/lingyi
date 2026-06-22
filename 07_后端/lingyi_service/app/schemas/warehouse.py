@@ -29,6 +29,11 @@ class WarehouseStockLedgerItem(BaseModel):
     company: str
     warehouse: str
     item_code: str
+    purchase_requirement_id: int | None = None
+    sales_order_item: str | None = None
+    bom_color: str | None = None
+    bom_size: str | None = None
+    bom_part: str | None = None
     posting_date: date
     voucher_type: str | None = None
     voucher_no: str | None = None
@@ -52,6 +57,11 @@ class WarehouseStockSummaryItem(BaseModel):
     company: str
     warehouse: str
     item_code: str
+    purchase_requirement_id: int | None = None
+    sales_order_item: str | None = None
+    bom_color: str | None = None
+    bom_size: str | None = None
+    bom_part: str | None = None
     actual_qty: Decimal
     projected_qty: Decimal
     reserved_qty: Decimal

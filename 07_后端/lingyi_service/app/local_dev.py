@@ -133,6 +133,7 @@ def _create_local_tables() -> None:
     _ensure_local_production_material_uom_column()
     _ensure_local_bom_dimension_columns()
     _ensure_local_stock_entry_purchase_requirement_column()
+    _ensure_local_stock_ledger_context_columns()
     _ensure_local_production_quote_operation_supports_quote_actions()
     _ensure_local_production_followup_node_operation_supports_edit()
     _seed_local_finance_approval_templates()
@@ -904,6 +905,38 @@ def _ensure_local_stock_entry_purchase_requirement_column() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ly_whse_stock_entry_item_requirement "
             "ON ly_warehouse_stock_entry_draft_item(purchase_requirement_id)"
+        )
+
+
+def _ensure_local_stock_ledger_context_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_warehouse_stock_ledger_entry'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_warehouse_stock_ledger_entry)").fetchall()
+        }
+        column_defs = {
+            "purchase_requirement_id": "BIGINT",
+            "sales_order_item": "VARCHAR(140)",
+            "bom_color": "VARCHAR(100)",
+            "bom_size": "VARCHAR(100)",
+            "bom_part": "VARCHAR(100)",
+        }
+        for column_name, column_type in column_defs.items():
+            if column_name not in existing_columns:
+                conn.execute(
+                    f"ALTER TABLE ly_warehouse_stock_ledger_entry ADD COLUMN {column_name} {column_type}"
+                )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ly_whse_stock_ledger_requirement "
+            "ON ly_warehouse_stock_ledger_entry(purchase_requirement_id)"
         )
 
 

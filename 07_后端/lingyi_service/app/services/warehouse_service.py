@@ -134,6 +134,11 @@ class WarehouseStockMovement:
     voucher_no: str
     actual_qty: Decimal
     valuation_rate: Decimal
+    purchase_requirement_id: int | None = None
+    sales_order_item: str | None = None
+    bom_color: str | None = None
+    bom_size: str | None = None
+    bom_part: str | None = None
 
 
 class WarehouseService:
@@ -249,11 +254,11 @@ class WarehouseService:
         keyword: str | None = None,
     ) -> WarehouseStockLedgerData:
         movements = self._local_stock_read_movements(company=company, warehouse=warehouse, item_code=item_code)
-        running_qty: dict[tuple[str, str, str], Decimal] = {}
+        running_qty: dict[tuple[str, str, str, int | None, str | None, str | None, str | None, str | None], Decimal] = {}
         ledger_rows: list[WarehouseStockLedgerItem] = []
         normalized_keyword = self._text(keyword)
         for movement in movements:
-            key = (movement.company, movement.warehouse, movement.item_code)
+            key = self._stock_dimension_key(movement)
             next_balance = running_qty.get(key, Decimal("0")) + movement.actual_qty
             running_qty[key] = next_balance
             if from_date is not None and movement.posting_date < from_date:
@@ -264,6 +269,11 @@ class WarehouseService:
                 company=movement.company,
                 warehouse=movement.warehouse,
                 item_code=movement.item_code,
+                purchase_requirement_id=movement.purchase_requirement_id,
+                sales_order_item=movement.sales_order_item,
+                bom_color=movement.bom_color,
+                bom_size=movement.bom_size,
+                bom_part=movement.bom_part,
                 posting_date=movement.posting_date,
                 voucher_type=movement.voucher_type,
                 voucher_no=movement.voucher_no,
@@ -337,6 +347,11 @@ class WarehouseService:
                 "voucher_no": movement.voucher_no,
                 "actual_qty": movement.actual_qty,
                 "valuation_rate": movement.valuation_rate,
+                "purchase_requirement_id": movement.purchase_requirement_id,
+                "sales_order_item": movement.sales_order_item,
+                "bom_color": movement.bom_color,
+                "bom_size": movement.bom_size,
+                "bom_part": movement.bom_part,
                 "status": "active",
                 "voided_at": None,
             }
@@ -442,6 +457,10 @@ class WarehouseService:
             for value in (
                 row.item_code,
                 row.warehouse,
+                row.sales_order_item,
+                row.bom_color,
+                row.bom_size,
+                row.bom_part,
                 row.voucher_type,
                 row.voucher_no,
             )
@@ -510,6 +529,26 @@ class WarehouseService:
             voucher_no=self._text(row.voucher_no),
             actual_qty=Decimal(str(row.actual_qty or 0)),
             valuation_rate=Decimal(str(row.valuation_rate or 0)),
+            purchase_requirement_id=(int(row.purchase_requirement_id) if row.purchase_requirement_id is not None else None),
+            sales_order_item=self._text(row.sales_order_item),
+            bom_color=self._text(row.bom_color),
+            bom_size=self._text(row.bom_size),
+            bom_part=self._text(row.bom_part),
+        )
+
+    @staticmethod
+    def _stock_dimension_key(
+        row: WarehouseStockMovement,
+    ) -> tuple[str, str, str, int | None, str | None, str | None, str | None, str | None]:
+        return (
+            row.company,
+            row.warehouse,
+            row.item_code,
+            row.purchase_requirement_id,
+            row.sales_order_item,
+            row.bom_color,
+            row.bom_size,
+            row.bom_part,
         )
 
     def _stock_ledger_source_key_for_entry(self, row: LyWarehouseStockLedgerEntry) -> tuple[str, str, str, str, int]:
@@ -1021,6 +1060,13 @@ class WarehouseService:
                     voucher_no=f"DRAFT-{draft.id}",
                     actual_qty=qty,
                     valuation_rate=self._material_unit_price(item_code=str(item.item_code)),
+                    purchase_requirement_id=(
+                        int(item.purchase_requirement_id) if item.purchase_requirement_id is not None else None
+                    ),
+                    sales_order_item=self._text(item.sales_order_item),
+                    bom_color=self._text(item.bom_color),
+                    bom_size=self._text(item.bom_size),
+                    bom_part=self._text(item.bom_part),
                 )
             )
 
@@ -1447,9 +1493,9 @@ class WarehouseService:
         normalized_company = self._text(company)
         normalized_warehouse = self._text(warehouse)
         normalized_item_code = self._text(item_code)
-        grouped: dict[tuple[str, str, str], Decimal] = {}
+        grouped: dict[tuple[str, str, str, int | None, str | None, str | None, str | None, str | None], Decimal] = {}
         for movement in self._local_stock_read_movements(company=company, warehouse=warehouse, item_code=item_code):
-            key = (movement.company, movement.warehouse, movement.item_code)
+            key = self._stock_dimension_key(movement)
             grouped[key] = grouped.get(key, Decimal("0")) + movement.actual_qty
 
         reserved_quantities = self._local_material_hold_reserved_quantities(
@@ -1457,30 +1503,41 @@ class WarehouseService:
             warehouse=normalized_warehouse,
             item_code=normalized_item_code,
         )
-        summary_keys = set(grouped.keys()) | set(reserved_quantities.keys())
-        material_thresholds = self._local_material_thresholds(keys=summary_keys)
+        summary_keys = set(grouped.keys()) | {
+            (company_key, warehouse_key, item_key, None, None, None, None, None)
+            for company_key, warehouse_key, item_key in reserved_quantities.keys()
+        }
+        material_thresholds = self._local_material_thresholds(
+            keys={(company_key, warehouse_key, item_key) for company_key, warehouse_key, item_key, *_ in summary_keys},
+        )
         items = [
             WarehouseStockSummaryItem(
                 company=company_key,
                 warehouse=warehouse_key,
                 item_code=item_key,
-                actual_qty=grouped.get((company_key, warehouse_key, item_key), Decimal("0")),
-                projected_qty=grouped.get((company_key, warehouse_key, item_key), Decimal("0")),
+                purchase_requirement_id=purchase_requirement_id,
+                sales_order_item=sales_order_item,
+                bom_color=bom_color,
+                bom_size=bom_size,
+                bom_part=bom_part,
+                actual_qty=grouped.get(summary_key, Decimal("0")),
+                projected_qty=grouped.get(summary_key, Decimal("0")),
                 reserved_qty=reserved_quantities.get((company_key, warehouse_key, item_key), Decimal("0")),
                 ordered_qty=Decimal("0"),
                 reorder_level=material_thresholds.get((company_key, item_key), {}).get("reorder_level"),
                 safety_stock=material_thresholds.get((company_key, item_key), {}).get("safety_stock"),
                 threshold_missing=self._threshold_missing(material_thresholds.get((company_key, item_key))),
                 is_below_reorder=self._is_below_threshold(
-                    qty=grouped.get((company_key, warehouse_key, item_key), Decimal("0")),
+                    qty=grouped.get(summary_key, Decimal("0")),
                     threshold=material_thresholds.get((company_key, item_key), {}).get("reorder_level"),
                 ),
                 is_below_safety=self._is_below_threshold(
-                    qty=grouped.get((company_key, warehouse_key, item_key), Decimal("0")),
+                    qty=grouped.get(summary_key, Decimal("0")),
                     threshold=material_thresholds.get((company_key, item_key), {}).get("safety_stock"),
                 ),
             )
-            for company_key, warehouse_key, item_key in sorted(summary_keys)
+            for summary_key in sorted(summary_keys)
+            for company_key, warehouse_key, item_key, purchase_requirement_id, sales_order_item, bom_color, bom_size, bom_part in [summary_key]
         ]
         return WarehouseStockSummaryData(
             company=normalized_company,
