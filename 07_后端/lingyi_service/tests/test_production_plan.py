@@ -915,6 +915,22 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "AUDIT_WRITE_FAILED")
 
     def test_material_check_and_create_work_order_creates_local_outbox_candidate(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code="MAT-A",
+                    name="主料 A",
+                    status="active",
+                    payload={"material_item_code": "MAT-A", "material_name": "主料 A"},
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
             create_response = self.client.post(
                 "/api/production/plans",
@@ -937,7 +953,18 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(check_response.json()["data"]["snapshot_count"], 1)
         self.assertEqual(check_response.json()["data"]["items"][0]["warehouse"], "WIP Warehouse - LY")
         self.assertEqual(check_response.json()["data"]["items"][0]["uom"], "Nos")
+        self.assertEqual(check_response.json()["data"]["items"][0]["material_name"], "主料 A")
         self.assertIsNotNone(check_response.json()["data"]["items"][0]["checked_at"])
+
+        detail_after_check = self.client.get(
+            f"/api/production/plans/{plan_id}",
+            headers=self._headers(),
+        )
+        self.assertEqual(detail_after_check.status_code, 200)
+        self.assertEqual(
+            detail_after_check.json()["data"]["material_snapshots"][0]["material_name"],
+            "主料 A",
+        )
 
         outbox_response = self.client.post(
             f"/api/production/plans/{plan_id}/create-work-order",

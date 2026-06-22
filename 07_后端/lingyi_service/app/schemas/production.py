@@ -850,6 +850,7 @@ class ProductionPlanMaterialSnapshotItem(BaseModel):
     bom_size: Optional[str] = None
     bom_part: Optional[str] = None
     material_item_code: str
+    material_name: Optional[str] = None
     warehouse: Optional[str] = None
     uom: str = "米"
     qty_per_piece: Decimal

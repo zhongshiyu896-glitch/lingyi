@@ -4081,6 +4081,28 @@ class ProductionService:
         name = str(names.get((company, material_item_code)) or "").strip()
         return name or material_item_code
 
+    def _material_names_by_code(self, *, company: str, material_codes: list[str]) -> dict[str, str]:
+        codes: list[str] = []
+        for code in material_codes:
+            normalized = str(code or "").strip()
+            if normalized and normalized not in codes:
+                codes.append(normalized)
+        if not codes or not self._has_sqlite_tables({LyMasterDataRecord.__tablename__}):
+            return {}
+        try:
+            rows = (
+                self.session.query(LyMasterDataRecord.code, LyMasterDataRecord.name)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code.in_(codes),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        return {str(row.code): str(row.name) for row in rows if str(row.name or "").strip()}
+
     def _has_sqlite_tables(self, table_names: set[str]) -> bool:
         bind = self.session.get_bind()
         if bind.dialect.name != "sqlite":
@@ -4348,6 +4370,10 @@ class ProductionService:
             ),
             {},
         )
+        material_names = self._material_names_by_code(
+            company=str(plan.company),
+            material_codes=[str(row.material_item_code) for row in materials if row.material_item_code],
+        )
 
         return ProductionPlanDetailData(
             id=int(plan.id),
@@ -4386,6 +4412,7 @@ class ProductionService:
                     bom_size=self._text(getattr(row, "bom_size", None)),
                     bom_part=self._text(getattr(row, "bom_part", None)),
                     material_item_code=str(row.material_item_code),
+                    material_name=material_names.get(str(row.material_item_code)),
                     warehouse=(str(row.warehouse) if getattr(row, "warehouse", None) is not None else None),
                     qty_per_piece=Decimal(str(row.qty_per_piece)),
                     loss_rate=Decimal(str(row.loss_rate)),
@@ -4961,6 +4988,10 @@ class ProductionService:
         except SQLAlchemyError as exc:
             raise DatabaseWriteFailed() from exc
 
+        material_names = self._material_names_by_code(
+            company=str(plan.company),
+            material_codes=[str(row.material_item_code) for row in bom_rows if row.material_item_code],
+        )
         snapshot_items: list[ProductionPlanMaterialSnapshotItem] = []
         checked_at = datetime.utcnow()
         planned_qty = Decimal(str(plan.planned_qty))
@@ -5017,6 +5048,7 @@ class ProductionService:
                     bom_size=bom_size,
                     bom_part=bom_part,
                     material_item_code=material_item_code,
+                    material_name=material_names.get(material_item_code),
                     warehouse=warehouse,
                     uom=uom,
                     qty_per_piece=qty_per_piece,
