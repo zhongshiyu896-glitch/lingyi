@@ -2096,6 +2096,164 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(session.query(LyProductionPlan).count(), 1)
             self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 1)
 
+    def test_submit_multi_sku_sales_order_triggers_material_check_per_order_item(self) -> None:
+        with self.SessionLocal() as session:
+            style = session.query(LyStyleMaster).filter_by(company=self.COMPANY, ys_style_no=self.STYLE).one()
+            style.colors = [
+                {"ys_color_code": "BLK", "ys_color_name": "黑"},
+                {"ys_color_code": "WHT", "ys_color_name": "白"},
+            ]
+            style.sizes = [
+                {"ys_size_code": "S", "ys_size_name": "S"},
+                {"ys_size_code": "M", "ys_size_name": "M"},
+            ]
+            for code, name in [
+                ("FAB-A6-SUBMIT-BLK-S", "提交即算黑色 S 码面料"),
+                ("FAB-A6-SUBMIT-WHT-M", "提交即算白色 M 码面料"),
+            ]:
+                self._seed_master_data_record(session=session, entity_type="material", code=code, name=name)
+            session.add_all(
+                [
+                    LyApparelBomItem(
+                        id=6081,
+                        bom_id=601,
+                        material_item_code="FAB-A6-SUBMIT-BLK-S",
+                        color="黑",
+                        size="S",
+                        part="面料主身",
+                        qty_per_piece=Decimal("1"),
+                        loss_rate=Decimal("0.1"),
+                        uom="米",
+                        remark="供应商:SUP-A6 单价:8",
+                    ),
+                    LyApparelBomItem(
+                        id=6082,
+                        bom_id=601,
+                        material_item_code="FAB-A6-SUBMIT-WHT-M",
+                        color="白",
+                        size="M",
+                        part="面料主身",
+                        qty_per_piece=Decimal("2"),
+                        loss_rate=Decimal("0.2"),
+                        uom="米",
+                        remark="供应商:SUP-A6 单价:9",
+                    ),
+                ]
+            )
+            session.commit()
+
+        sales_order_no = "SO-A6-SUBMIT-MULTI-001"
+        order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers("req-a6-submit-multi-create"),
+            json={
+                "company": self.COMPANY,
+                "customer": "CUST-A6",
+                "operation": "create_draft",
+                "sales_order_no": sales_order_no,
+                "source_order_ref": sales_order_no,
+                "idempotency_key": "idem-so-a6-submit-multi-001",
+                "transaction_date": "2026-06-17",
+                "delivery_date": "2026-06-30",
+                "currency": "CNY",
+                "items": [
+                    {
+                        "style_master_id": self._style_id(),
+                        "item_code": self.STYLE,
+                        "item_name": "A6 Tee",
+                        "color": "黑",
+                        "size": "S",
+                        "qty": 4,
+                        "rate": 80,
+                        "uom": "件",
+                    },
+                    {
+                        "style_master_id": self._style_id(),
+                        "item_code": self.STYLE,
+                        "item_name": "A6 Tee",
+                        "color": "白",
+                        "size": "M",
+                        "qty": 6,
+                        "rate": 80,
+                        "uom": "件",
+                    },
+                ],
+            },
+        )
+        self.assertEqual(order.status_code, 201, order.text)
+        draft_id = int(order.json()["data"]["id"])
+        submit_payload = {
+            "operation": "submit_draft",
+            "company": self.COMPANY,
+            "sales_order_no_or_source_order_ref": sales_order_no,
+            "idempotency_key": "idem-a6-submit-multi-001",
+            "material_check_warehouse": self.WAREHOUSE,
+        }
+
+        submitted = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/submit",
+            headers=self._headers("req-a6-submit-multi"),
+            json=submit_payload,
+        )
+        replay = self.client.post(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}/submit",
+            headers=self._headers("req-a6-submit-multi-replay"),
+            json=submit_payload,
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        submit_items = submitted.json()["data"]["items"]
+        self.assertEqual({item["ys_material_calc_state"] for item in submit_items}, {"已算料"})
+        detail = self.client.get(
+            f"/api/sales-inventory/sales-orders/{sales_order_no}",
+            headers=self._headers("req-a6-submit-multi-detail"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        sales_item_by_color_size = {(row["color"], row["size"]): row["name"] for row in detail.json()["data"]["items"]}
+        self.assertEqual(set(sales_item_by_color_size), {("黑", "S"), ("白", "M")})
+
+        plans = self.client.get(
+            f"/api/production/plans?sales_order={sales_order_no}&page=1&page_size=20",
+            headers=self._headers("req-a6-submit-multi-plans"),
+        )
+        self.assertEqual(plans.status_code, 200, plans.text)
+        plan_rows = plans.json()["data"]["items"]
+        self.assertEqual(len(plan_rows), 2)
+        plan_by_color_size = {(row["color"], row["size"]): row for row in plan_rows}
+        self.assertEqual(set(plan_by_color_size), {("黑", "S"), ("白", "M")})
+        self.assertEqual(plan_by_color_size[("黑", "S")]["sales_order_item"], sales_item_by_color_size[("黑", "S")])
+        self.assertEqual(plan_by_color_size[("白", "M")]["sales_order_item"], sales_item_by_color_size[("白", "M")])
+        self.assertEqual(Decimal(str(plan_by_color_size[("黑", "S")]["planned_qty"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(plan_by_color_size[("白", "M")]["planned_qty"])), Decimal("6.000000"))
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword={sales_order_no}&page=1&page_size=100",
+            headers=self._headers("req-a6-submit-multi-requirements"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_rows = requirements.json()["data"]["items"]
+        self.assertEqual(len(requirement_rows), 4)
+        self.assertEqual({row["sales_order_item"] for row in requirement_rows}, set(sales_item_by_color_size.values()))
+        dimensions_by_material: dict[str, set[tuple[object, object, object, str]]] = {}
+        for row in requirement_rows:
+            dimensions_by_material.setdefault(row["material_item_code"], set()).add(
+                (row["bom_color"], row["bom_size"], row["bom_part"], row["sales_order_item"])
+            )
+        self.assertEqual(
+            dimensions_by_material,
+            {
+                self.MATERIAL: {
+                    (None, None, None, sales_item_by_color_size[("黑", "S")]),
+                    (None, None, None, sales_item_by_color_size[("白", "M")]),
+                },
+                "FAB-A6-SUBMIT-BLK-S": {("黑", "S", "面料主身", sales_item_by_color_size[("黑", "S")])},
+                "FAB-A6-SUBMIT-WHT-M": {("白", "M", "面料主身", sales_item_by_color_size[("白", "M")])},
+            },
+        )
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlan).count(), 2)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 4)
+
     def test_material_check_filters_bom_rows_by_sales_order_color_size(self) -> None:
         with self.SessionLocal() as session:
             self._seed_master_data_record(session=session, entity_type="material", code="FAB-A6-WHT", name="A6 白色配布")
