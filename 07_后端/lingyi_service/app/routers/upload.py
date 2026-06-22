@@ -82,6 +82,26 @@ def _require_image_file(file: UploadFile) -> str:
     return suffix
 
 
+def _require_valid_image_payload(*, content: bytes, suffix: str) -> None:
+    if suffix == ".jpg":
+        if not (content.startswith(b"\xff\xd8\xff") and content.endswith(b"\xff\xd9")):
+            raise BusinessException(code=UPLOAD_INVALID_FILE, message="图片内容与格式不匹配")
+        return
+    if suffix == ".png":
+        if not (content.startswith(b"\x89PNG\r\n\x1a\n") and len(content) >= 33 and content[12:16] == b"IHDR"):
+            raise BusinessException(code=UPLOAD_INVALID_FILE, message="图片内容与格式不匹配")
+        return
+    if suffix == ".gif":
+        if not (content.startswith(b"GIF87a") or content.startswith(b"GIF89a")):
+            raise BusinessException(code=UPLOAD_INVALID_FILE, message="图片内容与格式不匹配")
+        return
+    if suffix == ".webp":
+        if not (content.startswith(b"RIFF") and len(content) >= 12 and content[8:12] == b"WEBP"):
+            raise BusinessException(code=UPLOAD_INVALID_FILE, message="图片内容与格式不匹配")
+        return
+    raise BusinessException(code=UPLOAD_INVALID_FILE, message="仅支持 jpg/png/webp/gif 图片")
+
+
 def _require_upload_permission(
     *,
     session: Session,
@@ -180,20 +200,24 @@ async def upload_image(
 
         digest = hashlib.sha256()
         size = 0
+        content = bytearray()
         stored_filename = f"{uuid4().hex}{suffix}"
         stored_path = target_dir / stored_filename
-        with stored_path.open("wb") as handle:
-            while True:
-                chunk = await file.read(CHUNK_SIZE)
-                if not chunk:
-                    break
-                size += len(chunk)
-                if size > MAX_IMAGE_BYTES:
-                    raise BusinessException(code=UPLOAD_INVALID_FILE, message="图片大小不能超过 5MB")
-                digest.update(chunk)
-                handle.write(chunk)
+        while True:
+            chunk = await file.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_IMAGE_BYTES:
+                raise BusinessException(code=UPLOAD_INVALID_FILE, message="图片大小不能超过 5MB")
+            digest.update(chunk)
+            content.extend(chunk)
         if size <= 0:
             raise BusinessException(code=UPLOAD_INVALID_FILE, message="图片文件不能为空")
+        _require_valid_image_payload(content=bytes(content), suffix=suffix)
+
+        with stored_path.open("wb") as handle:
+            handle.write(content)
 
         relative_path = relative_dir / stored_filename
         url = "/" + str(Path("uploads") / relative_path).replace(os.sep, "/")

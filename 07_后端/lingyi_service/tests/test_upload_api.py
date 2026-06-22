@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 from pathlib import Path
 import tempfile
@@ -79,8 +80,15 @@ class UploadApiTest(unittest.TestCase):
             "X-Request-ID": request_id,
         }
 
+    @staticmethod
+    def _png_bytes() -> bytes:
+        return base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
+            "AAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+        )
+
     def test_material_image_upload_persists_file_and_audit(self) -> None:
-        png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+        png_bytes = self._png_bytes()
         response = self.client.post(
             "/api/uploads/images",
             headers=self._headers(),
@@ -109,6 +117,27 @@ class UploadApiTest(unittest.TestCase):
             self.assertEqual(audit.result, "success")
             self.assertEqual(audit.resource_type, "MATERIAL")
 
+    def test_style_gallery_image_upload_persists_file_and_audit(self) -> None:
+        png_bytes = self._png_bytes()
+        response = self.client.post(
+            "/api/uploads/images",
+            headers=self._headers(request_id="UPLOAD-REQ-GALLERY"),
+            data={"scope": "style_gallery"},
+            files={"file": ("style.png", png_bytes, "image/png")},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()["data"]
+        self.assertEqual(data["scope"], "style_gallery")
+        self.assertTrue(data["url"].startswith("/uploads/images/style_gallery/"))
+        stored_path = Path(self.upload_tmp.name) / data["url"].removeprefix("/uploads/")
+        self.assertTrue(stored_path.exists())
+        self.assertEqual(stored_path.read_bytes(), png_bytes)
+
+        with self.SessionLocal() as session:
+            audit = session.query(LyOperationAuditLog).one()
+            self.assertEqual(audit.result, "success")
+            self.assertEqual(audit.resource_type, "STYLE_GALLERY")
+
     def test_upload_rejects_non_image_and_audits_failure(self) -> None:
         response = self.client.post(
             "/api/uploads/images",
@@ -123,5 +152,21 @@ class UploadApiTest(unittest.TestCase):
             audit = session.query(LyOperationAuditLog).one()
             self.assertEqual(audit.module, "uploads")
             self.assertEqual(audit.action, "upload_image")
+            self.assertEqual(audit.result, "failed")
+            self.assertEqual(audit.error_code, "UPLOAD_INVALID_FILE")
+
+    def test_upload_rejects_fake_image_payload_and_does_not_store_file(self) -> None:
+        response = self.client.post(
+            "/api/uploads/images",
+            headers=self._headers(request_id="UPLOAD-REQ-FAKE"),
+            data={"scope": "material"},
+            files={"file": ("fake.png", b"not a real png", "image/png")},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["code"], "UPLOAD_INVALID_FILE")
+        self.assertFalse(any(Path(self.upload_tmp.name).rglob("*.*")))
+
+        with self.SessionLocal() as session:
+            audit = session.query(LyOperationAuditLog).one()
             self.assertEqual(audit.result, "failed")
             self.assertEqual(audit.error_code, "UPLOAD_INVALID_FILE")
