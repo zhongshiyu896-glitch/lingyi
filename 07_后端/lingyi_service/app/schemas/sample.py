@@ -40,6 +40,7 @@ class SampleOrderWriteBase(BaseModel):
 class SampleOrderCreateRequest(SampleOrderWriteBase):
     """Create sample order."""
 
+    style_master_id: int = Field(..., gt=0)
     operation: Literal["create"] = "create"
     idempotency_key: str = Field(..., min_length=1, max_length=140)
 
@@ -50,7 +51,7 @@ class SampleOrderUpdateRequest(BaseModel):
     operation: Literal["update"] = "update"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
-    style_master_id: int | None = None
+    style_master_id: int | None = Field(default=None, gt=0)
     style_no: str | None = Field(default=None, min_length=1, max_length=140)
     style_name: str | None = Field(default=None, min_length=1, max_length=255)
     customer: str | None = Field(default=None, min_length=1, max_length=255)

@@ -498,14 +498,18 @@ class SampleApiTest(unittest.TestCase):
 
         missing = self._order_payload(sample_no="SMP-A3-MISSING", idempotency_key="IDEMP-SMP-A3-MISSING")
         del missing["style_master_id"]
-        missing["style_no"] = "ST-A3-MISSING"
+        missing["style_no"] = "ST-A3-001"
         missing_response = self.client.post(
             "/api/sample/orders",
             headers=self._headers(request_id="SAMPLE-STYLE-MISSING"),
             json=missing,
         )
-        self.assertEqual(missing_response.status_code, 409)
-        self.assertEqual(missing_response.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+        self.assertEqual(missing_response.status_code, 422)
+        missing_errors = missing_response.json()["detail"]
+        self.assertTrue(
+            any(tuple(error.get("loc", ())) == ("body", "style_master_id") for error in missing_errors),
+            missing_errors,
+        )
 
         disabled = self._order_payload(sample_no="SMP-A3-DISABLED", idempotency_key="IDEMP-SMP-A3-DISABLED")
         disabled["style_master_id"] = disabled_style_id
