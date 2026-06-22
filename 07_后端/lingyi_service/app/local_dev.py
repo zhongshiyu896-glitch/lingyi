@@ -27,8 +27,27 @@ from sqlalchemy.orm import sessionmaker
 os.environ["APP_ENV"] = "development"
 os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
 os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
-os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
 os.environ.setdefault("LINGYI_DB_URL", "sqlite:///./lingyi_service.local.db")
+
+from app.core.permissions import DEFAULT_STATIC_ROLE_ACTIONS  # noqa: E402
+
+
+def _default_fastapi_role_actions_json() -> str:
+    # Local-dev still resolves through the FastAPI permission source; this only seeds role-action config.
+    return json.dumps(
+        {
+            "roles": {
+                role: sorted(actions)
+                for role, actions in sorted(DEFAULT_STATIC_ROLE_ACTIONS.items())
+            }
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+os.environ.setdefault("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", _default_fastapi_role_actions_json())
 
 from app import main as main_module  # noqa: E402
 from app.models.audit import Base as AuditBase  # noqa: E402

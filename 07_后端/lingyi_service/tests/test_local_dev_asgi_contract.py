@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import os
 from pathlib import Path
 import sqlite3
@@ -30,6 +31,7 @@ class LocalDevAsgiContractTest(unittest.TestCase):
             "LINGYI_ALLOW_DEV_AUTH": os.environ.get("LINGYI_ALLOW_DEV_AUTH"),
             "LINGYI_ERPNEXT_BASE_URL": os.environ.get("LINGYI_ERPNEXT_BASE_URL"),
             "LINGYI_PERMISSION_SOURCE": os.environ.get("LINGYI_PERMISSION_SOURCE"),
+            "LINGYI_FASTAPI_ROLE_ACTIONS_JSON": os.environ.get("LINGYI_FASTAPI_ROLE_ACTIONS_JSON"),
             "LINGYI_DB_URL": os.environ.get("LINGYI_DB_URL"),
         }
         self._temp_dir = tempfile.TemporaryDirectory()
@@ -76,7 +78,8 @@ class LocalDevAsgiContractTest(unittest.TestCase):
         os.environ["APP_ENV"] = "development"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
-        os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
         os.environ["LINGYI_DB_URL"] = f"sqlite:///{self._temp_db_path}"
 
     def _load_local_dev_module(self):
@@ -85,21 +88,26 @@ class LocalDevAsgiContractTest(unittest.TestCase):
         sys.modules.pop("app.local_dev", None)
         return importlib.import_module("app.local_dev")
 
-    def test_local_dev_forces_static_source_and_blocks_inherited_erpnext_base_url(self) -> None:
+    def test_local_dev_forces_fastapi_source_and_blocks_inherited_erpnext_base_url(self) -> None:
         os.environ["APP_ENV"] = "production"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "false"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = "http://127.0.0.1:9081"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
         os.environ["LINGYI_DB_URL"] = f"sqlite:///{self._temp_db_path}"
         sys.modules.pop("app.local_dev", None)
 
         local_dev_module = importlib.import_module("app.local_dev")
         engine_db = Path(local_dev_module.main_module.engine.url.database).resolve()
+        role_actions = json.loads(os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"])
 
         self.assertEqual(os.environ["APP_ENV"], "development")
         self.assertEqual(os.environ["LINGYI_ALLOW_DEV_AUTH"], "true")
         self.assertEqual(os.environ["LINGYI_ERPNEXT_BASE_URL"], "")
-        self.assertEqual(os.environ["LINGYI_PERMISSION_SOURCE"], "static")
+        self.assertEqual(os.environ["LINGYI_PERMISSION_SOURCE"], "fastapi")
+        self.assertIn("System Manager", role_actions["roles"])
+        self.assertIn("sales_inventory:read", role_actions["roles"]["System Manager"])
+        self.assertIn("style_master:manage", role_actions["roles"]["System Manager"])
         self.assertEqual(engine_db, self._temp_db_path.resolve())
         self._assert_repo_db_stats_unchanged()
 
