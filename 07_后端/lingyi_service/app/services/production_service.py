@@ -3818,6 +3818,9 @@ class ProductionService:
         )
         created_at = plan.created_at or datetime.utcnow()
         order_date = getattr(sales_header, "transaction_date", None) or created_at.date()
+        planned_qty = self._dec(plan.planned_qty)
+        completed_qty = self._completed_qty(plan=plan, context=context)
+        progress_basis_qty = planned_qty if planned_qty > Decimal("0") else qty
 
         return {
             "id": f"PR-{int(plan.id)}",
@@ -3851,7 +3854,7 @@ class ProductionService:
             "paymentStatus": payment_status,
             "paymentStatusName": self._report_suite_payment_status_name(payment_status),
             "financialRevenueClosed": payment_status == "paid",
-            "progress": Decimal("0"),
+            "progress": self._percent(completed_qty, progress_basis_qty),
             "delayDays": Decimal("0"),
             "remark": "现有页：利润按本地真实订单、发货开票/回款、BOM/利润快照测算；发货开票后以实际开票收入为准；生成利润快照后纳入实际工票工资，financialLedger* 字段按可追溯财务来源归集。",
             "sourceType": (
@@ -4025,8 +4028,7 @@ class ProductionService:
             return fields
         if report_key in {"productOrderProfitReport", "productOrderSampleCompare", "orderTrackingReport"}:
             fields.append(
-                "progress/delayDays：当前报表基础行保留 0 占位；"
-                "待 B 期生产跟进、质检放行、成品入库与发货交付节点后接真实进度/延期"
+                "delayDays：当前未接发货交付延期节点，待 B 期交付闭环后接真实延期天数"
             )
         return fields
 
