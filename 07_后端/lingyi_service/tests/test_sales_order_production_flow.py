@@ -40,6 +40,7 @@ from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.routers.auth import get_db_session as auth_db_dep
+from app.routers.material_purchase import get_db_session as material_purchase_db_dep
 from app.routers.production import get_db_session as production_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
@@ -75,6 +76,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                 db.close()
 
         app.dependency_overrides[auth_db_dep] = _override_db
+        app.dependency_overrides[material_purchase_db_dep] = _override_db
         app.dependency_overrides[sales_inventory_db_dep] = _override_db
         app.dependency_overrides[production_db_dep] = _override_db
         app.dependency_overrides[warehouse_db_dep] = _override_db
@@ -86,6 +88,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
     def tearDownClass(cls) -> None:
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
+        app.dependency_overrides.pop(material_purchase_db_dep, None)
         app.dependency_overrides.pop(sales_inventory_db_dep, None)
         app.dependency_overrides.pop(production_db_dep, None)
         app.dependency_overrides.pop(warehouse_db_dep, None)
@@ -644,6 +647,126 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                 .count(),
                 0,
             )
+
+    def test_plan_material_recheck_cancels_stale_pending_purchase_requirement(self) -> None:
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-STALE-REQ-001",
+            "source_order_ref": "SO-A4-STALE-REQ-001",
+            "idempotency_key": "idem-so-a4-stale-req-001",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Ignored Name",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 100,
+                    "rate": 80,
+                    "uom": "件",
+                }
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+        detail = self.client.get("/api/sales-inventory/sales-orders/SO-A4-STALE-REQ-001", headers=self._headers())
+        self.assertEqual(detail.status_code, 200, detail.text)
+        sales_order_item = detail.json()["data"]["items"][0]["name"]
+
+        create_plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers(),
+            json={
+                "sales_order": "SO-A4-STALE-REQ-001",
+                "sales_order_item": sales_order_item,
+                "item_code": "DEMO-TEE",
+                "bom_id": 1,
+                "planned_qty": 40,
+                "planned_start_date": "2026-06-18",
+                "operation": "create_plan",
+                "idempotency_key": "idem-plan-a4-stale-req-001",
+                "company": "COMP-A",
+            },
+        )
+        self.assertEqual(create_plan.status_code, 200, create_plan.text)
+        plan_id = int(create_plan.json()["data"]["plan_id"])
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-STALE-REQ-001",
+            key="idem-so-a4-stale-req-001-submit",
+        )
+
+        def _run_material_check(scenario: str) -> dict[str, object]:
+            request_id = f"req-{scenario}"
+            with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+                response = self.client.post(
+                    f"/api/production/plans/{plan_id}/material-check",
+                    headers={**self._headers(), "X-Request-ID": request_id},
+                    json={
+                        "warehouse": "WH-STALE",
+                        "operation": "material_check",
+                        "idempotency_key": f"{scenario}-idem-material-check-a4-stale-req-001",
+                        "scenario_tag": scenario,
+                        "plan_id": plan_id,
+                        "sales_order": "SO-A4-STALE-REQ-001",
+                        "sales_order_item": sales_order_item,
+                        "item_code": "DEMO-TEE",
+                        "bom_id": 1,
+                        "request_id": request_id,
+                    },
+                )
+            self.assertEqual(response.status_code, 200, response.text)
+            return response.json()["data"]
+
+        first_check = _run_material_check("Z003-PROD-PLAN-DETAIL-20260617-904")
+        self.assertEqual(first_check["snapshot_count"], 1)
+        self.assertEqual(first_check["items"][0]["material_item_code"], "FABRIC-DEMO")
+        with self.SessionLocal() as session:
+            requirement = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertEqual(str(requirement.status), "pending")
+            self.assertEqual(str(requirement.material_item_code), "FABRIC-DEMO")
+            self.assertEqual(Decimal(str(requirement.net_required_qty)), Decimal("84.000000"))
+
+            bom_item = session.query(LyApparelBomItem).filter(LyApparelBomItem.id == 1).one()
+            bom_item.material_item_code = "FABRIC-REVISED"
+            session.commit()
+
+        second_check = _run_material_check("Z003-PROD-PLAN-DETAIL-20260617-905")
+        self.assertEqual(second_check["snapshot_count"], 1)
+        self.assertEqual(second_check["items"][0]["material_item_code"], "FABRIC-REVISED")
+        self.assertEqual(Decimal(str(second_check["items"][0]["shortage_qty"])), Decimal("84.000000"))
+
+        pending_requirements = self.client.get(
+            "/api/material-purchase/requirements?company=COMP-A&status=pending&keyword=SO-A4-STALE-REQ-001",
+            headers=self._headers(),
+        )
+        self.assertEqual(pending_requirements.status_code, 200, pending_requirements.text)
+        pending_items = pending_requirements.json()["data"]["items"]
+        self.assertEqual(len(pending_items), 1)
+        self.assertEqual(pending_items[0]["material_item_code"], "FABRIC-REVISED")
+
+        with self.SessionLocal() as session:
+            requirements = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.id.asc()).all()
+            self.assertEqual(
+                [(row.material_item_code, row.status) for row in requirements],
+                [("FABRIC-DEMO", "cancelled"), ("FABRIC-REVISED", "pending")],
+            )
+            cancelled = requirements[0]
+            self.assertEqual(cancelled.purchase_no, None)
+            self.assertEqual(Decimal(str(cancelled.purchased_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(cancelled.received_qty)), Decimal("0.000000"))
+            self.assertEqual((cancelled.payload or {}).get("cancel_reason"), "stale_material_check")
+            snapshots = session.query(LyProductionPlanMaterial).order_by(LyProductionPlanMaterial.id.asc()).all()
+            self.assertEqual([row.material_item_code for row in snapshots], ["FABRIC-REVISED"])
 
     def test_sales_order_material_check_auto_creates_plans_and_purchase_requirements(self) -> None:
         order_payload = {

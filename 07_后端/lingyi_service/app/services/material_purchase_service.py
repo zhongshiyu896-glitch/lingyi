@@ -461,6 +461,22 @@ class MaterialPurchaseService:
         ] = {}
         synced_keys: set[tuple[str, str, str, int | None, str | None, str | None, str | None, str, str]] = set()
         now = datetime.now(UTC)
+
+        def _requirement_key(
+            row: LyMaterialPurchaseRequirement,
+        ) -> tuple[str, str, str, int | None, str | None, str | None, str | None, str, str]:
+            return (
+                str(row.company),
+                str(row.source_type),
+                str(row.source_id),
+                int(row.bom_item_id) if row.bom_item_id is not None else None,
+                self._optional_text(row.bom_color),
+                self._optional_text(row.bom_size),
+                self._optional_text(row.bom_part),
+                str(row.material_item_code),
+                str(row.warehouse),
+            )
+
         try:
             for snapshot in snapshots:
                 material_code = self._require_text(snapshot.material_item_code, "material_item_code")
@@ -554,7 +570,7 @@ class MaterialPurchaseService:
                 should_append = requirement_key not in synced_keys
                 if should_append:
                     synced_keys.add(requirement_key)
-                if current_status in {"pending", "completed"}:
+                if current_status in {"pending", "completed", "cancelled"}:
                     if has_completed_purchase and net_required_qty == Decimal("0"):
                         row.status = "completed"
                         if should_append:
@@ -572,6 +588,39 @@ class MaterialPurchaseService:
                     row.status = "completed" if purchased_qty > Decimal("0") and received_qty >= purchased_qty else "purchased"
                 if should_append:
                     synced.append(row)
+            stale_candidates = (
+                self.session.query(LyMaterialPurchaseRequirement)
+                .filter(
+                    LyMaterialPurchaseRequirement.company == str(plan.company),
+                    LyMaterialPurchaseRequirement.source_type == "production_plan",
+                    LyMaterialPurchaseRequirement.source_id == str(plan.id),
+                    LyMaterialPurchaseRequirement.status == "pending",
+                )
+                .with_for_update()
+                .all()
+            )
+            for stale in stale_candidates:
+                if _requirement_key(stale) in synced_keys:
+                    continue
+                if (
+                    stale.purchase_order_id is not None
+                    or stale.purchase_order_item_id is not None
+                    or stale.purchase_no is not None
+                    or Decimal(str(stale.purchased_qty or 0)) > Decimal("0")
+                    or Decimal(str(stale.received_qty or 0)) > Decimal("0")
+                ):
+                    continue
+                payload = dict(stale.payload or {})
+                payload.update(
+                    {
+                        "cancel_reason": "stale_material_check",
+                        "cancelled_by_material_check_at": now.isoformat(),
+                    }
+                )
+                stale.payload = payload
+                stale.status = "cancelled"
+                stale.updated_by = actor
+                stale.updated_at = now
             self.session.flush()
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
