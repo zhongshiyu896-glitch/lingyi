@@ -2919,7 +2919,12 @@ class WarehouseService:
                 fallback_source_warehouse=source_warehouse,
                 fallback_target_warehouse=target_warehouse,
             )
-        self._attach_purchase_requirement_contexts(company=company, item_rows=item_rows)
+        is_material_purchase_receipt = source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt"
+        self._attach_purchase_requirement_contexts(
+            company=company,
+            item_rows=item_rows,
+            strict=is_material_purchase_receipt,
+        )
 
         expected_outbox_payload = self._build_stock_entry_replay_payload(
             company=company,
@@ -2970,7 +2975,6 @@ class WarehouseService:
             )
             return self._build_draft_data(existing_by_source)
 
-        is_material_purchase_receipt = source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt"
         if is_material_purchase_receipt:
             self._validate_material_purchase_receipt(company=company, source_id=source_id, items=item_rows)
 
@@ -4724,7 +4728,7 @@ class WarehouseService:
 
         return normalized_rows
 
-    def _attach_purchase_requirement_contexts(self, *, company: str, item_rows: list[dict[str, Any]]) -> None:
+    def _attach_purchase_requirement_contexts(self, *, company: str, item_rows: list[dict[str, Any]], strict: bool = False) -> None:
         requirement_ids = {
             int(row["purchase_requirement_id"])
             for row in item_rows
@@ -4748,6 +4752,12 @@ class WarehouseService:
                 continue
             requirement = requirements.get(int(raw_requirement_id))
             if requirement is None:
+                if strict:
+                    raise WarehouseServiceError(
+                        409,
+                        "WAREHOUSE_PURCHASE_REQUIREMENT_NOT_FOUND",
+                        f"采购需求行不存在或不属于当前公司: {raw_requirement_id}",
+                    )
                 continue
             if self._text(requirement.source_type) == "production_plan" and not self._text(requirement.sales_order_item):
                 raise WarehouseServiceError(

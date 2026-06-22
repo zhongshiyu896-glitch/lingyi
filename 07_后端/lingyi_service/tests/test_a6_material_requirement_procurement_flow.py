@@ -1266,24 +1266,21 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             order = session.query(LySampleOrder).filter_by(id=order_id).one()
             self._seed_master_data_record(session=session, entity_type="material", code=sample_material, name="样板替代料")
-            session.add(
-                LySampleMaterialBom(
-                    id=701,
-                    company=self.COMPANY,
-                    sample_order_id=order_id,
-                    style_master_id=int(order.style_master_id),
-                    item_code=self.STYLE,
-                    source_bom_id=601,
-                    version_no="S2",
-                    status="draft",
-                    created_by="seed",
-                    updated_by="seed",
-                )
+            sample_bom = (
+                session.query(LySampleMaterialBom)
+                .filter_by(company=self.COMPANY, sample_order_id=order_id)
+                .one()
             )
+            sample_bom.style_master_id = int(order.style_master_id)
+            sample_bom.item_code = self.STYLE
+            sample_bom.source_bom_id = 601
+            sample_bom.version_no = "S2"
+            sample_bom.status = "draft"
+            sample_bom.updated_by = "seed"
+            session.query(LySampleMaterialBomItem).filter_by(bom_id=int(sample_bom.id)).delete()
             session.add(
                 LySampleMaterialBomItem(
-                    id=7011,
-                    bom_id=701,
+                    bom_id=int(sample_bom.id),
                     source_bom_item_id=None,
                     material_item_code=sample_material,
                     color=None,
@@ -4208,6 +4205,173 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(req_b.received_qty)), Decimal("10.000000"))
             self.assertEqual(Decimal(str(line.received_qty)), Decimal("15.000000"))
             self.assertEqual(str(order.status), "received")
+
+    def test_grouped_material_partial_receipt_splits_cross_order_size_traceability(self) -> None:
+        requirement_s = self._seed_requirement(
+            requirement_no="REQ-A6-XSIZE-S",
+            net_required_qty="5",
+            sales_order="SO-A6-XSIZE-001",
+            sales_order_item="SO-A6-XSIZE-001-S",
+            bom_color="黑",
+            bom_size="S",
+            bom_part="门襟",
+        )
+        requirement_m = self._seed_requirement(
+            requirement_no="REQ-A6-XSIZE-M",
+            net_required_qty="8",
+            sales_order="SO-A6-XSIZE-002",
+            sales_order_item="SO-A6-XSIZE-002-M",
+            bom_color="黑",
+            bom_size="M",
+            bom_part="门襟",
+        )
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-xsize-material"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_s, requirement_m],
+                idempotency_key="idem-a6-xsize-material",
+                purchase_no="PO-A6-XSIZE",
+            ),
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        purchase_order = response.json()["data"]["purchase_order"]
+        self.assertEqual(len(purchase_order["items"]), 1)
+        self.assertEqual(purchase_order["items"][0]["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(purchase_order["items"][0]["qty"])), Decimal("13.000000"))
+
+        draft_s = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-XSIZE:{self.MATERIAL}:req:{requirement_s}",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-XSIZE:req-s",
+            qty="5",
+            purchase_requirement_id=requirement_s,
+        )
+        draft_m = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-XSIZE:{self.MATERIAL}:req:{requirement_m}",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-XSIZE:req-m",
+            qty="8",
+            purchase_requirement_id=requirement_m,
+        )
+        self.assertNotEqual(draft_s["id"], draft_m["id"])
+
+        completed = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed&keyword=PO-A6-XSIZE&page=1&page_size=100",
+            headers=self._headers("req-a6-xsize-completed"),
+        )
+        self.assertEqual(completed.status_code, 200, completed.text)
+        completed_by_size = {str(row["bom_size"]): row for row in completed.json()["data"]["items"]}
+        self.assertEqual(set(completed_by_size), {"S", "M"})
+        self.assertEqual(completed_by_size["S"]["id"], requirement_s)
+        self.assertEqual(completed_by_size["M"]["id"], requirement_m)
+        self.assertEqual(completed_by_size["S"]["sales_order_item"], "SO-A6-XSIZE-001-S")
+        self.assertEqual(completed_by_size["M"]["sales_order_item"], "SO-A6-XSIZE-002-M")
+        self.assertEqual(Decimal(str(completed_by_size["S"]["received_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(completed_by_size["M"]["received_qty"])), Decimal("8.000000"))
+
+        ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-xsize-ledger"),
+        )
+        summary = self.client.get(
+            f"/api/warehouse/stock-summary?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-xsize-summary"),
+        )
+        receipts = self.client.get(
+            f"/api/warehouse/purchase-receipts?company={self.COMPANY}&purchase_no=PO-A6-XSIZE&page=1&page_size=100",
+            headers=self._headers("req-a6-xsize-receipts"),
+        )
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        self.assertEqual(summary.status_code, 200, summary.text)
+        self.assertEqual(receipts.status_code, 200, receipts.text)
+        ledger_by_size = {str(row["bom_size"]): row for row in ledger.json()["data"]["items"]}
+        summary_by_size = {str(row["bom_size"]): row for row in summary.json()["data"]["items"]}
+        receipt_by_size = {str(row["bom_size"]): row for row in receipts.json()["data"]["items"]}
+        self.assertEqual(set(ledger_by_size), {"S", "M"})
+        self.assertEqual(set(summary_by_size), {"S", "M"})
+        self.assertEqual(set(receipt_by_size), {"S", "M"})
+        self.assertEqual(ledger_by_size["S"]["purchase_requirement_id"], requirement_s)
+        self.assertEqual(ledger_by_size["M"]["purchase_requirement_id"], requirement_m)
+        self.assertEqual(receipt_by_size["S"]["purchase_requirement_id"], requirement_s)
+        self.assertEqual(receipt_by_size["M"]["purchase_requirement_id"], requirement_m)
+        self.assertEqual(ledger_by_size["S"]["sales_order_item"], "SO-A6-XSIZE-001-S")
+        self.assertEqual(ledger_by_size["M"]["sales_order_item"], "SO-A6-XSIZE-002-M")
+        self.assertEqual(Decimal(str(summary_by_size["S"]["actual_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(summary_by_size["M"]["actual_qty"])), Decimal("8.000000"))
+
+        with self.SessionLocal() as session:
+            req_s = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_s).one()
+            req_m = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_m).one()
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-XSIZE").one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).one()
+
+            self.assertEqual(str(req_s.status), "completed")
+            self.assertEqual(str(req_m.status), "completed")
+            self.assertEqual(Decimal(str(req_s.received_qty)), Decimal("5.000000"))
+            self.assertEqual(Decimal(str(req_m.received_qty)), Decimal("8.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("13.000000"))
+            self.assertEqual(str(order.status), "received")
+
+    def test_purchase_receipt_rejects_unknown_purchase_requirement_id_before_draft_create(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-MISSING-CONTEXT", net_required_qty="5")
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-missing-context-po"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-missing-context-po",
+                purchase_no="PO-A6-MISSING-CONTEXT",
+            ),
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        missing_requirement_id = requirement_id + 100000
+        source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-MISSING-CONTEXT:req:{missing_requirement_id}"
+        receipt = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                self._warehouse_request_id(
+                    idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-MISSING-CONTEXT:bad-req",
+                    source_ref=source_id,
+                    item_code=self.MATERIAL,
+                    quantity="5",
+                )
+            ),
+            json={
+                "operation": "create_stock_entry_draft",
+                "company": self.COMPANY,
+                "purpose": "Material Receipt",
+                "source_type": "material_purchase_order",
+                "source_id": source_id,
+                "source_ref": source_id,
+                "warehouse": self.WAREHOUSE,
+                "item_code": self.MATERIAL,
+                "quantity": "5",
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "create",
+                "scenario_tag": self.WAREHOUSE_SCENARIO,
+                "target_warehouse": self.WAREHOUSE,
+                "idempotency_key": f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-MISSING-CONTEXT:bad-req",
+                "items": [
+                    {
+                        "item_code": self.MATERIAL,
+                        "qty": "5",
+                        "uom": "米",
+                        "target_warehouse": self.WAREHOUSE,
+                        "purchase_requirement_id": missing_requirement_id,
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(receipt.status_code, 409, receipt.text)
+        self.assertEqual(receipt.json()["code"], "WAREHOUSE_PURCHASE_REQUIREMENT_NOT_FOUND")
+        self.assertIn("采购需求行不存在", receipt.json()["message"])
+        with self.SessionLocal() as session:
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_id).one()
+            self.assertEqual(str(requirement.status), "purchased")
+            self.assertEqual(Decimal(str(requirement.received_qty)), Decimal("0.000000"))
+            self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 0)
 
     def test_from_requirements_rejects_mixed_unit_prices_when_grouping_by_material(self) -> None:
         requirement_a = self._seed_requirement(
