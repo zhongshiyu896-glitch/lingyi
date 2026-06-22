@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -107,6 +108,8 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LySubcontractMaterial).delete()
             session.query(LySubcontractStockOutbox).delete()
@@ -794,6 +797,132 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 .count()
             )
             self.assertEqual(audit_count, 1)
+
+    def test_purchase_receipt_audit_fastapi_permission_source_unavailable_does_not_mutate(self) -> None:
+        purchase_payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "purchase_no": "PO-A5-SCOPE-DOWN",
+            "supplier_name": "SUP-A",
+            "transaction_date": "2026-06-16",
+            "expected_delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "idempotency_key": "idem-po-a5-scope-down",
+            "items": [
+                {
+                    "material_item_code": self.ITEM_CODE,
+                    "material_name": "棉布",
+                    "qty": "50",
+                    "uom": "米",
+                    "unit_price": "12.5",
+                    "warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+        create_po = self.client.post("/api/material-purchase/orders", headers=self._headers(), json=purchase_payload)
+        self.assertEqual(create_po.status_code, 201, create_po.text)
+
+        receipt_idem = f"{self.SCENARIO_TAG}:idem-whse-po-a5-scope-down"
+        receipt_source_ref = f"{self.SCENARIO_TAG}:purchase:PO-A5-SCOPE-DOWN"
+        receipt_payload = {
+            "company": "COMP-A",
+            "purpose": "Material Receipt",
+            "source_type": "material_purchase_order",
+            "source_id": receipt_source_ref,
+            "source_ref": receipt_source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "create_stock_entry_draft",
+            "quantity": "20",
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "create",
+            "scenario_tag": self.SCENARIO_TAG,
+            "target_warehouse": self.WAREHOUSE,
+            "idempotency_key": receipt_idem,
+            "items": [
+                {
+                    "item_code": self.ITEM_CODE,
+                    "qty": "20",
+                    "uom": "米",
+                    "target_warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+        receipt = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idem,
+                    source_ref=receipt_source_ref,
+                    quantity="20",
+                )
+            ),
+            json=receipt_payload,
+        )
+        self.assertEqual(receipt.status_code, 201, receipt.text)
+        draft_id = int(receipt.json()["data"]["id"])
+
+        audit_payload = {
+            "reason": "FastAPI 权限源不可用时不得审核采购入库",
+            "idempotency_key": receipt_idem,
+            "source_ref": receipt_source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "audit_stock_entry_draft",
+            "quantity": "20",
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "audit",
+            "scenario_tag": self.SCENARIO_TAG,
+        }
+        audit_request_id = self._warehouse_request_id(
+            idempotency_key=receipt_idem,
+            source_ref=receipt_source_ref,
+            quantity="20",
+            operation="audit_stock_entry_draft",
+            status_action="audit",
+        )
+        env_keys = [
+            "LINGYI_PERMISSION_SOURCE",
+            "LINGYI_FASTAPI_ROLE_ACTIONS_JSON",
+            "LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON",
+        ]
+        previous_env = {key: os.environ.get(key) for key in env_keys}
+        try:
+            os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+            os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"] = json.dumps(
+                {"roles": {"Warehouse Operator": ["warehouse:stock_entry_draft", "warehouse:read"]}},
+            )
+            os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = "[]"
+            response = self.client.post(
+                f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+                headers={
+                    "X-LY-Dev-User": "warehouse.scope.user",
+                    "X-LY-Dev-Roles": "Warehouse Operator",
+                    "X-Request-ID": audit_request_id,
+                },
+                json=audit_payload,
+            )
+
+            self.assertEqual(response.status_code, 503, response.text)
+            self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
+            with self.SessionLocal() as session:
+                draft = session.query(LyWarehouseStockEntryDraft).filter_by(id=draft_id).one()
+                order = session.query(LyMaterialPurchaseOrder).one()
+                line = session.query(LyMaterialPurchaseOrderItem).one()
+                self.assertEqual(str(draft.status), "draft")
+                self.assertEqual(str(order.status), "draft")
+                self.assertEqual(Decimal(str(order.received_qty)), Decimal("0.000000"))
+                self.assertEqual(Decimal(str(line.received_qty)), Decimal("0.000000"))
+                self.assertEqual(session.query(LyWarehouseStockLedgerEntry).count(), 0)
+                security = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+                self.assertIsNotNone(security)
+                self.assertEqual(security.event_type, "PERMISSION_SOURCE_UNAVAILABLE")
+        finally:
+            for key, value in previous_env.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
     def test_purchase_order_receipt_cancel_reverses_received_qty_and_stock(self) -> None:
         purchase_no = "PO-A5-CANCEL-001"
