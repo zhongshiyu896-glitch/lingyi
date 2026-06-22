@@ -4373,6 +4373,88 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(requirement.received_qty)), Decimal("0.000000"))
             self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 0)
 
+    def test_purchase_receipt_rejects_cumulative_over_receipt_for_same_requirement_before_draft_create(self) -> None:
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-OVER-RECEIPT", net_required_qty="5")
+        sibling_requirement_id = self._seed_requirement(
+            requirement_no="REQ-A6-OVER-RECEIPT-SIBLING",
+            net_required_qty="10",
+            sales_order="SO-A6-OVER-RECEIPT-002",
+            sales_order_item="SO-A6-OVER-RECEIPT-002-ITEM",
+        )
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-over-receipt-po"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id, sibling_requirement_id],
+                idempotency_key="idem-a6-over-receipt-po",
+                purchase_no="PO-A6-OVER-RECEIPT",
+            ),
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+
+        self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-OVER-RECEIPT:{self.MATERIAL}:req:{requirement_id}:part-1",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-OVER-RECEIPT:req:{requirement_id}:part-1",
+            qty="4",
+            purchase_requirement_id=requirement_id,
+        )
+
+        over_receipt_source_id = f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-OVER-RECEIPT:{self.MATERIAL}:req:{requirement_id}:part-2"
+        over_receipt = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                self._warehouse_request_id(
+                    idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-OVER-RECEIPT:req:{requirement_id}:part-2",
+                    source_ref=over_receipt_source_id,
+                    item_code=self.MATERIAL,
+                    quantity="2",
+                )
+            ),
+            json={
+                "operation": "create_stock_entry_draft",
+                "company": self.COMPANY,
+                "purpose": "Material Receipt",
+                "source_type": "material_purchase_order",
+                "source_id": over_receipt_source_id,
+                "source_ref": over_receipt_source_id,
+                "warehouse": self.WAREHOUSE,
+                "item_code": self.MATERIAL,
+                "quantity": "2",
+                "business_date": self.BUSINESS_DATE,
+                "status_action": "create",
+                "scenario_tag": self.WAREHOUSE_SCENARIO,
+                "target_warehouse": self.WAREHOUSE,
+                "idempotency_key": f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-OVER-RECEIPT:req:{requirement_id}:part-2",
+                "items": [
+                    {
+                        "item_code": self.MATERIAL,
+                        "qty": "2",
+                        "uom": "米",
+                        "target_warehouse": self.WAREHOUSE,
+                        "purchase_requirement_id": requirement_id,
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(over_receipt.status_code, 409, over_receipt.text)
+        self.assertEqual(over_receipt.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("收货数量超过需求采购数量", over_receipt.json()["message"])
+        with self.SessionLocal() as session:
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_id).one()
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-OVER-RECEIPT").one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).one()
+
+            self.assertEqual(str(requirement.status), "purchased")
+            self.assertEqual(Decimal(str(requirement.received_qty)), Decimal("4.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("4.000000"))
+            self.assertEqual(str(order.status), "partially_received")
+            self.assertEqual(
+                session.query(LyWarehouseStockEntryDraft).filter_by(source_id=over_receipt_source_id).count(),
+                0,
+            )
+
     def test_from_requirements_rejects_mixed_unit_prices_when_grouping_by_material(self) -> None:
         requirement_a = self._seed_requirement(
             requirement_no="REQ-A6-GROUP-PRICE-A",
