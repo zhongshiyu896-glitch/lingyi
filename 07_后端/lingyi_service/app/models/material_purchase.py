@@ -12,7 +12,6 @@ from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import Numeric
 from sqlalchemy import String
-from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
 
@@ -83,15 +82,6 @@ class LyMaterialPurchaseRequirement(Base):
 
     __tablename__ = "ly_material_purchase_requirement"
     __table_args__ = (
-        UniqueConstraint(
-            "company",
-            "source_type",
-            "source_id",
-            "bom_item_id",
-            "material_item_code",
-            "warehouse",
-            name="uk_ly_material_purchase_req_source_material",
-        ),
         Index("uk_ly_material_purchase_req_company_no", "company", "requirement_no", unique=True),
         Index("idx_ly_material_purchase_req_status", "company", "status"),
         Index("idx_ly_material_purchase_req_material", "company", "material_item_code", "status"),
@@ -142,6 +132,21 @@ class LyMaterialPurchaseRequirement(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_by = Column(String(140), nullable=True)
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+Index(
+    "uk_ly_material_purchase_req_source_material",
+    LyMaterialPurchaseRequirement.company,
+    LyMaterialPurchaseRequirement.source_type,
+    LyMaterialPurchaseRequirement.source_id,
+    func.coalesce(LyMaterialPurchaseRequirement.bom_item_id, -1),
+    func.coalesce(LyMaterialPurchaseRequirement.bom_color, ""),
+    func.coalesce(LyMaterialPurchaseRequirement.bom_size, ""),
+    func.coalesce(LyMaterialPurchaseRequirement.bom_part, ""),
+    LyMaterialPurchaseRequirement.material_item_code,
+    LyMaterialPurchaseRequirement.warehouse,
+    unique=True,
+)
 
 
 class LyMaterialPurchaseInvoice(Base):
