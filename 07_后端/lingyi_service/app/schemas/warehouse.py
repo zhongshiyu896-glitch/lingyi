@@ -114,6 +114,11 @@ class WarehousePurchaseReceiptItem(BaseModel):
     accepted_qty: Decimal
     posting_date: date
     status: str
+    purchase_requirement_id: int | None = None
+    sales_order_item: str | None = None
+    bom_color: str | None = None
+    bom_size: str | None = None
+    bom_part: str | None = None
 
 
 class WarehousePurchaseReceiptListData(BaseModel):

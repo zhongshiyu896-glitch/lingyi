@@ -613,6 +613,22 @@ class WarehouseService:
             purchase_nos.discard(None)
             orders = self._material_purchase_order_map(company=normalized_company, purchase_nos=purchase_nos)
             order_lines = self._material_purchase_line_map(company=normalized_company, purchase_nos=purchase_nos)
+            purchase_requirement_ids = [
+                int(line.purchase_requirement_id)
+                for _, line in rows
+                if line.purchase_requirement_id is not None
+            ]
+            purchase_requirement_query = session.query(LyMaterialPurchaseRequirement).filter(
+                LyMaterialPurchaseRequirement.id.in_(purchase_requirement_ids),
+            )
+            if normalized_company:
+                purchase_requirement_query = purchase_requirement_query.filter(
+                    LyMaterialPurchaseRequirement.company == normalized_company,
+                )
+            purchase_requirements = {
+                int(row.id): row
+                for row in purchase_requirement_query.all()
+            } if purchase_requirement_ids else {}
         except SQLAlchemyError as exc:
             raise WarehouseServiceError(500, DATABASE_READ_FAILED, "采购入库读回失败") from exc
 
@@ -633,6 +649,8 @@ class WarehouseService:
             if normalized_status and row_status != normalized_status:
                 continue
             row_warehouse = self._text(line.target_warehouse) or self._text(draft.target_warehouse) or ""
+            purchase_requirement_id = int(line.purchase_requirement_id) if line.purchase_requirement_id is not None else None
+            requirement = purchase_requirements.get(purchase_requirement_id) if purchase_requirement_id is not None else None
             items.append(
                 WarehousePurchaseReceiptItem(
                     receipt_no=self._local_stock_receipt_no(draft=draft),
@@ -646,6 +664,15 @@ class WarehouseService:
                     accepted_qty=Decimal(str(line.qty)),
                     posting_date=self._local_draft_posting_date(draft=draft),
                     status=row_status,
+                    purchase_requirement_id=purchase_requirement_id,
+                    sales_order_item=self._text(line.sales_order_item)
+                    or (self._text(requirement.sales_order_item) if requirement is not None else None),
+                    bom_color=self._text(line.bom_color)
+                    or (self._text(requirement.bom_color) if requirement is not None else None),
+                    bom_size=self._text(line.bom_size)
+                    or (self._text(requirement.bom_size) if requirement is not None else None),
+                    bom_part=self._text(line.bom_part)
+                    or (self._text(requirement.bom_part) if requirement is not None else None),
                 )
             )
 
@@ -4665,6 +4692,12 @@ class WarehouseService:
             requirement = requirements.get(int(raw_requirement_id))
             if requirement is None:
                 continue
+            if self._text(requirement.source_type) == "production_plan" and not self._text(requirement.sales_order_item):
+                raise WarehouseServiceError(
+                    400,
+                    "WAREHOUSE_PURCHASE_REQUIREMENT_CONTEXT_MISSING",
+                    f"采购需求 {raw_requirement_id} 缺少 sales_order_item，不能生成可追溯入库草稿",
+                )
             row["sales_order_item"] = self._text(requirement.sales_order_item)
             row["bom_color"] = self._text(requirement.bom_color)
             row["bom_size"] = self._text(requirement.bom_size)

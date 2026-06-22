@@ -4157,6 +4157,24 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(ledger_rows[-1]["qty_after_transaction"])), Decimal("15.000000"))
         self.assertEqual(Decimal(str(summary.json()["data"]["items"][0]["actual_qty"])), Decimal("15.000000"))
 
+        receipts = self.client.get(
+            f"/api/warehouse/purchase-receipts?company={self.COMPANY}&purchase_no=PO-A6-SPLIT&page=1&page_size=100",
+            headers=self._headers("req-a6-split-receipts"),
+        )
+        self.assertEqual(receipts.status_code, 200, receipts.text)
+        receipt_rows = receipts.json()["data"]["items"]
+        self.assertEqual(len(receipt_rows), 2)
+        receipt_by_part = {str(row["bom_part"]): row for row in receipt_rows}
+        self.assertEqual(set(receipt_by_part), {"前片", "后片"})
+        self.assertEqual(receipt_by_part["前片"]["purchase_requirement_id"], requirement_a)
+        self.assertEqual(receipt_by_part["后片"]["purchase_requirement_id"], requirement_b)
+        self.assertEqual(receipt_by_part["前片"]["sales_order_item"], "SO-A6-SPLIT-001-ITEM")
+        self.assertEqual(receipt_by_part["后片"]["sales_order_item"], "SO-A6-SPLIT-001-ITEM")
+        self.assertEqual(receipt_by_part["前片"]["bom_color"], "黑")
+        self.assertEqual(receipt_by_part["后片"]["bom_color"], "黑")
+        self.assertEqual(receipt_by_part["前片"]["bom_size"], "L")
+        self.assertEqual(receipt_by_part["后片"]["bom_size"], "L")
+
         with self.SessionLocal() as session:
             req_a = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_a).one()
             req_b = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_b).one()

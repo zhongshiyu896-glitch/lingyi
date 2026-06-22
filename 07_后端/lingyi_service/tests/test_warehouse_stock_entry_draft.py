@@ -693,10 +693,64 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
                 .one()
             )
             audit_item = audit.after_data["items"][0]
-            self.assertEqual(audit_item["sales_order_item"], "SO-CTX-001-002")
-            self.assertEqual(audit_item["bom_color"], "黑")
-            self.assertEqual(audit_item["bom_size"], "M")
-            self.assertEqual(audit_item["bom_part"], "前片")
+        self.assertEqual(audit_item["sales_order_item"], "SO-CTX-001-002")
+        self.assertEqual(audit_item["bom_color"], "黑")
+        self.assertEqual(audit_item["bom_size"], "M")
+        self.assertEqual(audit_item["bom_part"], "前片")
+
+    def test_production_requirement_without_sales_order_item_is_rejected(self) -> None:
+        with self.SessionLocal() as session:
+            requirement = LyMaterialPurchaseRequirement(
+                company="COMP-A",
+                requirement_no=f"MR-{self.SCENARIO_TAG}-MISSING-SO-ITEM",
+                source_type="production_plan",
+                source_id="PLAN-CTX-MISSING",
+                source_no="PP-CTX-MISSING",
+                plan_id=1002,
+                bom_item_id=2002,
+                bom_color="黑",
+                bom_size="L",
+                bom_part="袖口",
+                sales_order="SO-CTX-MISSING",
+                sales_order_item=None,
+                item_code="STYLE-CTX-MISSING",
+                material_item_code=self.ITEM_CODE,
+                material_name="缺订单行面料",
+                supplier_name="上下文供应商",
+                warehouse=self.WAREHOUSE,
+                required_qty=Decimal("3"),
+                available_qty=Decimal("0"),
+                net_required_qty=Decimal("3"),
+                purchased_qty=Decimal("3"),
+                received_qty=Decimal("0"),
+                uom="Nos",
+                unit_price=Decimal("0"),
+                status="purchased",
+                purchase_no=f"PO-{self.SCENARIO_TAG}-MISSING",
+                created_by="warehouse.writer",
+            )
+            session.add(requirement)
+            session.flush()
+            requirement_id = int(requirement.id)
+            session.commit()
+
+        payload = self._material_receipt_payload(qty="3")
+        payload["source_type"] = "material_purchase_inbound"
+        payload["source_id"] = f"{self.SCENARIO_TAG}-PUR-IN-MISSING-SO-ITEM"
+        payload["source_ref"] = f"{self.SCENARIO_TAG}-PUR-IN-MISSING-SO-ITEM"
+        payload["idempotency_key"] = f"{self.SCENARIO_TAG}-IDEM-PUR-IN-MISSING-SO-ITEM"
+        payload["items"][0]["purchase_requirement_id"] = requirement_id
+
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("sales_order_item", response.text)
 
     def test_create_material_issue_persists_item_outbox_payload_and_audit(self) -> None:
         payload = self._material_issue_payload(qty="7")
