@@ -24,9 +24,11 @@ from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractOrder
 from app.models.subcontract import LySubcontractStatusLog
 from app.models.subcontract import LySubcontractStockOutbox
+from app.models.warehouse import Base as WarehouseBase
 from app.routers import subcontract as subcontract_router
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.subcontract import get_db_session as subcontract_db_dep
+from app.routers.warehouse import get_db_session as warehouse_db_dep
 from app.services.erpnext_stock_entry_service import ERPNextStockEntryService
 
 
@@ -48,6 +50,7 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
         BomBase.metadata.create_all(bind=cls.engine)
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
         SubcontractBase.metadata.create_all(bind=cls.engine)
+        WarehouseBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         with cls.SessionLocal() as session:
@@ -110,6 +113,7 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
 
         app.dependency_overrides[auth_db_dep] = _override_db
         app.dependency_overrides[subcontract_db_dep] = _override_db
+        app.dependency_overrides[warehouse_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
         main_module.SessionLocal = cls.SessionLocal
         cls.client = TestClient(app)
@@ -119,6 +123,7 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
         app.dependency_overrides.pop(subcontract_db_dep, None)
+        app.dependency_overrides.pop(warehouse_db_dep, None)
         cls.engine.dispose()
 
     def setUp(self) -> None:
@@ -294,6 +299,30 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
         self.assertEqual(materials[0].stock_entry_name, outbox.stock_entry_name)
         self.assertIsNotNone(order)
         self.assertEqual(order.status, "issued")
+
+        ledger = self.client.get(
+            "/api/warehouse/stock-ledger?company=COMP-A&warehouse=WH-A&item_code=MAT-A&page=1&page_size=20",
+            headers=self._headers(role="System Manager"),
+        )
+        summary = self.client.get(
+            "/api/warehouse/stock-summary?company=COMP-A&warehouse=WH-A&item_code=MAT-A",
+            headers=self._headers(role="System Manager"),
+        )
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        self.assertEqual(summary.status_code, 200, summary.text)
+        ledger_rows = ledger.json()["data"]["items"]
+        self.assertEqual(len(ledger_rows), 1)
+        self.assertEqual(ledger_rows[0]["voucher_type"], "Subcontract/Material Issue")
+        self.assertEqual(ledger_rows[0]["voucher_no"], materials[0].issue_batch_no)
+        self.assertEqual(Decimal(str(ledger_rows[0]["actual_qty"])), Decimal("-10.000000"))
+        self.assertEqual(Decimal(str(ledger_rows[0]["qty_after_transaction"])), Decimal("-10.000000"))
+        summary_rows = summary.json()["data"]["items"]
+        self.assertEqual(len(summary_rows), 1)
+        self.assertEqual(Decimal(str(summary_rows[0]["actual_qty"])), Decimal("-10.000000"))
+        self.assertEqual(
+            Decimal(str(summary_rows[0]["actual_qty"])),
+            Decimal(str(ledger_rows[-1]["qty_after_transaction"])),
+        )
 
     def test_issue_material_does_not_call_erpnext_before_commit(self) -> None:
         with patch.object(ERPNextStockEntryService, "create_and_submit_material_issue") as create_mock, patch.object(
