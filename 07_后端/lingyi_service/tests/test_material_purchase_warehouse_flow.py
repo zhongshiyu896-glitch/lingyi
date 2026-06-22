@@ -606,6 +606,38 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             "/api/warehouse/stock-summary?item_code=FAB-A",
             headers=self._headers(),
         )
+        count_scenario_tag = "Z002-WAREHOUSE-COUNT-20260616-101"
+        count_request_id = (
+            f"{count_scenario_tag}-REQ-COUNT-"
+            f"W{self._carrier_code(self.WAREHOUSE, length=8)}-"
+            f"D{date.fromisoformat(self.BUSINESS_DATE).strftime('%Y%m%d')}"
+        )
+        inventory_count = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers(request_id=count_request_id),
+            json={
+                "company": "COMP-A",
+                "warehouse": self.WAREHOUSE,
+                "count_date": self.BUSINESS_DATE,
+                "idempotency_key": f"{count_scenario_tag}:inventory-count-after-po-receipt",
+                "source_ref": f"{count_scenario_tag}:inventory-count-after-po-receipt",
+                "remark": "采购入库后账实平串联",
+                "items": [
+                    {
+                        "item_code": self.ITEM_CODE,
+                        "batch_no": None,
+                        "serial_no": None,
+                        "system_qty": "0",
+                        "counted_qty": "18",
+                        "variance_reason": "采购入库后抽盘",
+                    }
+                ],
+            },
+        )
+        inventory_reconciliation = self.client.get(
+            f"/api/warehouse/inventory-balance-reconciliation?company=COMP-A&warehouse={self.WAREHOUSE}&item_code={self.ITEM_CODE}",
+            headers=self._headers(request_id="req-purchase-receipt-inventory-balance"),
+        )
         return_report = self.client.get(
             "/api/warehouse/factory-return-material-report?item_code=FAB-A",
             headers=self._headers(),
@@ -651,6 +683,17 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             Decimal(str(summary_items[0]["actual_qty"])),
             Decimal(str(ledger_items[-1]["qty_after_transaction"])),
         )
+        self.assertEqual(inventory_count.status_code, 201, inventory_count.text)
+        self.assertEqual(inventory_count.json()["data"]["warehouse"], self.WAREHOUSE)
+        self.assertEqual(inventory_reconciliation.status_code, 200, inventory_reconciliation.text)
+        reconciliation_rows = inventory_reconciliation.json()["data"]["items"]
+        self.assertEqual(inventory_reconciliation.json()["data"]["total"], 1)
+        self.assertEqual(reconciliation_rows[0]["warehouse"], self.WAREHOUSE)
+        self.assertEqual(reconciliation_rows[0]["item_code"], self.ITEM_CODE)
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["book_qty"])), Decimal("20.000000"))
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["actual_qty"])), Decimal("18.000000"))
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["diff_qty"])), Decimal("-2.000000"))
+        self.assertEqual(reconciliation_rows[0]["status"], "pending")
         self.assertEqual(return_report.status_code, 200, return_report.text)
         report_items = return_report.json()["data"]["items"]
         self.assertEqual(report_items, [])
