@@ -207,6 +207,33 @@ class StyleMasterApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyStyleDictionary).count(), 7)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "style_master").count(), 10)
 
+    def test_style_list_can_filter_by_style_id_for_gallery_deep_link(self) -> None:
+        self._seed_style_dictionaries()
+
+        first = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-ID-FILTER-CREATE-001"),
+            json=self._style_payload(style_no="ST-ID-FILTER-001", idempotency_key="IDEMP-ST-ID-FILTER-001-C"),
+        )
+        self.assertEqual(first.status_code, 201)
+        second = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-ID-FILTER-CREATE-002"),
+            json=self._style_payload(style_no="ST-ID-FILTER-002", idempotency_key="IDEMP-ST-ID-FILTER-002-C"),
+        )
+        self.assertEqual(second.status_code, 201)
+        second_id = int(second.json()["data"]["id"])
+
+        listed = self.client.get(
+            f"/api/style-master/styles?company=COMP-A&style_id={second_id}&status=all",
+            headers=self._headers(request_id="STYLE-ID-FILTER-LIST-001"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        body = listed.json()["data"]
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["items"][0]["id"], second_id)
+        self.assertEqual(body["items"][0]["ys_style_no"], "ST-ID-FILTER-002")
+
     def test_style_list_orders_by_latest_created_not_latest_updated(self) -> None:
         self._seed_style_dictionaries()
 

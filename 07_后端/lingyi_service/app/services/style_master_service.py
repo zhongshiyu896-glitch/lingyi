@@ -87,6 +87,7 @@ class StyleMasterService:
         *,
         company: str | None,
         keyword: str | None,
+        style_id: int | None,
         status: str | None,
         page: int,
         page_size: int,
@@ -96,6 +97,8 @@ class StyleMasterService:
             normalized_company = self._optional_text(company)
             if normalized_company:
                 query = query.filter(LyStyleMaster.company == normalized_company)
+            if style_id is not None:
+                query = query.filter(LyStyleMaster.id == int(style_id))
             normalized_status = self._optional_text(status)
             if normalized_status and normalized_status != "all":
                 query = query.filter(LyStyleMaster.ys_style_status == self._normalize_style_status(normalized_status))

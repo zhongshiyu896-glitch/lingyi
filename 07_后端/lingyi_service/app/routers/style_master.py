@@ -166,6 +166,7 @@ def list_styles(
     request: Request,
     company: str | None = Query(default=None),
     keyword: str | None = Query(default=None),
+    style_id: int | None = Query(default=None, ge=1),
     status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -180,7 +181,7 @@ def list_styles(
         resource_type="STYLE_MASTER",
     )
     try:
-        data = StyleMasterService(session).list_styles(company=company, keyword=keyword, status=status, page=page, page_size=page_size)
+        data = StyleMasterService(session).list_styles(company=company, keyword=keyword, style_id=style_id, status=status, page=page, page_size=page_size)
     except AppException as exc:
         return _err(exc)
     return _ok(data)
