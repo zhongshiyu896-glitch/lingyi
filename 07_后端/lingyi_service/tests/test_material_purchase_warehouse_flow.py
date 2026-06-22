@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
 import json
 import os
@@ -284,6 +286,181 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 }
             ],
         }
+
+    def _purchase_order_payload(
+        self,
+        *,
+        purchase_no: str,
+        idempotency_key: str,
+        material_code: str | None = None,
+        qty: str = "10",
+    ) -> dict:
+        material_item_code = material_code or self.ITEM_CODE
+        return {
+            "operation": "create",
+            "company": "COMP-A",
+            "purchase_no": purchase_no,
+            "supplier_name": "SUP-A",
+            "transaction_date": "2026-06-16",
+            "expected_delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "idempotency_key": idempotency_key,
+            "items": [
+                {
+                    "material_item_code": material_item_code,
+                    "material_name": f"{material_item_code}物料",
+                    "qty": qty,
+                    "uom": "米",
+                    "unit_price": "12.5",
+                    "warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+
+    def _material_receipt_payload(
+        self,
+        *,
+        purchase_no: str,
+        idempotency_key: str,
+        qty: str = "5",
+    ) -> tuple[str, dict]:
+        source_ref = f"{self.SCENARIO_TAG}:purchase:{purchase_no}"
+        return source_ref, {
+            "company": "COMP-A",
+            "purpose": "Material Receipt",
+            "source_type": "material_purchase_order",
+            "source_id": source_ref,
+            "source_ref": source_ref,
+            "warehouse": self.WAREHOUSE,
+            "item_code": self.ITEM_CODE,
+            "operation": "create_stock_entry_draft",
+            "quantity": qty,
+            "business_date": self.BUSINESS_DATE,
+            "status_action": "create",
+            "scenario_tag": self.SCENARIO_TAG,
+            "target_warehouse": self.WAREHOUSE,
+            "idempotency_key": idempotency_key,
+            "items": [
+                {
+                    "item_code": self.ITEM_CODE,
+                    "qty": qty,
+                    "uom": "米",
+                    "target_warehouse": self.WAREHOUSE,
+                }
+            ],
+        }
+
+    def test_material_purchase_orders_list_orders_by_created_at_desc_then_id_desc(self) -> None:
+        first = self.client.post(
+            "/api/material-purchase/orders",
+            headers=self._headers(request_id="req-po-sort-a"),
+            json=self._purchase_order_payload(purchase_no="PO-A5-SORT-A", idempotency_key="idem-po-sort-a"),
+        )
+        second = self.client.post(
+            "/api/material-purchase/orders",
+            headers=self._headers(request_id="req-po-sort-b"),
+            json=self._purchase_order_payload(purchase_no="PO-A5-SORT-B", idempotency_key="idem-po-sort-b"),
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        self.assertEqual(second.status_code, 201, second.text)
+
+        same_created_at = datetime(2026, 6, 16, 9, 0, tzinfo=timezone.utc)
+        with self.SessionLocal() as session:
+            rows = (
+                session.query(LyMaterialPurchaseOrder)
+                .filter(LyMaterialPurchaseOrder.purchase_no.in_(["PO-A5-SORT-A", "PO-A5-SORT-B"]))
+                .all()
+            )
+            for row in rows:
+                row.created_at = same_created_at
+            session.commit()
+
+        response = self.client.get("/api/material-purchase/orders?company=COMP-A&page_size=10", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        purchase_nos = [row["purchase_no"] for row in response.json()["data"]["items"]]
+        self.assertEqual(purchase_nos[:2], ["PO-A5-SORT-B", "PO-A5-SORT-A"])
+
+    def test_purchase_receipts_list_orders_by_created_at_desc_then_id_desc(self) -> None:
+        for suffix in ["A", "B"]:
+            purchase_no = f"PO-A5-RECEIPT-SORT-{suffix}"
+            create_po = self.client.post(
+                "/api/material-purchase/orders",
+                headers=self._headers(request_id=f"req-po-receipt-sort-{suffix.lower()}"),
+                json=self._purchase_order_payload(
+                    purchase_no=purchase_no,
+                    idempotency_key=f"idem-po-receipt-sort-{suffix.lower()}",
+                ),
+            )
+            self.assertEqual(create_po.status_code, 201, create_po.text)
+
+            receipt_idem = f"{self.SCENARIO_TAG}:idem-receipt-sort-{suffix.lower()}"
+            source_ref, receipt_payload = self._material_receipt_payload(
+                purchase_no=purchase_no,
+                idempotency_key=receipt_idem,
+            )
+            receipt = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers(
+                    request_id=self._warehouse_request_id(
+                        idempotency_key=receipt_idem,
+                        source_ref=source_ref,
+                        quantity="5",
+                    )
+                ),
+                json=receipt_payload,
+            )
+            self.assertEqual(receipt.status_code, 201, receipt.text)
+            draft_id = int(receipt.json()["data"]["id"])
+            audit = self.client.post(
+                f"/api/warehouse/stock-entry-drafts/{draft_id}/audit",
+                headers=self._headers(
+                    request_id=self._warehouse_request_id(
+                        idempotency_key=receipt_idem,
+                        source_ref=source_ref,
+                        quantity="5",
+                        operation="audit_stock_entry_draft",
+                        status_action="audit",
+                    )
+                ),
+                json={
+                    "reason": "采购入库排序保护",
+                    "idempotency_key": receipt_idem,
+                    "source_ref": source_ref,
+                    "warehouse": self.WAREHOUSE,
+                    "item_code": self.ITEM_CODE,
+                    "operation": "audit_stock_entry_draft",
+                    "quantity": "5",
+                    "business_date": self.BUSINESS_DATE,
+                    "status_action": "audit",
+                    "scenario_tag": self.SCENARIO_TAG,
+                },
+            )
+            self.assertEqual(audit.status_code, 200, audit.text)
+
+        same_created_at = datetime(2026, 6, 16, 9, 30, tzinfo=timezone.utc)
+        with self.SessionLocal() as session:
+            rows = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(
+                    LyWarehouseStockEntryDraft.source_id.in_(
+                        [
+                            f"{self.SCENARIO_TAG}:purchase:PO-A5-RECEIPT-SORT-A",
+                            f"{self.SCENARIO_TAG}:purchase:PO-A5-RECEIPT-SORT-B",
+                        ]
+                    )
+                )
+                .all()
+            )
+            for row in rows:
+                row.created_at = same_created_at
+            session.commit()
+
+        response = self.client.get("/api/warehouse/purchase-receipts?company=COMP-A&page_size=10", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200, response.text)
+        purchase_nos = [row["purchase_no"] for row in response.json()["data"]["items"]]
+        self.assertEqual(purchase_nos[:2], ["PO-A5-RECEIPT-SORT-B", "PO-A5-RECEIPT-SORT-A"])
 
     def test_create_purchase_order_rejects_inactive_material_master(self) -> None:
         inactive_material = "FAB-A-INACTIVE"
@@ -783,9 +960,25 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             order = session.query(LyMaterialPurchaseOrder).one()
             line = session.query(LyMaterialPurchaseOrderItem).one()
+            ledger_rows = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == "COMP-A",
+                    LyWarehouseStockLedgerEntry.item_code == self.ITEM_CODE,
+                    LyWarehouseStockLedgerEntry.warehouse == self.WAREHOUSE,
+                    LyWarehouseStockLedgerEntry.voucher_type == "Stock Entry Draft/Material Receipt",
+                    LyWarehouseStockLedgerEntry.voucher_no == f"DRAFT-{draft_id}",
+                    LyWarehouseStockLedgerEntry.status == "active",
+                )
+                .all()
+            )
             self.assertEqual(str(order.status), "partially_received")
             self.assertEqual(Decimal(str(order.received_qty)), Decimal("20.000000"))
             self.assertEqual(Decimal(str(line.received_qty)), Decimal("20.000000"))
+            self.assertEqual(len(ledger_rows), 1)
+            self.assertEqual(str(ledger_rows[0].source_type), "stock_entry_draft")
+            self.assertEqual(str(ledger_rows[0].source_id), str(draft_id))
+            self.assertEqual(Decimal(str(ledger_rows[0].actual_qty)), Decimal("20.000000"))
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("material_purchase:write", audit_actions)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
