@@ -31,6 +31,7 @@ from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchasePayment
 from app.models.material_purchase import LyMaterialPurchasePaymentOperation
 from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseInvoiceData
@@ -418,9 +419,18 @@ class MaterialPurchaseService:
     def sync_requirements_from_production_plan(self, *, plan: Any, actor: str) -> list[MaterialPurchaseRequirementListItem]:
         """Upsert material requirement pool rows from a production material check."""
         try:
+            plan_id = int(plan.id)
+            locked_plan = (
+                self.session.query(LyProductionPlan)
+                .filter(LyProductionPlan.id == plan_id)
+                .with_for_update()
+                .one_or_none()
+            )
+            if locked_plan is not None:
+                plan = locked_plan
             snapshots = (
                 self.session.query(LyProductionPlanMaterial)
-                .filter(LyProductionPlanMaterial.plan_id == int(plan.id))
+                .filter(LyProductionPlanMaterial.plan_id == plan_id)
                 .order_by(LyProductionPlanMaterial.id.asc())
                 .all()
             )
@@ -437,6 +447,11 @@ class MaterialPurchaseService:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
 
         synced: list[LyMaterialPurchaseRequirement] = []
+        pending_by_key: dict[
+            tuple[str, str, str, int | None, str | None, str | None, str | None, str, str],
+            LyMaterialPurchaseRequirement,
+        ] = {}
+        synced_keys: set[tuple[str, str, str, int | None, str | None, str | None, str | None, str, str]] = set()
         now = datetime.now(UTC)
         try:
             for snapshot in snapshots:
@@ -449,17 +464,31 @@ class MaterialPurchaseService:
                 bom_color = self._optional_text(getattr(snapshot, "bom_color", None))
                 bom_size = self._optional_text(getattr(snapshot, "bom_size", None))
                 bom_part = self._optional_text(getattr(snapshot, "bom_part", None))
-                existing = self._get_requirement_by_source(
-                    company=str(plan.company),
-                    source_type="production_plan",
-                    source_id=str(plan.id),
-                    bom_item_id=(int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None),
-                    bom_color=bom_color,
-                    bom_size=bom_size,
-                    bom_part=bom_part,
-                    material_item_code=material_code,
-                    warehouse=warehouse,
+                bom_item_id = int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None
+                requirement_key = (
+                    str(plan.company),
+                    "production_plan",
+                    str(plan.id),
+                    bom_item_id,
+                    bom_color,
+                    bom_size,
+                    bom_part,
+                    material_code,
+                    warehouse,
                 )
+                existing = pending_by_key.get(requirement_key)
+                if existing is None:
+                    existing = self._get_requirement_by_source(
+                        company=str(plan.company),
+                        source_type="production_plan",
+                        source_id=str(plan.id),
+                        bom_item_id=bom_item_id,
+                        bom_color=bom_color,
+                        bom_size=bom_size,
+                        bom_part=bom_part,
+                        material_item_code=material_code,
+                        warehouse=warehouse,
+                    )
                 row = existing
                 if row is None:
                     row = LyMaterialPurchaseRequirement(
@@ -469,7 +498,7 @@ class MaterialPurchaseService:
                         source_id=str(plan.id),
                         source_no=str(plan.plan_no),
                         plan_id=int(plan.id),
-                        bom_item_id=(int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None),
+                        bom_item_id=bom_item_id,
                         bom_color=bom_color,
                         bom_size=bom_size,
                         bom_part=bom_part,
@@ -479,6 +508,7 @@ class MaterialPurchaseService:
                         created_by=actor,
                     )
                     self.session.add(row)
+                pending_by_key[requirement_key] = row
                 row.source_no = str(plan.plan_no)
                 row.bom_color = bom_color
                 row.bom_size = bom_size
@@ -513,10 +543,14 @@ class MaterialPurchaseService:
                     and Decimal(str(row.purchased_qty or 0)) > Decimal("0")
                     and Decimal(str(row.received_qty or 0)) >= Decimal(str(row.purchased_qty or 0))
                 )
+                should_append = requirement_key not in synced_keys
+                if should_append:
+                    synced_keys.add(requirement_key)
                 if current_status in {"pending", "completed"}:
                     if has_completed_purchase and net_required_qty == Decimal("0"):
                         row.status = "completed"
-                        synced.append(row)
+                        if should_append:
+                            synced.append(row)
                         continue
                     row.purchased_qty = Decimal("0")
                     row.received_qty = Decimal("0")
@@ -528,7 +562,8 @@ class MaterialPurchaseService:
                     purchased_qty = Decimal(str(row.purchased_qty or 0))
                     received_qty = Decimal(str(row.received_qty or 0))
                     row.status = "completed" if purchased_qty > Decimal("0") and received_qty >= purchased_qty else "purchased"
-                synced.append(row)
+                if should_append:
+                    synced.append(row)
             self.session.flush()
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
