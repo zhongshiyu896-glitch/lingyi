@@ -1573,6 +1573,130 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("production:material_issue", audit_actions)
 
+    def test_sales_order_create_preserves_explicit_item_identity_for_plan_binding(self) -> None:
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-CUSTOM-LINE-001",
+            "source_order_ref": "SO-A4-CUSTOM-LINE-001",
+            "idempotency_key": "idem-so-a4-custom-line-001",
+            "transaction_date": "2026-06-21",
+            "delivery_date": "2026-07-15",
+            "currency": "CNY",
+            "items": [
+                {
+                    "sales_order_item": "EXT-LINE-WHITE-M",
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Demo Tee",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 20,
+                    "rate": 80,
+                    "uom": "件",
+                },
+                {
+                    "sales_order_item": "EXT-LINE-WHITE-L",
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Demo Tee",
+                    "color": "白色",
+                    "size": "L",
+                    "qty": 30,
+                    "rate": 80,
+                    "uom": "件",
+                },
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+        self.assertEqual([row["sales_order_item"] for row in create_order.json()["data"]["items"]], [
+            "EXT-LINE-WHITE-M",
+            "EXT-LINE-WHITE-L",
+        ])
+
+        duplicate_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json={
+                **order_payload,
+                "sales_order_no": "SO-A4-CUSTOM-LINE-DUP",
+                "source_order_ref": "SO-A4-CUSTOM-LINE-DUP",
+                "idempotency_key": "idem-so-a4-custom-line-dup",
+                "items": [
+                    order_payload["items"][0],
+                    {**order_payload["items"][1], "sales_order_item": "EXT-LINE-WHITE-M"},
+                ],
+            },
+        )
+        self.assertEqual(duplicate_order.status_code, 409, duplicate_order.text)
+        self.assertEqual(duplicate_order.json()["code"], "SALES_ORDER_ITEM_DUPLICATED")
+
+        detail = self.client.get("/api/sales-inventory/sales-orders/SO-A4-CUSTOM-LINE-001", headers=self._headers())
+        self.assertEqual(detail.status_code, 200, detail.text)
+        detail_items = detail.json()["data"]["items"]
+        self.assertEqual([row["name"] for row in detail_items], ["EXT-LINE-WHITE-M", "EXT-LINE-WHITE-L"])
+
+        update_order = self.client.patch(
+            f"/api/sales-inventory/sales-orders/drafts/{draft_id}",
+            headers=self._headers(),
+            json={
+                **order_payload,
+                "operation": "update_draft",
+                "sales_order_no_or_source_order_ref": "SO-A4-CUSTOM-LINE-001",
+                "idempotency_key": "idem-so-a4-custom-line-001-update",
+                "items": [
+                    {**order_payload["items"][1], "qty": 35},
+                    order_payload["items"][0],
+                ],
+            },
+        )
+        self.assertEqual(update_order.status_code, 200, update_order.text)
+
+        updated_detail = self.client.get("/api/sales-inventory/sales-orders/SO-A4-CUSTOM-LINE-001", headers=self._headers())
+        self.assertEqual(updated_detail.status_code, 200, updated_detail.text)
+        updated_items = updated_detail.json()["data"]["items"]
+        self.assertEqual([row["name"] for row in updated_items], ["EXT-LINE-WHITE-L", "EXT-LINE-WHITE-M"])
+        self.assertEqual(Decimal(str(updated_items[0]["qty"])), Decimal("35.000000"))
+
+        self._submit_sales_order(
+            draft_id=draft_id,
+            sales_order_no="SO-A4-CUSTOM-LINE-001",
+            key="idem-so-a4-custom-line-001-submit",
+        )
+        create_plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers(),
+            json={
+                "sales_order": "SO-A4-CUSTOM-LINE-001",
+                "sales_order_item": "EXT-LINE-WHITE-L",
+                "item_code": "DEMO-TEE",
+                "bom_id": 1,
+                "planned_qty": 12,
+                "planned_start_date": "2026-06-22",
+                "operation": "create_plan",
+                "idempotency_key": "idem-plan-a4-custom-line-001",
+                "company": "COMP-A",
+            },
+        )
+        self.assertEqual(create_plan.status_code, 200, create_plan.text)
+        plan_id = int(create_plan.json()["data"]["plan_id"])
+        self.assertEqual(create_plan.json()["data"]["sales_order_item"], "EXT-LINE-WHITE-L")
+        self.assertEqual(create_plan.json()["data"]["color"], "白色")
+        self.assertEqual(create_plan.json()["data"]["size"], "L")
+        self.assertEqual(Decimal(str(create_plan.json()["data"]["sales_order_item_qty"])), Decimal("35.000000"))
+
+        plan_detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers())
+        self.assertEqual(plan_detail.status_code, 200, plan_detail.text)
+        plan_detail_data = plan_detail.json()["data"]
+        self.assertEqual(plan_detail_data["sales_order_item"], "EXT-LINE-WHITE-L")
+        self.assertEqual(plan_detail_data["color"], "白色")
+        self.assertEqual(plan_detail_data["size"], "L")
+
     def test_sales_order_multi_sku_items_survive_update_and_plan_specific_line(self) -> None:
         with self.SessionLocal() as session:
             session.add(

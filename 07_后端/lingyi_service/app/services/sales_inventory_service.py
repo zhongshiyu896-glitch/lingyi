@@ -327,13 +327,34 @@ class SalesInventoryService:
         session.add(row)
         session.flush()
 
+        reserved_sales_order_items: set[str] = set()
+
+        def _next_sales_order_item_name(preferred_index: int) -> str:
+            preferred = f"{sales_order_no}-{preferred_index:03d}"
+            if preferred not in reserved_sales_order_items:
+                reserved_sales_order_items.add(preferred)
+                return preferred
+            suffix = 1
+            while True:
+                candidate = f"{sales_order_no}-{suffix:03d}"
+                suffix += 1
+                if candidate not in reserved_sales_order_items:
+                    reserved_sales_order_items.add(candidate)
+                    return candidate
+
         for index, item in enumerate(line_rows, start=1):
+            requested_sales_order_item = self._text(item.get("sales_order_item"))
+            if requested_sales_order_item:
+                if requested_sales_order_item in reserved_sales_order_items:
+                    raise SalesInventoryServiceError(409, "SALES_ORDER_ITEM_DUPLICATED", "订单明细行重复提交")
+                reserved_sales_order_items.add(requested_sales_order_item)
+            sales_order_item = requested_sales_order_item or _next_sales_order_item_name(index)
             session.add(
                 LySalesOrderItem(
                     sales_order_id=int(row.id),
                     company=company,
                     line_no=index,
-                    sales_order_item=f"{sales_order_no}-{index:03d}",
+                    sales_order_item=sales_order_item,
                     style_master_id=item["style_master_id"],
                     item_code=item["item_code"],
                     item_name=item["item_name"],
