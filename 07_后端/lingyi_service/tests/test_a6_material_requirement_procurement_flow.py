@@ -2193,6 +2193,206 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(set(requirement_codes), {self.MATERIAL, "FAB-A6-WHT"})
         self.assertNotIn("FAB-A6-BLK", requirement_codes)
 
+    def test_same_material_color_size_different_parts_reaches_procurement_receipt_ready(self) -> None:
+        with self.SessionLocal() as session:
+            style = session.query(LyStyleMaster).filter_by(company=self.COMPANY, ys_style_no=self.STYLE).one()
+            style.colors = [{"ys_color_code": "BLK", "ys_color_name": "黑"}]
+            style.sizes = [{"ys_size_code": "M", "ys_size_name": "M"}]
+            session.query(LyApparelBomItem).filter_by(bom_id=601).delete()
+            session.add_all(
+                [
+                    LyApparelBomItem(
+                        id=6021,
+                        bom_id=601,
+                        material_item_code=self.MATERIAL,
+                        color="黑",
+                        size="M",
+                        part="门襟",
+                        qty_per_piece=Decimal("1"),
+                        loss_rate=Decimal("0"),
+                        uom="米",
+                        remark="供应商:SUP-A6 单价:12.5",
+                    ),
+                    LyApparelBomItem(
+                        id=6022,
+                        bom_id=601,
+                        material_item_code=self.MATERIAL,
+                        color="黑",
+                        size="M",
+                        part="袖口",
+                        qty_per_piece=Decimal("0.5"),
+                        loss_rate=Decimal("0"),
+                        uom="米",
+                        remark="供应商:SUP-A6 单价:12.5",
+                    ),
+                ]
+            )
+            session.commit()
+
+        sales_order_no = "SO-A6-PART-001"
+        order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers("req-a6-part-order"),
+            json={
+                "company": self.COMPANY,
+                "customer": "CUST-A6",
+                "operation": "create_draft",
+                "sales_order_no": sales_order_no,
+                "source_order_ref": sales_order_no,
+                "idempotency_key": "idem-so-a6-part-001",
+                "transaction_date": "2026-06-17",
+                "delivery_date": "2026-06-30",
+                "currency": "CNY",
+                "items": [
+                    {
+                        "style_master_id": self._style_id(),
+                        "item_code": self.STYLE,
+                        "item_name": "A6 Tee",
+                        "color": "黑",
+                        "size": "M",
+                        "qty": 10,
+                        "rate": 80,
+                        "uom": "件",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(order.status_code, 201, order.text)
+        self._submit_sales_order(draft_id=int(order.json()["data"]["id"]), sales_order_no=sales_order_no, suffix="part")
+        detail = self.client.get(f"/api/sales-inventory/sales-orders/{sales_order_no}", headers=self._headers("req-a6-part-detail"))
+        self.assertEqual(detail.status_code, 200, detail.text)
+        sales_order_item = detail.json()["data"]["items"][0]["name"]
+
+        plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers("req-a6-part-plan"),
+            json={
+                "sales_order": sales_order_no,
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "planned_qty": 10,
+                "planned_start_date": "2026-06-18",
+                "operation": "create_plan",
+                "idempotency_key": "idem-plan-a6-part-001",
+                "company": self.COMPANY,
+            },
+        )
+        self.assertEqual(plan.status_code, 200, plan.text)
+        plan_id = int(plan.json()["data"]["plan_id"])
+
+        material_check_scenario = "Z003-PROD-PLAN-DETAIL-20260618-472"
+        request_id = f"req-{material_check_scenario}"
+        material_check = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers={**self._headers(request_id), "X-Request-ID": request_id},
+            json={
+                "warehouse": self.WAREHOUSE,
+                "operation": "material_check",
+                "idempotency_key": f"{material_check_scenario}:idem-a6-part-material-check",
+                "scenario_tag": material_check_scenario,
+                "plan_id": plan_id,
+                "sales_order": sales_order_no,
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "request_id": request_id,
+            },
+        )
+        self.assertEqual(material_check.status_code, 200, material_check.text)
+        material_rows = material_check.json()["data"]["items"]
+        material_by_part = {row["bom_part"]: row for row in material_rows}
+        self.assertEqual(set(material_by_part), {"门襟", "袖口"})
+        self.assertEqual({row["material_item_code"] for row in material_rows}, {self.MATERIAL})
+        self.assertEqual(Decimal(str(material_by_part["门襟"]["required_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(material_by_part["袖口"]["required_qty"])), Decimal("5.000000"))
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword={sales_order_no}&page=1&page_size=100",
+            headers=self._headers("req-a6-part-requirements"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_rows = requirements.json()["data"]["items"]
+        self.assertEqual(len(requirement_rows), 2)
+        requirement_by_part = {row["bom_part"]: row for row in requirement_rows}
+        self.assertEqual(set(requirement_by_part), {"门襟", "袖口"})
+        self.assertEqual({row["material_item_code"] for row in requirement_rows}, {self.MATERIAL})
+        self.assertEqual({row["bom_color"] for row in requirement_rows}, {"黑"})
+        self.assertEqual({row["bom_size"] for row in requirement_rows}, {"M"})
+        self.assertEqual(Decimal(str(requirement_by_part["门襟"]["net_required_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(requirement_by_part["袖口"]["net_required_qty"])), Decimal("5.000000"))
+
+        create_po = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-part-req-to-po"),
+            json=self._from_requirements_payload(
+                requirement_ids=[int(row["id"]) for row in requirement_rows],
+                idempotency_key="idem-a6-part-req-to-po",
+                purchase_no="PO-A6-PART-001",
+                supplier_name="SUP-A6",
+            ),
+        )
+        self.assertEqual(create_po.status_code, 201, create_po.text)
+        purchase_order = create_po.json()["data"]["purchase_order"]
+        self.assertEqual(purchase_order["purchase_no"], "PO-A6-PART-001")
+        self.assertEqual(len(purchase_order["items"]), 1)
+        self.assertEqual(purchase_order["items"][0]["material_item_code"], self.MATERIAL)
+        self.assertEqual(Decimal(str(purchase_order["items"][0]["qty"])), Decimal("15.000000"))
+        self.assertEqual({row["bom_part"] for row in create_po.json()["data"]["requirements"]}, {"门襟", "袖口"})
+
+        self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-PART-001",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-PART-001",
+            qty="15",
+        )
+
+        completed = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed&keyword=PO-A6-PART-001&page=1&page_size=100",
+            headers=self._headers("req-a6-part-completed"),
+        )
+        self.assertEqual(completed.status_code, 200, completed.text)
+        completed_rows = completed.json()["data"]["items"]
+        self.assertEqual(len(completed_rows), 2)
+        self.assertEqual({row["bom_part"] for row in completed_rows}, {"门襟", "袖口"})
+        self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
+        self.assertTrue(all(row["has_completed"] for row in completed_rows))
+
+        ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-part-ledger"),
+        )
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        self.assertEqual(ledger.json()["data"]["total"], 1)
+        self.assertEqual(Decimal(str(ledger.json()["data"]["items"][0]["actual_qty"])), Decimal("15.000000"))
+
+        ready_detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers("req-a6-part-ready"))
+        self.assertEqual(ready_detail.status_code, 200, ready_detail.text)
+        ready_plan = ready_detail.json()["data"]
+        self.assertTrue(ready_plan["material_ready"])
+        self.assertEqual(ready_plan["purchase_status"], "ready")
+        self.assertEqual(ready_plan["pending_requirement_count"], 0)
+        self.assertEqual(Decimal(str(ready_plan["required_qty_total"])), Decimal("15.000000"))
+        self.assertEqual(Decimal(str(ready_plan["available_qty_total"])), Decimal("15.000000"))
+        self.assertEqual(Decimal(str(ready_plan["shortage_qty_total"])), Decimal("0.000000"))
+
+        with self.SessionLocal() as session:
+            snapshots = session.query(LyProductionPlanMaterial).filter_by(plan_id=plan_id).all()
+            requirements_by_part = {
+                str(row.bom_part): row
+                for row in session.query(LyMaterialPurchaseRequirement).filter_by(plan_id=plan_id).all()
+            }
+            persisted_ledger = (
+                session.query(LyWarehouseStockLedgerEntry)
+                .filter_by(company=self.COMPANY, warehouse=self.WAREHOUSE, item_code=self.MATERIAL)
+                .one()
+            )
+        self.assertEqual({str(row.bom_part) for row in snapshots}, {"门襟", "袖口"})
+        self.assertEqual(set(requirements_by_part), {"门襟", "袖口"})
+        self.assertEqual(Decimal(str(requirements_by_part["门襟"].received_qty)), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(requirements_by_part["袖口"].received_qty)), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(persisted_ledger.actual_qty)), Decimal("15.000000"))
+
     def test_multi_sku_color_size_requirements_po_receipt_stock_summary_and_recheck_ready(self) -> None:
         with self.SessionLocal() as session:
             style = session.query(LyStyleMaster).filter_by(company=self.COMPANY, ys_style_no=self.STYLE).one()
