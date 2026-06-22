@@ -6,6 +6,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timezone
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -74,6 +75,8 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
+        os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
@@ -201,6 +204,38 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
 
 class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
     """Warehouse inventory-count state-machine contract."""
+
+    @staticmethod
+    def _fastapi_permission_source_unavailable_env() -> dict[str, str]:
+        return {
+            "LINGYI_PERMISSION_SOURCE": "fastapi",
+            "LINGYI_FASTAPI_ROLE_ACTIONS_JSON": json.dumps(
+                {
+                    "roles": {
+                        "Warehouse Operator": [
+                            "warehouse:inventory_count",
+                            "warehouse:read",
+                        ]
+                    }
+                }
+            ),
+            "LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON": "[]",
+        }
+
+    def _fastapi_operator_headers(self) -> dict[str, str]:
+        headers = self._headers("Warehouse Operator")
+        headers["X-LY-Dev-User"] = "warehouse.fastapi.operator"
+        return headers
+
+    def _assert_permission_source_unavailable_logged(self) -> None:
+        with self.SessionLocal() as session:
+            audit = (
+                session.query(LySecurityAuditLog)
+                .filter(LySecurityAuditLog.event_type == "PERMISSION_SOURCE_UNAVAILABLE")
+                .order_by(LySecurityAuditLog.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(audit)
 
     def test_create_inventory_count_draft_with_permission(self) -> None:
         payload = self._payload()
@@ -400,6 +435,137 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
                 .one()
             )
             self.assertEqual(audit.resource_no, payload["source_ref"])
+
+    def test_create_inventory_count_fastapi_permission_source_bad_config_fails_closed(self) -> None:
+        with patch.dict(os.environ, self._fastapi_permission_source_unavailable_env(), clear=False):
+            response = self.client.post(
+                "/api/warehouse/inventory-counts",
+                headers=self._fastapi_operator_headers(),
+                json=self._payload(),
+            )
+
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseInventoryCount).count(), 0)
+        self._assert_permission_source_unavailable_logged()
+
+    def test_submit_inventory_count_fastapi_permission_source_bad_config_fails_closed(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=self._payload(),
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        count_id = int(create_resp.json()["data"]["id"])
+
+        with patch.dict(os.environ, self._fastapi_permission_source_unavailable_env(), clear=False):
+            response = self.client.post(
+                f"/api/warehouse/inventory-counts/{count_id}/submit",
+                headers=self._fastapi_operator_headers(),
+            )
+
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
+        with self.SessionLocal() as session:
+            count = session.query(LyWarehouseInventoryCount).filter(LyWarehouseInventoryCount.id == count_id).one()
+            self.assertEqual(count.status, "draft")
+            self.assertEqual(
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment")
+                .count(),
+                0,
+            )
+        self._assert_permission_source_unavailable_logged()
+
+    def test_variance_review_inventory_count_fastapi_permission_source_bad_config_fails_closed(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=self._payload(),
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        count_id = int(create_resp.json()["data"]["id"])
+
+        submit_resp = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/submit",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(submit_resp.status_code, 200, submit_resp.text)
+
+        with patch.dict(os.environ, self._fastapi_permission_source_unavailable_env(), clear=False):
+            response = self.client.post(
+                f"/api/warehouse/inventory-counts/{count_id}/variance-review",
+                headers=self._fastapi_operator_headers(),
+            )
+
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
+        with self.SessionLocal() as session:
+            count = session.query(LyWarehouseInventoryCount).filter(LyWarehouseInventoryCount.id == count_id).one()
+            variance_item = (
+                session.query(LyWarehouseInventoryCountItem)
+                .filter(LyWarehouseInventoryCountItem.count_id == count_id)
+                .filter(LyWarehouseInventoryCountItem.item_code == "ITEM-A")
+                .one()
+            )
+            self.assertEqual(count.status, "counted")
+            self.assertEqual(variance_item.review_status, "pending")
+        self._assert_permission_source_unavailable_logged()
+
+    def test_confirm_inventory_count_fastapi_permission_source_bad_config_fails_closed(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=self._payload(),
+        )
+        self.assertEqual(create_resp.status_code, 201, create_resp.text)
+        count_id = int(create_resp.json()["data"]["id"])
+
+        submit_resp = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/submit",
+            headers=self._headers("warehouse:inventory_count"),
+        )
+        self.assertEqual(submit_resp.status_code, 200, submit_resp.text)
+        detail = self.client.get(
+            f"/api/warehouse/inventory-counts/{count_id}",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        variance_item_id = int(detail.json()["data"]["items"][0]["id"])
+        review_complete = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/variance-review",
+            headers=self._headers("warehouse:inventory_count"),
+            json={
+                "items": [
+                    {
+                        "item_id": variance_item_id,
+                        "review_status": "accepted",
+                        "variance_reason": "复核通过",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(review_complete.status_code, 200, review_complete.text)
+
+        with patch.dict(os.environ, self._fastapi_permission_source_unavailable_env(), clear=False):
+            response = self.client.post(
+                f"/api/warehouse/inventory-counts/{count_id}/confirm",
+                headers=self._fastapi_operator_headers(),
+            )
+
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
+        with self.SessionLocal() as session:
+            count = session.query(LyWarehouseInventoryCount).filter(LyWarehouseInventoryCount.id == count_id).one()
+            self.assertEqual(count.status, "variance_review")
+            self.assertEqual(
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "inventory_count_adjustment")
+                .count(),
+                0,
+            )
+        self._assert_permission_source_unavailable_logged()
 
     def test_variance_without_reason_returns_400(self) -> None:
         payload = self._payload()
