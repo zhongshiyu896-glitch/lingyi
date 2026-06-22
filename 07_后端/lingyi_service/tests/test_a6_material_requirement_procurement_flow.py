@@ -2230,6 +2230,16 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                         "rate": 80,
                         "uom": "件",
                     },
+                    {
+                        "style_master_id": self._style_id(),
+                        "item_code": self.STYLE,
+                        "item_name": "A6 Tee",
+                        "color": "白",
+                        "size": "M",
+                        "qty": 3,
+                        "rate": 80,
+                        "uom": "件",
+                    },
                 ],
             },
         )
@@ -2239,16 +2249,17 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         detail = self.client.get(f"/api/sales-inventory/sales-orders/{sales_order_no}", headers=self._headers("req-a6-multi-sku-detail"))
         self.assertEqual(detail.status_code, 200, detail.text)
         sales_items = detail.json()["data"]["items"]
-        sales_item_by_size = {row["size"]: row["name"] for row in sales_items}
-        self.assertEqual(set(sales_item_by_size), {"S", "M"})
+        sales_item_by_color_size = {(row["color"], row["size"]): row["name"] for row in sales_items}
+        self.assertEqual(set(sales_item_by_color_size), {("黑", "S"), ("黑", "M"), ("白", "M")})
 
-        def create_checked_plan(*, size: str, planned_qty: str, sequence: str) -> int:
+        def create_checked_plan(*, color: str, size: str, planned_qty: str, sequence: str) -> int:
+            sales_order_item = sales_item_by_color_size[(color, size)]
             plan = self.client.post(
                 "/api/production/plans",
                 headers=self._headers(f"req-a6-multi-sku-plan-{sequence}"),
                 json={
                     "sales_order": sales_order_no,
-                    "sales_order_item": sales_item_by_size[size],
+                    "sales_order_item": sales_order_item,
                     "item_code": self.STYLE,
                     "bom_id": 601,
                     "planned_qty": planned_qty,
@@ -2272,7 +2283,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                     "scenario_tag": scenario,
                     "plan_id": plan_id,
                     "sales_order": sales_order_no,
-                    "sales_order_item": sales_item_by_size[size],
+                    "sales_order_item": sales_order_item,
                     "item_code": self.STYLE,
                     "bom_id": 601,
                     "request_id": request_id,
@@ -2281,8 +2292,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(material_check.status_code, 200, material_check.text)
             return plan_id
 
-        plan_s = create_checked_plan(size="S", planned_qty="5", sequence="1")
-        plan_m = create_checked_plan(size="M", planned_qty="10", sequence="2")
+        plan_black_s = create_checked_plan(color="黑", size="S", planned_qty="5", sequence="1")
+        plan_black_m = create_checked_plan(color="黑", size="M", planned_qty="10", sequence="2")
+        plan_white_m = create_checked_plan(color="白", size="M", planned_qty="3", sequence="5")
 
         tracking = self.client.get(
             f"/api/production/plans?sales_order={sales_order_no}&page=1&page_size=20",
@@ -2290,16 +2302,18 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         )
         self.assertEqual(tracking.status_code, 200, tracking.text)
         tracking_rows = tracking.json()["data"]["items"]
-        self.assertEqual(len(tracking_rows), 2)
-        tracking_by_size = {row["size"]: row for row in tracking_rows}
-        self.assertEqual(set(tracking_by_size), {"S", "M"})
-        self.assertEqual(tracking_by_size["S"]["sales_order_item"], sales_item_by_size["S"])
-        self.assertEqual(tracking_by_size["M"]["sales_order_item"], sales_item_by_size["M"])
-        self.assertEqual({row["color"] for row in tracking_rows}, {"黑"})
-        self.assertEqual(Decimal(str(tracking_by_size["S"]["planned_qty"])), Decimal("5.000000"))
-        self.assertEqual(Decimal(str(tracking_by_size["M"]["planned_qty"])), Decimal("10.000000"))
-        self.assertEqual(Decimal(str(tracking_by_size["S"]["sales_order_item_qty"])), Decimal("5.000000"))
-        self.assertEqual(Decimal(str(tracking_by_size["M"]["sales_order_item_qty"])), Decimal("10.000000"))
+        self.assertEqual(len(tracking_rows), 3)
+        tracking_by_color_size = {(row["color"], row["size"]): row for row in tracking_rows}
+        self.assertEqual(set(tracking_by_color_size), {("黑", "S"), ("黑", "M"), ("白", "M")})
+        self.assertEqual(tracking_by_color_size[("黑", "S")]["sales_order_item"], sales_item_by_color_size[("黑", "S")])
+        self.assertEqual(tracking_by_color_size[("黑", "M")]["sales_order_item"], sales_item_by_color_size[("黑", "M")])
+        self.assertEqual(tracking_by_color_size[("白", "M")]["sales_order_item"], sales_item_by_color_size[("白", "M")])
+        self.assertEqual(Decimal(str(tracking_by_color_size[("黑", "S")]["planned_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(tracking_by_color_size[("黑", "M")]["planned_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(tracking_by_color_size[("白", "M")]["planned_qty"])), Decimal("3.000000"))
+        self.assertEqual(Decimal(str(tracking_by_color_size[("黑", "S")]["sales_order_item_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(tracking_by_color_size[("黑", "M")]["sales_order_item_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(tracking_by_color_size[("白", "M")]["sales_order_item_qty"])), Decimal("3.000000"))
 
         requirements = self.client.get(
             f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword={sales_order_no}&page=1&page_size=100",
@@ -2307,9 +2321,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         )
         self.assertEqual(requirements.status_code, 200, requirements.text)
         requirement_rows = requirements.json()["data"]["items"]
-        self.assertEqual(len(requirement_rows), 4)
-        self.assertNotIn("FAB-A6-WHT-M", {row["material_item_code"] for row in requirement_rows})
-        self.assertEqual({row["sales_order_item"] for row in requirement_rows}, set(sales_item_by_size.values()))
+        self.assertEqual(len(requirement_rows), 6)
+        self.assertEqual({row["sales_order_item"] for row in requirement_rows}, set(sales_item_by_color_size.values()))
         dimensions_by_material: dict[str, set[tuple[object, object, object, str]]] = {}
         for row in requirement_rows:
             dimensions_by_material.setdefault(row["material_item_code"], set()).add(
@@ -2319,18 +2332,21 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             dimensions_by_material,
             {
                 self.MATERIAL: {
-                    (None, None, None, sales_item_by_size["S"]),
-                    (None, None, None, sales_item_by_size["M"]),
+                    (None, None, None, sales_item_by_color_size[("黑", "S")]),
+                    (None, None, None, sales_item_by_color_size[("黑", "M")]),
+                    (None, None, None, sales_item_by_color_size[("白", "M")]),
                 },
-                "FAB-A6-BLK-S": {("黑", "S", "面料主身", sales_item_by_size["S"])},
-                "FAB-A6-BLK-M": {("黑", "M", "门襟拉链", sales_item_by_size["M"])},
+                "FAB-A6-BLK-S": {("黑", "S", "面料主身", sales_item_by_color_size[("黑", "S")])},
+                "FAB-A6-BLK-M": {("黑", "M", "门襟拉链", sales_item_by_color_size[("黑", "M")])},
+                "FAB-A6-WHT-M": {("白", "M", None, sales_item_by_color_size[("白", "M")])},
             },
         )
 
         expected_qty_by_material = {
-            self.MATERIAL: Decimal("31.500000"),
+            self.MATERIAL: Decimal("37.800000"),
             "FAB-A6-BLK-S": Decimal("5.500000"),
             "FAB-A6-BLK-M": Decimal("24.000000"),
+            "FAB-A6-WHT-M": Decimal("297.000000"),
         }
         net_required_by_material: dict[str, Decimal] = {}
         for row in requirement_rows:
@@ -2346,16 +2362,16 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         )
         self.assertEqual(grouped_requirements.status_code, 200, grouped_requirements.text)
         grouped_rows = grouped_requirements.json()["data"]["items"]
-        self.assertEqual(grouped_requirements.json()["data"]["total"], 3)
+        self.assertEqual(grouped_requirements.json()["data"]["total"], 4)
         grouped_by_material = {row["material_item_code"]: row for row in grouped_rows}
         self.assertEqual(set(grouped_by_material), set(expected_qty_by_material))
         self.assertTrue(grouped_by_material[self.MATERIAL]["is_grouped"])
-        self.assertEqual(grouped_by_material[self.MATERIAL]["requirement_count"], 2)
+        self.assertEqual(grouped_by_material[self.MATERIAL]["requirement_count"], 3)
         self.assertEqual(
             set(grouped_by_material[self.MATERIAL]["requirement_ids"]),
             {int(row["id"]) for row in requirement_rows if row["material_item_code"] == self.MATERIAL},
         )
-        self.assertEqual(Decimal(str(grouped_by_material[self.MATERIAL]["net_required_qty"])), Decimal("31.500000"))
+        self.assertEqual(Decimal(str(grouped_by_material[self.MATERIAL]["net_required_qty"])), Decimal("37.800000"))
         self.assertIn("SO-A6-MULTI-SKU-001", grouped_by_material[self.MATERIAL]["sales_order"])
 
         grouped_requirement_ids = [
@@ -2420,7 +2436,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         )
         self.assertEqual(completed.status_code, 200, completed.text)
         completed_rows = completed.json()["data"]["items"]
-        self.assertEqual(len(completed_rows), 4)
+        self.assertEqual(len(completed_rows), 6)
         completed_dimensions_by_material: dict[str, set[tuple[object, object, object, str]]] = {}
         for row in completed_rows:
             self.assertTrue(row["has_completed"])
@@ -2431,7 +2447,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             )
         self.assertEqual(completed_dimensions_by_material, dimensions_by_material)
 
-        for plan_id in [plan_s, plan_m]:
+        for plan_id in [plan_black_s, plan_black_m, plan_white_m]:
             ready_detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers(f"req-a6-multi-sku-ready-{plan_id}"))
             self.assertEqual(ready_detail.status_code, 200, ready_detail.text)
             ready_plan = ready_detail.json()["data"]
@@ -2441,8 +2457,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(ready_plan["shortage_qty_total"])), Decimal("0.000000"))
 
         for plan_id, sales_order_item, sequence in [
-            (plan_s, sales_item_by_size["S"], "3"),
-            (plan_m, sales_item_by_size["M"], "4"),
+            (plan_black_s, sales_item_by_color_size[("黑", "S")], "3"),
+            (plan_black_m, sales_item_by_color_size[("黑", "M")], "4"),
+            (plan_white_m, sales_item_by_color_size[("白", "M")], "6"),
         ]:
             scenario = f"Z003-PROD-PLAN-DETAIL-20260618-46{sequence}"
             request_id = f"req-{scenario}"

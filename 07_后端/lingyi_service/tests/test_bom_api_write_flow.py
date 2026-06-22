@@ -241,6 +241,81 @@ class BomApiWriteFlowTest(unittest.TestCase):
             ["BOM-LIST-NEWER-CREATED", "BOM-LIST-OLDER-CREATED-LARGER-ID"],
         )
 
+    def test_explode_uses_size_ratio_for_size_rows_and_order_qty_for_common_rows(self) -> None:
+        style_no = "STYLE-BOM-EXPLODE-SIZE"
+        bom_no = f"{self.SCENARIO}:BOM-EXPLODE-SIZE-RATIO"
+        with self.SessionLocal() as session:
+            session.add(self._style(style_no))
+            bom = LyApparelBom(
+                bom_no=bom_no,
+                company=self.COMPANY,
+                item_code=style_no,
+                version_no="V1",
+                is_default=True,
+                status="active",
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(bom)
+            session.flush()
+            session.add_all(
+                [
+                    LyApparelBomItem(
+                        bom_id=int(bom.id),
+                        material_item_code="MAT-SIZE-S",
+                        color="黑",
+                        part="面料主身",
+                        size="S",
+                        qty_per_piece=Decimal("1.0"),
+                        loss_rate=Decimal("0.1"),
+                        uom="米",
+                    ),
+                    LyApparelBomItem(
+                        bom_id=int(bom.id),
+                        material_item_code="MAT-SIZE-M",
+                        color="黑",
+                        part="面料主身",
+                        size="M",
+                        qty_per_piece=Decimal("2.0"),
+                        loss_rate=Decimal("0"),
+                        uom="米",
+                    ),
+                    LyApparelBomItem(
+                        bom_id=int(bom.id),
+                        material_item_code="MAT-COMMON",
+                        qty_per_piece=Decimal("0.5"),
+                        loss_rate=Decimal("0"),
+                        uom="个",
+                    ),
+                ]
+            )
+            session.commit()
+            bom_id = int(bom.id)
+
+        response = self.client.post(
+            f"/api/bom/{bom_id}/explode",
+            headers=self._headers(item_code=style_no, bom_ref=bom_no, role="System Manager"),
+            json={
+                "scenario_tag": self.SCENARIO,
+                "idempotency_key": f"{self.SCENARIO}:explode-size-ratio:{style_no}",
+                "source_ref": bom_no,
+                "bom_no": bom_no,
+                "item_code": style_no,
+                "order_qty": "10",
+                "size_ratio": {"S": "3", "M": "7"},
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        rows = {
+            (row["material_item_code"], row["size"], row["part"]): Decimal(str(row["qty"]))
+            for row in response.json()["data"]["material_requirements"]
+        }
+        self.assertEqual(rows[("MAT-SIZE-S", "S", "面料主身")], Decimal("3.300000"))
+        self.assertEqual(rows[("MAT-SIZE-M", "M", "面料主身")], Decimal("14.000000"))
+        self.assertEqual(rows[("MAT-COMMON", None, None)], Decimal("5.000000"))
+        self.assertEqual(Decimal(str(response.json()["data"]["total_material_qty"])), Decimal("22.300000"))
+
     def test_material_gallery_orders_by_parent_bom_created_time(self) -> None:
         newer_item_code = "STYLE-BOM-GALLERY-NEWER"
         older_item_code = "STYLE-BOM-GALLERY-OLDER"
