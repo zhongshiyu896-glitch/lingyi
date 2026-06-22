@@ -275,6 +275,7 @@ class WarehouseService:
                 bom_size=movement.bom_size,
                 bom_part=movement.bom_part,
                 posting_date=movement.posting_date,
+                posting_time=self._stock_movement_sort_at(movement.sort_at).time().replace(microsecond=0),
                 voucher_type=movement.voucher_type,
                 voucher_no=movement.voucher_no,
                 actual_qty=movement.actual_qty,

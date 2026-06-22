@@ -977,6 +977,12 @@ class ProductionMaterialCheckData(BaseModel):
     """Material check result payload."""
 
     plan_id: int
+    sales_order: Optional[str] = None
+    sales_order_item: Optional[str] = None
+    item_code: Optional[str] = None
+    color: Optional[str] = None
+    size: Optional[str] = None
+    planned_qty: Optional[Decimal] = None
     snapshot_count: int
     items: List[ProductionPlanMaterialSnapshotItem]
 

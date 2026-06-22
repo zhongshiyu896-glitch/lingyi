@@ -4964,7 +4964,11 @@ class ProductionService:
         if existing_operation is not None:
             if str(existing_operation.request_hash) != request_hash:
                 raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
-            return self._production_material_check_data_from_json(existing_operation.response_json)
+            return self._material_check_data_with_plan_context(
+                data=self._production_material_check_data_from_json(existing_operation.response_json),
+                plan=plan,
+                sales_order_item=native_item,
+            )
 
         self._ensure_warehouse_master_active(company=str(plan.company), warehouse=warehouse)
         self._ensure_material_check_status_allowed(plan=plan)
@@ -5077,10 +5081,14 @@ class ProductionService:
             operator=operator,
         )
 
-        response = ProductionMaterialCheckData(
-            plan_id=int(plan.id),
-            snapshot_count=len(snapshot_items),
-            items=snapshot_items,
+        response = self._material_check_data_with_plan_context(
+            data=ProductionMaterialCheckData(
+                plan_id=int(plan.id),
+                snapshot_count=len(snapshot_items),
+                items=snapshot_items,
+            ),
+            plan=plan,
+            sales_order_item=native_item,
         )
         self.session.add(
             LyProductionPlanOperation(
@@ -6408,6 +6416,25 @@ class ProductionService:
         if hasattr(ProductionMaterialCheckData, "model_validate"):
             return ProductionMaterialCheckData.model_validate(payload)
         return ProductionMaterialCheckData.parse_obj(payload)
+
+    def _material_check_data_with_plan_context(
+        self,
+        *,
+        data: ProductionMaterialCheckData,
+        plan: LyProductionPlan,
+        sales_order_item: LySalesOrderItem,
+    ) -> ProductionMaterialCheckData:
+        return ProductionMaterialCheckData(
+            plan_id=int(plan.id),
+            sales_order=str(plan.sales_order),
+            sales_order_item=str(plan.sales_order_item),
+            item_code=str(plan.item_code),
+            color=self._text(getattr(sales_order_item, "color", None)),
+            size=self._text(getattr(sales_order_item, "size", None)),
+            planned_qty=Decimal(str(plan.planned_qty or 0)).quantize(Decimal("0.000001")),
+            snapshot_count=data.snapshot_count,
+            items=data.items,
+        )
 
     @classmethod
     def _production_sales_order_material_check_data_from_json(cls, payload: dict[str, Any]) -> ProductionSalesOrderMaterialCheckData:

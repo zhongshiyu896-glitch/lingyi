@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from datetime import datetime
+from datetime import time
 from decimal import Decimal
 from typing import Generic
 from typing import Literal
@@ -35,6 +36,7 @@ class WarehouseStockLedgerItem(BaseModel):
     bom_size: str | None = None
     bom_part: str | None = None
     posting_date: date
+    posting_time: time = time(0, 0, 0)
     voucher_type: str | None = None
     voucher_no: str | None = None
     actual_qty: Decimal

@@ -1043,6 +1043,10 @@ class ProductionPlanTest(unittest.TestCase):
             ),
         )
         self.assertEqual(check_response.status_code, 200)
+        self.assertEqual(check_response.json()["data"]["sales_order"], "SO-TEST-001")
+        self.assertEqual(check_response.json()["data"]["sales_order_item"], "SOI-001")
+        self.assertEqual(check_response.json()["data"]["item_code"], "ITEM-A")
+        self.assertEqual(Decimal(str(check_response.json()["data"]["planned_qty"])), Decimal("12.000000"))
         self.assertEqual(check_response.json()["data"]["snapshot_count"], 1)
         self.assertEqual(check_response.json()["data"]["items"][0]["warehouse"], "WIP Warehouse - LY")
         self.assertEqual(check_response.json()["data"]["items"][0]["uom"], "Nos")
@@ -1507,6 +1511,13 @@ class ProductionPlanTest(unittest.TestCase):
             json=payload,
         )
         self.assertEqual(first_response.status_code, 200, first_response.text)
+        with self.SessionLocal() as session:
+            operation = session.query(LyProductionPlanOperation).filter_by(plan_id=plan_id).one()
+            legacy_response = dict(operation.response_json)
+            for key in ("sales_order", "sales_order_item", "item_code", "color", "size", "planned_qty"):
+                legacy_response.pop(key, None)
+            operation.response_json = legacy_response
+            session.commit()
 
         self._set_plan_status(plan_id=plan_id, status="cancelled")
         replay_response = self.client.post(

@@ -434,6 +434,7 @@ class Task4FirstReadonlyRealDbTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["data"]["total"], 1)
         self.assertEqual(payload["data"]["items"][0]["warehouse"], "WH-RAW")
+        self.assertEqual(payload["data"]["items"][0]["posting_time"], "08:00:00")
         self.assertEqual(Decimal(payload["data"]["items"][0]["actual_qty"]), Decimal("12"))
 
     def test_bom_and_production_first_batch_read_existing_tables(self) -> None:
