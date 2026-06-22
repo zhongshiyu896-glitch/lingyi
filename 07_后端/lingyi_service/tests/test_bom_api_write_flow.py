@@ -31,6 +31,9 @@ from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
+from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseOrder
+from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleMaster
 from app.routers.auth import get_db_session as auth_db_dep
@@ -55,6 +58,7 @@ class BomApiWriteFlowTest(unittest.TestCase):
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         StyleMasterBase.metadata.create_all(bind=cls.engine)
         BomBase.metadata.create_all(bind=cls.engine)
+        MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -85,6 +89,8 @@ class BomApiWriteFlowTest(unittest.TestCase):
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
+            session.query(LyMaterialPurchaseOrderItem).delete()
+            session.query(LyMaterialPurchaseOrder).delete()
             session.query(LyBomOperation).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
@@ -431,6 +437,81 @@ class BomApiWriteFlowTest(unittest.TestCase):
         self.assertEqual(
             [item["bom_no"] for item in payload["items"]],
             ["BOM-UNIT-NEWER-CREATED", "BOM-UNIT-OLDER-CREATED-LARGER-ID"],
+        )
+
+    def test_purchase_orders_order_by_purchase_created_time(self) -> None:
+        with self.SessionLocal() as session:
+            newer_order = LyMaterialPurchaseOrder(
+                company=self.COMPANY,
+                purchase_no="PO-BOM-NEWER-CREATED",
+                supplier_name="新采购供应商",
+                status="draft",
+                total_qty=Decimal("2"),
+                received_qty=Decimal("0"),
+                total_amount=Decimal("20"),
+                created_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+                updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(newer_order)
+            session.flush()
+            session.add(
+                LyMaterialPurchaseOrderItem(
+                    order_id=int(newer_order.id),
+                    company=self.COMPANY,
+                    item_code="STYLE-PO-NEWER",
+                    material_item_code="MAT-PO-NEWER",
+                    material_name="新采购物料",
+                    qty=Decimal("2"),
+                    received_qty=Decimal("0"),
+                    uom="米",
+                    unit_price=Decimal("10"),
+                    amount=Decimal("20"),
+                )
+            )
+            older_order = LyMaterialPurchaseOrder(
+                company=self.COMPANY,
+                purchase_no="PO-BOM-OLDER-CREATED-LARGER-ID",
+                supplier_name="旧采购供应商",
+                status="draft",
+                total_qty=Decimal("1"),
+                received_qty=Decimal("0"),
+                total_amount=Decimal("9"),
+                created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+                updated_at=datetime(2026, 4, 3, tzinfo=timezone.utc),
+                created_by="seed",
+                updated_by="seed",
+            )
+            session.add(older_order)
+            session.flush()
+            session.add(
+                LyMaterialPurchaseOrderItem(
+                    order_id=int(older_order.id),
+                    company=self.COMPANY,
+                    item_code="STYLE-PO-OLDER",
+                    material_item_code="MAT-PO-OLDER",
+                    material_name="旧采购物料",
+                    qty=Decimal("1"),
+                    received_qty=Decimal("0"),
+                    uom="个",
+                    unit_price=Decimal("9"),
+                    amount=Decimal("9"),
+                )
+            )
+            session.commit()
+
+        response = self.client.get(
+            "/api/bom/purchase-orders?page=1&page_size=20",
+            headers=self._headers(item_code="STYLE-PO-NEWER", bom_ref="PO-BOM", role="System Manager"),
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 2)
+        self.assertEqual(
+            [item["purchase_no"] for item in payload["items"]],
+            ["PO-BOM-NEWER-CREATED", "PO-BOM-OLDER-CREATED-LARGER-ID"],
         )
 
     def test_create_bom_http_success_and_duplicate_conflict(self) -> None:

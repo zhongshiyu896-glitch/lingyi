@@ -840,7 +840,11 @@ class BomService:
                 sql = sql.filter(LyMaterialPurchaseOrderItem.warehouse.in_(sorted(allowed_warehouses)))
 
             rows: list[tuple[LyMaterialPurchaseOrder, LyMaterialPurchaseOrderItem]] = (
-                sql.order_by(LyMaterialPurchaseOrder.id.desc(), LyMaterialPurchaseOrderItem.id.asc()).all()
+                sql.order_by(
+                    LyMaterialPurchaseOrder.created_at.desc(),
+                    LyMaterialPurchaseOrder.id.desc(),
+                    LyMaterialPurchaseOrderItem.id.asc(),
+                ).all()
             )
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc

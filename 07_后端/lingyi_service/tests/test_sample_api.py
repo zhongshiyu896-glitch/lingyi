@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+from datetime import datetime
 from decimal import Decimal
 import os
 import unittest
@@ -267,6 +269,41 @@ class SampleApiTest(unittest.TestCase):
             self.assertEqual(row.reverse_reason, "返改")
             self.assertEqual(row.style_master_id, second_style_id)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 4)
+
+    def test_sample_order_list_orders_by_latest_created_not_latest_updated(self) -> None:
+        first = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-ORDER-SORT-CREATE-001"),
+            json=self._order_payload(sample_no="SMP-SORT-001", idempotency_key="IDEMP-SMP-SORT-001-C"),
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        second = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-ORDER-SORT-CREATE-002"),
+            json=self._order_payload(sample_no="SMP-SORT-002", idempotency_key="IDEMP-SMP-SORT-002-C"),
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+        first_id = int(first.json()["data"]["id"])
+        second_id = int(second.json()["data"]["id"])
+
+        with self.SessionLocal() as session:
+            rows = session.query(LySampleOrder).filter(LySampleOrder.id.in_([first_id, second_id])).all()
+            for row in rows:
+                if int(row.id) == first_id:
+                    row.created_at = datetime(2026, 6, 20, 8, 0, tzinfo=UTC)
+                    row.updated_at = datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+                else:
+                    row.created_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+                    row.updated_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+            session.commit()
+
+        listed = self.client.get(
+            "/api/sample/orders?company=COMP-A&page=1&page_size=10",
+            headers=self._headers(request_id="SAMPLE-ORDER-SORT-LIST-001"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        sample_nos = [item["sample_no"] for item in listed.json()["data"]["items"]]
+        self.assertEqual(sample_nos[:2], ["SMP-SORT-002", "SMP-SORT-001"])
 
     def test_sample_order_style_master_id_only_create_and_update(self) -> None:
         with self.SessionLocal() as session:
@@ -1019,6 +1056,65 @@ class SampleApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LySampleTrackingNode).count(), 0)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 7)
+
+    def test_tracking_template_list_orders_by_latest_created_not_latest_updated(self) -> None:
+        first = self.client.post(
+            "/api/sample/tracking-templates",
+            headers=self._headers(request_id="SAMPLE-TPL-SORT-CREATE-001"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "template_code": "STPL-SORT-001",
+                "name": "先建样板模板",
+                "category": "女装",
+                "group": "打样",
+                "status": "enabled",
+                "owner": "设计",
+                "version": "V1",
+                "summary": "排序测试",
+                "idempotency_key": "IDEMP-STPL-SORT-001-C",
+            },
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        second = self.client.post(
+            "/api/sample/tracking-templates",
+            headers=self._headers(request_id="SAMPLE-TPL-SORT-CREATE-002"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "template_code": "STPL-SORT-002",
+                "name": "后建样板模板",
+                "category": "女装",
+                "group": "打样",
+                "status": "enabled",
+                "owner": "设计",
+                "version": "V1",
+                "summary": "排序测试",
+                "idempotency_key": "IDEMP-STPL-SORT-002-C",
+            },
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+        first_id = int(first.json()["data"]["id"])
+        second_id = int(second.json()["data"]["id"])
+
+        with self.SessionLocal() as session:
+            rows = session.query(LySampleTrackingTemplate).filter(LySampleTrackingTemplate.id.in_([first_id, second_id])).all()
+            for row in rows:
+                if int(row.id) == first_id:
+                    row.created_at = datetime(2026, 6, 20, 8, 0, tzinfo=UTC)
+                    row.updated_at = datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+                else:
+                    row.created_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+                    row.updated_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+            session.commit()
+
+        listed = self.client.get(
+            "/api/sample/tracking-templates?company=COMP-A&page=1&page_size=10",
+            headers=self._headers(request_id="SAMPLE-TPL-SORT-LIST-001"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        template_codes = [item["template_code"] for item in listed.json()["data"]["items"]]
+        self.assertEqual(template_codes[:2], ["STPL-SORT-002", "STPL-SORT-001"])
 
 
 if __name__ == "__main__":
