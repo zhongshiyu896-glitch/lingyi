@@ -465,6 +465,19 @@ class MaterialBomApiTest(unittest.TestCase):
         copied_source_item_id = copied.json()["data"]["items"][0]["source_bom_item_id"]
         self.assertIsNotNone(copied_source_item_id)
 
+        copied_readback = self.client.get(
+            f"/api/sample/orders/{order_id}/material-bom?company=COMP-MB",
+            headers=self._headers(request_id="SAMPLE-MB-COPY-READBACK"),
+        )
+        self.assertEqual(copied_readback.status_code, 200, copied_readback.text)
+        copied_readback_item = copied_readback.json()["data"]["items"][0]
+        self.assertEqual(copied_readback_item["source_bom_item_id"], copied_source_item_id)
+        self.assertEqual(copied_readback_item["material_item_code"], "FAB-BLK-001")
+        self.assertEqual(copied_readback_item["color"], "黑")
+        self.assertEqual(copied_readback_item["size"], "M")
+        self.assertEqual(copied_readback_item["part"], "前片")
+        self.assertEqual(copied_readback_item["uom"], "米")
+
         edited = self.client.put(
             f"/api/sample/orders/{order_id}/material-bom",
             headers=self._headers(request_id="SAMPLE-MB-EDIT"),
@@ -494,6 +507,21 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertTrue(edited.json()["data"]["items"][0]["is_alternative"])
         self.assertEqual(edited.json()["data"]["items"][0]["size"], "M")
         self.assertEqual(edited.json()["data"]["items"][0]["source_bom_item_id"], copied_source_item_id)
+
+        edited_readback = self.client.get(
+            f"/api/sample/orders/{order_id}/material-bom?company=COMP-MB",
+            headers=self._headers(request_id="SAMPLE-MB-EDIT-READBACK"),
+        )
+        self.assertEqual(edited_readback.status_code, 200, edited_readback.text)
+        edited_readback_item = edited_readback.json()["data"]["items"][0]
+        self.assertEqual(edited_readback_item["source_bom_item_id"], copied_source_item_id)
+        self.assertEqual(edited_readback_item["material_item_code"], "FAB-ALT-001")
+        self.assertEqual(edited_readback_item["color"], "黑")
+        self.assertEqual(edited_readback_item["size"], "M")
+        self.assertEqual(edited_readback_item["part"], "袖口")
+        self.assertEqual(edited_readback_item["uom"], "米")
+        self.assertTrue(edited_readback_item["is_alternative"])
+        self.assertEqual(edited_readback_item["replace_group"], "FAB-01")
 
         invalid_source = self.client.put(
             f"/api/sample/orders/{order_id}/material-bom",
