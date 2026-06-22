@@ -95,6 +95,7 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
@@ -356,6 +357,9 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
         warehouses: list[str] | None = None,
     ) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"] = json.dumps(
+            {"roles": {"Purchasing Manager": ["material_purchase:read", "material_purchase:write"]}},
+        )
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
             {
                 "users": {

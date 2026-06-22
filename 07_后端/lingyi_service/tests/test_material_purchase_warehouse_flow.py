@@ -694,6 +694,66 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(reconciliation_rows[0]["actual_qty"])), Decimal("18.000000"))
         self.assertEqual(Decimal(str(reconciliation_rows[0]["diff_qty"])), Decimal("-2.000000"))
         self.assertEqual(reconciliation_rows[0]["status"], "pending")
+        count_id = int(inventory_count.json()["data"]["id"])
+        count_item_id = int(inventory_count.json()["data"]["items"][0]["id"])
+        submit_count = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/submit",
+            headers=self._headers(request_id=count_request_id),
+        )
+        self.assertEqual(submit_count.status_code, 200, submit_count.text)
+        self.assertEqual(submit_count.json()["data"]["status"], "counted")
+        review_count = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/variance-review",
+            headers=self._headers(request_id=count_request_id),
+            json={
+                "items": [
+                    {
+                        "item_id": count_item_id,
+                        "review_status": "accepted",
+                        "variance_reason": "采购入库后盘点复核通过",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(review_count.status_code, 200, review_count.text)
+        self.assertEqual(review_count.json()["data"]["variance_stats"]["pending_review_items"], 0)
+        confirm_count = self.client.post(
+            f"/api/warehouse/inventory-counts/{count_id}/confirm",
+            headers=self._headers(request_id=count_request_id),
+        )
+        self.assertEqual(confirm_count.status_code, 200, confirm_count.text)
+        self.assertEqual(confirm_count.json()["data"]["status"], "confirmed")
+        adjusted_summary = self.client.get(
+            "/api/warehouse/stock-summary?item_code=FAB-A",
+            headers=self._headers(request_id="req-purchase-receipt-inventory-adjusted-summary"),
+        )
+        adjusted_ledger = self.client.get(
+            "/api/warehouse/stock-ledger?item_code=FAB-A",
+            headers=self._headers(request_id="req-purchase-receipt-inventory-adjusted-ledger"),
+        )
+        adjusted_reconciliation = self.client.get(
+            f"/api/warehouse/inventory-balance-reconciliation?company=COMP-A&warehouse={self.WAREHOUSE}&item_code={self.ITEM_CODE}",
+            headers=self._headers(request_id="req-purchase-receipt-inventory-balanced"),
+        )
+        self.assertEqual(adjusted_summary.status_code, 200, adjusted_summary.text)
+        adjusted_summary_items = adjusted_summary.json()["data"]["items"]
+        self.assertEqual(Decimal(str(adjusted_summary_items[0]["actual_qty"])), Decimal("18.000000"))
+        self.assertEqual(adjusted_ledger.status_code, 200, adjusted_ledger.text)
+        adjusted_ledger_items = adjusted_ledger.json()["data"]["items"]
+        self.assertEqual(
+            sorted(Decimal(str(row["actual_qty"])) for row in adjusted_ledger_items),
+            [Decimal("-2.000000"), Decimal("20.000000")],
+        )
+        adjustment_rows = [row for row in adjusted_ledger_items if Decimal(str(row["actual_qty"])) == Decimal("-2.000000")]
+        self.assertEqual(len(adjustment_rows), 1)
+        self.assertEqual(adjustment_rows[0]["voucher_type"], "Stock Entry Draft/Material Issue")
+        self.assertEqual(adjusted_reconciliation.status_code, 200, adjusted_reconciliation.text)
+        adjusted_reconciliation_rows = adjusted_reconciliation.json()["data"]["items"]
+        self.assertEqual(adjusted_reconciliation.json()["data"]["total"], 1)
+        self.assertEqual(Decimal(str(adjusted_reconciliation_rows[0]["book_qty"])), Decimal("18.000000"))
+        self.assertEqual(Decimal(str(adjusted_reconciliation_rows[0]["actual_qty"])), Decimal("18.000000"))
+        self.assertEqual(Decimal(str(adjusted_reconciliation_rows[0]["diff_qty"])), Decimal("0.000000"))
+        self.assertEqual(adjusted_reconciliation_rows[0]["status"], "balanced")
         self.assertEqual(return_report.status_code, 200, return_report.text)
         report_items = return_report.json()["data"]["items"]
         self.assertEqual(report_items, [])
