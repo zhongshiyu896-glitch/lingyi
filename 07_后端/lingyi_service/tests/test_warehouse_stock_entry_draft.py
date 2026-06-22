@@ -515,6 +515,73 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
             )
             self.assertEqual(str(outbox.status), "in_pending")
 
+    def test_purchase_requirement_id_survives_create_read_list_outbox_and_audit_snapshot(self) -> None:
+        payload = self._material_receipt_payload(qty="9")
+        payload["source_type"] = "material_purchase_inbound"
+        payload["source_id"] = f"{self.SCENARIO_TAG}-PUR-IN-001"
+        payload["source_ref"] = f"{self.SCENARIO_TAG}-PUR-IN-001"
+        payload["idempotency_key"] = f"{self.SCENARIO_TAG}-IDEM-PUR-IN-001"
+        payload["items"][0]["purchase_requirement_id"] = 987654
+
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        body = response.json()["data"]
+        draft_id = int(body["id"])
+        self.assertEqual(body["items"][0]["purchase_requirement_id"], 987654)
+
+        detail = self.client.get(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertEqual(detail.json()["data"]["items"][0]["purchase_requirement_id"], 987654)
+
+        listed = self.client.get(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:read"),
+            params={"company": "COMP-A", "source_type": "material_purchase_inbound"},
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(listed.json()["data"]["total"], 1)
+        self.assertEqual(listed.json()["data"]["items"][0]["items"][0]["purchase_requirement_id"], 987654)
+
+        outbox_status = self.client.get(
+            f"/api/warehouse/stock-entry-drafts/{draft_id}/outbox-status",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(outbox_status.status_code, 200, outbox_status.text)
+        self.assertEqual(outbox_status.json()["data"]["status"], "in_pending")
+
+        with self.SessionLocal() as session:
+            item = (
+                session.query(LyWarehouseStockEntryDraftItem)
+                .filter(LyWarehouseStockEntryDraftItem.draft_id == draft_id)
+                .one()
+            )
+            self.assertEqual(int(item.purchase_requirement_id), 987654)
+
+            outbox = session.query(LyWarehouseStockEntryOutboxEvent).filter_by(draft_id=draft_id).one()
+            self.assertEqual(outbox.payload["items"][0]["purchase_requirement_id"], 987654)
+
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:stock_entry_draft",
+                    LyOperationAuditLog.result == "success",
+                    LyOperationAuditLog.resource_id == draft_id,
+                )
+                .one()
+            )
+            self.assertEqual(audit.after_data["items"][0]["purchase_requirement_id"], 987654)
+
     def test_create_material_issue_persists_item_outbox_payload_and_audit(self) -> None:
         payload = self._material_issue_payload(qty="7")
         response = self.client.post(
