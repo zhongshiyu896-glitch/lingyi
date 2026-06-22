@@ -59,6 +59,8 @@ from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseInventoryCount
+from app.models.warehouse import LyWarehouseInventoryCountItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.finance_approval import get_db_session as finance_approval_db_dep
 from app.routers.material_purchase import get_db_session as material_purchase_db_dep
@@ -150,6 +152,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             session.query(LyMaterialPurchasePaymentOperation).delete()
             session.query(LyMaterialPurchasePayment).delete()
             session.query(LyMaterialPurchaseInvoice).delete()
+            session.query(LyWarehouseInventoryCountItem).delete()
+            session.query(LyWarehouseInventoryCount).delete()
             session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
@@ -624,6 +628,14 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             ]
         )
 
+    @classmethod
+    def _inventory_count_request_id(cls, *, warehouse: str | None = None, count_date: str | None = None) -> str:
+        normalized_date = date.fromisoformat(count_date or cls.BUSINESS_DATE).strftime("%Y%m%d")
+        return (
+            "Z002-WAREHOUSE-COUNT-20260618-601-REQ-COUNT-"
+            f"W{cls._carrier_code(warehouse or cls.WAREHOUSE, length=8)}-D{normalized_date}"
+        )
+
     def _create_stock_receipt(
         self,
         *,
@@ -704,6 +716,50 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         )
         self.assertEqual(audit_response.status_code, 200, audit_response.text)
         return audit_response.json()["data"]
+
+    def _assert_balanced_inventory_reconciliation(self, *, item_code: str, expected_qty: Decimal, suffix: str) -> None:
+        scenario = "Z002-WAREHOUSE-COUNT-20260618-601"
+        request_id = self._inventory_count_request_id()
+        inventory_count = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers(request_id),
+            json={
+                "company": self.COMPANY,
+                "warehouse": self.WAREHOUSE,
+                "count_date": self.BUSINESS_DATE,
+                "idempotency_key": f"{scenario}:idem-a6-multi-sku-count-{suffix}",
+                "source_ref": f"{scenario}:count:{suffix}",
+                "remark": "A6 多颜色尺码采购入库后账实平",
+                "items": [
+                    {
+                        "item_code": item_code,
+                        "batch_no": None,
+                        "serial_no": None,
+                        "system_qty": "0",
+                        "counted_qty": str(expected_qty),
+                        "variance_reason": "A6 多 SKU 闭环账实一致",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(inventory_count.status_code, 201, inventory_count.text)
+        self.assertEqual(Decimal(str(inventory_count.json()["data"]["items"][0]["system_qty"])), expected_qty)
+        self.assertEqual(Decimal(str(inventory_count.json()["data"]["items"][0]["counted_qty"])), expected_qty)
+        self.assertEqual(Decimal(str(inventory_count.json()["data"]["items"][0]["variance_qty"])), Decimal("0.000000"))
+
+        reconciliation = self.client.get(
+            f"/api/warehouse/inventory-balance-reconciliation?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={item_code}",
+            headers=self._headers(f"req-a6-multi-sku-reconciliation-{suffix}"),
+        )
+        self.assertEqual(reconciliation.status_code, 200, reconciliation.text)
+        reconciliation_rows = reconciliation.json()["data"]["items"]
+        self.assertEqual(reconciliation.json()["data"]["total"], 1)
+        self.assertEqual(reconciliation_rows[0]["warehouse"], self.WAREHOUSE)
+        self.assertEqual(reconciliation_rows[0]["item_code"], item_code)
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["book_qty"])), expected_qty)
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["actual_qty"])), expected_qty)
+        self.assertEqual(Decimal(str(reconciliation_rows[0]["diff_qty"])), Decimal("0.000000"))
+        self.assertEqual(reconciliation_rows[0]["status"], "balanced")
 
     def _create_finished_goods_inbound(
         self,
@@ -2402,7 +2458,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         }
         self.assertEqual(purchase_qty_by_material, expected_qty_by_material)
 
-        for material_code, expected_qty in expected_qty_by_material.items():
+        for receipt_index, (material_code, expected_qty) in enumerate(expected_qty_by_material.items(), start=1):
             receipt = self._create_stock_receipt(
                 source_type="material_purchase_order",
                 source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:{purchase_no}:{material_code}",
@@ -2429,6 +2485,22 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(ledger_items[0]["qty_after_transaction"])), expected_qty)
             self.assertEqual(len(summary_items), 1)
             self.assertEqual(Decimal(str(summary_items[0]["actual_qty"])), expected_qty)
+
+            with self.SessionLocal() as session:
+                persisted_ledger_rows = (
+                    session.query(LyWarehouseStockLedgerEntry)
+                    .filter_by(company=self.COMPANY, warehouse=self.WAREHOUSE, item_code=material_code)
+                    .all()
+                )
+            self.assertEqual(len(persisted_ledger_rows), 1)
+            self.assertEqual(Decimal(str(persisted_ledger_rows[0].actual_qty)), expected_qty)
+            self.assertEqual(str(persisted_ledger_rows[0].voucher_type), "Stock Entry Draft/Material Receipt")
+            self.assertEqual(persisted_ledger_rows[0].posting_date.isoformat(), self.BUSINESS_DATE)
+            self._assert_balanced_inventory_reconciliation(
+                item_code=material_code,
+                expected_qty=expected_qty,
+                suffix=str(receipt_index),
+            )
 
         completed = self.client.get(
             f"/api/material-purchase/requirements?company={self.COMPANY}&status=completed&keyword={purchase_no}&page=1&page_size=100",
