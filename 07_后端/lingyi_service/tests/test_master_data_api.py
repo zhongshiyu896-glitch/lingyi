@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+from datetime import datetime
 import os
 import unittest
 
@@ -148,10 +150,19 @@ class MasterDataApiTest(unittest.TestCase):
             json=self._payload(code="SUP-SORT-002", idempotency_key="IDEMP-SUP-SORT-002-C"),
         )
         self.assertEqual(second.status_code, 201, second.text)
+        second_id = int(second.json()["data"]["id"])
+
+        third = self.client.post(
+            "/api/master-data/suppliers",
+            headers=self._headers(request_id="MASTER-DATA-SORT-003"),
+            json=self._payload(code="SUP-SORT-003", idempotency_key="IDEMP-SUP-SORT-003-C"),
+        )
+        self.assertEqual(third.status_code, 201, third.text)
+        third_id = int(third.json()["data"]["id"])
 
         updated_first = self.client.patch(
             f"/api/master-data/suppliers/{first_id}",
-            headers=self._headers(request_id="MASTER-DATA-SORT-003"),
+            headers=self._headers(request_id="MASTER-DATA-SORT-004"),
             json={
                 "operation": "update",
                 "company": "COMP-A",
@@ -162,13 +173,28 @@ class MasterDataApiTest(unittest.TestCase):
         )
         self.assertEqual(updated_first.status_code, 200, updated_first.text)
 
+        with self.SessionLocal() as session:
+            rows = (
+                session.query(LyMasterDataRecord)
+                .filter(LyMasterDataRecord.id.in_([first_id, second_id, third_id]))
+                .all()
+            )
+            for row in rows:
+                if int(row.id) == first_id:
+                    row.created_at = datetime(2026, 6, 20, 8, 0, tzinfo=UTC)
+                    row.updated_at = datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+                else:
+                    row.created_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+                    row.updated_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+            session.commit()
+
         listed = self.client.get(
             "/api/master-data/suppliers?company=COMP-A",
-            headers=self._headers(request_id="MASTER-DATA-SORT-004"),
+            headers=self._headers(request_id="MASTER-DATA-SORT-005"),
         )
         self.assertEqual(listed.status_code, 200, listed.text)
         codes = [item["code"] for item in listed.json()["data"]["items"]]
-        self.assertEqual(codes[:2], ["SUP-SORT-002", "SUP-SORT-001"])
+        self.assertEqual(codes[:3], ["SUP-SORT-003", "SUP-SORT-002", "SUP-SORT-001"])
 
     def test_create_supplier_without_code_auto_generates_and_replays(self) -> None:
         payload = {

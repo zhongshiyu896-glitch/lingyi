@@ -522,6 +522,10 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
             created_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
         )
         self._seed_sales_order(
+            sales_order_no="SO-FASTAPI-NEWER-CREATED-HIGHER-ID",
+            created_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+        )
+        self._seed_sales_order(
             sales_order_no="SO-FASTAPI-OLDER-CREATED-LARGER-ID",
             created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         )
@@ -534,10 +538,14 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
 
         self.assertEqual(response.status_code, 200, response.text)
         payload = response.json()["data"]
-        self.assertEqual(payload["total"], 2)
+        self.assertEqual(payload["total"], 3)
         self.assertEqual(
             [item["name"] for item in payload["items"]],
-            ["SO-FASTAPI-NEWER-CREATED", "SO-FASTAPI-OLDER-CREATED-LARGER-ID"],
+            [
+                "SO-FASTAPI-NEWER-CREATED-HIGHER-ID",
+                "SO-FASTAPI-NEWER-CREATED",
+                "SO-FASTAPI-OLDER-CREATED-LARGER-ID",
+            ],
         )
         mocked_list.assert_not_called()
 

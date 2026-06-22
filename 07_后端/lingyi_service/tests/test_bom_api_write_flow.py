@@ -195,14 +195,29 @@ class BomApiWriteFlowTest(unittest.TestCase):
 
     def test_list_bom_orders_by_newest_created_not_largest_id(self) -> None:
         newer_item_code = "STYLE-BOM-LIST-NEWER"
+        newer_tie_item_code = "STYLE-BOM-LIST-NEWER-TIE"
         older_item_code = "STYLE-BOM-LIST-OLDER"
         with self.SessionLocal() as session:
-            session.add_all([self._style(newer_item_code), self._style(older_item_code)])
+            session.add_all([self._style(newer_item_code), self._style(newer_tie_item_code), self._style(older_item_code)])
             session.add(
                 LyApparelBom(
                     bom_no="BOM-LIST-NEWER-CREATED",
                     company=self.COMPANY,
                     item_code=newer_item_code,
+                    version_no="V1",
+                    is_default=False,
+                    status="draft",
+                    created_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.flush()
+            session.add(
+                LyApparelBom(
+                    bom_no="BOM-LIST-NEWER-CREATED-HIGHER-ID",
+                    company=self.COMPANY,
+                    item_code=newer_tie_item_code,
                     version_no="V1",
                     is_default=False,
                     status="draft",
@@ -234,10 +249,10 @@ class BomApiWriteFlowTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200, response.text)
         payload = response.json()["data"]
-        self.assertEqual(payload["total"], 2)
+        self.assertEqual(payload["total"], 3)
         self.assertEqual(
             [item["bom_no"] for item in payload["items"]],
-            ["BOM-LIST-NEWER-CREATED", "BOM-LIST-OLDER-CREATED-LARGER-ID"],
+            ["BOM-LIST-NEWER-CREATED-HIGHER-ID", "BOM-LIST-NEWER-CREATED", "BOM-LIST-OLDER-CREATED-LARGER-ID"],
         )
 
     def test_explode_uses_size_ratio_for_size_rows_and_order_qty_for_common_rows(self) -> None:

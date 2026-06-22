@@ -224,6 +224,15 @@ class StyleMasterApiTest(unittest.TestCase):
             json=self._style_payload(style_no="ST-SORT-002", idempotency_key="IDEMP-ST-SORT-002-C"),
         )
         self.assertEqual(second.status_code, 201, second.text)
+        second_id = int(second.json()["data"]["id"])
+
+        third = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-SORT-CREATE-003"),
+            json=self._style_payload(style_no="ST-SORT-003", idempotency_key="IDEMP-ST-SORT-003-C"),
+        )
+        self.assertEqual(third.status_code, 201, third.text)
+        third_id = int(third.json()["data"]["id"])
 
         updated_first = self.client.patch(
             f"/api/style-master/styles/{first_id}",
@@ -237,13 +246,24 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         self.assertEqual(updated_first.status_code, 200, updated_first.text)
 
+        with self.SessionLocal() as session:
+            rows = session.query(LyStyleMaster).filter(LyStyleMaster.id.in_([first_id, second_id, third_id])).all()
+            for row in rows:
+                if int(row.id) == first_id:
+                    row.created_at = datetime(2026, 6, 20, 8, 0, tzinfo=UTC)
+                    row.updated_at = datetime(2026, 6, 22, 8, 0, tzinfo=UTC)
+                else:
+                    row.created_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+                    row.updated_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+            session.commit()
+
         listed = self.client.get(
             "/api/style-master/styles?company=COMP-A",
             headers=self._headers(request_id="STYLE-SORT-LIST-001"),
         )
         self.assertEqual(listed.status_code, 200, listed.text)
         style_nos = [item["ys_style_no"] for item in listed.json()["data"]["items"]]
-        self.assertEqual(style_nos[:2], ["ST-SORT-002", "ST-SORT-001"])
+        self.assertEqual(style_nos[:3], ["ST-SORT-003", "ST-SORT-002", "ST-SORT-001"])
 
     def test_style_dictionary_list_orders_by_latest_created_not_latest_updated(self) -> None:
         first = self.client.post(
@@ -258,11 +278,18 @@ class StyleMasterApiTest(unittest.TestCase):
             json=self._dictionary_payload("brand", "SORT-BRAND-002", "后建品牌", "IDEMP-DICT-SORT-002"),
         )
         self.assertEqual(second.status_code, 201, second.text)
+        third = self.client.post(
+            "/api/style-master/dictionaries",
+            headers=self._headers(request_id="STYLE-DICT-SORT-CREATE-003"),
+            json=self._dictionary_payload("brand", "SORT-BRAND-003", "同时新建品牌", "IDEMP-DICT-SORT-003"),
+        )
+        self.assertEqual(third.status_code, 201, third.text)
         first_id = int(first.json()["data"]["id"])
         second_id = int(second.json()["data"]["id"])
+        third_id = int(third.json()["data"]["id"])
 
         with self.SessionLocal() as session:
-            rows = session.query(LyStyleDictionary).filter(LyStyleDictionary.id.in_([first_id, second_id])).all()
+            rows = session.query(LyStyleDictionary).filter(LyStyleDictionary.id.in_([first_id, second_id, third_id])).all()
             for row in rows:
                 if int(row.id) == first_id:
                     row.created_at = datetime(2026, 6, 20, 8, 0, tzinfo=UTC)
@@ -278,7 +305,7 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         self.assertEqual(listed.status_code, 200, listed.text)
         codes = [item["code"] for item in listed.json()["data"]["items"]]
-        self.assertEqual(codes[:2], ["SORT-BRAND-002", "SORT-BRAND-001"])
+        self.assertEqual(codes[:3], ["SORT-BRAND-003", "SORT-BRAND-002", "SORT-BRAND-001"])
 
     def test_style_idempotency_conflict_and_invalid_reference(self) -> None:
         self._seed_style_dictionaries()
@@ -639,10 +666,26 @@ class StyleMasterApiTest(unittest.TestCase):
             },
         )
         self.assertEqual(second.status_code, 201)
+        third = self.client.post(
+            "/api/style-master/style-gallery",
+            headers=self._headers(request_id="STYLE-GALLERY-SORT-003"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-SORT-003",
+                "style_master_id": style_id,
+                "image_url": "https://example.test/sort-third.jpg",
+                "image_name": "同时间图库",
+                "image_type": "other",
+                "is_primary": False,
+            },
+        )
+        self.assertEqual(third.status_code, 201)
         first_id = int(first.json()["data"]["id"])
         second_id = int(second.json()["data"]["id"])
+        third_id = int(third.json()["data"]["id"])
         with self.SessionLocal() as session:
-            rows = session.query(LyStyleGallery).filter(LyStyleGallery.id.in_([first_id, second_id])).all()
+            rows = session.query(LyStyleGallery).filter(LyStyleGallery.id.in_([first_id, second_id, third_id])).all()
             for row in rows:
                 if int(row.id) == first_id:
                     row.created_at = datetime(2026, 6, 20, 8, 0, tzinfo=UTC)
@@ -658,7 +701,7 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         self.assertEqual(listed.status_code, 200)
         listed_ids = [int(item["id"]) for item in listed.json()["data"]["items"]]
-        self.assertEqual(listed_ids[:2], [second_id, first_id])
+        self.assertEqual(listed_ids[:3], [third_id, second_id, first_id])
 
     def test_style_manage_permission_fail_closed(self) -> None:
         denied = self.client.post(

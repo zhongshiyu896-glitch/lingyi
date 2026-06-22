@@ -283,11 +283,18 @@ class SampleApiTest(unittest.TestCase):
             json=self._order_payload(sample_no="SMP-SORT-002", idempotency_key="IDEMP-SMP-SORT-002-C"),
         )
         self.assertEqual(second.status_code, 201, second.text)
+        third = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-ORDER-SORT-CREATE-003"),
+            json=self._order_payload(sample_no="SMP-SORT-003", idempotency_key="IDEMP-SMP-SORT-003-C"),
+        )
+        self.assertEqual(third.status_code, 201, third.text)
         first_id = int(first.json()["data"]["id"])
         second_id = int(second.json()["data"]["id"])
+        third_id = int(third.json()["data"]["id"])
 
         with self.SessionLocal() as session:
-            rows = session.query(LySampleOrder).filter(LySampleOrder.id.in_([first_id, second_id])).all()
+            rows = session.query(LySampleOrder).filter(LySampleOrder.id.in_([first_id, second_id, third_id])).all()
             for row in rows:
                 if int(row.id) == first_id:
                     row.created_at = datetime(2026, 6, 20, 8, 0, tzinfo=UTC)
@@ -303,7 +310,7 @@ class SampleApiTest(unittest.TestCase):
         )
         self.assertEqual(listed.status_code, 200, listed.text)
         sample_nos = [item["sample_no"] for item in listed.json()["data"]["items"]]
-        self.assertEqual(sample_nos[:2], ["SMP-SORT-002", "SMP-SORT-001"])
+        self.assertEqual(sample_nos[:3], ["SMP-SORT-003", "SMP-SORT-002", "SMP-SORT-001"])
 
     def test_sample_order_style_master_id_only_create_and_update(self) -> None:
         with self.SessionLocal() as session:
