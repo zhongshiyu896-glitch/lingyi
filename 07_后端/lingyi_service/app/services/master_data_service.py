@@ -410,6 +410,29 @@ class MasterDataService:
             return {}
         return json.loads(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str))
 
+    @classmethod
+    def _split_material_colors(cls, value: Any) -> list[str]:
+        if isinstance(value, list):
+            return list(dict.fromkeys(text for item in value if (text := cls._optional_text(item)) is not None))
+        text = cls._optional_text(value)
+        if text is None:
+            return []
+        separators = "、,，/／;；\n\r"
+        parts: list[str] = []
+        current = []
+        for char in text:
+            if char in separators:
+                part = cls._optional_text("".join(current))
+                if part is not None:
+                    parts.append(part)
+                current = []
+                continue
+            current.append(char)
+        part = cls._optional_text("".join(current))
+        if part is not None:
+            parts.append(part)
+        return list(dict.fromkeys(parts))
+
     def _next_code(self, *, entity_type: str, company: str, payload: dict[str, Any]) -> str:
         prefix = self._code_prefix(entity_type=entity_type, payload=payload)
         existing_codes = {
@@ -512,6 +535,14 @@ class MasterDataService:
         payload: dict[str, Any],
     ) -> dict[str, Any]:
         normalized = dict(payload)
+        colors = self._split_material_colors(normalized.get("colors") or normalized.get("color_specs") or normalized.get("colorSpecs"))
+        if not colors:
+            colors = self._split_material_colors(normalized.get("color"))
+        if colors:
+            normalized["colors"] = colors
+            normalized["color"] = "、".join(colors)
+            normalized.pop("color_specs", None)
+            normalized.pop("colorSpecs", None)
         material_kind = (
             self._optional_text(normalized.get("material_kind"))
             or self._optional_text(normalized.get("materialKind"))

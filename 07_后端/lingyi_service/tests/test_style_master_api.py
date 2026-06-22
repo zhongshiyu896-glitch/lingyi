@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+from datetime import datetime
 import os
 import unittest
 
@@ -561,6 +563,63 @@ class StyleMasterApiTest(unittest.TestCase):
         style_after = styles_after.json()["data"]["items"][0]
         self.assertIsNone(style_after["primary_thumbnail_url"])
         self.assertEqual(style_after["gallery_count"], 0)
+
+    def test_style_gallery_list_orders_by_latest_created_not_latest_updated(self) -> None:
+        self._seed_style_dictionaries()
+        created = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-GALLERY-SORT-STYLE"),
+            json=self._style_payload(style_no="ST-GAL-SORT", idempotency_key="IDEMP-ST-GAL-SORT-C"),
+        )
+        self.assertEqual(created.status_code, 201)
+        style_id = int(created.json()["data"]["id"])
+
+        first = self.client.post(
+            "/api/style-master/style-gallery",
+            headers=self._headers(request_id="STYLE-GALLERY-SORT-001"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-SORT-001",
+                "style_master_id": style_id,
+                "image_url": "https://example.test/sort-first.jpg",
+                "image_name": "先建图库",
+                "image_type": "detail",
+                "is_primary": False,
+            },
+        )
+        self.assertEqual(first.status_code, 201)
+        second = self.client.post(
+            "/api/style-master/style-gallery",
+            headers=self._headers(request_id="STYLE-GALLERY-SORT-002"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-SORT-002",
+                "style_master_id": style_id,
+                "image_url": "https://example.test/sort-second.jpg",
+                "image_name": "后建图库",
+                "image_type": "other",
+                "is_primary": False,
+            },
+        )
+        self.assertEqual(second.status_code, 201)
+        first_id = int(first.json()["data"]["id"])
+        second_id = int(second.json()["data"]["id"])
+        same_created_at = datetime(2026, 6, 21, 8, 0, tzinfo=UTC)
+        with self.SessionLocal() as session:
+            rows = session.query(LyStyleGallery).filter(LyStyleGallery.id.in_([first_id, second_id])).all()
+            for row in rows:
+                row.created_at = same_created_at
+            session.commit()
+
+        listed = self.client.get(
+            f"/api/style-master/style-gallery?company=COMP-A&style_id={style_id}",
+            headers=self._headers(request_id="STYLE-GALLERY-SORT-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        listed_ids = [int(item["id"]) for item in listed.json()["data"]["items"]]
+        self.assertEqual(listed_ids[:2], [second_id, first_id])
 
     def test_style_manage_permission_fail_closed(self) -> None:
         denied = self.client.post(

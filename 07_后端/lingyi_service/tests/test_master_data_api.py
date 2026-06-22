@@ -516,6 +516,7 @@ class MasterDataApiTest(unittest.TestCase):
         record_id = int(created.json()["data"]["id"])
         self.assertEqual(created.json()["data"]["payload"]["material_kind"], "fabric")
         self.assertEqual(created.json()["data"]["payload"]["colors"], ["黑色", "白色"])
+        self.assertEqual(created.json()["data"]["payload"]["color"], "黑色、白色")
         self.assertEqual(created.json()["data"]["payload"]["part"], "主身")
         self.assertEqual(created.json()["data"]["payload"]["supplier_name"], "青禾面辅料")
         self.assertEqual(created.json()["data"]["payload"]["supplier_code"], "SUP-QH")
@@ -533,7 +534,7 @@ class MasterDataApiTest(unittest.TestCase):
                     "material_kind": "fabric",
                     "material_item_code": "FAB-A2-001",
                     "fabric_name": "A2 面料修改",
-                    "colors": ["藏青"],
+                    "color": "藏青、浅灰/米白",
                     "part": "袖片",
                     "supplier_name": "锦程纺织",
                     "uom": "米",
@@ -545,7 +546,8 @@ class MasterDataApiTest(unittest.TestCase):
         )
         self.assertEqual(updated.status_code, 200)
         self.assertEqual(updated.json()["data"]["name"], "A2 面料修改")
-        self.assertEqual(updated.json()["data"]["payload"]["colors"], ["藏青"])
+        self.assertEqual(updated.json()["data"]["payload"]["colors"], ["藏青", "浅灰", "米白"])
+        self.assertEqual(updated.json()["data"]["payload"]["color"], "藏青、浅灰、米白")
         self.assertEqual(updated.json()["data"]["payload"]["part"], "袖片")
         self.assertEqual(updated.json()["data"]["payload"]["supplier_name"], "锦程纺织")
         self.assertEqual(updated.json()["data"]["payload"]["supplier_code"], "SUP-JC")
@@ -557,7 +559,8 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json()["data"]["total"], 1)
         listed_payload = listed.json()["data"]["items"][0]["payload"]
-        self.assertEqual(listed_payload["colors"], ["藏青"])
+        self.assertEqual(listed_payload["colors"], ["藏青", "浅灰", "米白"])
+        self.assertEqual(listed_payload["color"], "藏青、浅灰、米白")
         self.assertEqual(listed_payload["part"], "袖片")
 
         deactivated = self.client.post(
