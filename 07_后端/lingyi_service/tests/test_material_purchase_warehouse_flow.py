@@ -270,6 +270,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         item_code: str | None = None,
         warehouse: str | None = None,
         qty: str = "5",
+        uom: str = "米",
         company: str = "COMP-A",
     ) -> dict:
         material_code = item_code or self.ITEM_CODE
@@ -293,7 +294,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 {
                     "item_code": material_code,
                     "qty": qty,
-                    "uom": "米",
+                    "uom": uom,
                     "target_warehouse": target_warehouse,
                 }
             ],
@@ -335,6 +336,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         purchase_no: str,
         idempotency_key: str,
         qty: str = "5",
+        uom: str = "米",
     ) -> tuple[str, dict]:
         source_ref = f"{self.SCENARIO_TAG}:purchase:{purchase_no}"
         return source_ref, {
@@ -356,7 +358,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 {
                     "item_code": self.ITEM_CODE,
                     "qty": qty,
-                    "uom": "米",
+                    "uom": uom,
                     "target_warehouse": self.WAREHOUSE,
                 }
             ],
@@ -683,6 +685,91 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400, response.text)
         self.assertEqual(response.json()["code"], "WAREHOUSE_INVALID_PAYLOAD")
         self.assertIn("仓库主数据不存在或已停用", response.json()["message"])
+
+    def test_stock_entry_draft_rejects_missing_or_inactive_unit_master(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code="MU-YARD-OFF",
+                    name="码",
+                    status="inactive",
+                    payload={"material_kind": "unit", "unit_code": "MU-YARD-OFF", "unit_name": "码", "base_unit": "码"},
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        idempotency_key = f"{self.SCENARIO_TAG}:stock-inactive-uom"
+        source_ref = f"{self.SCENARIO_TAG}:stock-inactive-uom-src"
+        payload = self._stock_entry_payload(
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            uom="码",
+        )
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_ref,
+                    quantity="5",
+                )
+            ),
+            json=payload,
+        )
+
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertEqual(response.json()["code"], "WAREHOUSE_INVALID_PAYLOAD")
+        self.assertIn("物料单位不存在或已停用", response.json()["message"])
+
+    def test_material_receipt_draft_rejects_uom_mismatch_with_purchase_line(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code="MU-YARD",
+                    name="码",
+                    status="active",
+                    payload={"material_kind": "unit", "unit_code": "MU-YARD", "unit_name": "码", "base_unit": "码"},
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        purchase_no = "PO-A5-UOM-MISMATCH"
+        purchase = self.client.post(
+            "/api/material-purchase/orders",
+            headers=self._headers(request_id="req-po-uom-mismatch"),
+            json=self._purchase_order_payload(purchase_no=purchase_no, idempotency_key="idem-po-uom-mismatch"),
+        )
+        self.assertEqual(purchase.status_code, 201, purchase.text)
+
+        receipt_idempotency_key = f"{self.SCENARIO_TAG}:idem-receipt-uom-mismatch"
+        source_ref, receipt_payload = self._material_receipt_payload(
+            purchase_no=purchase_no,
+            idempotency_key=receipt_idempotency_key,
+            uom="码",
+        )
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=receipt_idempotency_key,
+                    source_ref=source_ref,
+                    quantity="5",
+                )
+            ),
+            json=receipt_payload,
+        )
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("采购入库单位与采购明细不一致", response.json()["message"])
 
     def test_stock_entry_draft_idempotent_replay_ignores_later_master_deactivation(self) -> None:
         idempotency_key = f"{self.SCENARIO_TAG}:stock-replay-after-master-off"

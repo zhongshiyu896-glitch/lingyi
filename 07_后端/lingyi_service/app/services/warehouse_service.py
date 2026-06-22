@@ -3753,6 +3753,7 @@ class WarehouseService:
             {
                 "item_code": str(item["item_code"]).strip(),
                 "qty": Decimal(str(item["qty"])),
+                "uom": self._text(item.get("uom")),
                 "warehouse": self._text(item.get("target_warehouse")) or self._text(item.get("warehouse")),
                 "purchase_requirement_id": item.get("purchase_requirement_id"),
             }
@@ -3800,6 +3801,10 @@ class WarehouseService:
                 values=material_codes,
                 label="物料主数据",
                 match_name=False,
+            )
+            self._ensure_active_material_units(
+                company=company,
+                values=[str(row["uom"]).strip() for row in item_rows if self._text(row.get("uom"))],
             )
 
         warehouses: list[str] = []
@@ -3877,6 +3882,68 @@ class WarehouseService:
                 400,
                 "WAREHOUSE_INVALID_PAYLOAD",
                 f"{label}不存在或已停用: {', '.join(invalid_values)}",
+            )
+
+    def _ensure_active_material_units(self, *, company: str, values: list[str]) -> None:
+        normalized_values: list[str] = []
+        for value in values:
+            normalized = self._text(value)
+            if normalized and normalized not in normalized_values:
+                normalized_values.append(normalized)
+        if not normalized_values:
+            return
+        if not self._has_sqlite_master_data_table():
+            return
+
+        session = self._require_session()
+        try:
+            material_count = (
+                session.query(func.count(LyMasterDataRecord.id))
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                )
+                .scalar()
+            )
+            if int(material_count or 0) == 0:
+                return
+
+            rows = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.status == "active",
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise WarehouseServiceError(500, DATABASE_READ_FAILED, "数据库读取失败") from exc
+
+        active_values: set[str] = set()
+        for row in rows:
+            payload = row.payload if isinstance(row.payload, dict) else {}
+            material_kind = self._text(payload.get("material_kind") or payload.get("kind"))
+            if material_kind != "unit":
+                continue
+            for candidate in (
+                row.code,
+                row.name,
+                payload.get("unit_code"),
+                payload.get("unit_name"),
+                payload.get("uom"),
+                payload.get("base_unit"),
+            ):
+                text = self._text(candidate)
+                if text:
+                    active_values.add(text)
+
+        invalid_values = [value for value in normalized_values if value not in active_values]
+        if invalid_values:
+            raise WarehouseServiceError(
+                400,
+                "WAREHOUSE_INVALID_PAYLOAD",
+                f"物料单位不存在或已停用: {', '.join(invalid_values)}",
             )
 
     def _build_stock_entry_replay_payload(

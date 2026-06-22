@@ -899,6 +899,13 @@ class MaterialPurchaseService:
                 item_code=str(item["item_code"]),
                 warehouse=self._optional_text(item.get("warehouse")),
             )
+            requested_uom = self._optional_text(item.get("uom"))
+            line_uom = self._optional_text(line.uom) or "米"
+            if requested_uom is not None and requested_uom != line_uom:
+                raise BusinessException(
+                    code=MATERIAL_PURCHASE_CONFLICT,
+                    message=f"采购入库单位与采购明细不一致: {item['item_code']} {requested_uom} != {line_uom}",
+                )
             line_id = int(line.id)
             requirement_id = item.get("purchase_requirement_id")
             if requirement_id is not None:
@@ -2313,6 +2320,7 @@ class MaterialPurchaseService:
                 {
                     "item_code": item_code,
                     "qty": qty,
+                    "uom": self._optional_text(item.get("uom")),
                     "warehouse": self._optional_text(item.get("warehouse"))
                     or self._optional_text(item.get("target_warehouse"))
                     or self._optional_text(item.get("source_warehouse")),
