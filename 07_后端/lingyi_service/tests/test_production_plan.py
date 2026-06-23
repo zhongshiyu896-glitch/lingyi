@@ -1048,20 +1048,27 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(check_response.json()["data"]["item_code"], "ITEM-A")
         self.assertEqual(Decimal(str(check_response.json()["data"]["planned_qty"])), Decimal("12.000000"))
         self.assertEqual(check_response.json()["data"]["snapshot_count"], 1)
-        self.assertEqual(check_response.json()["data"]["items"][0]["warehouse"], "WIP Warehouse - LY")
-        self.assertEqual(check_response.json()["data"]["items"][0]["uom"], "Nos")
-        self.assertEqual(check_response.json()["data"]["items"][0]["material_name"], "主料 A")
-        self.assertIsNotNone(check_response.json()["data"]["items"][0]["checked_at"])
+        snapshot = check_response.json()["data"]["items"][0]
+        self.assertEqual(snapshot["material_item_code"], "MAT-A")
+        self.assertEqual(snapshot["warehouse"], "WIP Warehouse - LY")
+        self.assertEqual(snapshot["uom"], "Nos")
+        self.assertEqual(snapshot["material_name"], "主料 A")
+        self.assertEqual(Decimal(str(snapshot["qty_per_piece"])), Decimal("1.500000"))
+        self.assertEqual(Decimal(str(snapshot["loss_rate"])), Decimal("0.100000"))
+        self.assertEqual(Decimal(str(snapshot["required_qty"])), Decimal("19.800000"))
+        self.assertIsNotNone(snapshot["checked_at"])
 
         detail_after_check = self.client.get(
             f"/api/production/plans/{plan_id}",
             headers=self._headers(),
         )
         self.assertEqual(detail_after_check.status_code, 200)
-        self.assertEqual(
-            detail_after_check.json()["data"]["material_snapshots"][0]["material_name"],
-            "主料 A",
-        )
+        detail_snapshot = detail_after_check.json()["data"]["material_snapshots"][0]
+        self.assertEqual(detail_snapshot["material_item_code"], "MAT-A")
+        self.assertEqual(detail_snapshot["material_name"], "主料 A")
+        self.assertEqual(Decimal(str(detail_snapshot["qty_per_piece"])), Decimal("1.500000"))
+        self.assertEqual(Decimal(str(detail_snapshot["loss_rate"])), Decimal("0.100000"))
+        self.assertEqual(Decimal(str(detail_snapshot["required_qty"])), Decimal("19.800000"))
 
         outbox_response = self.client.post(
             f"/api/production/plans/{plan_id}/create-work-order",

@@ -1147,6 +1147,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                 str(plan.sales_order_item): [row for row in requirements if int(row.plan_id) == int(plan.id)]
                 for plan in plans
             }
+            plans_by_sales_order_item = {str(plan.sales_order_item): plan for plan in plans}
             s_item = "SO-A4-BOM-MATRIX-001-001"
             m_item = "SO-A4-BOM-MATRIX-001-002"
             s_snapshots = {(row.material_item_code, row.bom_part): row for row in snapshots_by_plan[s_item]}
@@ -1196,6 +1197,14 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             m_requirements = {(row.material_item_code, row.bom_part): row for row in requirements_by_plan[m_item]}
             self.assertEqual(set(s_requirements), set(s_snapshots))
             self.assertEqual(set(m_requirements), set(m_snapshots))
+            for sales_order_item, rows in requirements_by_plan.items():
+                source_plan = plans_by_sales_order_item[sales_order_item]
+                for row in rows:
+                    self.assertEqual(row.source_type, "production_plan")
+                    self.assertEqual(row.source_id, str(source_plan.id))
+                    self.assertEqual(row.source_no, source_plan.plan_no)
+                    self.assertEqual(int(row.plan_id), int(source_plan.id))
+                    self.assertEqual(row.sales_order_item, sales_order_item)
             self.assertEqual(Decimal(str(s_requirements[("FAB-MATRIX", "面料主身")].net_required_qty)), Decimal("5.500000"))
             self.assertEqual(Decimal(str(s_requirements[("FAB-MATRIX", "面料袖片")].net_required_qty)), Decimal("2.500000"))
             self.assertEqual(Decimal(str(m_requirements[("FAB-MATRIX", "面料主身")].net_required_qty)), Decimal("24.000000"))
