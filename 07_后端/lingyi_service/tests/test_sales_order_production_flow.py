@@ -1128,8 +1128,8 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(material_check.status_code, 200, material_check.text)
         data = material_check.json()["data"]
         self.assertEqual(data["plan_count"], 2)
-        self.assertEqual(data["snapshot_count"], 11)
-        self.assertEqual(Decimal(str(data["required_qty_total"])), Decimal("52.550000"))
+        self.assertEqual(data["snapshot_count"], 13)
+        self.assertEqual(Decimal(str(data["required_qty_total"])), Decimal("67.550000"))
 
         with self.SessionLocal() as session:
             plans = session.query(LyProductionPlan).order_by(LyProductionPlan.id.asc()).all()
@@ -1137,8 +1137,8 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             requirements = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.id.asc()).all()
 
             self.assertEqual(len(plans), 2)
-            self.assertEqual(len(snapshots), 11)
-            self.assertEqual(len(requirements), 11)
+            self.assertEqual(len(snapshots), 13)
+            self.assertEqual(len(requirements), 13)
             snapshots_by_plan = {
                 str(plan.sales_order_item): [row for row in snapshots if int(row.plan_id) == int(plan.id)]
                 for plan in plans
@@ -1158,6 +1158,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                     ("THREAD-ALL", "全款通用线"),
                     ("FAB-MATRIX", "面料主身"),
                     ("FAB-MATRIX", "面料袖片"),
+                    ("ZIP-GENERIC", "门襟拉链"),
                     ("ZIP-S-50", "门襟拉链"),
                     ("LABEL-BLACK", "黑色标"),
                     ("HANGTAG-ALL", "吊牌"),
@@ -1168,13 +1169,12 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                 {
                     ("THREAD-ALL", "全款通用线"),
                     ("FAB-MATRIX", "面料主身"),
+                    ("ZIP-GENERIC", "门襟拉链"),
                     ("ZIP-M-55", "门襟拉链"),
                     ("LABEL-BLACK", "黑色标"),
                     ("HANGTAG-ALL", "吊牌"),
                 },
             )
-            self.assertNotIn(("ZIP-GENERIC", "门襟拉链"), s_snapshots)
-            self.assertNotIn(("ZIP-GENERIC", "门襟拉链"), m_snapshots)
             self.assertNotIn(("ZIP-WHITE-M", "门襟拉链"), s_snapshots)
             self.assertNotIn(("ZIP-WHITE-M", "门襟拉链"), m_snapshots)
             self.assertEqual(Decimal(str(s_snapshots[("FAB-MATRIX", "面料主身")].qty_per_piece)), Decimal("1.000000"))
@@ -1185,6 +1185,8 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertEqual(Decimal(str(m_snapshots[("FAB-MATRIX", "面料主身")].qty_per_piece)), Decimal("2.000000"))
             self.assertEqual(Decimal(str(m_snapshots[("FAB-MATRIX", "面料主身")].loss_rate)), Decimal("0.200000"))
             self.assertEqual(Decimal(str(m_snapshots[("FAB-MATRIX", "面料主身")].required_qty)), Decimal("24.000000"))
+            self.assertEqual(Decimal(str(s_snapshots[("ZIP-GENERIC", "门襟拉链")].required_qty)), Decimal("5.000000"))
+            self.assertEqual(Decimal(str(m_snapshots[("ZIP-GENERIC", "门襟拉链")].required_qty)), Decimal("10.000000"))
             self.assertEqual(Decimal(str(s_snapshots[("ZIP-S-50", "门襟拉链")].required_qty)), Decimal("5.000000"))
             self.assertEqual(Decimal(str(m_snapshots[("ZIP-M-55", "门襟拉链")].required_qty)), Decimal("10.000000"))
             self.assertEqual(Decimal(str(s_snapshots[("HANGTAG-ALL", "吊牌")].required_qty)), Decimal("0.250000"))

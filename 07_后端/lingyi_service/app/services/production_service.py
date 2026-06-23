@@ -611,35 +611,7 @@ class ProductionService:
                 if cls._dimension_matches(getattr(row, "color", None), order_color)
                 and cls._dimension_matches(getattr(row, "size", None), order_size)
             ]
-        best_score_by_usage: dict[str, int] = {}
-        scored_rows: list[tuple[Any, str, int]] = []
-        for row in matched_rows:
-            usage_key = cls._bom_usage_specificity_key(row)
-            score = cls._bom_usage_specificity_score(row=row, order_color=order_color, order_size=order_size)
-            scored_rows.append((row, usage_key, score))
-            best_score_by_usage[usage_key] = max(best_score_by_usage.get(usage_key, -1), score)
-        return [row for row, usage_key, score in scored_rows if score == best_score_by_usage.get(usage_key)]
-
-    @classmethod
-    def _bom_usage_specificity_key(cls, row: Any) -> str:
-        part = cls._normalized_dimension(getattr(row, "part", None))
-        if part:
-            return f"part:{part}"
-        material_item_code = cls._normalized_dimension(getattr(row, "material_item_code", None))
-        if material_item_code:
-            return f"material:{material_item_code}"
-        return f"row:{getattr(row, 'id', id(row))}"
-
-    @classmethod
-    def _bom_usage_specificity_score(cls, *, row: Any, order_color: str, order_size: str) -> int:
-        score = 0
-        bom_color = cls._normalized_dimension(getattr(row, "color", None))
-        bom_size = cls._normalized_dimension(getattr(row, "size", None))
-        if order_color and bom_color == order_color:
-            score += 1
-        if order_size and bom_size == order_size:
-            score += 1
-        return score
+        return matched_rows
 
     @staticmethod
     def _normalized_dimension(value: Any) -> str:
