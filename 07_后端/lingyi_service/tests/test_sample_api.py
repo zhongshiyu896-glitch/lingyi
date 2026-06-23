@@ -18,6 +18,10 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.bom import Base as BomBase
+from app.models.bom import LyApparelBom
+from app.models.bom import LyApparelBomItem
+from app.models.bom import LyApparelBomWriteOperation
 from app.models.sample import Base as SampleBase
 from app.models.sample import LySampleMaterialBom
 from app.models.sample import LySampleMaterialBomItem
@@ -52,6 +56,7 @@ class SampleApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         StyleMasterBase.metadata.create_all(bind=cls.engine)
+        BomBase.metadata.create_all(bind=cls.engine)
         SampleBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
@@ -96,6 +101,9 @@ class SampleApiTest(unittest.TestCase):
             session.query(LySampleMaterialBomItem).delete()
             session.query(LySampleMaterialBom).delete()
             session.query(LySampleOrder).delete()
+            session.query(LyApparelBomWriteOperation).delete()
+            session.query(LyApparelBomItem).delete()
+            session.query(LyApparelBom).delete()
             session.query(LyStyleMaster).delete()
             self._seed_style(session, style_no="ST-A3-001", style_name="A3 样衣款")
             self._seed_style(session, style_no="ST-A3-002", style_name="A3 样衣款修改")
