@@ -247,6 +247,80 @@ class MasterDataApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyMasterDataRecord).filter_by(entity_type="supplier").count(), 1)
 
+    def test_supplier_contact_payload_normalizes_on_create_update_and_replay(self) -> None:
+        payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "name": "联系方式供应商",
+            "idempotency_key": "IDEMP-SUP-CONTACT-001-C",
+            "payload": {
+                "contact_person": "  李采购  ",
+                "contact_phone": "  13800000000  ",
+                "weixin": "  ly-supplier  ",
+                "owner": "purchase",
+            },
+        }
+        created = self.client.post(
+            "/api/master-data/suppliers",
+            headers=self._headers(request_id="MASTER-DATA-SUP-CONTACT-001"),
+            json=payload,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        created_data = created.json()["data"]
+        record_id = int(created_data["id"])
+        self.assertRegex(created_data["code"], r"^SUP-\d{6}$")
+        self.assertEqual(created_data["payload"]["contactPerson"], "李采购")
+        self.assertEqual(created_data["payload"]["contact_person"], "李采购")
+        self.assertEqual(created_data["payload"]["contact"], "李采购")
+        self.assertEqual(created_data["payload"]["phone"], "13800000000")
+        self.assertEqual(created_data["payload"]["wechat"], "ly-supplier")
+        self.assertNotIn("weixin", created_data["payload"])
+        self.assertNotIn("contact_phone", created_data["payload"])
+
+        replay = self.client.post(
+            "/api/master-data/suppliers",
+            headers=self._headers(request_id="MASTER-DATA-SUP-CONTACT-002"),
+            json=payload,
+        )
+        self.assertEqual(replay.status_code, 201, replay.text)
+        self.assertEqual(replay.json()["data"]["id"], record_id)
+        self.assertEqual(replay.json()["data"]["payload"]["contactPerson"], "李采购")
+
+        updated = self.client.patch(
+            f"/api/master-data/suppliers/{record_id}",
+            headers=self._headers(request_id="MASTER-DATA-SUP-CONTACT-003"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "name": "联系方式供应商更新",
+                "idempotency_key": "IDEMP-SUP-CONTACT-001-U",
+                "payload": {
+                    "contact": "  张跟单  ",
+                    "phone": "  13900000000  ",
+                    "wechat": "  follow-zhang  ",
+                    "owner": "purchase",
+                },
+            },
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        updated_payload = updated.json()["data"]["payload"]
+        self.assertEqual(updated_payload["contactPerson"], "张跟单")
+        self.assertEqual(updated_payload["contact_person"], "张跟单")
+        self.assertEqual(updated_payload["contact"], "张跟单")
+        self.assertEqual(updated_payload["phone"], "13900000000")
+        self.assertEqual(updated_payload["wechat"], "follow-zhang")
+
+        listed = self.client.get(
+            "/api/master-data/suppliers?company=COMP-A",
+            headers=self._headers(request_id="MASTER-DATA-SUP-CONTACT-004"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(listed.json()["data"]["total"], 1)
+        listed_payload = listed.json()["data"]["items"][0]["payload"]
+        self.assertEqual(listed_payload["contactPerson"], "张跟单")
+        self.assertEqual(listed_payload["phone"], "13900000000")
+        self.assertEqual(listed_payload["wechat"], "follow-zhang")
+
     def test_create_material_without_code_syncs_generated_code_to_payload(self) -> None:
         self._seed_supplier(code="SUP-MAT-AUTO", name="自动物料供应商")
         self._seed_material_unit(code="MU-METER", name="米")

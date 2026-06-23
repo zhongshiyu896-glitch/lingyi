@@ -159,6 +159,8 @@ class MasterDataService:
         name = self._require_text(payload.name, "name")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         next_payload = self._clean_payload(payload.payload)
+        if normalized_entity_type == "supplier":
+            next_payload = self._normalize_supplier_payload(payload=next_payload)
         request_hash = self._request_hash(
             operation="create",
             entity_type=normalized_entity_type,
@@ -245,6 +247,8 @@ class MasterDataService:
         next_code = self._optional_text(payload.code) or row.code
         next_name = self._optional_text(payload.name) or row.name
         next_payload = self._clean_payload(payload.payload) if payload.payload is not None else dict(row.payload or {})
+        if normalized_entity_type == "supplier":
+            next_payload = self._normalize_supplier_payload(payload=next_payload)
         if normalized_entity_type == "warehouse":
             next_payload = self._normalize_warehouse_payload(
                 company=company,
@@ -485,6 +489,45 @@ class MasterDataService:
     def _fill_payload_text(self, payload: dict[str, Any], key: str, value: str) -> None:
         if self._optional_text(payload.get(key)) is None:
             payload[key] = value
+
+    @classmethod
+    def _normalize_supplier_payload(cls, *, payload: dict[str, Any]) -> dict[str, Any]:
+        normalized = dict(payload)
+        contact_person = (
+            cls._optional_text(normalized.get("contactPerson"))
+            or cls._optional_text(normalized.get("contact_person"))
+            or cls._optional_text(normalized.get("contact"))
+        )
+        phone = (
+            cls._optional_text(normalized.get("phone"))
+            or cls._optional_text(normalized.get("contact_phone"))
+            or cls._optional_text(normalized.get("contactPhone"))
+            or cls._optional_text(normalized.get("telephone"))
+            or cls._optional_text(normalized.get("tel"))
+        )
+        wechat = (
+            cls._optional_text(normalized.get("wechat"))
+            or cls._optional_text(normalized.get("weixin"))
+            or cls._optional_text(normalized.get("weChat"))
+        )
+
+        for key in ("contactPerson", "contact_person", "contact"):
+            if contact_person:
+                normalized[key] = contact_person
+            else:
+                normalized.pop(key, None)
+        if phone:
+            normalized["phone"] = phone
+        else:
+            normalized.pop("phone", None)
+        if wechat:
+            normalized["wechat"] = wechat
+        else:
+            normalized.pop("wechat", None)
+
+        for alias in ("contact_phone", "contactPhone", "telephone", "tel", "weixin", "weChat"):
+            normalized.pop(alias, None)
+        return cls._clean_payload(normalized)
 
     def _normalize_warehouse_payload(
         self,
