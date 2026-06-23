@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import UTC
 from datetime import datetime
+import json
 import os
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -22,6 +24,8 @@ from app.models.master_data import LyMasterDataIdempotency
 from app.models.master_data import LyMasterDataRecord
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.master_data import get_db_session as master_data_db_dep
+from app.services.permission_service import FASTAPI_RESOURCE_PERMISSIONS_ENV
+from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 
 
 class MasterDataApiTest(unittest.TestCase):
@@ -129,6 +133,58 @@ class MasterDataApiTest(unittest.TestCase):
                 )
             )
             session.commit()
+
+    def _seed_record(
+        self,
+        *,
+        entity_type: str,
+        code: str,
+        name: str,
+        company: str = "COMP-A",
+        status: str = "active",
+        payload: dict | None = None,
+    ) -> int:
+        with self.SessionLocal() as session:
+            row = LyMasterDataRecord(
+                entity_type=entity_type,
+                company=company,
+                code=code,
+                name=name,
+                status=status,
+                payload=payload or {},
+                version=1,
+                created_by="test.seed",
+                updated_by="test.seed",
+            )
+            session.add(row)
+            session.commit()
+            return int(row.id)
+
+    @staticmethod
+    def _fastapi_scope_env(*, customers: list[str] | None = None, items: list[str] | None = None) -> dict[str, str]:
+        return {
+            "LINGYI_PERMISSION_SOURCE": "fastapi",
+            FASTAPI_ROLE_ACTIONS_ENV: json.dumps(
+                {
+                    "roles": {
+                        "Scoped Master Data": {
+                            "actions": ["master_data:read", "master_data:manage"],
+                        }
+                    }
+                }
+            ),
+            FASTAPI_RESOURCE_PERMISSIONS_ENV: json.dumps(
+                {
+                    "roles": {
+                        "Scoped Master Data": {
+                            "companies": ["COMP-A"],
+                            "customers": customers or [],
+                            "items": items or [],
+                        }
+                    }
+                }
+            ),
+        }
 
     def test_create_customer_persists_and_lists_with_audit(self) -> None:
         response = self.client.post(
@@ -920,6 +976,104 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyMasterDataRecord).count(), 0)
+
+    def test_unauthorized_master_data_returns_401_envelope(self) -> None:
+        response = self.client.get("/api/master-data/customers?company=COMP-A")
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
+        self.assertNotEqual(response.json()["code"], "0")
+
+    def test_fastapi_scope_filters_customer_and_material_lists(self) -> None:
+        self._seed_record(entity_type="customer", company="COMP-A", code="CUST-ALLOW", name="允许客户")
+        denied_customer_id = self._seed_record(entity_type="customer", company="COMP-A", code="CUST-DENY", name="拒绝客户")
+        self._seed_record(
+            entity_type="material",
+            company="COMP-A",
+            code="MAT-ALLOW",
+            name="允许物料",
+            payload={"material_kind": "fabric", "material_item_code": "MAT-ALLOW"},
+        )
+        self._seed_record(
+            entity_type="material",
+            company="COMP-A",
+            code="MAT-DENY",
+            name="拒绝物料",
+            payload={"material_kind": "fabric", "material_item_code": "MAT-DENY"},
+        )
+        with patch.dict(
+            os.environ,
+            self._fastapi_scope_env(customers=["CUST-ALLOW"], items=["MAT-ALLOW"]),
+            clear=False,
+        ):
+            customers = self.client.get(
+                "/api/master-data/customers?company=COMP-A&page=1&page_size=20",
+                headers=self._headers(role="Scoped Master Data", request_id="MASTER-DATA-SCOPE-LIST-CUST"),
+            )
+            materials = self.client.get(
+                "/api/master-data/materials?company=COMP-A&page=1&page_size=20",
+                headers=self._headers(role="Scoped Master Data", request_id="MASTER-DATA-SCOPE-LIST-MAT"),
+            )
+
+        self.assertEqual(customers.status_code, 200, customers.text)
+        self.assertEqual(customers.json()["data"]["total"], 1)
+        self.assertEqual(customers.json()["data"]["items"][0]["code"], "CUST-ALLOW")
+        self.assertEqual(materials.status_code, 200, materials.text)
+        self.assertEqual(materials.json()["data"]["total"], 1)
+        self.assertEqual(materials.json()["data"]["items"][0]["code"], "MAT-ALLOW")
+
+    def test_fastapi_scope_denies_customer_and_material_writes(self) -> None:
+        denied_customer_id = self._seed_record(entity_type="customer", company="COMP-A", code="CUST-DENY", name="拒绝客户")
+        with patch.dict(
+            os.environ,
+            self._fastapi_scope_env(customers=["CUST-ALLOW"], items=["MAT-ALLOW"]),
+            clear=False,
+        ):
+            create_customer = self.client.post(
+                "/api/master-data/customers",
+                headers=self._headers(role="Scoped Master Data", request_id="MASTER-DATA-SCOPE-CREATE-CUST"),
+                json=self._payload(code="CUST-DENY-NEW", idempotency_key="IDEMP-CUST-DENY-NEW"),
+            )
+            update_customer = self.client.patch(
+                f"/api/master-data/customers/{denied_customer_id}",
+                headers=self._headers(role="Scoped Master Data", request_id="MASTER-DATA-SCOPE-UPDATE-CUST"),
+                json={
+                    "operation": "update",
+                    "company": "COMP-A",
+                    "code": "CUST-DENY",
+                    "name": "拒绝客户修改",
+                    "idempotency_key": "IDEMP-CUST-DENY-U",
+                },
+            )
+            create_material = self.client.post(
+                "/api/master-data/materials",
+                headers=self._headers(role="Scoped Master Data", request_id="MASTER-DATA-SCOPE-CREATE-MAT"),
+                json={
+                    "operation": "create",
+                    "company": "COMP-A",
+                    "code": "MAT-DENY",
+                    "name": "拒绝物料",
+                    "idempotency_key": "IDEMP-MAT-DENY-C",
+                    "payload": {"material_kind": "fabric", "material_item_code": "MAT-DENY"},
+                },
+            )
+
+        for response in (create_customer, update_customer, create_material):
+            self.assertEqual(response.status_code, 403, response.text)
+            self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+            self.assertNotEqual(response.json()["code"], "0")
+
+    def test_fastapi_scope_permission_source_unavailable_returns_503(self) -> None:
+        env = self._fastapi_scope_env(customers=["CUST-ALLOW"], items=["MAT-ALLOW"])
+        env[FASTAPI_RESOURCE_PERMISSIONS_ENV] = "{not-json"
+        with patch.dict(os.environ, env, clear=False):
+            response = self.client.post(
+                "/api/master-data/customers",
+                headers=self._headers(role="Scoped Master Data", request_id="MASTER-DATA-SCOPE-503"),
+                json=self._payload(code="CUST-ALLOW", idempotency_key="IDEMP-CUST-SCOPE-503"),
+            )
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
+        self.assertNotEqual(response.json()["code"], "0")
 
 
 if __name__ == "__main__":

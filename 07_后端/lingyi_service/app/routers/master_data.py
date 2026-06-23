@@ -25,6 +25,7 @@ from app.core.permissions import MASTER_DATA_MANAGE
 from app.core.permissions import MASTER_DATA_READ
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
+from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.master_data_service import MasterDataMutationResult
 from app.services.master_data_service import MasterDataService
 from app.services.permission_service import PermissionService
@@ -132,6 +133,115 @@ def _require_action(
     )
 
 
+def _scope_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _payload_text(payload: dict[str, Any] | None, *keys: str) -> str | None:
+    source = payload or {}
+    for key in keys:
+        value = _scope_text(source.get(key))
+        if value:
+            return value
+    return None
+
+
+def _master_data_scope_target(
+    *,
+    entity_type: str,
+    company: str | None,
+    code: str | None,
+    payload: dict[str, Any] | None,
+) -> dict[str, str | None] | None:
+    normalized_company = _scope_text(company)
+    if entity_type == "customer":
+        return {
+            "company": normalized_company,
+            "customer": _scope_text(code),
+        }
+    if entity_type == "material":
+        item_code = _payload_text(payload, "material_item_code", "materialItemCode", "item_code", "itemCode") or _scope_text(code)
+        return {
+            "company": normalized_company,
+            "item_code": item_code,
+        }
+    return None
+
+
+def _scope_filters_for_list(
+    *,
+    permissions: UserPermissionResult | None,
+    entity_type: str,
+) -> dict[str, set[str] | None]:
+    if permissions is None or permissions.unrestricted or entity_type not in {"customer", "material"}:
+        return {
+            "allowed_companies": None,
+            "allowed_customers": None,
+            "allowed_items": None,
+        }
+    return {
+        "allowed_companies": set(permissions.allowed_companies),
+        "allowed_customers": set(permissions.allowed_customers) if entity_type == "customer" else None,
+        "allowed_items": set(permissions.allowed_items) if entity_type == "material" else None,
+    }
+
+
+def _master_data_scope_permissions(
+    *,
+    session: Session,
+    request: Request,
+    current_user: CurrentUser,
+    action: str,
+    entity_type: str,
+    resource_id: int | None = None,
+    resource_no: str | None = None,
+) -> UserPermissionResult | None:
+    if entity_type not in {"customer", "material"}:
+        return None
+    return PermissionService(session=session).get_resource_scope_permissions(
+        current_user=current_user,
+        request_obj=request,
+        module="master_data",
+        action=action,
+        resource_type=entity_type,
+        resource_id=resource_id,
+        resource_no=resource_no,
+    )
+
+
+def _ensure_master_data_scope(
+    *,
+    session: Session,
+    request: Request,
+    current_user: CurrentUser,
+    action: str,
+    entity_type: str,
+    resource_id: int | None,
+    resource_no: str | None,
+    scope: dict[str, str | None] | None,
+    permissions: UserPermissionResult | None,
+) -> None:
+    if scope is None or permissions is None or permissions.unrestricted:
+        return
+    required_fields = ("company", "customer") if entity_type == "customer" else ("company", "item_code")
+    PermissionService(session=session).ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="master_data",
+        action=action,
+        resource_scope=scope,
+        required_fields=required_fields,
+        resource_type=entity_type,
+        resource_id=resource_id,
+        resource_no=resource_no,
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+
+
 @router.get("/{entity_path}")
 def list_master_data(
     entity_path: str,
@@ -153,6 +263,14 @@ def list_master_data(
         entity_type=entity_type,
     )
     try:
+        permissions = _master_data_scope_permissions(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_READ,
+            entity_type=entity_type,
+        )
+        scope_filters = _scope_filters_for_list(permissions=permissions, entity_type=entity_type)
         data = MasterDataService(session).list_records(
             entity_type=entity_type,
             company=company,
@@ -160,7 +278,10 @@ def list_master_data(
             disabled=disabled,
             page=page,
             page_size=page_size,
+            **scope_filters,
         )
+    except HTTPException:
+        raise
     except AppException as exc:
         return _err(exc)
     return _ok(data)
@@ -184,6 +305,31 @@ def create_master_data(
         entity_type=entity_type,
     )
     try:
+        scope = _master_data_scope_target(
+            entity_type=entity_type,
+            company=payload.company,
+            code=payload.code,
+            payload=payload.payload,
+        )
+        permissions = _master_data_scope_permissions(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_MANAGE,
+            entity_type=entity_type,
+            resource_no=payload.code,
+        )
+        _ensure_master_data_scope(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_MANAGE,
+            entity_type=entity_type,
+            resource_id=None,
+            resource_no=payload.code,
+            scope=scope,
+            permissions=permissions,
+        )
         result = MasterDataService(session).create_record(
             entity_type=entity_type,
             payload=payload,
@@ -197,6 +343,8 @@ def create_master_data(
             action=action,
             result=result,
         )
+    except HTTPException:
+        raise
     except AuditWriteFailed as exc:
         raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
     except AppException as exc:
@@ -247,7 +395,35 @@ def update_master_data(
         resource_id=record_id,
     )
     try:
-        result = MasterDataService(session).update_record(
+        service = MasterDataService(session)
+        existing = service.get_record_for_permission(entity_type=entity_type, record_id=record_id, company=payload.company)
+        scope = _master_data_scope_target(
+            entity_type=entity_type,
+            company=payload.company,
+            code=payload.code or existing.code,
+            payload=payload.payload or existing.payload,
+        )
+        permissions = _master_data_scope_permissions(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_MANAGE,
+            entity_type=entity_type,
+            resource_id=record_id,
+            resource_no=existing.code,
+        )
+        _ensure_master_data_scope(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_MANAGE,
+            entity_type=entity_type,
+            resource_id=record_id,
+            resource_no=existing.code,
+            scope=scope,
+            permissions=permissions,
+        )
+        result = service.update_record(
             entity_type=entity_type,
             record_id=record_id,
             payload=payload,
@@ -261,6 +437,8 @@ def update_master_data(
             action=action,
             result=result,
         )
+    except HTTPException:
+        raise
     except AuditWriteFailed as exc:
         raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
     except AppException as exc:
@@ -311,7 +489,35 @@ def deactivate_master_data(
         resource_id=record_id,
     )
     try:
-        result = MasterDataService(session).deactivate_record(
+        service = MasterDataService(session)
+        existing = service.get_record_for_permission(entity_type=entity_type, record_id=record_id, company=payload.company)
+        scope = _master_data_scope_target(
+            entity_type=entity_type,
+            company=payload.company,
+            code=existing.code,
+            payload=existing.payload,
+        )
+        permissions = _master_data_scope_permissions(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_MANAGE,
+            entity_type=entity_type,
+            resource_id=record_id,
+            resource_no=existing.code,
+        )
+        _ensure_master_data_scope(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_MANAGE,
+            entity_type=entity_type,
+            resource_id=record_id,
+            resource_no=existing.code,
+            scope=scope,
+            permissions=permissions,
+        )
+        result = service.deactivate_record(
             entity_type=entity_type,
             record_id=record_id,
             payload=payload,
@@ -325,6 +531,8 @@ def deactivate_master_data(
             action=action,
             result=result,
         )
+    except HTTPException:
+        raise
     except AuditWriteFailed as exc:
         raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
     except AppException as exc:

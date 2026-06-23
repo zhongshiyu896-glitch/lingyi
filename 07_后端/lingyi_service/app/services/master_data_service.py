@@ -106,12 +106,27 @@ class MasterDataService:
         disabled: bool | None,
         page: int,
         page_size: int,
+        allowed_companies: set[str] | None = None,
+        allowed_customers: set[str] | None = None,
+        allowed_items: set[str] | None = None,
     ) -> MasterDataListData:
         normalized_entity_type = self._normalize_entity_type(entity_type)
         try:
             query = self.session.query(LyMasterDataRecord).filter(
                 LyMasterDataRecord.entity_type == normalized_entity_type,
             )
+            if allowed_companies is not None:
+                if not allowed_companies:
+                    return MasterDataListData(items=[], total=0, page=page, page_size=page_size)
+                query = query.filter(LyMasterDataRecord.company.in_(sorted(allowed_companies)))
+            if normalized_entity_type == "customer" and allowed_customers is not None:
+                if not allowed_customers:
+                    return MasterDataListData(items=[], total=0, page=page, page_size=page_size)
+                query = query.filter(LyMasterDataRecord.code.in_(sorted(allowed_customers)))
+            if normalized_entity_type == "material" and allowed_items is not None:
+                if not allowed_items:
+                    return MasterDataListData(items=[], total=0, page=page, page_size=page_size)
+                query = query.filter(LyMasterDataRecord.code.in_(sorted(allowed_items)))
             normalized_company = self._optional_text(company)
             if normalized_company:
                 query = query.filter(LyMasterDataRecord.company == normalized_company)
@@ -386,6 +401,20 @@ class MasterDataService:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
         after = self._snapshot(row)
         return MasterDataMutationResult(item=self._to_item(row), before=before, after=after)
+
+    def get_record_for_permission(self, *, entity_type: str, record_id: int, company: str | None = None) -> MasterDataItem:
+        normalized_entity_type = self._normalize_entity_type(entity_type)
+        query = self.session.query(LyMasterDataRecord).filter(
+            LyMasterDataRecord.id == record_id,
+            LyMasterDataRecord.entity_type == normalized_entity_type,
+        )
+        normalized_company = self._optional_text(company)
+        if normalized_company:
+            query = query.filter(LyMasterDataRecord.company == normalized_company)
+        row = query.first()
+        if row is None:
+            raise BusinessException(code=MASTER_DATA_NOT_FOUND, message="主数据不存在或 company 不匹配")
+        return self._to_item(row)
 
     @classmethod
     def _normalize_entity_type(cls, value: str) -> str:
