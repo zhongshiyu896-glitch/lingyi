@@ -6,6 +6,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timezone
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -44,6 +45,7 @@ from app.routers.material_purchase import get_db_session as material_purchase_db
 from app.routers.production import get_db_session as production_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
+from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 
 
 class SalesOrderProductionFlowTest(unittest.TestCase):
@@ -179,6 +181,14 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             "X-LY-Dev-User": "a4.flow.user",
             "X-LY-Dev-Roles": "System Manager",
             "X-Request-ID": "req-a4-flow",
+        }
+
+    @staticmethod
+    def _headers_for(*, user: str, roles: str, request_id: str) -> dict[str, str]:
+        return {
+            "X-LY-Dev-User": user,
+            "X-LY-Dev-Roles": roles,
+            "X-Request-ID": request_id,
         }
 
     def _style_id(self, style_no: str) -> int:
@@ -953,6 +963,93 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                 .count(),
                 0,
             )
+
+    def test_submit_with_auto_material_check_fails_closed_without_production_permission(self) -> None:
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-AUTO-MAT-PERM-001",
+            "source_order_ref": "SO-A4-AUTO-MAT-PERM-001",
+            "idempotency_key": "idem-so-a4-auto-mat-perm-001",
+            "transaction_date": "2026-06-16",
+            "delivery_date": "2026-06-30",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Demo Tee",
+                    "color": "白色",
+                    "size": "M",
+                    "qty": 10,
+                    "rate": 80,
+                    "uom": "件",
+                }
+            ],
+        }
+        create_order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+        self.assertEqual(create_order.status_code, 201, create_order.text)
+        draft_id = int(create_order.json()["data"]["id"])
+
+        role_actions = {
+            "roles": {
+                "Sales Auto Submitter": {
+                    "actions": ["sales_inventory:write"],
+                }
+            }
+        }
+        submit_headers = self._headers_for(
+            user="a4.sales.only",
+            roles="Sales Auto Submitter",
+            request_id="req-a4-auto-mat-perm",
+        )
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_ROLE_ACTIONS_ENV: json.dumps(role_actions),
+            },
+            clear=False,
+        ):
+            with patch(
+                "app.services.permission_service.PermissionService._actions_from_static",
+                side_effect=AssertionError("FastAPI 权限源不应回退 static"),
+            ):
+                submitted = self.client.post(
+                    f"/api/sales-inventory/sales-orders/drafts/{draft_id}/submit",
+                    headers=submit_headers,
+                    json={
+                        "operation": "submit_draft",
+                        "company": "COMP-A",
+                        "sales_order_no_or_source_order_ref": "SO-A4-AUTO-MAT-PERM-001",
+                        "idempotency_key": "idem-so-a4-auto-mat-perm-001-submit",
+                        "material_check_warehouse": "WH-AUTO-PERM",
+                    },
+                )
+
+        self.assertEqual(submitted.status_code, 403, submitted.text)
+        self.assertEqual(submitted.json()["code"], "AUTH_FORBIDDEN")
+        with self.SessionLocal() as session:
+            order = (
+                session.query(LySalesOrder)
+                .filter(LySalesOrder.sales_order_no == "SO-A4-AUTO-MAT-PERM-001")
+                .one()
+            )
+            item = session.query(LySalesOrderItem).filter(LySalesOrderItem.sales_order_id == order.id).one()
+            self.assertEqual(order.docstatus, 0)
+            self.assertEqual(order.status, "draft")
+            self.assertEqual(item.ys_material_calc_state, "待算料")
+            self.assertEqual(session.query(LyProductionPlan).count(), 0)
+            self.assertEqual(session.query(LyProductionPlanMaterial).count(), 0)
+            self.assertEqual(session.query(LyProductionPlanOperation).count(), 0)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 0)
+            security_audit = session.query(LySecurityAuditLog).one()
+            self.assertEqual(security_audit.event_type, "AUTH_FORBIDDEN")
+            self.assertEqual(security_audit.action, "production:material_check")
 
     def test_sales_order_material_check_matches_bom_by_color_size_and_purchase_requirements(self) -> None:
         self._seed_style_with_matrix_bom(
