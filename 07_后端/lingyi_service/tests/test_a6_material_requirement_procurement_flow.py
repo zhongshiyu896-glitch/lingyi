@@ -2232,6 +2232,16 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         requirement_rows = requirements.json()["data"]["items"]
         self.assertEqual(len(requirement_rows), 4)
         self.assertEqual({row["sales_order_item"] for row in requirement_rows}, set(sales_item_by_color_size.values()))
+        white_m_item = sales_item_by_color_size[("白", "M")]
+        requirements_by_order_item = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword={white_m_item}&page=1&page_size=100",
+            headers=self._headers("req-a6-submit-multi-requirements-by-item"),
+        )
+        self.assertEqual(requirements_by_order_item.status_code, 200, requirements_by_order_item.text)
+        requirement_rows_by_order_item = requirements_by_order_item.json()["data"]["items"]
+        self.assertEqual(len(requirement_rows_by_order_item), 2)
+        self.assertEqual({row["sales_order_item"] for row in requirement_rows_by_order_item}, {white_m_item})
+        self.assertEqual({row["bom_size"] for row in requirement_rows_by_order_item}, {None, "M"})
         dimensions_by_material: dict[str, set[tuple[object, object, object, str]]] = {}
         for row in requirement_rows:
             dimensions_by_material.setdefault(row["material_item_code"], set()).add(

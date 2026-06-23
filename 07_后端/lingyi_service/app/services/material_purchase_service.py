@@ -374,6 +374,7 @@ class MaterialPurchaseService:
                     (func.lower(LyMaterialPurchaseRequirement.requirement_no).like(like_value))
                     | (func.lower(LyMaterialPurchaseRequirement.source_no).like(like_value))
                     | (func.lower(LyMaterialPurchaseRequirement.sales_order).like(like_value))
+                    | (func.lower(LyMaterialPurchaseRequirement.sales_order_item).like(like_value))
                     | (func.lower(LyMaterialPurchaseRequirement.material_item_code).like(like_value))
                     | (func.lower(LyMaterialPurchaseRequirement.material_name).like(like_value))
                     | (func.lower(LyMaterialPurchaseRequirement.supplier_name).like(like_value))
