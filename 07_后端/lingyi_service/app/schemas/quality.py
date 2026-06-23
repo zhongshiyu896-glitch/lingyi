@@ -242,6 +242,9 @@ class QualityInspectionDispositionData(QualityInspectionActionData):
     action: Literal["release", "rework"]
     qty: Decimal
     idempotency_key: str
+    downstream_type: str | None = None
+    warehouse_draft_id: int | None = None
+    warehouse_source_id: str | None = None
 
 
 class QualityStatisticsData(BaseModel):

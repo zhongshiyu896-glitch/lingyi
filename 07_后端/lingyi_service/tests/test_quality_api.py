@@ -26,6 +26,10 @@ from app.models.quality import LyQualityInspectionItem
 from app.models.quality import LyQualityOperationLog
 from app.models.quality import LyQualityWriteIdempotency
 from app.models.quality_outbox import LyQualityOutbox
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.quality import get_db_session as quality_db_dep
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
@@ -91,6 +95,10 @@ class QualityApiBase(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyWarehouseStockLedgerEntry).delete()
+            session.query(LyWarehouseStockEntryOutboxEvent).delete()
+            session.query(LyWarehouseStockEntryDraftItem).delete()
+            session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyQualityOutbox).delete()
             session.query(LyQualityDisposition).delete()
             session.query(LyQualityWriteIdempotency).delete()

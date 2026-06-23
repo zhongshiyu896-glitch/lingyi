@@ -479,6 +479,21 @@ class QualityService:
                 created_by=operator,
                 max_attempts=3,
             )
+            warehouse_draft = self._create_finished_goods_inbound_draft(
+                inspection=inspection,
+                operator=operator,
+                idempotency_key=normalized_idempotency_key,
+            )
+
+            result_json = dict(row.result_json or payload)
+            result_json.update(
+                {
+                    "downstream_type": "finished_goods_inbound",
+                    "warehouse_draft_id": int(warehouse_draft.id),
+                    "warehouse_source_id": str(warehouse_draft.source_id),
+                }
+            )
+            row.result_json = result_json
 
         self.session.flush()
         return self._disposition_data(row, status=str(inspection.status))
@@ -1305,16 +1320,95 @@ class QualityService:
 
     @staticmethod
     def _disposition_data(row: LyQualityDisposition, *, status: str) -> QualityInspectionDispositionData:
+        result_json = dict(row.result_json or {})
+        warehouse_draft_id = result_json.get("warehouse_draft_id")
+        try:
+            normalized_warehouse_draft_id = int(warehouse_draft_id) if warehouse_draft_id is not None else None
+        except (TypeError, ValueError):
+            normalized_warehouse_draft_id = None
         return QualityInspectionDispositionData(
             id=int(row.inspection_id),
-            inspection_no=str(row.result_json.get("inspection_no") or ""),
+            inspection_no=str(result_json.get("inspection_no") or ""),
             status=status,
             operator=str(row.operator),
             operated_at=row.operated_at,
             action=str(row.action),  # type: ignore[arg-type]
             qty=_decimal(row.qty),
             idempotency_key=str(row.idempotency_key),
+            downstream_type=_text(result_json.get("downstream_type")),
+            warehouse_draft_id=normalized_warehouse_draft_id,
+            warehouse_source_id=_text(result_json.get("warehouse_source_id")),
         )
+
+    def _create_finished_goods_inbound_draft(
+        self,
+        *,
+        inspection: LyQualityInspection,
+        operator: str,
+        idempotency_key: str,
+    ):
+        from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
+        from app.schemas.warehouse import WarehouseStockEntryDraftItemCreateRequest
+        from app.services.warehouse_service import WarehouseService
+        from app.services.warehouse_service import WarehouseServiceError
+
+        accepted_qty = _decimal(inspection.accepted_qty)
+        if accepted_qty <= Decimal("0"):
+            raise BusinessException(code=QUALITY_INVALID_QTY, message="放行必须有可入库合格数量")
+
+        target_warehouse = _text(os.getenv("QUALITY_ACCEPTED_WAREHOUSE")) or _text(inspection.warehouse)
+        if not target_warehouse:
+            raise BusinessException(code=QUALITY_INVALID_SOURCE, message="放行至成品入库缺少目标仓库")
+
+        source_id = self._release_finished_goods_source_id(inspection)
+        release_key = hashlib.sha256(f"{int(inspection.id)}:{idempotency_key}".encode("utf-8")).hexdigest()[:16]
+        warehouse_idempotency_key = f"quality-release-fg:{int(inspection.id)}:{release_key}"
+        business_date = inspection.inspection_date if isinstance(inspection.inspection_date, date) else date.today()
+        item_code = str(inspection.item_code)
+        uom = _text(os.getenv("QUALITY_RELEASE_UOM")) or "件"
+
+        payload = WarehouseStockEntryDraftCreateRequest(
+            company=str(inspection.company),
+            purpose="Material Receipt",
+            source_type="finished_goods_inbound",
+            source_id=source_id,
+            source_ref=source_id,
+            warehouse=target_warehouse,
+            item_code=item_code,
+            operation="create_stock_entry_draft",
+            quantity=accepted_qty,
+            business_date=business_date,
+            status_action="create",
+            scenario_tag="QUALITY-RELEASE-FG-INBOUND",
+            finished_goods_source_id=source_id,
+            source_warehouse=None,
+            target_warehouse=target_warehouse,
+            idempotency_key=warehouse_idempotency_key,
+            items=[
+                WarehouseStockEntryDraftItemCreateRequest(
+                    item_code=item_code,
+                    qty=accepted_qty,
+                    uom=uom,
+                    source_warehouse=None,
+                    target_warehouse=target_warehouse,
+                )
+            ],
+        )
+        try:
+            return WarehouseService(session=self.session, adapter=None).create_stock_entry_draft(
+                payload=payload,
+                current_user=operator,
+            )
+        except WarehouseServiceError as exc:
+            code = QUALITY_INVALID_SOURCE if int(exc.status_code) < 500 else QUALITY_SOURCE_UNAVAILABLE
+            raise BusinessException(code=code, message=exc.message) from exc
+
+    @staticmethod
+    def _release_finished_goods_source_id(inspection: LyQualityInspection) -> str:
+        inspection_no = str(inspection.inspection_no)
+        digest = hashlib.sha256(f"{int(inspection.id)}:{inspection_no}".encode("utf-8")).hexdigest()[:16]
+        safe_no = inspection_no.replace(" ", "")[:80]
+        return f"quality-release:{safe_no}:{digest}"
 
     def _next_inspection_no(self) -> str:
         prefix = f"QI-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"

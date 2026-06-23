@@ -6,10 +6,14 @@ from decimal import Decimal
 import unittest
 from unittest.mock import patch
 
+from app.models.audit import LyOperationAuditLog
 from app.models.quality import LyQualityDisposition
 from app.models.quality import LyQualityInspection
 from app.models.quality import LyQualityOperationLog
 from app.models.quality_outbox import LyQualityOutbox
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.services.quality_service import QualitySourceValidationSnapshot
 from tests.test_quality_api import QualityApiBase
 
@@ -61,6 +65,9 @@ class QualityDispositionTest(QualityApiBase):
         self.assertEqual(data["status"], "confirmed")
         self.assertEqual(data["action"], "release")
         self.assertEqual(Decimal(str(data["qty"])), Decimal("10"))
+        self.assertEqual(data["downstream_type"], "finished_goods_inbound")
+        self.assertIsInstance(data["warehouse_draft_id"], int)
+        self.assertTrue(str(data["warehouse_source_id"]).startswith("quality-release:QI-RELEASE-001:"))
 
         with self.SessionLocal() as session:
             inspection = session.query(LyQualityInspection).filter(LyQualityInspection.id == int(seeded["id"])).one()
@@ -68,8 +75,34 @@ class QualityDispositionTest(QualityApiBase):
             disposition = session.query(LyQualityDisposition).filter(LyQualityDisposition.inspection_id == int(seeded["id"])).one()
             self.assertEqual(disposition.action, "release")
             self.assertEqual(disposition.idempotency_key, "quality-disposition-release")
+            self.assertEqual(disposition.result_json["downstream_type"], "finished_goods_inbound")
+            self.assertEqual(disposition.result_json["warehouse_draft_id"], data["warehouse_draft_id"])
             outbox = session.query(LyQualityOutbox).filter(LyQualityOutbox.inspection_id == int(seeded["id"])).one()
             self.assertEqual(outbox.status, "pending")
+            draft = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.id == int(data["warehouse_draft_id"]))
+                .one()
+            )
+            self.assertEqual(str(draft.purpose), "Material Receipt")
+            self.assertEqual(str(draft.source_type), "finished_goods_inbound")
+            self.assertEqual(str(draft.source_id), data["warehouse_source_id"])
+            self.assertEqual(str(draft.target_warehouse), "WH-A")
+            draft_item = (
+                session.query(LyWarehouseStockEntryDraftItem)
+                .filter(LyWarehouseStockEntryDraftItem.draft_id == int(draft.id))
+                .one()
+            )
+            self.assertEqual(str(draft_item.item_code), "ITEM-A")
+            self.assertEqual(Decimal(str(draft_item.qty)), Decimal("10.000000"))
+            self.assertEqual(str(draft_item.target_warehouse), "WH-A")
+            warehouse_outbox = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(draft.id))
+                .one()
+            )
+            self.assertEqual(str(warehouse_outbox.status), "in_pending")
+            self.assertEqual(warehouse_outbox.payload["finished_goods_source_id"], data["warehouse_source_id"])
             log = (
                 session.query(LyQualityOperationLog)
                 .filter(LyQualityOperationLog.inspection_id == int(seeded["id"]), LyQualityOperationLog.action == "confirm")
@@ -78,6 +111,17 @@ class QualityDispositionTest(QualityApiBase):
             )
             self.assertIsNotNone(log)
             self.assertIn("release", str(log.remark))
+            audit_log = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.resource_id == int(seeded["id"]),
+                    LyOperationAuditLog.action == "quality:release",
+                    LyOperationAuditLog.result == "success",
+                )
+                .one()
+            )
+            self.assertEqual(audit_log.after_data["downstream_type"], "finished_goods_inbound")
+            self.assertEqual(audit_log.after_data["warehouse_draft_id"], data["warehouse_draft_id"])
 
     def test_rework_draft_confirms_and_records_disposition_without_outbox(self) -> None:
         seeded = self._insert_inspection(
@@ -121,6 +165,7 @@ class QualityDispositionTest(QualityApiBase):
             disposition = session.query(LyQualityDisposition).filter(LyQualityDisposition.inspection_id == int(seeded["id"])).one()
             self.assertEqual(disposition.action, "rework")
             self.assertEqual(session.query(LyQualityOutbox).filter(LyQualityOutbox.inspection_id == int(seeded["id"])).count(), 0)
+            self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 0)
 
     def test_release_same_idempotency_replays_same_disposition(self) -> None:
         seeded = self._insert_inspection(

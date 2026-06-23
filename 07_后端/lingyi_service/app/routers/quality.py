@@ -1077,6 +1077,14 @@ def _write_existing(
                 "disposition": data.action,
                 "qty": str(data.qty),
             }
+            if data.downstream_type:
+                after_data.update(
+                    {
+                        "downstream_type": data.downstream_type,
+                        "warehouse_draft_id": data.warehouse_draft_id,
+                        "warehouse_source_id": data.warehouse_source_id,
+                    }
+                )
             _record_success(
                 session=session,
                 audit=audit,
