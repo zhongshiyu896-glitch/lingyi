@@ -1440,21 +1440,23 @@ def create_payment_entry(
         company=payload.company,
         operation=payload.operation,
     )
-    permission_service.ensure_resource_scope_permission(
-        current_user=current_user,
-        request_obj=request,
-        module="sales_inventory",
-        action=action,
-        resource_scope={
-            "company": payload.company,
-            "customer": payload.customer,
-        },
-        required_fields=("company",),
-        resource_type="payment_entry",
-        enforce_action=False,
-    )
+    service = _write_service(session)
     try:
-        data = _write_service(session).create_payment_entry(
+        permission_service.ensure_resource_scope_permission(
+            current_user=current_user,
+            request_obj=request,
+            module="sales_inventory",
+            action=action,
+            resource_scope=service.get_sales_invoice_scope_for_permission(
+                company=payload.company,
+                sales_invoice=payload.sales_invoice,
+            ),
+            required_fields=("company", "item_code", "warehouse"),
+            resource_type="payment_entry",
+            resource_no=payload.sales_invoice,
+            enforce_action=False,
+        )
+        data = service.create_payment_entry(
             payload=payload,
             current_user=current_user.username,
             scenario_tag=scenario_tag,

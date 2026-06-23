@@ -1735,6 +1735,25 @@ class SalesInventoryService:
             raise SalesInventoryServiceError(404, "SALES_PAYMENT_INVOICE_NOT_FOUND", "销售发票不存在")
         return self._delivery_invoice_scope(invoice)
 
+    def get_sales_invoice_scope_for_permission(
+        self,
+        *,
+        company: str,
+        sales_invoice: str,
+    ) -> dict[str, str | None]:
+        session = self._require_session()
+        row = (
+            session.query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.sales_invoice == sales_invoice,
+            )
+            .first()
+        )
+        if row is None:
+            raise SalesInventoryServiceError(404, "SALES_PAYMENT_INVOICE_NOT_FOUND", "销售发票不存在")
+        return self._delivery_invoice_scope(row)
+
     def cancel_payment_entry(
         self,
         *,

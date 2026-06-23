@@ -77,6 +77,7 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
@@ -198,6 +199,9 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         }
         scope.update(overrides)
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"] = json.dumps(
+            {"roles": {"Sales Manager": ["sales_inventory:write"]}}
+        )
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps({"users": {"b4.delivery.user": scope}})
 
     @staticmethod

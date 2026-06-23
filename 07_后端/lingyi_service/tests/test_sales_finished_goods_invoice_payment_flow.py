@@ -24,6 +24,7 @@ from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
 from app.models.sales_order import LySalesPaymentEntry
+from app.models.sales_order import LySalesPaymentEntryOperation
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
@@ -272,6 +273,18 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
         payload.update(overrides)
         return payload
 
+    @classmethod
+    def _payment_cancel_payload(cls, **overrides) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "company": cls.COMPANY,
+            "sales_invoice": cls.SALES_INVOICE,
+            "reason": "cancel sales payment",
+            "idempotency_key": "idem-b1-payment-cancel",
+            "operation": "cancel_payment_entry",
+        }
+        payload.update(overrides)
+        return payload
+
     def test_finished_goods_delivery_invoice_payment_public_api_flow(self) -> None:
         order = self.client.post(
             "/api/sales-inventory/sales-orders/drafts",
@@ -332,9 +345,52 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(invoice["paid_amount"])), Decimal("320.000000"))
         self.assertEqual(Decimal(str(invoice["outstanding_amount"])), Decimal("0.000000"))
 
+        final_payment_id = final_payment.json()["data"]["id"]
+        cancelled_payment = self.client.post(
+            f"/api/sales-inventory/payment-entries/{final_payment_id}/cancel",
+            headers=self._headers(),
+            json=self._payment_cancel_payload(),
+        )
+        replay_cancelled_payment = self.client.post(
+            f"/api/sales-inventory/payment-entries/{final_payment_id}/cancel",
+            headers=self._headers(),
+            json=self._payment_cancel_payload(),
+        )
+        conflict_cancelled_payment = self.client.post(
+            f"/api/sales-inventory/payment-entries/{final_payment_id}/cancel",
+            headers=self._headers(),
+            json=self._payment_cancel_payload(reason="changed reason"),
+        )
+        reopened_receivables = self.client.get(
+            f"/api/sales-inventory/sales-invoices?sales_order={self.SALES_ORDER}",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(cancelled_payment.status_code, 200, cancelled_payment.text)
+        self.assertEqual(replay_cancelled_payment.status_code, 200, replay_cancelled_payment.text)
+        self.assertEqual(cancelled_payment.json()["data"]["id"], replay_cancelled_payment.json()["data"]["id"])
+        self.assertEqual(cancelled_payment.json()["data"]["status"], "cancelled")
+        self.assertEqual(cancelled_payment.json()["data"]["docstatus"], 2)
+        self.assertEqual(cancelled_payment.json()["data"]["financial_ledger_status"], "cancelled")
+        self.assertEqual(conflict_cancelled_payment.status_code, 409)
+        self.assertEqual(conflict_cancelled_payment.json()["code"], "SALES_PAYMENT_ENTRY_CONFLICT")
+        self.assertEqual(reopened_receivables.status_code, 200, reopened_receivables.text)
+        reopened_invoice = reopened_receivables.json()["data"]["items"][0]
+        self.assertEqual(reopened_invoice["status"], "partly_paid")
+        self.assertEqual(Decimal(str(reopened_invoice["paid_amount"])), Decimal("120.000000"))
+        self.assertEqual(Decimal(str(reopened_invoice["outstanding_amount"])), Decimal("200.000000"))
+        self.assertEqual(reopened_invoice["financial_ledger_status"], "partial")
+        self.assertEqual(Decimal(str(reopened_invoice["financial_ledger_cash_in_amount"])), Decimal("120.000000"))
+        self.assertEqual(Decimal(str(reopened_invoice["financial_ledger_outstanding_amount"])), Decimal("200.000000"))
+
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyDeliveryInvoice).count(), 1)
             self.assertEqual(session.query(LySalesPaymentEntry).count(), 2)
+            self.assertEqual(session.query(LySalesPaymentEntryOperation).count(), 1)
+            invoice_row = session.query(LyDeliveryInvoice).one()
+            self.assertEqual(str(invoice_row.status), "partly_paid")
+            self.assertEqual(Decimal(str(invoice_row.paid_amount)), Decimal("120.000000"))
+            self.assertEqual(Decimal(str(invoice_row.outstanding_amount)), Decimal("200.000000"))
             drafts = session.query(LyWarehouseStockEntryDraft).order_by(LyWarehouseStockEntryDraft.id.asc()).all()
             self.assertEqual([str(row.purpose) for row in drafts], ["Material Receipt", "Material Issue"])
             self.assertEqual([str(row.source_type) for row in drafts], ["finished_goods_inbound", "sales_delivery_invoice"])

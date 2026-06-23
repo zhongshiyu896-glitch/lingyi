@@ -306,6 +306,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
     "Sales Manager": {
         STYLE_PROFIT_READ,
         SALES_INVENTORY_READ,
+        SALES_INVENTORY_WRITE,
         SALES_INVENTORY_EXPORT,
     },
     "Quality Manager": {

@@ -67,6 +67,7 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
@@ -123,6 +124,9 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         }
         scope.update(overrides)
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"] = json.dumps(
+            {"roles": {"Sales Manager": ["sales_inventory:write"]}}
+        )
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps({"users": {"b5.payment.user": scope}})
 
     @staticmethod
@@ -256,6 +260,32 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SALES_PAYMENT_AMOUNT_EXCEEDED")
+
+    def test_payment_entry_create_denies_fastapi_resource_scope_and_does_not_mutate(self) -> None:
+        self._set_fastapi_scope(warehouses=["WH-OTHER"])
+        response = self.client.post(
+            "/api/sales-inventory/payment-entries",
+            headers=self._headers(role="Sales Manager"),
+            json=self._payload(
+                idempotency_key="idem-b5-payment-scope-deny",
+                source_ref="SRC-B5-PAY-SCOPE-DENY",
+                scenario_tag="B5-SALES-PAYMENT-SCOPE-DENY",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        with self.SessionLocal() as session:
+            invoice = session.query(LyDeliveryInvoice).one()
+            self.assertEqual(str(invoice.status), "submitted")
+            self.assertEqual(Decimal(str(invoice.paid_amount)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(invoice.outstanding_amount)), Decimal("400.000000"))
+            self.assertEqual(session.query(LySalesPaymentEntry).count(), 0)
+            security = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(security)
+            self.assertEqual(security.event_type, "RESOURCE_ACCESS_DENIED")
+            self.assertEqual(security.resource_type, "PAYMENT_ENTRY")
+            self.assertEqual(security.resource_no, "SI-B5-001")
 
     def test_payment_entry_cancel_reopens_receivable_and_is_idempotent(self) -> None:
         created = self.client.post(
