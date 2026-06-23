@@ -929,6 +929,107 @@ class MaterialPurchaseService:
         """Reverse receipt rows from a purchase order after a local draft cancel."""
         self._apply_receipt_delta(company=company, purchase_no=purchase_no, items=items, direction=Decimal("-1"), mutate=True)
 
+    def expand_receipt_rows_for_requirement_context(
+        self,
+        *,
+        company: str,
+        purchase_no: str,
+        items: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Split purchase receipt rows by demand context before they become stock facts."""
+        order = self._get_order_by_no(company=company, purchase_no=purchase_no)
+        if order is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_NOT_FOUND, message="采购单不存在")
+        if str(order.status) == "cancelled":
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message="采购单已取消")
+
+        lines = self._get_lines(order_id=int(order.id))
+        expanded: list[dict[str, Any]] = []
+        for source_index, item in enumerate(self._normalize_receipt_rows(items)):
+            line = self._match_receipt_line(
+                lines=lines,
+                item_code=str(item["item_code"]),
+                warehouse=self._optional_text(item.get("warehouse")),
+            )
+            requested_uom = self._optional_text(item.get("uom"))
+            line_uom = self._optional_text(line.uom) or "米"
+            if requested_uom is not None and requested_uom != line_uom:
+                raise BusinessException(
+                    code=MATERIAL_PURCHASE_CONFLICT,
+                    message=f"采购入库单位与采购明细不一致: {item['item_code']} {requested_uom} != {line_uom}",
+                )
+            receipt_qty = Decimal(str(item["qty"]))
+            requirement_id = item.get("purchase_requirement_id")
+            if requirement_id is not None:
+                requirement = self._match_receipt_requirement(
+                    order=order,
+                    line=line,
+                    requirement_id=int(requirement_id),
+                    item_code=str(item["item_code"]),
+                    warehouse=self._optional_text(item.get("warehouse")),
+                )
+                expanded.append(
+                    self._receipt_context_item(
+                        source_index=source_index,
+                        item=item,
+                        line=line,
+                        requirement=requirement,
+                        qty=receipt_qty,
+                    )
+                )
+                continue
+
+            requirements = self._requirements_for_order_line(line=line)
+            if not requirements:
+                expanded.append(
+                    {
+                        **item,
+                        "_source_index": source_index,
+                    }
+                )
+                continue
+
+            if len(requirements) == 1:
+                expanded.append(
+                    self._receipt_context_item(
+                        source_index=source_index,
+                        item=item,
+                        line=line,
+                        requirement=requirements[0],
+                        qty=receipt_qty,
+                    )
+                )
+                continue
+
+            line_qty = Decimal(str(line.qty or 0))
+            if receipt_qty != line_qty:
+                raise BusinessException(
+                    code=MATERIAL_PURCHASE_CONFLICT,
+                    message=f"{line.material_item_code} 合并采购部分入库必须指定采购需求行",
+                )
+
+            remaining_qty = receipt_qty
+            for requirement in requirements:
+                purchased_qty = Decimal(str(requirement.purchased_qty or requirement.net_required_qty or 0))
+                if purchased_qty <= Decimal("0"):
+                    continue
+                allocated_qty = min(purchased_qty, remaining_qty)
+                if allocated_qty <= Decimal("0"):
+                    continue
+                expanded.append(
+                    self._receipt_context_item(
+                        source_index=source_index,
+                        item=item,
+                        line=line,
+                        requirement=requirement,
+                        qty=allocated_qty,
+                    )
+                )
+                remaining_qty -= allocated_qty
+            if remaining_qty != Decimal("0"):
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"{line.material_item_code} 合并采购需求分摊数量不一致")
+        return expanded
+
     def _apply_receipt_delta(
         self,
         *,
@@ -2426,6 +2527,28 @@ class MaterialPurchaseService:
             .order_by(LyMaterialPurchaseRequirement.id.asc())
             .all()
         )
+
+    def _receipt_context_item(
+        self,
+        *,
+        source_index: int,
+        item: dict[str, Any],
+        line: LyMaterialPurchaseOrderItem,
+        requirement: LyMaterialPurchaseRequirement,
+        qty: Decimal,
+    ) -> dict[str, Any]:
+        return {
+            **item,
+            "_source_index": source_index,
+            "qty": qty,
+            "uom": self._optional_text(item.get("uom")) or self._optional_text(line.uom) or self._optional_text(requirement.uom) or "米",
+            "warehouse": self._optional_text(item.get("warehouse")) or self._optional_text(requirement.warehouse) or self._optional_text(line.warehouse),
+            "purchase_requirement_id": int(requirement.id),
+            "sales_order_item": self._optional_text(requirement.sales_order_item),
+            "bom_color": self._optional_text(requirement.bom_color),
+            "bom_size": self._optional_text(requirement.bom_size),
+            "bom_part": self._optional_text(requirement.bom_part),
+        }
 
     def _ensure_undirected_receipt_is_unambiguous(
         self,

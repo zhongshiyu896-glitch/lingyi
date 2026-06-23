@@ -2532,14 +2532,28 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual({row["bom_part"] for row in completed_rows}, {"门襟", "袖口"})
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
+        completed_by_part = {str(row["bom_part"]): row for row in completed_rows}
 
         ledger = self.client.get(
             f"/api/warehouse/stock-ledger?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
             headers=self._headers("req-a6-part-ledger"),
         )
         self.assertEqual(ledger.status_code, 200, ledger.text)
-        self.assertEqual(ledger.json()["data"]["total"], 1)
-        self.assertEqual(Decimal(str(ledger.json()["data"]["items"][0]["actual_qty"])), Decimal("15.000000"))
+        ledger_items = ledger.json()["data"]["items"]
+        self.assertEqual(ledger.json()["data"]["total"], 2)
+        ledger_by_part = {str(row["bom_part"]): row for row in ledger_items}
+        self.assertEqual(set(ledger_by_part), {"门襟", "袖口"})
+        self.assertEqual(ledger_by_part["门襟"]["purchase_requirement_id"], completed_by_part["门襟"]["id"])
+        self.assertEqual(ledger_by_part["袖口"]["purchase_requirement_id"], completed_by_part["袖口"]["id"])
+        self.assertEqual(ledger_by_part["门襟"]["sales_order_item"], sales_order_item)
+        self.assertEqual(ledger_by_part["袖口"]["sales_order_item"], sales_order_item)
+        self.assertEqual(ledger_by_part["门襟"]["bom_color"], "黑")
+        self.assertEqual(ledger_by_part["袖口"]["bom_color"], "黑")
+        self.assertEqual(ledger_by_part["门襟"]["bom_size"], "M")
+        self.assertEqual(ledger_by_part["袖口"]["bom_size"], "M")
+        self.assertEqual(Decimal(str(ledger_by_part["门襟"]["actual_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(ledger_by_part["袖口"]["actual_qty"])), Decimal("5.000000"))
+        self.assertEqual(sum(Decimal(str(row["actual_qty"])) for row in ledger_items), Decimal("15.000000"))
 
         ready_detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers("req-a6-part-ready"))
         self.assertEqual(ready_detail.status_code, 200, ready_detail.text)
@@ -2557,16 +2571,22 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 str(row.bom_part): row
                 for row in session.query(LyMaterialPurchaseRequirement).filter_by(plan_id=plan_id).all()
             }
-            persisted_ledger = (
+            persisted_ledger_rows = (
                 session.query(LyWarehouseStockLedgerEntry)
                 .filter_by(company=self.COMPANY, warehouse=self.WAREHOUSE, item_code=self.MATERIAL)
-                .one()
+                .all()
             )
         self.assertEqual({str(row.bom_part) for row in snapshots}, {"门襟", "袖口"})
         self.assertEqual(set(requirements_by_part), {"门襟", "袖口"})
         self.assertEqual(Decimal(str(requirements_by_part["门襟"].received_qty)), Decimal("10.000000"))
         self.assertEqual(Decimal(str(requirements_by_part["袖口"].received_qty)), Decimal("5.000000"))
-        self.assertEqual(Decimal(str(persisted_ledger.actual_qty)), Decimal("15.000000"))
+        self.assertEqual(len(persisted_ledger_rows), 2)
+        persisted_ledger_by_part = {str(row.bom_part): row for row in persisted_ledger_rows}
+        self.assertEqual(set(persisted_ledger_by_part), {"门襟", "袖口"})
+        self.assertEqual(persisted_ledger_by_part["门襟"].purchase_requirement_id, requirements_by_part["门襟"].id)
+        self.assertEqual(persisted_ledger_by_part["袖口"].purchase_requirement_id, requirements_by_part["袖口"].id)
+        self.assertEqual(Decimal(str(persisted_ledger_by_part["门襟"].actual_qty)), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(persisted_ledger_by_part["袖口"].actual_qty)), Decimal("5.000000"))
 
     def test_multi_sku_color_size_requirements_po_receipt_stock_summary_and_recheck_ready(self) -> None:
         with self.SessionLocal() as session:
@@ -2780,9 +2800,20 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             "FAB-A6-WHT-M": Decimal("297.000000"),
         }
         net_required_by_material: dict[str, Decimal] = {}
+        expected_receipt_contexts_by_material: dict[str, list[dict[str, object]]] = {}
         for row in requirement_rows:
             material_code = row["material_item_code"]
             net_required_by_material[material_code] = net_required_by_material.get(material_code, Decimal("0")) + Decimal(str(row["net_required_qty"]))
+            expected_receipt_contexts_by_material.setdefault(material_code, []).append(
+                {
+                    "purchase_requirement_id": int(row["id"]),
+                    "sales_order_item": row["sales_order_item"],
+                    "bom_color": row["bom_color"],
+                    "bom_size": row["bom_size"],
+                    "bom_part": row["bom_part"],
+                    "qty": Decimal(str(row["net_required_qty"])),
+                }
+            )
             self.assertEqual(row["status"], "pending")
             self.assertGreater(Decimal(str(row["net_required_qty"])), Decimal("0"))
         self.assertEqual(net_required_by_material, expected_qty_by_material)
@@ -2855,11 +2886,31 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(summary.status_code, 200, summary.text)
             ledger_items = ledger.json()["data"]["items"]
             summary_items = summary.json()["data"]["items"]
-            self.assertEqual(ledger.json()["data"]["total"], 1)
-            self.assertEqual(Decimal(str(ledger_items[0]["actual_qty"])), expected_qty)
-            self.assertEqual(Decimal(str(ledger_items[0]["qty_after_transaction"])), expected_qty)
-            self.assertEqual(len(summary_items), 1)
-            self.assertEqual(Decimal(str(summary_items[0]["actual_qty"])), expected_qty)
+            expected_contexts = expected_receipt_contexts_by_material[material_code]
+            self.assertEqual(ledger.json()["data"]["total"], len(expected_contexts))
+            self.assertEqual(len(summary_items), len(expected_contexts))
+            self.assertEqual(sum(Decimal(str(row["actual_qty"])) for row in ledger_items), expected_qty)
+            self.assertEqual(sum(Decimal(str(row["actual_qty"])) for row in summary_items), expected_qty)
+
+            ledger_by_requirement = {int(row["purchase_requirement_id"]): row for row in ledger_items}
+            summary_by_requirement = {int(row["purchase_requirement_id"]): row for row in summary_items}
+            self.assertEqual(set(ledger_by_requirement), {int(row["purchase_requirement_id"]) for row in expected_contexts})
+            self.assertEqual(set(summary_by_requirement), {int(row["purchase_requirement_id"]) for row in expected_contexts})
+            for expected_context in expected_contexts:
+                requirement_id = int(expected_context["purchase_requirement_id"])
+                ledger_row = ledger_by_requirement[requirement_id]
+                summary_row = summary_by_requirement[requirement_id]
+                self.assertEqual(ledger_row["sales_order_item"], expected_context["sales_order_item"])
+                self.assertEqual(summary_row["sales_order_item"], expected_context["sales_order_item"])
+                self.assertEqual(ledger_row["bom_color"], expected_context["bom_color"])
+                self.assertEqual(ledger_row["bom_size"], expected_context["bom_size"])
+                self.assertEqual(ledger_row["bom_part"], expected_context["bom_part"])
+                self.assertEqual(summary_row["bom_color"], expected_context["bom_color"])
+                self.assertEqual(summary_row["bom_size"], expected_context["bom_size"])
+                self.assertEqual(summary_row["bom_part"], expected_context["bom_part"])
+                self.assertEqual(Decimal(str(ledger_row["actual_qty"])), expected_context["qty"])
+                self.assertEqual(Decimal(str(ledger_row["qty_after_transaction"])), expected_context["qty"])
+                self.assertEqual(Decimal(str(summary_row["actual_qty"])), expected_context["qty"])
 
             with self.SessionLocal() as session:
                 persisted_ledger_rows = (
@@ -2867,10 +2918,20 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                     .filter_by(company=self.COMPANY, warehouse=self.WAREHOUSE, item_code=material_code)
                     .all()
                 )
-            self.assertEqual(len(persisted_ledger_rows), 1)
-            self.assertEqual(Decimal(str(persisted_ledger_rows[0].actual_qty)), expected_qty)
-            self.assertEqual(str(persisted_ledger_rows[0].voucher_type), "Stock Entry Draft/Material Receipt")
-            self.assertEqual(persisted_ledger_rows[0].posting_date.isoformat(), self.BUSINESS_DATE)
+            self.assertEqual(len(persisted_ledger_rows), len(expected_contexts))
+            persisted_by_requirement = {int(row.purchase_requirement_id): row for row in persisted_ledger_rows}
+            self.assertEqual(set(persisted_by_requirement), {int(row["purchase_requirement_id"]) for row in expected_contexts})
+            self.assertEqual(sum(Decimal(str(row.actual_qty)) for row in persisted_ledger_rows), expected_qty)
+            for expected_context in expected_contexts:
+                requirement_id = int(expected_context["purchase_requirement_id"])
+                persisted_row = persisted_by_requirement[requirement_id]
+                self.assertEqual(str(persisted_row.sales_order_item), expected_context["sales_order_item"])
+                self.assertEqual(persisted_row.bom_color, expected_context["bom_color"])
+                self.assertEqual(persisted_row.bom_size, expected_context["bom_size"])
+                self.assertEqual(persisted_row.bom_part, expected_context["bom_part"])
+                self.assertEqual(Decimal(str(persisted_row.actual_qty)), expected_context["qty"])
+                self.assertEqual(str(persisted_row.voucher_type), "Stock Entry Draft/Material Receipt")
+                self.assertEqual(persisted_row.posting_date.isoformat(), self.BUSINESS_DATE)
             self._assert_balanced_inventory_reconciliation(
                 item_code=material_code,
                 expected_qty=expected_qty,
@@ -3080,11 +3141,22 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual({row["sales_order_item"] for row in requirement_rows}, set(sales_item_by_color_size.values()))
         net_required_by_material: dict[str, Decimal] = {}
         dimensions_by_material: dict[str, set[tuple[object, object, object, str]]] = {}
+        expected_receipt_contexts_by_material: dict[str, list[dict[str, object]]] = {}
         for row in requirement_rows:
             material_code = row["material_item_code"]
             net_required_by_material[material_code] = net_required_by_material.get(material_code, Decimal("0")) + Decimal(str(row["net_required_qty"]))
             dimensions_by_material.setdefault(material_code, set()).add(
                 (row["bom_color"], row["bom_size"], row["bom_part"], row["sales_order_item"])
+            )
+            expected_receipt_contexts_by_material.setdefault(material_code, []).append(
+                {
+                    "purchase_requirement_id": int(row["id"]),
+                    "sales_order_item": row["sales_order_item"],
+                    "bom_color": row["bom_color"],
+                    "bom_size": row["bom_size"],
+                    "bom_part": row["bom_part"],
+                    "qty": Decimal(str(row["net_required_qty"])),
+                }
             )
         expected_qty_by_material = {
             self.MATERIAL: Decimal("21.000000"),
@@ -3154,9 +3226,32 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             )
             self.assertEqual(ledger.status_code, 200, ledger.text)
             self.assertEqual(summary.status_code, 200, summary.text)
-            self.assertEqual(Decimal(str(ledger.json()["data"]["items"][0]["actual_qty"])), expected_qty)
-            self.assertEqual(Decimal(str(ledger.json()["data"]["items"][0]["qty_after_transaction"])), expected_qty)
-            self.assertEqual(Decimal(str(summary.json()["data"]["items"][0]["actual_qty"])), expected_qty)
+            ledger_items = ledger.json()["data"]["items"]
+            summary_items = summary.json()["data"]["items"]
+            expected_contexts = expected_receipt_contexts_by_material[material_code]
+            self.assertEqual(ledger.json()["data"]["total"], len(expected_contexts))
+            self.assertEqual(len(summary_items), len(expected_contexts))
+            self.assertEqual(sum(Decimal(str(row["actual_qty"])) for row in ledger_items), expected_qty)
+            self.assertEqual(sum(Decimal(str(row["actual_qty"])) for row in summary_items), expected_qty)
+            ledger_by_requirement = {int(row["purchase_requirement_id"]): row for row in ledger_items}
+            summary_by_requirement = {int(row["purchase_requirement_id"]): row for row in summary_items}
+            self.assertEqual(set(ledger_by_requirement), {int(row["purchase_requirement_id"]) for row in expected_contexts})
+            self.assertEqual(set(summary_by_requirement), {int(row["purchase_requirement_id"]) for row in expected_contexts})
+            for expected_context in expected_contexts:
+                requirement_id = int(expected_context["purchase_requirement_id"])
+                ledger_row = ledger_by_requirement[requirement_id]
+                summary_row = summary_by_requirement[requirement_id]
+                self.assertEqual(ledger_row["sales_order_item"], expected_context["sales_order_item"])
+                self.assertEqual(summary_row["sales_order_item"], expected_context["sales_order_item"])
+                self.assertEqual(ledger_row["bom_color"], expected_context["bom_color"])
+                self.assertEqual(ledger_row["bom_size"], expected_context["bom_size"])
+                self.assertEqual(ledger_row["bom_part"], expected_context["bom_part"])
+                self.assertEqual(summary_row["bom_color"], expected_context["bom_color"])
+                self.assertEqual(summary_row["bom_size"], expected_context["bom_size"])
+                self.assertEqual(summary_row["bom_part"], expected_context["bom_part"])
+                self.assertEqual(Decimal(str(ledger_row["actual_qty"])), expected_context["qty"])
+                self.assertEqual(Decimal(str(ledger_row["qty_after_transaction"])), expected_context["qty"])
+                self.assertEqual(Decimal(str(summary_row["actual_qty"])), expected_context["qty"])
             self._assert_balanced_inventory_reconciliation(
                 item_code=material_code,
                 expected_qty=expected_qty,
@@ -3805,6 +3900,46 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual({row["bom_part"] for row in completed_rows}, {"门襟", "袖口"})
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
+
+        ledger = self.client.get(
+            f"/api/warehouse/stock-ledger?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-group-material-ledger"),
+        )
+        summary = self.client.get(
+            f"/api/warehouse/stock-summary?company={self.COMPANY}&warehouse={self.WAREHOUSE}&item_code={self.MATERIAL}",
+            headers=self._headers("req-a6-group-material-summary"),
+        )
+        receipts = self.client.get(
+            f"/api/warehouse/purchase-receipts?company={self.COMPANY}&purchase_no={purchase_no}&page=1&page_size=100",
+            headers=self._headers("req-a6-group-material-receipts"),
+        )
+        self.assertEqual(ledger.status_code, 200, ledger.text)
+        self.assertEqual(summary.status_code, 200, summary.text)
+        self.assertEqual(receipts.status_code, 200, receipts.text)
+        ledger_rows = ledger.json()["data"]["items"]
+        summary_rows = summary.json()["data"]["items"]
+        receipt_rows = receipts.json()["data"]["items"]
+        self.assertEqual(ledger.json()["data"]["total"], 2)
+        self.assertEqual(len(summary_rows), 2)
+        self.assertEqual(len(receipt_rows), 2)
+        ledger_by_part = {str(row["bom_part"]): row for row in ledger_rows}
+        summary_by_part = {str(row["bom_part"]): row for row in summary_rows}
+        receipt_by_part = {str(row["bom_part"]): row for row in receipt_rows}
+        self.assertEqual(set(ledger_by_part), {"门襟", "袖口"})
+        self.assertEqual(set(summary_by_part), {"门襟", "袖口"})
+        self.assertEqual(set(receipt_by_part), {"门襟", "袖口"})
+        self.assertEqual(ledger_by_part["门襟"]["purchase_requirement_id"], requirement_a)
+        self.assertEqual(ledger_by_part["袖口"]["purchase_requirement_id"], requirement_b)
+        self.assertEqual(receipt_by_part["门襟"]["purchase_requirement_id"], requirement_a)
+        self.assertEqual(receipt_by_part["袖口"]["purchase_requirement_id"], requirement_b)
+        self.assertEqual(ledger_by_part["门襟"]["sales_order_item"], "SO-A6-GROUP-001-ITEM")
+        self.assertEqual(ledger_by_part["袖口"]["sales_order_item"], "SO-A6-GROUP-002-ITEM")
+        self.assertEqual(receipt_by_part["门襟"]["sales_order_item"], "SO-A6-GROUP-001-ITEM")
+        self.assertEqual(receipt_by_part["袖口"]["sales_order_item"], "SO-A6-GROUP-002-ITEM")
+        self.assertEqual(Decimal(str(ledger_by_part["门襟"]["actual_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(ledger_by_part["袖口"]["actual_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(summary_by_part["门襟"]["actual_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(summary_by_part["袖口"]["actual_qty"])), Decimal("10.000000"))
 
     def test_material_check_cross_order_requirements_grouped_po_receipt_marks_both_ready(self) -> None:
         def create_checked_plan(*, sequence: str) -> tuple[str, str, int]:

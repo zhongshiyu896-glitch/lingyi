@@ -2941,11 +2941,23 @@ class WarehouseService:
                 fallback_target_warehouse=target_warehouse,
             )
         is_material_purchase_receipt = source_type == MaterialPurchaseService.PURCHASE_SOURCE_TYPE and purpose == "Material Receipt"
-        self._attach_purchase_requirement_contexts(
-            company=company,
-            item_rows=item_rows,
-            strict=is_material_purchase_receipt,
-        )
+        if is_material_purchase_receipt:
+            self._attach_purchase_requirement_contexts(
+                company=company,
+                item_rows=item_rows,
+                strict=True,
+            )
+            item_rows = self._expand_material_purchase_receipt_context_rows(
+                company=company,
+                source_id=source_id,
+                item_rows=item_rows,
+            )
+        else:
+            self._attach_purchase_requirement_contexts(
+                company=company,
+                item_rows=item_rows,
+                strict=False,
+            )
 
         expected_outbox_payload = self._build_stock_entry_replay_payload(
             company=company,
@@ -3838,6 +3850,43 @@ class WarehouseService:
             )
         except BusinessException as exc:
             raise WarehouseServiceError(exc.status_code, exc.code, exc.message) from exc
+
+    def _expand_material_purchase_receipt_context_rows(
+        self,
+        *,
+        company: str,
+        source_id: str,
+        item_rows: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        try:
+            expanded = MaterialPurchaseService(self.session).expand_receipt_rows_for_requirement_context(
+                company=company,
+                purchase_no=self._purchase_no_from_source_id(source_id) or source_id,
+                items=self._material_purchase_receipt_rows(item_rows),
+            )
+        except BusinessException as exc:
+            raise WarehouseServiceError(exc.status_code, exc.code, exc.message) from exc
+
+        resolved_rows: list[dict[str, Any]] = []
+        for row in expanded:
+            source_index = int(row.get("_source_index", 0) or 0)
+            if source_index < 0 or source_index >= len(item_rows):
+                raise WarehouseServiceError(409, "WAREHOUSE_INVALID_PAYLOAD", "采购入库需求分摊来源行非法")
+            source_row = item_rows[source_index]
+            resolved = {
+                **source_row,
+                "item_code": str(row["item_code"]).strip(),
+                "qty": Decimal(str(row["qty"])),
+                "uom": self._text(row.get("uom")) or source_row.get("uom"),
+                "target_warehouse": self._text(row.get("warehouse")) or source_row.get("target_warehouse"),
+                "purchase_requirement_id": row.get("purchase_requirement_id"),
+                "sales_order_item": self._text(row.get("sales_order_item")),
+                "bom_color": self._text(row.get("bom_color")),
+                "bom_size": self._text(row.get("bom_size")),
+                "bom_part": self._text(row.get("bom_part")),
+            }
+            resolved_rows.append(resolved)
+        return resolved_rows
 
     def _draft_purchase_receipt_rows(self, *, draft_id: int) -> list[dict[str, Any]]:
         items = (
