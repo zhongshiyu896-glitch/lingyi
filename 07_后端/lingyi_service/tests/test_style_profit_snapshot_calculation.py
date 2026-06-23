@@ -231,6 +231,45 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
             )
             self.assertEqual(pr_included, 0)
 
+    def test_missing_actual_material_source_is_marked_incomplete_instead_of_silent_zero(self) -> None:
+        request = self._request()
+        request.idempotency_key = "idem-missing-actual-material-source"
+        request.stock_ledger_rows = []
+
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="u1")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+            self.assertEqual(row.actual_material_cost, Decimal("0"))
+            self.assertEqual(row.snapshot_status, "incomplete")
+            self.assertGreaterEqual(row.unresolved_count, 1)
+
+            unresolved_detail = (
+                session.query(LyStyleProfitDetail)
+                .filter(
+                    LyStyleProfitDetail.snapshot_id == result.snapshot_id,
+                    LyStyleProfitDetail.cost_type == "unresolved",
+                    LyStyleProfitDetail.source_type == "Actual Material Cost",
+                    LyStyleProfitDetail.item_code == "MAT-A",
+                    LyStyleProfitDetail.unresolved_reason == "actual_material_source_missing",
+                )
+                .one()
+            )
+            self.assertEqual(unresolved_detail.amount, Decimal("0"))
+            self.assertEqual(unresolved_detail.qty, Decimal("4"))
+
+            unresolved_source = (
+                session.query(LyStyleProfitSourceMap)
+                .filter(
+                    LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
+                    LyStyleProfitSourceMap.source_doctype == "Actual Material Cost",
+                    LyStyleProfitSourceMap.source_item_code == "MAT-A",
+                    LyStyleProfitSourceMap.mapping_status == "unresolved",
+                    LyStyleProfitSourceMap.unresolved_reason == "actual_material_source_missing",
+                )
+                .one()
+            )
+            self.assertFalse(unresolved_source.include_in_profit)
+
     def test_workshop_cost_uses_register_minus_reversal_times_wage_snapshot(self) -> None:
         with self.SessionLocal() as session:
             result = self.service.create_snapshot(session=session, request=self._request(), operator="u1")

@@ -1097,6 +1097,131 @@ class ProductionReportSuiteApiTest(unittest.TestCase):
         self.assertEqual(Decimal(str(material_row["requiredQty"])), Decimal("110.000000"))
         self.assertEqual(Decimal(str(material_row["materialCost"])), Decimal("797.50000000"))
 
+    def test_profit_report_marks_missing_cost_sources_instead_of_silent_zero(self) -> None:
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no="SO-RPT-MISS",
+                source_order_ref="SO-RPT-MISS",
+                company="COMP-A",
+                customer="杭州云澜服饰",
+                status="planned",
+                docstatus=0,
+                transaction_date=date(2026, 6, 3),
+                delivery_date=date(2026, 6, 23),
+                currency="CNY",
+                grand_total=Decimal("600"),
+                idempotency_key="so-rpt-miss-idem",
+                request_hash="so-rpt-miss-hash",
+                created_by="sales.user",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-RPT-MISS-001",
+                    item_code="STYLE-MISS",
+                    item_name="缺成本来源款式",
+                    qty=Decimal("30"),
+                    planned_qty=Decimal("30"),
+                    delivered_qty=Decimal("0"),
+                    rate=Decimal("20"),
+                    amount=Decimal("600"),
+                    uom="件",
+                    warehouse="FG-A",
+                    delivery_date=date(2026, 6, 23),
+                )
+            )
+            bom = LyApparelBom(
+                id=3,
+                bom_no="BOM-RPT-MISS",
+                company="COMP-RPT",
+                item_code="STYLE-MISS",
+                version_no="V1",
+                is_default=True,
+                status="active",
+                effective_date=date(2026, 5, 22),
+                created_by="bom.user",
+                updated_by="bom.user",
+            )
+            session.add(bom)
+            session.flush()
+            session.add(
+                LyApparelBomItem(
+                    id=3,
+                    bom_id=int(bom.id),
+                    material_item_code="MAT-MISS",
+                    qty_per_piece=Decimal("1.5"),
+                    loss_rate=Decimal("0.1"),
+                    uom="米",
+                    remark="无单价",
+                )
+            )
+            session.add(
+                LyBomOperation(
+                    id=5,
+                    bom_id=int(bom.id),
+                    process_name="车缝",
+                    sequence_no=1,
+                    is_subcontract=False,
+                    wage_rate=None,
+                )
+            )
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-RPT-MISS",
+                    company="COMP-A",
+                    sales_order="SO-RPT-MISS",
+                    sales_order_item="SO-RPT-MISS-001",
+                    customer="杭州云澜服饰",
+                    item_code="STYLE-MISS",
+                    bom_id=int(bom.id),
+                    bom_version="V1",
+                    planned_qty=Decimal("30"),
+                    planned_start_date=date(2026, 6, 5),
+                    status="planned",
+                    idempotency_key="plan-rpt-miss-idem",
+                    request_hash="plan-rpt-miss-hash",
+                    created_by="merch.user",
+                )
+            )
+            session.commit()
+
+        profit_response = self.client.get(
+            "/api/production/report-suite?report_key=productOrderProfitReport&company=COMP-A&keyword=SO-RPT-MISS",
+            headers=self._headers(),
+        )
+        self.assertEqual(profit_response.status_code, 200, profit_response.text)
+        profit_payload = profit_response.json()["data"]
+        self.assertIn("missingCostSources", "；".join(profit_payload["data_basis"]))
+        profit_row = profit_payload["items"][0]
+        self.assertEqual(profit_row["sourceLabel"], "缺成本来源")
+        self.assertEqual(profit_row["sourceStatus"], "incomplete")
+        self.assertEqual(profit_row["costSourceStatus"], "incomplete")
+        self.assertEqual(profit_row["missingCostSourceCount"], 2)
+        self.assertIn("物料单价缺失:MAT-MISS", profit_row["missingCostSources"])
+        self.assertIn("工序工价缺失:车缝", profit_row["missingCostSources"])
+        self.assertIn("成本来源缺失", profit_row["sourceNote"])
+        self.assertEqual(Decimal(str(profit_row["materialCost"])), Decimal("0.0000000"))
+        self.assertEqual(Decimal(str(profit_row["laborCost"])), Decimal("0"))
+        self.assertEqual(Decimal(str(profit_row["totalCost"])), Decimal("0.0000000"))
+
+        material_response = self.client.get(
+            "/api/production/report-suite?report_key=orderTrackingReport&company=COMP-A&keyword=SO-RPT-MISS",
+            headers=self._headers(),
+        )
+        self.assertEqual(material_response.status_code, 200, material_response.text)
+        material_row = material_response.json()["data"]["items"][0]
+        self.assertEqual(material_row["status"], "缺成本来源")
+        self.assertEqual(material_row["sourceLabel"], "缺成本来源")
+        self.assertEqual(material_row["costSourceStatus"], "incomplete")
+        self.assertEqual(material_row["missingCostSourceCount"], 1)
+        self.assertEqual(material_row["missingCostSources"], ["物料单价缺失:MAT-MISS"])
+        self.assertEqual(Decimal(str(material_row["unitPrice"])), Decimal("0"))
+        self.assertEqual(Decimal(str(material_row["materialCost"])), Decimal("0E-7"))
+
     def test_report_suite_requires_production_read(self) -> None:
         response = self.client.get(
             "/api/production/report-suite?report_key=productOrderProfitReport&company=COMP-A",

@@ -3110,7 +3110,7 @@ class ProductionService:
                 "发货开票、回款已合并为报表收入、已回款与未收款口径，成本优先取款式利润快照，缺快照时按 BOM 用量、BOM 单价/本地采购单价、工序工价预测",
                 "订单利润报表可生成款式利润快照：后端从销售、BOM、库存、工票与外发真实来源收集，已生成快照的行纳入实际工票工资",
                 "样衣对比报表读取样板单成本归集；已转大货样板按 bulk_handoff_no 关联销售单并纳入样衣成本偏差",
-                "报表行通过 sourceLabel/sourceStatus/hasSnapshot 显式标识实际快照、部分估算或纯估算口径",
+                "报表行通过 sourceLabel/sourceStatus/hasSnapshot/missingCostSources 显式标识实际快照、部分估算、纯估算或缺成本来源口径",
                 "B期报表继续披露经营测算/快照：已建成品入库、发货开票、回款、工资发放、付款审批与审批模板/角色矩阵接 FastAPI 执行数据",
                 "财务总账按当前可追溯来源归集为 financialLedger* 字段：收入取利润快照实际收入或发货开票，回款取销售回款，成本取利润快照实际成本，采购应付/付款按待采购需求池回溯到订单款式",
             ],
@@ -3666,6 +3666,11 @@ class ProductionService:
                         material_item_code=material_code,
                         context=context,
                     )
+                    missing_sources = self._material_row_missing_sources(
+                        material_code=material_code,
+                        required_qty=required_qty,
+                        unit_price=unit_price,
+                    )
                     rows.append(
                         {
                             **base,
@@ -3681,7 +3686,8 @@ class ProductionService:
                             "availableQty": available_qty,
                             "gapQty": available_qty - required_qty,
                             "supplier": self._extract_supplier_from_remark(bom_item.remark if bom_item is not None else None) or "",
-                            "status": "缺口" if shortage_qty > 0 else "库存充足",
+                            "status": "缺成本来源" if missing_sources else ("缺口" if shortage_qty > 0 else "库存充足"),
+                            **self._missing_cost_source_fields(base=base, missing_sources=missing_sources),
                         }
                     )
                 continue
@@ -3702,6 +3708,11 @@ class ProductionService:
                     material_item_code=material_code,
                     context=context,
                 )
+                missing_sources = self._material_row_missing_sources(
+                    material_code=material_code,
+                    required_qty=required_qty,
+                    unit_price=unit_price,
+                )
                 rows.append(
                     {
                         **base,
@@ -3717,7 +3728,8 @@ class ProductionService:
                         "availableQty": Decimal("0"),
                         "gapQty": -required_qty,
                         "supplier": self._extract_supplier_from_remark(bom_item.remark) or "",
-                        "status": "待齐料",
+                        "status": "缺成本来源" if missing_sources else "待齐料",
+                        **self._missing_cost_source_fields(base=base, missing_sources=missing_sources),
                     }
                 )
         return rows
@@ -3757,9 +3769,17 @@ class ProductionService:
         if snapshot is None and amount == Decimal("0") and sales_item is not None:
             amount = self._dec(getattr(sales_item, "qty", None)) * self._dec(getattr(sales_item, "rate", None))
 
-        material_cost, labor_cost, outsource_cost = self._estimated_costs(plan=plan, context=context)
+        cost_resolution = self._estimated_cost_resolution(plan=plan, context=context)
+        material_cost = self._dec(cost_resolution.get("material_cost"))
+        labor_cost = self._dec(cost_resolution.get("labor_cost"))
+        outsource_cost = self._dec(cost_resolution.get("outsource_cost"))
+        missing_cost_sources = list(cost_resolution.get("missing_cost_sources") or [])
         has_snapshot = snapshot is not None
         snapshot_no = str(getattr(snapshot, "snapshot_no", "") or "") if has_snapshot else ""
+        snapshot_unresolved_count = int(getattr(snapshot, "unresolved_count", 0) or 0) if has_snapshot else 0
+        snapshot_status = str(getattr(snapshot, "snapshot_status", "") or "").strip().lower() if has_snapshot else ""
+        if has_snapshot and (snapshot_unresolved_count > 0 or snapshot_status == "incomplete"):
+            missing_cost_sources.append(f"利润快照未解析来源:{snapshot_unresolved_count}")
         if has_snapshot and snapshot_revenue_status == "actual":
             revenue_source_status = "actual"
         elif has_invoice_revenue:
@@ -3802,6 +3822,11 @@ class ProductionService:
             total_cost = self._dec(snapshot.actual_total_cost)
         else:
             total_cost = material_cost + labor_cost + outsource_cost
+        if missing_cost_sources:
+            cost_source_status = "incomplete"
+            source_status = "incomplete"
+            source_label = "利润快照/缺成本来源" if has_snapshot else "缺成本来源"
+            source_note = f"{source_note}；成本来源缺失：{'；'.join(missing_cost_sources)}"
         profit = amount - total_cost
         gross_margin = self._percent(profit, amount)
         payment_status = self._report_suite_payment_status(
@@ -3880,6 +3905,9 @@ class ProductionService:
             "snapshotNo": snapshot_no,
             "revenueSourceStatus": revenue_source_status,
             "costSourceStatus": cost_source_status,
+            "missingCostSourceCount": len(missing_cost_sources),
+            "missingCostSources": missing_cost_sources,
+            "missingCostSourcesText": "；".join(missing_cost_sources),
             "workOrder": work_order,
             "primaryJobCard": primary_job_card,
             "jobCardCount": len(job_cards),
@@ -3977,41 +4005,117 @@ class ProductionService:
         return amount
 
     def _estimated_costs(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> tuple[Decimal, Decimal, Decimal]:
+        resolution = self._estimated_cost_resolution(plan=plan, context=context)
+        return (
+            self._dec(resolution.get("material_cost")),
+            self._dec(resolution.get("labor_cost")),
+            self._dec(resolution.get("outsource_cost")),
+        )
+
+    def _estimated_cost_resolution(self, *, plan: LyProductionPlan, context: dict[str, Any]) -> dict[str, Any]:
         planned_qty = self._dec(plan.planned_qty)
         material_cost = Decimal("0")
-        for snapshot in context["material_map"].get(int(plan.id), []):
-            bom_item = (
-                context["bom_item_by_id"].get(int(snapshot.bom_item_id))
-                if snapshot.bom_item_id is not None
-                else None
-            )
-            unit_price = self._material_unit_price(
-                material_item_code=str(snapshot.material_item_code),
-                company=str(plan.company),
-                remark=bom_item.remark if bom_item is not None else None,
-                context=context,
-            )
-            material_cost += self._dec(snapshot.required_qty) * unit_price
-        if material_cost == Decimal("0"):
-            for bom_item in context["bom_item_map"].get(int(plan.bom_id), []):
+        missing_sources: list[str] = []
+        snapshot_items = context["material_map"].get(int(plan.id), [])
+        if snapshot_items:
+            for snapshot in snapshot_items:
+                bom_item = (
+                    context["bom_item_by_id"].get(int(snapshot.bom_item_id))
+                    if snapshot.bom_item_id is not None
+                    else None
+                )
+                material_code = str(snapshot.material_item_code)
+                unit_price = self._material_unit_price(
+                    material_item_code=material_code,
+                    company=str(plan.company),
+                    remark=bom_item.remark if bom_item is not None else None,
+                    context=context,
+                )
+                required_qty = self._dec(snapshot.required_qty)
+                material_cost += required_qty * unit_price
+                if required_qty > Decimal("0") and unit_price <= Decimal("0"):
+                    missing_sources.append(f"物料单价缺失:{material_code}")
+        else:
+            bom_rows = context["bom_item_map"].get(int(plan.bom_id), [])
+            if not bom_rows:
+                missing_sources.append("BOM物料明细缺失")
+            for bom_item in bom_rows:
+                material_code = str(bom_item.material_item_code)
                 qty_per_piece = self._dec(bom_item.qty_per_piece)
                 loss_rate = self._dec(bom_item.loss_rate)
                 required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
-                material_cost += required_qty * self._material_unit_price(
-                    material_item_code=str(bom_item.material_item_code),
+                unit_price = self._material_unit_price(
+                    material_item_code=material_code,
                     company=str(plan.company),
                     remark=bom_item.remark,
                     context=context,
                 )
+                material_cost += required_qty * unit_price
+                if required_qty > Decimal("0") and unit_price <= Decimal("0"):
+                    missing_sources.append(f"物料单价缺失:{material_code}")
 
         labor_cost = Decimal("0")
         outsource_cost = Decimal("0")
-        for operation in context["operation_map"].get(int(plan.bom_id), []):
+        operations = context["operation_map"].get(int(plan.bom_id), [])
+        if not operations:
+            missing_sources.append("工序工价缺失")
+        for operation in operations:
+            operation_name = str(getattr(operation, "process_name", None) or getattr(operation, "operation", None) or "OP")
             if bool(operation.is_subcontract):
-                outsource_cost += planned_qty * self._dec(operation.subcontract_cost_per_piece)
+                unit_cost = self._dec(operation.subcontract_cost_per_piece)
+                outsource_cost += planned_qty * unit_cost
+                if planned_qty > Decimal("0") and unit_cost <= Decimal("0"):
+                    missing_sources.append(f"外协成本缺失:{operation_name}")
             else:
-                labor_cost += planned_qty * self._dec(operation.wage_rate)
-        return material_cost, labor_cost, outsource_cost
+                wage_rate = self._dec(operation.wage_rate)
+                labor_cost += planned_qty * wage_rate
+                if planned_qty > Decimal("0") and wage_rate <= Decimal("0"):
+                    missing_sources.append(f"工序工价缺失:{operation_name}")
+
+        return {
+            "material_cost": material_cost,
+            "labor_cost": labor_cost,
+            "outsource_cost": outsource_cost,
+            "missing_cost_sources": self._unique_texts(missing_sources),
+        }
+
+    @staticmethod
+    def _unique_texts(values: list[str]) -> list[str]:
+        seen: set[str] = set()
+        result: list[str] = []
+        for value in values:
+            text = str(value or "").strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            result.append(text)
+        return result
+
+    def _missing_cost_source_fields(
+        self,
+        *,
+        base: dict[str, Any],
+        missing_sources: list[str],
+    ) -> dict[str, Any]:
+        unique_sources = self._unique_texts(missing_sources)
+        if not unique_sources:
+            return {}
+        source_note = str(base.get("sourceNote") or "")
+        missing_text = "；".join(unique_sources)
+        return {
+            "sourceLabel": "缺成本来源",
+            "sourceStatus": "incomplete",
+            "costSourceStatus": "incomplete",
+            "sourceNote": f"{source_note}；成本来源缺失：{missing_text}" if source_note else f"成本来源缺失：{missing_text}",
+            "missingCostSourceCount": len(unique_sources),
+            "missingCostSources": unique_sources,
+            "missingCostSourcesText": missing_text,
+        }
+
+    def _material_row_missing_sources(self, *, material_code: str, required_qty: Decimal, unit_price: Decimal) -> list[str]:
+        if required_qty > Decimal("0") and unit_price <= Decimal("0"):
+            return [f"物料单价缺失:{material_code}"]
+        return []
 
     @staticmethod
     def _report_suite_title(report_key: str) -> str:

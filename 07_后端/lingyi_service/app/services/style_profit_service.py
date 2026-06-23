@@ -151,6 +151,14 @@ class StyleProfitService:
                     material_resolution=material_resolution,
                     unresolved_count=unresolved_count,
                 )
+                line_no, unresolved_count = self._persist_missing_actual_material_details(
+                    session=session,
+                    snapshot=snapshot,
+                    line_no=line_no,
+                    payload=payload,
+                    material_resolution=material_resolution,
+                    unresolved_count=unresolved_count,
+                )
                 actual_material_cost = material_resolution.actual_material_cost
 
                 actual_workshop_cost, line_no, unresolved_count = self._persist_workshop_details(
@@ -729,6 +737,72 @@ class StyleProfitService:
                     unresolved_reason=row.unresolved_reason or "purchase_receipt_reference_only",
                 )
             )
+
+        return line_no, unresolved_count
+
+    def _persist_missing_actual_material_details(
+        self,
+        *,
+        session: Session,
+        snapshot: LyStyleProfitSnapshot,
+        line_no: int,
+        payload: StyleProfitSnapshotCreateRequest,
+        material_resolution: Any,
+        unresolved_count: int,
+    ) -> tuple[int, int]:
+        mapped_material_codes = {
+            self._normalize_text(row.source_item_code)
+            for row in material_resolution.mapped_sources
+            if self._normalize_text(row.source_item_code)
+        }
+
+        for row in payload.bom_material_rows:
+            item_code = self._normalize_text(row.get("item_code")) or self._normalize_text(row.get("material_item_code"))
+            required_qty = self._to_decimal(
+                row.get("bom_required_qty_with_loss")
+                if row.get("bom_required_qty_with_loss") is not None
+                else row.get("required_qty")
+            )
+            if required_qty == Decimal("0"):
+                required_qty = self._to_decimal(row.get("qty"))
+            if not item_code or required_qty <= Decimal("0") or item_code in mapped_material_codes:
+                continue
+
+            reason = "actual_material_source_missing"
+            source = StyleProfitMaterialSourceDTO(
+                source_system="fastapi",
+                source_doctype="Actual Material Cost",
+                source_status="missing",
+                source_name=item_code,
+                source_line_no=self._normalize_text(row.get("line_no")) or "",
+                company=str(snapshot.company),
+                style_item_code=str(snapshot.item_code),
+                source_item_code=item_code,
+                sales_order=snapshot.sales_order,
+                work_order=payload.work_order,
+                qty=required_qty,
+                unit_rate=Decimal("0"),
+                stock_value_difference=Decimal("0"),
+                amount=Decimal("0"),
+                include_in_profit=False,
+                mapping_status="unresolved",
+                unresolved_reason=reason,
+                raw_ref={
+                    "reason": reason,
+                    "item_code": item_code,
+                    "required_qty": str(required_qty),
+                },
+            )
+            line_no = self._persist_material_detail(
+                session=session,
+                snapshot=snapshot,
+                line_no=line_no,
+                source=source,
+                cost_type="unresolved",
+                is_unresolved=True,
+                unresolved_reason=reason,
+            )
+            unresolved_count += 1
 
         return line_no, unresolved_count
 
