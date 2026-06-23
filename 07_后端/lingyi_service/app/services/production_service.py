@@ -494,6 +494,11 @@ class ProductionService:
                 .all()
             )
         except SQLAlchemyError as exc:
+            if self._is_missing_table_error(exc, LySalesOrder.__tablename__) or self._is_missing_table_error(
+                exc,
+                LySalesOrderItem.__tablename__,
+            ):
+                return {}
             raise DatabaseReadFailed() from exc
 
         attrs: dict[tuple[str, str, str], dict[str, Any]] = {}

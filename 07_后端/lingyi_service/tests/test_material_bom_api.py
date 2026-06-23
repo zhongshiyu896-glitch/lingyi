@@ -41,6 +41,7 @@ from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleDictionary
+from app.models.style_master import LyStyleGallery
 from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
 from app.routers.auth import get_db_session as auth_db_dep
@@ -125,6 +126,7 @@ class MaterialBomApiTest(unittest.TestCase):
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrder).delete()
             session.query(LyStyleMasterIdempotency).delete()
+            session.query(LyStyleGallery).delete()
             session.query(LyStyleMaster).delete()
             session.query(LyStyleDictionary).delete()
             self._seed_style_dictionaries(session)
@@ -273,6 +275,87 @@ class MaterialBomApiTest(unittest.TestCase):
                 }
             ],
         }
+
+    def test_sample_order_returns_linked_style_primary_image(self) -> None:
+        style_id = self._seed_style()
+        with self.SessionLocal() as session:
+            session.add(
+                LyStyleGallery(
+                    company="COMP-MB",
+                    style_master_id=style_id,
+                    image_url="/uploads/images/style_gallery/sample-style-main.jpg",
+                    thumbnail_url="/uploads/images/style_gallery/sample-style-main-thumb.jpg",
+                    image_name="样板单关联款式主图",
+                    image_type="main",
+                    is_primary=True,
+                    status="active",
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.add(
+                LyStyleGallery(
+                    company="COMP-MB",
+                    style_master_id=style_id,
+                    image_url="/uploads/images/style_gallery/sample-style-detail.jpg",
+                    thumbnail_url="/uploads/images/style_gallery/sample-style-detail-thumb.jpg",
+                    image_name="样板单关联款式详情图",
+                    image_type="detail",
+                    is_primary=False,
+                    status="active",
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-IMAGE-CREATE"),
+            json={
+                "operation": "create",
+                "company": "COMP-MB",
+                "idempotency_key": "IDEMP-SAMPLE-MB-STYLE-IMAGE-CREATE",
+                "sample_no": "SMP-MB-STYLE-IMG",
+                "style_master_id": style_id,
+                "customer": "BOM 客户",
+                "factory": "样衣组",
+                "sample_type": "初样",
+                "stage": "建档",
+                "progress": 0,
+                "status": "draft",
+                "image_tone": "blue",
+                "owner_note": "关联款式主图",
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        created_data = created.json()["data"]
+        self.assertEqual(
+            created_data["style_primary_image_url"],
+            "/uploads/images/style_gallery/sample-style-main.jpg",
+        )
+        self.assertEqual(
+            created_data["style_primary_thumbnail_url"],
+            "/uploads/images/style_gallery/sample-style-main-thumb.jpg",
+        )
+        self.assertEqual(created_data["style_gallery_count"], 2)
+
+        listed = self.client.get(
+            "/api/sample/orders?company=COMP-MB&keyword=SMP-MB-STYLE-IMG",
+            headers=self._headers(request_id="SAMPLE-MB-STYLE-IMAGE-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        items = listed.json()["data"]["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(
+            items[0]["style_primary_image_url"],
+            "/uploads/images/style_gallery/sample-style-main.jpg",
+        )
+        self.assertEqual(
+            items[0]["style_primary_thumbnail_url"],
+            "/uploads/images/style_gallery/sample-style-main-thumb.jpg",
+        )
+        self.assertEqual(items[0]["style_gallery_count"], 2)
 
     def test_style_material_bom_rejects_missing_or_inactive_material(self) -> None:
         style_id = self._seed_style()

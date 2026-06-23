@@ -104,6 +104,9 @@ class SampleOrderItem(BaseModel):
     created_at: datetime | None
     status: SampleStatus
     image_tone: SampleImageTone
+    style_primary_image_url: str | None = None
+    style_primary_thumbnail_url: str | None = None
+    style_gallery_count: int = 0
     owner_note: str
     bulk_handoff_no: str | None = None
     bulk_handoff_status: str | None = None

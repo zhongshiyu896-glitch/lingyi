@@ -38,6 +38,7 @@ from app.models.sample import LySampleOrder
 from app.models.sample import LySampleTrackingEvent
 from app.models.sample import LySampleTrackingNode
 from app.models.sample import LySampleTrackingTemplate
+from app.models.style_master import LyStyleGallery
 from app.models.style_master import LyStyleMaster
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
@@ -144,7 +145,29 @@ class SampleService:
             raise
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
-        return SampleOrderListData(items=[self._order_item(row) for row in rows], total=total, page=page, page_size=page_size)
+        gallery_summaries = self._sample_style_gallery_summaries(
+            [
+                int(row.style_master_id)
+                for row in rows
+                if row.style_master_id is not None
+            ]
+        )
+        return SampleOrderListData(
+            items=[
+                self._order_item(
+                    row,
+                    gallery_summary=(
+                        gallery_summaries.get(int(row.style_master_id))
+                        if row.style_master_id is not None
+                        else None
+                    ),
+                )
+                for row in rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
 
     def list_order_tracking_events(
         self,
@@ -1966,7 +1989,46 @@ class SampleService:
             }
         )
 
-    def _order_item(self, row: LySampleOrder) -> SampleOrderItem:
+    def _sample_style_gallery_summaries(self, style_ids: list[int]) -> dict[int, dict[str, Any]]:
+        normalized_ids = list(dict.fromkeys(int(style_id) for style_id in style_ids if style_id is not None))
+        if not normalized_ids:
+            return {}
+        try:
+            rows = (
+                self.session.query(LyStyleGallery)
+                .filter(
+                    LyStyleGallery.style_master_id.in_(normalized_ids),
+                    LyStyleGallery.status == "active",
+                )
+                .order_by(
+                    LyStyleGallery.is_primary.desc(),
+                    LyStyleGallery.updated_at.desc(),
+                    LyStyleGallery.id.desc(),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        summaries: dict[int, dict[str, Any]] = {
+            style_id: {"gallery_count": 0, "primary_image_url": None, "primary_thumbnail_url": None}
+            for style_id in normalized_ids
+        }
+        for gallery in rows:
+            style_id = int(gallery.style_master_id)
+            summary = summaries.setdefault(
+                style_id,
+                {"gallery_count": 0, "primary_image_url": None, "primary_thumbnail_url": None},
+            )
+            summary["gallery_count"] = int(summary["gallery_count"] or 0) + 1
+            if bool(gallery.is_primary) and not summary["primary_image_url"]:
+                summary["primary_image_url"] = gallery.image_url
+                summary["primary_thumbnail_url"] = gallery.thumbnail_url or gallery.image_url
+        return summaries
+
+    def _order_item(self, row: LySampleOrder, gallery_summary: dict[str, Any] | None = None) -> SampleOrderItem:
+        if gallery_summary is None and row.style_master_id is not None:
+            gallery_summary = self._sample_style_gallery_summaries([int(row.style_master_id)]).get(int(row.style_master_id))
+        gallery_summary = gallery_summary or {}
         return SampleOrderItem(
             id=int(row.id),
             company=row.company,
@@ -1985,6 +2047,9 @@ class SampleService:
             created_at=row.created_at,
             status=row.status,
             image_tone=row.image_tone,
+            style_primary_image_url=gallery_summary.get("primary_image_url"),
+            style_primary_thumbnail_url=gallery_summary.get("primary_thumbnail_url"),
+            style_gallery_count=int(gallery_summary.get("gallery_count") or 0),
             owner_note=row.owner_note,
             bulk_handoff_no=row.bulk_handoff_no,
             bulk_handoff_status=row.bulk_handoff_status,
