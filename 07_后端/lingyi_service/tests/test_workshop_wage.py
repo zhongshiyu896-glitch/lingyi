@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -41,6 +42,7 @@ from app.services.erpnext_job_card_adapter import ERPNextJobCardAdapter
 from app.services.erpnext_job_card_adapter import JobCardInfo
 from app.services.erpnext_job_card_adapter import CompanyInfo
 from app.services.erpnext_job_card_adapter import ItemInfo
+from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 from app.services.workshop_service import WageRateCompanyBackfillPlanRow
 from app.services.workshop_service import WorkshopService
 
@@ -375,7 +377,13 @@ class WorkshopWageApiTest(unittest.TestCase):
         ticket_headers["X-LY-Dev-Roles"] = "System Manager"
         read_headers = self._headers(role="System Manager")
 
-        with patch.dict(os.environ, {"LINGYI_PERMISSION_SOURCE": "fastapi"}), patch(
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                FASTAPI_ROLE_ACTIONS_ENV: json.dumps({"roles": {"System Manager": {"unrestricted": True}}}),
+            },
+        ), patch(
             "app.routers.workshop.ERPNextJobCardAdapter",
             side_effect=AssertionError("FastAPI workshop API must not construct ERPNextJobCardAdapter"),
         ):
