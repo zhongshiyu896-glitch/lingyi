@@ -98,8 +98,8 @@
 | A | POST | `/api/master-data/{entity_path}/{record_id}/deactivate` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/material-purchase/orders` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | POST | `/api/material-purchase/orders` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
-| A | POST | `/api/material-purchase/orders/from-requirements` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
-| A | POST | `/api/material-purchase/orders/{order_id}/cancel` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
+| A | POST | `/api/material-purchase/orders/from-requirements` | 否 | 是 | 是 | verified_real_write | code, message, data, data.purchase_order, data.purchase_order.purchase_no, data.purchase_order.status, data.purchase_order.items, data.requirements, data.requirements.id, data.requirements.status, data.requirements.purchase_no | 已接物料采购待采购池; 后端落库/审计/幂等/需求状态机与合并采购已由 A6 pytest 和 API smoke 验证 |
+| A | POST | `/api/material-purchase/orders/{order_id}/cancel` | 否 | 是 | 是 | verified_real_write | code, message, data, data.purchase_order, data.purchase_order.purchase_no, data.purchase_order.status, data.requirements, data.requirements.id, data.requirements.status, data.requirements.purchase_no, data.reason | 已接物料采购待采购池; 取消未收货采购单并回退需求池已由 A6 pytest 和 API smoke 验证 |
 | A | GET | `/api/material-purchase/purchase-invoices` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | POST | `/api/material-purchase/purchase-invoices` | 否 | 是 | 是 | verified_real_write | code, message, data, data.purchase_invoice, data.purchase_no, data.grand_total, data.outstanding_amount, data.status | 已接现有采购发票应付页; 后端落库/审计/幂等/同采购单应付链路已由 A6 与 API smoke 验证 |
 | A | GET | `/api/material-purchase/purchase-payments` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
@@ -284,7 +284,7 @@
 | A | POST | `/api/warehouse/inventory-counts/{count_id}/variance-review` | 否 | 是 | 是 | needs_dedicated_write_task | - | 真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等 |
 | A | GET | `/api/warehouse/material-retention-report` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/other-inbound` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
-| A | GET | `/api/warehouse/purchase-receipts` | 是 | 是 | 否 | candidate | receipt_no, purchase_no, company, supplier_name, item_code, material_item_code, warehouse, received_qty, accepted_qty, posting_date, status | 真实业务只读接口候选 |
+| A | GET | `/api/warehouse/purchase-receipts` | 是 | 是 | 否 | candidate | receipt_no, purchase_no, company, supplier_name, item_code, material_item_code, purchase_requirement_id, sales_order_item, bom_color, bom_size, bom_part, warehouse, received_qty, accepted_qty, posting_date, status | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/purchase-return-outbound` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/semi-finished-outbound` | 否 | 是 | 否 | candidate | - | 真实业务只读接口候选 |
 | A | GET | `/api/warehouse/serial-numbers` | 是 | 是 | 否 | candidate | - | 真实业务只读接口候选 |

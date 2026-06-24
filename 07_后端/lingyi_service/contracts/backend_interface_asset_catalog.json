@@ -2975,12 +2975,24 @@
           "payload"
         ]
       },
-      "response_fields": [],
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.purchase_order",
+        "data.purchase_order.purchase_no",
+        "data.purchase_order.status",
+        "data.purchase_order.items",
+        "data.requirements",
+        "data.requirements.id",
+        "data.requirements.status",
+        "data.requirements.purchase_no"
+      ],
       "is_paginated": false,
       "requires_login": true,
       "is_real_write_db": true,
-      "frontend_connect_status": "needs_dedicated_write_task",
-      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "frontend_connect_status": "verified_real_write",
+      "risk_note": "已接物料采购待采购池; 后端落库/审计/幂等/需求状态机与合并采购已由 A6 pytest 和 API smoke 验证",
       "duplicate_method_path_count": 1,
       "registered_order": 215
     },
@@ -3002,12 +3014,24 @@
           "payload"
         ]
       },
-      "response_fields": [],
+      "response_fields": [
+        "code",
+        "message",
+        "data",
+        "data.purchase_order",
+        "data.purchase_order.purchase_no",
+        "data.purchase_order.status",
+        "data.requirements",
+        "data.requirements.id",
+        "data.requirements.status",
+        "data.requirements.purchase_no",
+        "data.reason"
+      ],
       "is_paginated": false,
       "requires_login": true,
       "is_real_write_db": true,
-      "frontend_connect_status": "needs_dedicated_write_task",
-      "risk_note": "真实业务写接口候选; 接前端前必须逐项确认落库、审计、幂等",
+      "frontend_connect_status": "verified_real_write",
+      "risk_note": "已接物料采购待采购池; 取消未收货采购单并回退需求池已由 A6 pytest 和 API smoke 验证",
       "duplicate_method_path_count": 1,
       "registered_order": 216
     },
@@ -9045,6 +9069,11 @@
         "supplier_name",
         "item_code",
         "material_item_code",
+        "purchase_requirement_id",
+        "sales_order_item",
+        "bom_color",
+        "bom_size",
+        "bom_part",
         "warehouse",
         "received_qty",
         "accepted_qty",

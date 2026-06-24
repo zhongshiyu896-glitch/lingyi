@@ -1036,6 +1036,55 @@ def _ensure_local_production_followup_node_operation_supports_edit() -> None:
 
 def _seed_local_bom() -> None:
     with main_module.SessionLocal() as session:
+        for code, name, precision in [
+            ("MU-METER", "米", 2),
+            ("MU-PCS", "件", 0),
+            ("MU-PIECE", "个", 0),
+            ("MU-ROLL", "卷", 0),
+            ("MU-YARD", "码", 2),
+            ("MU-GROUP", "组", 0),
+            ("MU-GRAIN", "粒", 0),
+        ]:
+            unit = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == "默认公司",
+                    LyMasterDataRecord.code == code,
+                )
+                .first()
+            )
+            payload = {
+                "material_kind": "unit",
+                "material_item_code": code,
+                "unit_code": code,
+                "unit_name": name,
+                "base_unit": name,
+                "conversion_text": f"1 {name} = 1 {name}",
+                "precision": precision,
+                "status": "active",
+                "is_default": True,
+            }
+            if unit is None:
+                session.add(
+                    LyMasterDataRecord(
+                        entity_type="material",
+                        company="默认公司",
+                        code=code,
+                        name=name,
+                        status="active",
+                        payload=payload,
+                        version=1,
+                        created_by="local.dev",
+                        updated_by="local.dev",
+                    )
+                )
+            else:
+                unit.name = name
+                unit.status = "active"
+                unit.payload = {**dict(unit.payload or {}), **payload}
+                unit.updated_by = "local.dev"
+
         for code, name, payload in [
             (
                 "FABRIC-COTTON",

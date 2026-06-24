@@ -32,7 +32,7 @@
 | 销售生产 | 收发数量 | GET | `/api/production/order-io-quantities` | `inbound_qty, outbound_qty, io_status` | 是 |
 | 销售生产 | 工单轨迹 | GET | `/api/cross-module/work-order-trail/WO-FR-001?company=LY-FRONTEND-DEV` | `work_order, stock_entries, quality_inspections, summary` | 是 |
 | 采购闭环 | 请购 | GET | `/api/bom/material-requests` | `request_no, material_item_code, qty, status` | 是 |
-| 采购闭环 | 采购入库 | GET | `/api/warehouse/purchase-receipts` | `receipt_no, purchase_no, received_qty` | 真实 |
+| 采购闭环 | 采购入库 | GET | `/api/warehouse/purchase-receipts` | `receipt_no, purchase_no, received_qty, purchase_requirement_id, sales_order_item` | 真实 |
 | 采购闭环 | 采购发票 | GET | `/api/factory-statements/purchase-invoices` | `purchase_invoice_name, grand_total, outstanding_amount` | 真实 |
 | 采购闭环 | 供应商应付 | GET | `/api/factory-statements/supplier-payable-summaries` | `summary_no, supplier, ending_payable` | 是 |
 | 外发加工 | 外发单 | GET | `/api/subcontract/` | `subcontract_no, supplier, item_code, status` | 既有 |

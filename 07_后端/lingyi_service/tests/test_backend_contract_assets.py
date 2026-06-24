@@ -104,6 +104,10 @@ class BackendContractAssetsTest(unittest.TestCase):
 
         stock_ledger_row = catalog[("GET", "/api/warehouse/stock-ledger", "app.routers.warehouse")]
         self.assertIn("posting_time", stock_ledger_row["response_fields"])
+        purchase_receipts_row = catalog[("GET", "/api/warehouse/purchase-receipts", "app.routers.warehouse")]
+        self.assertIn("purchase_requirement_id", purchase_receipts_row["response_fields"])
+        self.assertIn("sales_order_item", purchase_receipts_row["response_fields"])
+        self.assertIn("bom_color", purchase_receipts_row["response_fields"])
 
     def test_readiness_routes_are_dev_enabled_and_production_disabled(self) -> None:
         dev_app = load_app_for_env("test")
@@ -251,6 +255,22 @@ class BackendContractAssetsTest(unittest.TestCase):
 
         stock_ledger_row = route_map[("GET", "/api/warehouse/stock-ledger")]
         self.assertIn("posting_time", stock_ledger_row["response_fields"])
+
+        requirement_order_row = route_map[("POST", "/api/material-purchase/orders/from-requirements")]
+        self.assertTrue(requirement_order_row["is_real_write_db"])
+        self.assertEqual(requirement_order_row["frontend_connect_status"], "verified_real_write")
+        self.assertIn("data.purchase_order.purchase_no", requirement_order_row["response_fields"])
+        self.assertIn("data.requirements.status", requirement_order_row["response_fields"])
+
+        requirement_cancel_row = route_map[("POST", "/api/material-purchase/orders/{order_id}/cancel")]
+        self.assertTrue(requirement_cancel_row["is_real_write_db"])
+        self.assertEqual(requirement_cancel_row["frontend_connect_status"], "verified_real_write")
+        self.assertIn("data.reason", requirement_cancel_row["response_fields"])
+
+        purchase_receipts_row = route_map[("GET", "/api/warehouse/purchase-receipts")]
+        self.assertIn("purchase_requirement_id", purchase_receipts_row["response_fields"])
+        self.assertIn("sales_order_item", purchase_receipts_row["response_fields"])
+        self.assertIn("bom_color", purchase_receipts_row["response_fields"])
 
 
 if __name__ == "__main__":

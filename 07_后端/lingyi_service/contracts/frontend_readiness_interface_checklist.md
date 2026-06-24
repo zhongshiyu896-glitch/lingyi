@@ -23,7 +23,7 @@
 | `GET /api/production/work-orders` | `plan_id, plan_no, company, sales_order, sales_order_item, item_code, work_order, planned_qty, produced_qty, status, created_at` | dev-gated 只读就绪 |
 | `GET /api/production/material-issues` | `plan_id, plan_no, work_order, company, item_code, material_item_code, warehouse, required_qty, available_qty, issued_qty, shortage_qty, status` | dev-gated 只读就绪 |
 | `GET /api/bom/material-requests` | `request_no, company, item_code, material_item_code, supplier_name, qty, uom, expected_delivery_date, status, bom_no` | dev-gated 只读就绪 |
-| `GET /api/warehouse/purchase-receipts` | `receipt_no, purchase_no, company, supplier_name, item_code, material_item_code, warehouse, received_qty, accepted_qty, posting_date, status` | 真实只读路由就绪 |
+| `GET /api/warehouse/purchase-receipts` | `receipt_no, purchase_no, company, supplier_name, item_code, material_item_code, purchase_requirement_id, sales_order_item, bom_color, bom_size, bom_part, warehouse, received_qty, accepted_qty, posting_date, status` | 真实只读路由就绪 |
 | `GET /api/factory-statements/purchase-invoices` | `purchase_invoice_name, company, supplier, supplier_name, currency, grand_total, paid_amount, outstanding_amount, status, posting_date` | 真实只读路由就绪 |
 | `GET /api/subcontract/material-issues` | `subcontract_no, company, supplier, item_code, material_item_code, warehouse, required_qty, issued_qty, pending_qty, status` | dev-gated 只读就绪 |
 | `GET /api/subcontract/receipts` | `subcontract_no, company, supplier, item_code, receipt_batch_no, received_qty, accepted_qty, rejected_qty, receipt_warehouse, status` | dev-gated 只读就绪 |
