@@ -633,9 +633,24 @@ class MasterDataApiTest(unittest.TestCase):
         created = self.client.post(
             "/api/master-data/customers",
             headers=self._headers(request_id="MASTER-DATA-MUT-001"),
-            json=self._payload(code="CUST-A2-002", idempotency_key="IDEMP-CUST-A2-002-C"),
+            json={
+                **self._payload(code="CUST-A2-002", idempotency_key="IDEMP-CUST-A2-002-C"),
+                "payload": {
+                    "contact_person": "  王客户  ",
+                    "contact_phone": "  13700000000  ",
+                    "weixin": "  wx-customer  ",
+                },
+            },
         )
         record_id = int(created.json()["data"]["id"])
+        created_payload = created.json()["data"]["payload"]
+        self.assertEqual(created_payload["contactPerson"], "王客户")
+        self.assertEqual(created_payload["contact_person"], "王客户")
+        self.assertEqual(created_payload["contact"], "王客户")
+        self.assertEqual(created_payload["phone"], "13700000000")
+        self.assertEqual(created_payload["wechat"], "wx-customer")
+        self.assertNotIn("contact_phone", created_payload)
+        self.assertNotIn("weixin", created_payload)
 
         update = self.client.patch(
             f"/api/master-data/customers/{record_id}",
@@ -644,13 +659,18 @@ class MasterDataApiTest(unittest.TestCase):
                 "operation": "update",
                 "company": "COMP-A",
                 "name": "客户 A2 修改",
-                "payload": {"owner": "sales", "level": "B"},
+                "payload": {"contact": "  李客户  ", "phone": "  13900000000  ", "wechat": "  wx-updated  "},
                 "idempotency_key": "IDEMP-CUST-A2-002-U",
             },
         )
         self.assertEqual(update.status_code, 200)
         self.assertEqual(update.json()["data"]["name"], "客户 A2 修改")
-        self.assertEqual(update.json()["data"]["payload"]["level"], "B")
+        updated_payload = update.json()["data"]["payload"]
+        self.assertEqual(updated_payload["contactPerson"], "李客户")
+        self.assertEqual(updated_payload["contact_person"], "李客户")
+        self.assertEqual(updated_payload["contact"], "李客户")
+        self.assertEqual(updated_payload["phone"], "13900000000")
+        self.assertEqual(updated_payload["wechat"], "wx-updated")
 
         deactivated = self.client.post(
             f"/api/master-data/customers/{record_id}/deactivate",

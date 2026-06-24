@@ -174,8 +174,8 @@ class MasterDataService:
         name = self._require_text(payload.name, "name")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         next_payload = self._clean_payload(payload.payload)
-        if normalized_entity_type == "supplier":
-            next_payload = self._normalize_supplier_payload(payload=next_payload)
+        if normalized_entity_type in {"customer", "supplier"}:
+            next_payload = self._normalize_contact_payload(payload=next_payload)
         request_hash = self._request_hash(
             operation="create",
             entity_type=normalized_entity_type,
@@ -262,8 +262,8 @@ class MasterDataService:
         next_code = self._optional_text(payload.code) or row.code
         next_name = self._optional_text(payload.name) or row.name
         next_payload = self._clean_payload(payload.payload) if payload.payload is not None else dict(row.payload or {})
-        if normalized_entity_type == "supplier":
-            next_payload = self._normalize_supplier_payload(payload=next_payload)
+        if normalized_entity_type in {"customer", "supplier"}:
+            next_payload = self._normalize_contact_payload(payload=next_payload)
         if normalized_entity_type == "warehouse":
             next_payload = self._normalize_warehouse_payload(
                 company=company,
@@ -520,7 +520,7 @@ class MasterDataService:
             payload[key] = value
 
     @classmethod
-    def _normalize_supplier_payload(cls, *, payload: dict[str, Any]) -> dict[str, Any]:
+    def _normalize_contact_payload(cls, *, payload: dict[str, Any]) -> dict[str, Any]:
         normalized = dict(payload)
         contact_person = (
             cls._optional_text(normalized.get("contactPerson"))
