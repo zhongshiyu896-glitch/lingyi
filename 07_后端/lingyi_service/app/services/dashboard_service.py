@@ -6,17 +6,30 @@ from dataclasses import dataclass
 from datetime import UTC
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
 from fastapi import Request
+from sqlalchemy import case
+from sqlalchemy import distinct
+from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.production import LyProductionPlan
+from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
+from app.models.sales_order import LySalesPaymentEntry
+from app.models.style_profit import LyStyleProfitSnapshot
+from app.models.warehouse import LyWarehouseStockLedgerEntry
+from app.schemas.dashboard import DashboardHomeChartData
+from app.schemas.dashboard import DashboardHomeChartPointData
+from app.schemas.dashboard import DashboardHomeChartSeriesData
 from app.schemas.dashboard import DashboardOverviewData
 from app.schemas.dashboard import DashboardKanbanData
 from app.schemas.dashboard import DashboardKanbanFlowLinkData
@@ -93,10 +106,20 @@ class DashboardService:
             to_date=to_date,
         )
         home_overview = self._build_home_overview(
+            company=company,
+            from_date=from_date,
+            to_date=to_date,
             quality=quality,
             sales_inventory=sales_inventory,
             warehouse=warehouse_summary,
             kanban=kanban,
+        )
+        source_status.append(
+            DashboardSourceStatusData(
+                module="dashboard_business",
+                status="ok",
+                source_note="经营指标、环比和趋势图来自本地只读聚合表。",
+            )
         )
         source_status.append(
             DashboardSourceStatusData(
@@ -120,14 +143,34 @@ class DashboardService:
             home_overview=home_overview,
         )
 
-    @staticmethod
     def _build_home_overview(
+        self,
         *,
+        company: str,
+        from_date: date | None,
+        to_date: date | None,
         quality: DashboardQualityOverviewData,
         sales_inventory: DashboardSalesInventoryOverviewData,
         warehouse: DashboardWarehouseOverviewData,
         kanban: DashboardKanbanData,
     ) -> DashboardHomeOverviewData:
+        period_start, period_end = self._home_period(from_date=from_date, to_date=to_date)
+        previous_start, previous_end = self._previous_period(period_start=period_start, period_end=period_end)
+        try:
+            current_totals = self._build_business_metric_totals(
+                company=company,
+                period_start=period_start,
+                period_end=period_end,
+            )
+            previous_totals = self._build_business_metric_totals(
+                company=company,
+                period_start=previous_start,
+                period_end=previous_end,
+            )
+            charts = self._build_home_charts(company=company, end_date=period_end)
+        except SQLAlchemyError as exc:
+            raise self._source_unavailable(module="dashboard_business", exc=exc) from exc
+
         pass_rate_percent = (quality.pass_rate * Decimal("100")).quantize(Decimal("0.01"))
         sales_total = DashboardService._decimal_or_zero(sales_inventory.total_actual_qty)
         warning_total = int(warehouse.warning_alert_count) + int(warehouse.critical_alert_count)
@@ -136,32 +179,112 @@ class DashboardService:
 
         metric_cards = [
             DashboardHomeMetricCardData(
+                key="monthly_order_count",
+                label="本月订单数",
+                value=str(int(current_totals["order_count"])),
+                unit="单",
+                trend=self._period_trend(current_totals["order_count"], previous_totals["order_count"]),
+                group="business",
+                route="/production/productOrder",
+            ),
+            DashboardHomeMetricCardData(
+                key="monthly_sales_amount",
+                label="本月销售额",
+                value=self._format_decimal(current_totals["sales_amount"]),
+                unit="元",
+                trend=self._period_trend(current_totals["sales_amount"], previous_totals["sales_amount"]),
+                group="business",
+                route="/production/productOrder",
+            ),
+            DashboardHomeMetricCardData(
+                key="receivable_balance",
+                label="应收余额",
+                value=self._format_decimal(current_totals["receivable_balance"]),
+                unit="元",
+                trend="—",
+                group="business",
+                route="/production/receivablePayment",
+                source_note="余额来自未取消发货开票的 outstanding_amount 当前值。",
+            ),
+            DashboardHomeMetricCardData(
+                key="payable_balance",
+                label="应付余额",
+                value=self._format_decimal(current_totals["payable_balance"]),
+                unit="元",
+                trend="—",
+                group="business",
+                route="/materialPurchase/purchaseInvoicePayable",
+                source_note="余额来自未取消采购发票的 outstanding_amount 当前值。",
+            ),
+            DashboardHomeMetricCardData(
+                key="in_production_order_count",
+                label="在产订单数",
+                value=str(int(current_totals["in_production_order_count"])),
+                unit="单",
+                trend="—",
+                group="business",
+                route="/production/orderTrackingV2",
+            ),
+            DashboardHomeMetricCardData(
+                key="delivery_warning_count",
+                label="交期预警",
+                value=str(int(current_totals["delivery_warning_count"])),
+                unit="单",
+                trend="—",
+                group="business",
+                route="/production/productOrder",
+                source_note="统计临近 7 天或已超期且未完全交付的订单。",
+            ),
+            DashboardHomeMetricCardData(
+                key="monthly_gross_profit",
+                label="本月毛利",
+                value=self._format_decimal(current_totals["gross_profit"])
+                if current_totals["gross_profit_status"] == "complete"
+                else "—",
+                unit="元",
+                trend=self._period_trend(current_totals["gross_profit"], previous_totals["gross_profit"])
+                if current_totals["gross_profit_status"] == "complete"
+                else "—",
+                group="business",
+                route="/reports/style-profit",
+                status=str(current_totals["gross_profit_status"]),
+                source_note="仅当本期存在 complete 利润快照时展示。",
+            ),
+            DashboardHomeMetricCardData(
                 key="inspection_count",
                 label="质检单量",
                 value=str(int(quality.inspection_count)),
                 unit="单",
-                trend="较昨日平稳",
+                trend="—",
+                group="quality",
+                route="/quality/inspections",
             ),
             DashboardHomeMetricCardData(
                 key="inventory_qty",
                 label="库存总量",
-                value=str(sales_total),
+                value=self._format_decimal(sales_total),
                 unit="件",
-                trend="按只读汇总更新",
+                trend="—",
+                group="inventory",
+                route="/materialStock/materialTypeStock",
             ),
             DashboardHomeMetricCardData(
                 key="quality_pass_rate",
                 label="质检通过率",
-                value=str(pass_rate_percent),
+                value=self._format_decimal(pass_rate_percent),
                 unit="%",
-                trend="来源于质检汇总",
+                trend="—",
+                group="quality",
+                route="/quality/inspections",
             ),
             DashboardHomeMetricCardData(
                 key="warehouse_alerts",
                 label="仓储预警",
                 value=str(int(warehouse.alert_count)),
                 unit="条",
-                trend="高危优先处理",
+                trend="—",
+                group="inventory",
+                route="/materialStock/materialTypeStock",
             ),
         ]
 
@@ -172,6 +295,7 @@ class DashboardService:
                 count=pending_count,
                 status="normal" if pending_count == 0 else "warning",
                 action_label="查看动态",
+                route="/production/home",
             ),
             DashboardHomeTodoItemData(
                 key="overdue_orders",
@@ -179,6 +303,7 @@ class DashboardService:
                 count=overdue_count,
                 status="normal" if overdue_count == 0 else "urgent",
                 action_label="查看跟进",
+                route="/production/productOrder",
             ),
             DashboardHomeTodoItemData(
                 key="warehouse_warning",
@@ -186,10 +311,17 @@ class DashboardService:
                 count=warning_total,
                 status="normal" if warning_total == 0 else "warning",
                 action_label="查看仓储",
+                route="/materialStock/materialTypeStock",
             ),
         ]
 
         business_summary = [
+            f"{period_start.strftime('%m-%d')} 至 {period_end.strftime('%m-%d')} 订单 {int(current_totals['order_count'])} 单",
+            f"本期销售额 {self._format_decimal(current_totals['sales_amount'])} 元",
+            f"应收余额 {self._format_decimal(current_totals['receivable_balance'])} 元",
+            f"应付余额 {self._format_decimal(current_totals['payable_balance'])} 元",
+            f"在产订单 {int(current_totals['in_production_order_count'])} 单",
+            f"交期预警 {int(current_totals['delivery_warning_count'])} 单",
             f"质检通过率 {pass_rate_percent}%",
             f"低于安全库存款号 {int(sales_inventory.below_safety_count)} 个",
             f"低于补货线款号 {int(sales_inventory.below_reorder_count)} 个",
@@ -204,6 +336,8 @@ class DashboardService:
         warnings: list[str] = []
         if overdue_count > 0:
             warnings.append(f"存在 {overdue_count} 条超期订单动态")
+        if int(current_totals["delivery_warning_count"]) > 0:
+            warnings.append(f"交期临近或超期订单 {int(current_totals['delivery_warning_count'])} 单")
         if int(sales_inventory.below_reorder_count) > 0:
             warnings.append(f"低于补货线款号 {int(sales_inventory.below_reorder_count)} 个")
         if int(warehouse.critical_alert_count) > 0:
@@ -219,8 +353,287 @@ class DashboardService:
             business_summary=business_summary,
             recent_activities=recent_activities,
             trend_points=[],
+            charts=charts,
             primary_actions=["查看动态", "刷新指标", "导出概览"],
         )
+
+    @staticmethod
+    def _home_period(*, from_date: date | None, to_date: date | None) -> tuple[date, date]:
+        period_end = to_date or datetime.now(UTC).date()
+        period_start = from_date or period_end.replace(day=1)
+        return period_start, period_end
+
+    @staticmethod
+    def _previous_period(*, period_start: date, period_end: date) -> tuple[date, date]:
+        span_days = max((period_end - period_start).days, 0)
+        previous_end = period_start - timedelta(days=1)
+        previous_start = previous_end - timedelta(days=span_days)
+        return previous_start, previous_end
+
+    def _build_business_metric_totals(
+        self,
+        *,
+        company: str,
+        period_start: date,
+        period_end: date,
+    ) -> dict[str, Decimal | str]:
+        totals: dict[str, Decimal | str] = {
+            "order_count": Decimal("0"),
+            "sales_amount": Decimal("0"),
+            "receivable_balance": Decimal("0"),
+            "payable_balance": Decimal("0"),
+            "in_production_order_count": Decimal("0"),
+            "delivery_warning_count": Decimal("0"),
+            "gross_profit": Decimal("0"),
+            "gross_profit_status": "incomplete",
+        }
+
+        if self._has_tables({LySalesOrder.__tablename__}):
+            sales_row = (
+                self.session.query(
+                    func.count(LySalesOrder.id),
+                    func.coalesce(func.sum(LySalesOrder.grand_total), 0),
+                )
+                .filter(
+                    LySalesOrder.company == company,
+                    LySalesOrder.status != "cancelled",
+                    LySalesOrder.transaction_date.isnot(None),
+                    LySalesOrder.transaction_date >= period_start,
+                    LySalesOrder.transaction_date <= period_end,
+                )
+                .one()
+            )
+            totals["order_count"] = self._decimal_or_zero(sales_row[0])
+            totals["sales_amount"] = self._decimal_or_zero(sales_row[1])
+
+        if self._has_tables({LyDeliveryInvoice.__tablename__}):
+            receivable = (
+                self.session.query(func.coalesce(func.sum(LyDeliveryInvoice.outstanding_amount), 0))
+                .filter(LyDeliveryInvoice.company == company, LyDeliveryInvoice.status != "cancelled")
+                .scalar()
+            )
+            totals["receivable_balance"] = self._decimal_or_zero(receivable)
+
+        if self._has_tables({LyMaterialPurchaseInvoice.__tablename__}):
+            payable = (
+                self.session.query(func.coalesce(func.sum(LyMaterialPurchaseInvoice.outstanding_amount), 0))
+                .filter(LyMaterialPurchaseInvoice.company == company, LyMaterialPurchaseInvoice.status != "cancelled")
+                .scalar()
+            )
+            totals["payable_balance"] = self._decimal_or_zero(payable)
+
+        if self._has_tables({LyProductionPlan.__tablename__}):
+            in_production = (
+                self.session.query(func.count(distinct(LyProductionPlan.sales_order)))
+                .filter(
+                    LyProductionPlan.company == company,
+                    LyProductionPlan.status.notin_(
+                        [
+                            "cancelled",
+                            "completed",
+                            "finished",
+                            "closed",
+                            "done",
+                        ]
+                    ),
+                )
+                .scalar()
+            )
+            totals["in_production_order_count"] = self._decimal_or_zero(in_production)
+
+        if self._has_tables({LySalesOrder.__tablename__, LySalesOrderItem.__tablename__}):
+            delivery_date_expr = func.coalesce(LySalesOrderItem.delivery_date, LySalesOrder.delivery_date)
+            warning_deadline = period_end + timedelta(days=7)
+            delivery_warnings = (
+                self.session.query(func.count(distinct(LySalesOrder.id)))
+                .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+                .filter(
+                    LySalesOrder.company == company,
+                    LySalesOrder.status != "cancelled",
+                    delivery_date_expr.isnot(None),
+                    delivery_date_expr <= warning_deadline,
+                    LySalesOrderItem.delivered_qty < LySalesOrderItem.qty,
+                )
+                .scalar()
+            )
+            totals["delivery_warning_count"] = self._decimal_or_zero(delivery_warnings)
+
+        if self._has_tables({LyStyleProfitSnapshot.__tablename__}):
+            complete_profit_row = (
+                self.session.query(
+                    func.count(LyStyleProfitSnapshot.id),
+                    func.coalesce(func.sum(LyStyleProfitSnapshot.profit_amount), 0),
+                )
+                .filter(
+                    LyStyleProfitSnapshot.company == company,
+                    LyStyleProfitSnapshot.snapshot_status == "complete",
+                    or_(LyStyleProfitSnapshot.to_date.is_(None), LyStyleProfitSnapshot.to_date >= period_start),
+                    or_(LyStyleProfitSnapshot.from_date.is_(None), LyStyleProfitSnapshot.from_date <= period_end),
+                )
+                .one()
+            )
+            if int(complete_profit_row[0] or 0) > 0:
+                totals["gross_profit"] = self._decimal_or_zero(complete_profit_row[1])
+                totals["gross_profit_status"] = "complete"
+
+        return totals
+
+    def _build_home_charts(self, *, company: str, end_date: date) -> list[DashboardHomeChartData]:
+        start_date = end_date - timedelta(days=29)
+        charts: list[DashboardHomeChartData] = []
+
+        if self._has_tables({LySalesOrder.__tablename__}):
+            sales_points = self._empty_daily_points(start_date=start_date, end_date=end_date, keys=["sales_amount"])
+            rows = (
+                self.session.query(
+                    LySalesOrder.transaction_date,
+                    func.coalesce(func.sum(LySalesOrder.grand_total), 0),
+                )
+                .filter(
+                    LySalesOrder.company == company,
+                    LySalesOrder.status != "cancelled",
+                    LySalesOrder.transaction_date.isnot(None),
+                    LySalesOrder.transaction_date >= start_date,
+                    LySalesOrder.transaction_date <= end_date,
+                )
+                .group_by(LySalesOrder.transaction_date)
+                .all()
+            )
+            for bucket_date, amount in rows:
+                self._put_chart_value(sales_points, bucket_date, "sales_amount", self._decimal_or_zero(amount))
+            charts.append(
+                DashboardHomeChartData(
+                    key="sales_amount_trend",
+                    title="近30天销售额",
+                    chart_type="line",
+                    unit="元",
+                    source_note="销售订单 grand_total 按 transaction_date 汇总。",
+                    series=[DashboardHomeChartSeriesData(key="sales_amount", label="销售额", unit="元")],
+                    points=self._chart_points_from_daily_map(sales_points),
+                )
+            )
+
+        if self._has_tables({LyWarehouseStockLedgerEntry.__tablename__}):
+            stock_points = self._empty_daily_points(start_date=start_date, end_date=end_date, keys=["inbound_qty", "outbound_qty"])
+            rows = (
+                self.session.query(
+                    LyWarehouseStockLedgerEntry.posting_date,
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (LyWarehouseStockLedgerEntry.actual_qty > 0, LyWarehouseStockLedgerEntry.actual_qty),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (LyWarehouseStockLedgerEntry.actual_qty < 0, -LyWarehouseStockLedgerEntry.actual_qty),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ),
+                )
+                .filter(
+                    LyWarehouseStockLedgerEntry.company == company,
+                    LyWarehouseStockLedgerEntry.status == "active",
+                    LyWarehouseStockLedgerEntry.posting_date >= start_date,
+                    LyWarehouseStockLedgerEntry.posting_date <= end_date,
+                )
+                .group_by(LyWarehouseStockLedgerEntry.posting_date)
+                .all()
+            )
+            for bucket_date, inbound_qty, outbound_qty in rows:
+                self._put_chart_value(stock_points, bucket_date, "inbound_qty", self._decimal_or_zero(inbound_qty))
+                self._put_chart_value(stock_points, bucket_date, "outbound_qty", self._decimal_or_zero(outbound_qty))
+            charts.append(
+                DashboardHomeChartData(
+                    key="stock_movement_trend",
+                    title="近30天入库/出库量",
+                    chart_type="line",
+                    unit="件",
+                    source_note="库存流水 actual_qty 按 posting_date 汇总，正数为入库，负数取绝对值为出库。",
+                    series=[
+                        DashboardHomeChartSeriesData(key="inbound_qty", label="入库量", unit="件"),
+                        DashboardHomeChartSeriesData(key="outbound_qty", label="出库量", unit="件"),
+                    ],
+                    points=self._chart_points_from_daily_map(stock_points),
+                )
+            )
+
+        if self._has_tables({LySalesPaymentEntry.__tablename__}):
+            payment_points = self._empty_daily_points(start_date=start_date, end_date=end_date, keys=["paid_amount"])
+            rows = (
+                self.session.query(
+                    LySalesPaymentEntry.posting_date,
+                    func.coalesce(func.sum(LySalesPaymentEntry.paid_amount), 0),
+                )
+                .filter(
+                    LySalesPaymentEntry.company == company,
+                    LySalesPaymentEntry.status == "submitted",
+                    LySalesPaymentEntry.posting_date >= start_date,
+                    LySalesPaymentEntry.posting_date <= end_date,
+                )
+                .group_by(LySalesPaymentEntry.posting_date)
+                .all()
+            )
+            for bucket_date, paid_amount in rows:
+                self._put_chart_value(payment_points, bucket_date, "paid_amount", self._decimal_or_zero(paid_amount))
+            charts.append(
+                DashboardHomeChartData(
+                    key="receivable_collection_trend",
+                    title="近30天回款",
+                    chart_type="line",
+                    unit="元",
+                    source_note="销售回款 paid_amount 按 posting_date 汇总。",
+                    series=[DashboardHomeChartSeriesData(key="paid_amount", label="回款", unit="元")],
+                    points=self._chart_points_from_daily_map(payment_points),
+                )
+            )
+
+        return charts
+
+    @staticmethod
+    def _empty_daily_points(*, start_date: date, end_date: date, keys: list[str]) -> dict[date, dict[str, Decimal]]:
+        span_days = max((end_date - start_date).days, 0)
+        return {
+            start_date + timedelta(days=offset): {key: Decimal("0") for key in keys}
+            for offset in range(span_days + 1)
+        }
+
+    @staticmethod
+    def _put_chart_value(points: dict[date, dict[str, Decimal]], bucket_date: date | None, key: str, value: Decimal) -> None:
+        if bucket_date is None or bucket_date not in points:
+            return
+        points[bucket_date][key] = value
+
+    @staticmethod
+    def _chart_points_from_daily_map(points: dict[date, dict[str, Decimal]]) -> list[DashboardHomeChartPointData]:
+        return [
+            DashboardHomeChartPointData(period=bucket_date.isoformat(), values=values)
+            for bucket_date, values in sorted(points.items())
+        ]
+
+    @classmethod
+    def _period_trend(cls, current: Decimal | int | str, previous: Decimal | int | str) -> str:
+        current_value = cls._decimal_or_zero(current)
+        previous_value = cls._decimal_or_zero(previous)
+        if previous_value <= Decimal("0"):
+            return "—"
+        delta = ((current_value - previous_value) / previous_value * Decimal("100")).quantize(Decimal("0.01"))
+        sign = "+" if delta > Decimal("0") else ""
+        return f"较上期 {sign}{cls._format_decimal(delta)}%"
+
+    @staticmethod
+    def _format_decimal(value: Decimal | int | str) -> str:
+        decimal_value = DashboardService._decimal_or_zero(value)
+        text = format(decimal_value, "f")
+        if "." not in text:
+            return text
+        return text.rstrip("0").rstrip(".") or "0"
 
     def _build_kanban_data(
         self,
@@ -265,31 +678,31 @@ class DashboardService:
                     key="quote",
                     label="报价单",
                     status="completed",
-                    route="/sales-inventory/sales-orders",
+                    route="/production/productOrder",
                 ),
                 DashboardKanbanFlowNodeData(
                     key="order",
                     label="订单",
                     status="active",
-                    route="/sales-inventory/sales-orders",
+                    route="/production/productOrder",
                 ),
                 DashboardKanbanFlowNodeData(
                     key="production_order",
                     label="生产制单",
                     status="active",
-                    route="/production/plans",
+                    route="/production/orderTrackingV2",
                 ),
                 DashboardKanbanFlowNodeData(
                     key="material",
                     label="面料",
                     status="normal",
-                    route="/production/plans",
+                    route="/materialPurchase/materialPurchaseProcess",
                 ),
                 DashboardKanbanFlowNodeData(
                     key="bulk_followup",
                     label="大货跟进",
                     status="active",
-                    route="/production/plans",
+                    route="/production/orderTrackingV2",
                 ),
                 DashboardKanbanFlowNodeData(
                     key="factory_contract",
@@ -307,7 +720,7 @@ class DashboardService:
                     key="accessory",
                     label="辅料/包材",
                     status="normal",
-                    route="/production/plans",
+                    route="/materialPurchase/materialPurchaseProcess",
                 ),
                 DashboardKanbanFlowNodeData(
                     key="cost",

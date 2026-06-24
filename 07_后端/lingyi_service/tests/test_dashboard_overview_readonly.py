@@ -25,13 +25,21 @@ from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.models.master_data import Base as MasterDataBase
 from app.models.master_data import LyMasterDataRecord
+from app.models.material_purchase import Base as MaterialPurchaseBase
+from app.models.material_purchase import LyMaterialPurchaseInvoice
+from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.production import Base as ProductionBase
 from app.models.production import LyProductionPlan
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
+from app.models.sales_order import LySalesPaymentEntry
+from app.models.style_profit import Base as StyleProfitBase
+from app.models.style_profit import LyStyleProfitSnapshot
 from app.models.warehouse import Base as WarehouseBase
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.routers.auth import get_db_session as auth_db_dep
@@ -54,9 +62,11 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         AuditBase.metadata.create_all(bind=cls.engine)
         MasterDataBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
+        MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         WarehouseBase.metadata.create_all(bind=cls.engine)
+        StyleProfitBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -86,9 +96,15 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyStyleProfitSnapshot).delete()
+            session.query(LySalesPaymentEntry).delete()
+            session.query(LyDeliveryInvoice).delete()
+            session.query(LyMaterialPurchaseInvoice).delete()
+            session.query(LyMaterialPurchaseOrder).delete()
             session.query(LyProductionPlan).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
+            session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
             session.query(LyMasterDataRecord).delete()
@@ -167,18 +183,21 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(payload["warehouse"]["warning_alert_count"], 0)
         self.assertEqual(
             [row["module"] for row in payload["source_status"]],
-            ["quality", "sales_inventory", "warehouse", "dashboard_config"],
+            ["quality", "sales_inventory", "warehouse", "dashboard_business", "dashboard_config"],
         )
         self.assertEqual([row["source_type"] for row in payload["source_status"][:3]], ["actual", "actual", "actual"])
-        self.assertEqual(payload["source_status"][3]["source_type"], "config")
-        self.assertIn("配置项", payload["source_status"][3]["source_note"])
-        self.assertIn("不代表业务闭环完成", payload["source_status"][3]["source_note"])
+        self.assertEqual(payload["source_status"][3]["source_type"], "actual")
+        self.assertIn("只读聚合", payload["source_status"][3]["source_note"])
+        self.assertEqual(payload["source_status"][4]["source_type"], "config")
+        self.assertIn("配置项", payload["source_status"][4]["source_note"])
+        self.assertIn("不代表业务闭环完成", payload["source_status"][4]["source_note"])
         self.assertNotIn("local_dev_static_fallback", response.text)
         self.assertIn("home_overview", payload)
         self.assertGreaterEqual(len(payload["home_overview"]["metric_cards"]), 4)
         self.assertGreaterEqual(len(payload["home_overview"]["todo_items"]), 3)
         self.assertEqual(payload["home_overview"]["warnings"], [])
         self.assertEqual(payload["home_overview"]["trend_points"], [])
+        self.assertEqual(len(payload["home_overview"]["charts"]), 3)
         self.assertIn("查看动态", payload["home_overview"]["primary_actions"])
         self.assertEqual({row["source_type"] for row in payload["kanban"]["flow_nodes"]}, {"config"})
         self.assertTrue(
@@ -273,6 +292,336 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertIn("DASH-STYLE-001", joined)
         self.assertNotIn("SO-240601-001", joined)
 
+    def test_dashboard_home_business_metrics_and_charts_use_real_readonly_sources(self) -> None:
+        with self.SessionLocal() as session:
+            current_orders = [
+                ("SO-DASH-BIZ-001", "DASH-BIZ-STYLE-001", Decimal("1000"), date(2026, 6, 5), date(2026, 6, 25)),
+                ("SO-DASH-BIZ-002", "DASH-BIZ-STYLE-002", Decimal("1500"), date(2026, 6, 20), date(2026, 6, 10)),
+            ]
+            for index, (order_no, style_no, grand_total, transaction_date, delivery_date) in enumerate(current_orders, start=1):
+                order = LySalesOrder(
+                    sales_order_no=order_no,
+                    source_order_ref=f"SRC-{order_no}",
+                    company="COMP-A",
+                    customer="DASH-BIZ-CUST",
+                    status="draft",
+                    docstatus=0,
+                    transaction_date=transaction_date,
+                    delivery_date=delivery_date,
+                    currency="CNY",
+                    grand_total=grand_total,
+                    idempotency_key=f"idem-{order_no}",
+                    request_hash=f"hash-{order_no}",
+                    scenario_tag="DASH-BIZ",
+                    payload={},
+                    created_by="dash.seed",
+                    created_at=datetime(2026, 6, index, 8, 0, 0),
+                    updated_by="dash.seed",
+                    updated_at=datetime(2026, 6, index, 9, 0, 0),
+                )
+                session.add(order)
+                session.flush()
+                session.add(
+                    LySalesOrderItem(
+                        sales_order_id=int(order.id),
+                        company="COMP-A",
+                        line_no=1,
+                        sales_order_item=f"{order_no}-001",
+                        item_code=style_no,
+                        item_name=f"Dashboard Business Style {index}",
+                        qty=Decimal("10"),
+                        planned_qty=Decimal("0"),
+                        delivered_qty=Decimal("0"),
+                        ys_material_calc_state="待算料",
+                        uom="件",
+                        warehouse="FG-DASH",
+                        delivery_date=delivery_date,
+                        rate=grand_total / Decimal("10"),
+                        amount=grand_total,
+                    )
+                )
+
+            previous_order = LySalesOrder(
+                sales_order_no="SO-DASH-BIZ-PREV",
+                source_order_ref="SRC-SO-DASH-BIZ-PREV",
+                company="COMP-A",
+                customer="DASH-BIZ-CUST",
+                status="draft",
+                docstatus=0,
+                transaction_date=date(2026, 5, 20),
+                delivery_date=date(2026, 5, 30),
+                currency="CNY",
+                grand_total=Decimal("500"),
+                idempotency_key="idem-SO-DASH-BIZ-PREV",
+                request_hash="hash-SO-DASH-BIZ-PREV",
+                scenario_tag="DASH-BIZ",
+                payload={},
+                created_by="dash.seed",
+                created_at=datetime(2026, 5, 20, 8, 0, 0),
+                updated_by="dash.seed",
+                updated_at=datetime(2026, 5, 20, 9, 0, 0),
+            )
+            session.add(previous_order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(previous_order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-DASH-BIZ-PREV-001",
+                    item_code="DASH-BIZ-STYLE-PREV",
+                    item_name="Dashboard Business Previous Style",
+                    qty=Decimal("5"),
+                    planned_qty=Decimal("5"),
+                    delivered_qty=Decimal("5"),
+                    ys_material_calc_state="待算料",
+                    uom="件",
+                    warehouse="FG-DASH",
+                    delivery_date=date(2026, 5, 30),
+                    rate=Decimal("100"),
+                    amount=Decimal("500"),
+                )
+            )
+
+            session.add_all(
+                [
+                    LyDeliveryInvoice(
+                        company="COMP-A",
+                        delivery_note="DN-DASH-BIZ-001",
+                        sales_invoice="SI-DASH-BIZ-001",
+                        sales_order="SO-DASH-BIZ-001",
+                        customer="DASH-BIZ-CUST",
+                        item_code="DASH-BIZ-STYLE-001",
+                        item_name="Dashboard Business Style 1",
+                        warehouse="FG-DASH",
+                        delivered_qty=Decimal("4"),
+                        uom="件",
+                        rate=Decimal("125"),
+                        grand_total=Decimal("500"),
+                        paid_amount=Decimal("200"),
+                        outstanding_amount=Decimal("300"),
+                        posting_date=date(2026, 6, 10),
+                        due_date=date(2026, 6, 30),
+                        status="partly_paid",
+                        source_ref="SRC-DN-DASH-BIZ-001",
+                        idempotency_key="idem-DN-DASH-BIZ-001",
+                        request_hash="hash-DN-DASH-BIZ-001",
+                        payload={},
+                        created_by="dash.seed",
+                    ),
+                    LyWarehouseStockLedgerEntry(
+                        company="COMP-A",
+                        warehouse="WH-DASH",
+                        item_code="DASH-BIZ-MAT",
+                        uom="米",
+                        posting_date=date(2026, 6, 11),
+                        sort_at=datetime(2026, 6, 11, 8, 0, 0),
+                        source_type="dashboard_seed",
+                        source_id="LEDGER-IN-DASH-BIZ",
+                        source_line_id="1",
+                        voucher_type="Stock Entry",
+                        voucher_no="STE-DASH-BIZ-IN",
+                        actual_qty=Decimal("10"),
+                        status="active",
+                    ),
+                    LyWarehouseStockLedgerEntry(
+                        company="COMP-A",
+                        warehouse="WH-DASH",
+                        item_code="DASH-BIZ-MAT",
+                        uom="米",
+                        posting_date=date(2026, 6, 12),
+                        sort_at=datetime(2026, 6, 12, 8, 0, 0),
+                        source_type="dashboard_seed",
+                        source_id="LEDGER-OUT-DASH-BIZ",
+                        source_line_id="1",
+                        voucher_type="Stock Entry",
+                        voucher_no="STE-DASH-BIZ-OUT",
+                        actual_qty=Decimal("-4"),
+                        status="active",
+                    ),
+                    LyProductionPlan(
+                        plan_no="PP-DASH-BIZ-001",
+                        company="COMP-A",
+                        sales_order="SO-DASH-BIZ-001",
+                        sales_order_item="SO-DASH-BIZ-001-001",
+                        customer="DASH-BIZ-CUST",
+                        item_code="DASH-BIZ-STYLE-001",
+                        bom_id=1,
+                        bom_version="V1",
+                        planned_qty=Decimal("10"),
+                        planned_start_date=date(2026, 6, 6),
+                        status="planned",
+                        idempotency_key="idem-PP-DASH-BIZ-001",
+                        request_hash="hash-PP-DASH-BIZ-001",
+                        created_by="dash.seed",
+                        created_at=datetime(2026, 6, 6, 8, 0, 0),
+                        updated_at=datetime(2026, 6, 6, 9, 0, 0),
+                    ),
+                    LyStyleProfitSnapshot(
+                        snapshot_no="SP-DASH-BIZ-001",
+                        company="COMP-A",
+                        sales_order="SO-DASH-BIZ-001",
+                        item_code="DASH-BIZ-STYLE-001",
+                        revenue_status="actual",
+                        revenue_amount=Decimal("1000"),
+                        from_date=date(2026, 6, 1),
+                        to_date=date(2026, 6, 24),
+                        standard_total_cost=Decimal("300"),
+                        actual_total_cost=Decimal("300"),
+                        profit_amount=Decimal("700"),
+                        profit_rate=Decimal("0.7"),
+                        snapshot_status="complete",
+                        allocation_status="not_enabled",
+                        formula_version="STYLE_PROFIT_V1",
+                        unresolved_count=0,
+                        idempotency_key="idem-SP-DASH-BIZ-001",
+                        request_hash="hash-SP-DASH-BIZ-001",
+                        created_by="dash.seed",
+                        created_at=datetime(2026, 6, 20, 8, 0, 0),
+                    ),
+                    LyStyleProfitSnapshot(
+                        snapshot_no="SP-DASH-BIZ-PREV",
+                        company="COMP-A",
+                        sales_order="SO-DASH-BIZ-PREV",
+                        item_code="DASH-BIZ-STYLE-PREV",
+                        revenue_status="actual",
+                        revenue_amount=Decimal("500"),
+                        from_date=date(2026, 5, 10),
+                        to_date=date(2026, 5, 20),
+                        standard_total_cost=Decimal("150"),
+                        actual_total_cost=Decimal("150"),
+                        profit_amount=Decimal("350"),
+                        profit_rate=Decimal("0.7"),
+                        snapshot_status="complete",
+                        allocation_status="not_enabled",
+                        formula_version="STYLE_PROFIT_V1",
+                        unresolved_count=0,
+                        idempotency_key="idem-SP-DASH-BIZ-PREV",
+                        request_hash="hash-SP-DASH-BIZ-PREV",
+                        created_by="dash.seed",
+                        created_at=datetime(2026, 5, 20, 8, 0, 0),
+                    ),
+                ]
+            )
+            session.flush()
+            delivery_invoice_id = int(
+                session.query(LyDeliveryInvoice.id).filter(LyDeliveryInvoice.sales_invoice == "SI-DASH-BIZ-001").scalar()
+            )
+            purchase_order = LyMaterialPurchaseOrder(
+                company="COMP-A",
+                purchase_no="PO-DASH-BIZ-001",
+                supplier_name="DASH-BIZ-SUP",
+                transaction_date=date(2026, 6, 9),
+                expected_delivery_date=date(2026, 6, 28),
+                status="draft",
+                total_qty=Decimal("20"),
+                received_qty=Decimal("0"),
+                total_amount=Decimal("600"),
+                currency="CNY",
+                created_by="dash.seed",
+                updated_by="dash.seed",
+            )
+            session.add(purchase_order)
+            session.flush()
+            session.add_all(
+                [
+                    LySalesPaymentEntry(
+                        company="COMP-A",
+                        payment_entry="PE-DASH-BIZ-001",
+                        delivery_invoice_id=delivery_invoice_id,
+                        delivery_note="DN-DASH-BIZ-001",
+                        sales_invoice="SI-DASH-BIZ-001",
+                        sales_order="SO-DASH-BIZ-001",
+                        customer="DASH-BIZ-CUST",
+                        posting_date=date(2026, 6, 15),
+                        paid_amount=Decimal("200"),
+                        allocated_amount=Decimal("200"),
+                        outstanding_before=Decimal("500"),
+                        outstanding_after=Decimal("300"),
+                        mode_of_payment="Bank Transfer",
+                        reference_no="REF-DASH-BIZ-001",
+                        reference_date=date(2026, 6, 15),
+                        status="submitted",
+                        source_ref="SRC-PE-DASH-BIZ-001",
+                        idempotency_key="idem-PE-DASH-BIZ-001",
+                        request_hash="hash-PE-DASH-BIZ-001",
+                        payload={},
+                        created_by="dash.seed",
+                    ),
+                    LyMaterialPurchaseInvoice(
+                        company="COMP-A",
+                        purchase_invoice="PI-DASH-BIZ-001",
+                        purchase_order_id=int(purchase_order.id),
+                        purchase_no="PO-DASH-BIZ-001",
+                        supplier_name="DASH-BIZ-SUP",
+                        material_item_code="DASH-BIZ-MAT",
+                        material_name="Dashboard Material",
+                        warehouse="WH-DASH",
+                        qty=Decimal("20"),
+                        uom="米",
+                        rate=Decimal("30"),
+                        grand_total=Decimal("600"),
+                        paid_amount=Decimal("420"),
+                        outstanding_amount=Decimal("180"),
+                        posting_date=date(2026, 6, 12),
+                        due_date=date(2026, 6, 30),
+                        status="partly_paid",
+                        source_ref="SRC-PI-DASH-BIZ-001",
+                        idempotency_key="idem-PI-DASH-BIZ-001",
+                        request_hash="hash-PI-DASH-BIZ-001",
+                        payload={},
+                        created_by="dash.seed",
+                    ),
+                ]
+            )
+            session.commit()
+
+        with patch(
+            "app.services.quality_service.QualityService.statistics",
+            return_value=SimpleNamespace(
+                total_count=2,
+                total_inspected_qty=Decimal("10"),
+                total_accepted_qty=Decimal("9"),
+                total_rejected_qty=Decimal("1"),
+                total_defect_qty=Decimal("1"),
+            ),
+        ):
+            response = self.client.get(
+                "/api/dashboard/overview?company=COMP-A&to_date=2026-06-24",
+                headers=self._headers_with_roles("dashboard:read"),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        home = response.json()["data"]["home_overview"]
+        metrics = {row["key"]: row for row in home["metric_cards"]}
+        self.assertEqual(metrics["monthly_order_count"]["value"], "2")
+        self.assertEqual(metrics["monthly_order_count"]["trend"], "较上期 +100%")
+        self.assertEqual(metrics["monthly_sales_amount"]["value"], "2500")
+        self.assertEqual(metrics["monthly_sales_amount"]["trend"], "较上期 +400%")
+        self.assertEqual(metrics["receivable_balance"]["value"], "300")
+        self.assertEqual(metrics["payable_balance"]["value"], "180")
+        self.assertEqual(metrics["in_production_order_count"]["value"], "1")
+        self.assertEqual(metrics["delivery_warning_count"]["value"], "2")
+        self.assertEqual(metrics["monthly_gross_profit"]["value"], "700")
+        self.assertEqual(metrics["monthly_gross_profit"]["status"], "complete")
+        self.assertEqual(metrics["monthly_gross_profit"]["trend"], "较上期 +100%")
+        self.assertEqual({row["group"] for row in home["metric_cards"]}, {"business", "inventory", "quality"})
+        self.assertTrue(all(row.get("route") for row in home["todo_items"]))
+
+        blocked_trends = {"较昨日平稳", "按只读汇总更新", "来源于质检汇总", "高危优先处理"}
+        self.assertTrue(blocked_trends.isdisjoint({row.get("trend") for row in home["metric_cards"]}))
+
+        charts = {row["key"]: row for row in home["charts"]}
+        self.assertEqual(set(charts), {"sales_amount_trend", "stock_movement_trend", "receivable_collection_trend"})
+        sales_point = next(point for point in charts["sales_amount_trend"]["points"] if point["period"] == "2026-06-20")
+        self.assertEqual(Decimal(str(sales_point["values"]["sales_amount"])), Decimal("1500.000000"))
+        inbound_point = next(point for point in charts["stock_movement_trend"]["points"] if point["period"] == "2026-06-11")
+        outbound_point = next(point for point in charts["stock_movement_trend"]["points"] if point["period"] == "2026-06-12")
+        self.assertEqual(Decimal(str(inbound_point["values"]["inbound_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(outbound_point["values"]["outbound_qty"])), Decimal("4.000000"))
+        payment_point = next(point for point in charts["receivable_collection_trend"]["points"] if point["period"] == "2026-06-15")
+        self.assertEqual(Decimal(str(payment_point["values"]["paid_amount"])), Decimal("200.000000"))
+
     def test_fastapi_dashboard_uses_local_stock_without_erpnext_adapters(self) -> None:
         with self.SessionLocal() as session:
             draft = LyWarehouseStockEntryDraft(
@@ -325,7 +674,7 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(payload["sales_inventory"]["item_count"], 1)
         self.assertEqual(Decimal(str(payload["sales_inventory"]["total_actual_qty"])), Decimal("7.000000"))
         self.assertEqual(payload["warehouse"]["alert_count"], 0)
-        self.assertEqual([row["status"] for row in payload["source_status"]], ["ok", "ok", "ok", "ok"])
+        self.assertEqual([row["status"] for row in payload["source_status"]], ["ok", "ok", "ok", "ok", "ok"])
         self.assertEqual(payload["source_status"][-1]["module"], "dashboard_config")
         self.assertEqual(payload["source_status"][-1]["source_type"], "config")
 

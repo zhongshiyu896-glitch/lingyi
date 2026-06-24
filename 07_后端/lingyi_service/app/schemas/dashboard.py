@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from typing import Generic
 from typing import TypeVar
 
@@ -116,6 +117,10 @@ class DashboardHomeMetricCardData(BaseModel):
     value: str
     unit: str | None = None
     trend: str | None = None
+    group: str = "quality"
+    route: str | None = None
+    status: str = "complete"
+    source_note: str | None = None
 
 
 class DashboardHomeTodoItemData(BaseModel):
@@ -126,6 +131,7 @@ class DashboardHomeTodoItemData(BaseModel):
     count: int
     status: str
     action_label: str
+    route: str | None = None
 
 
 class DashboardHomeTrendPointData(BaseModel):
@@ -135,6 +141,34 @@ class DashboardHomeTrendPointData(BaseModel):
     forecast_sales: Decimal
     forecast_cost: Decimal
     forecast_profit: Decimal
+
+
+class DashboardHomeChartSeriesData(BaseModel):
+    """Series metadata for homepage real-data chart."""
+
+    key: str
+    label: str
+    unit: str | None = None
+
+
+class DashboardHomeChartPointData(BaseModel):
+    """One time bucket for homepage real-data chart."""
+
+    period: str
+    values: dict[str, Decimal]
+    meta: dict[str, Any] | None = None
+
+
+class DashboardHomeChartData(BaseModel):
+    """Homepage chart payload backed by readonly aggregation."""
+
+    key: str
+    title: str
+    chart_type: str = "line"
+    unit: str | None = None
+    source_note: str | None = None
+    series: list[DashboardHomeChartSeriesData]
+    points: list[DashboardHomeChartPointData]
 
 
 class DashboardHomeOverviewData(BaseModel):
@@ -147,6 +181,7 @@ class DashboardHomeOverviewData(BaseModel):
     business_summary: list[str]
     recent_activities: list[str]
     trend_points: list[DashboardHomeTrendPointData]
+    charts: list[DashboardHomeChartData]
     primary_actions: list[str]
 
 
