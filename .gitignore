@@ -17,5 +17,10 @@
 07_后端/lingyi_service/lingyi_service.db
 # TASK-164B: local backend sqlite (dev-only)
 07_后端/lingyi_service/lingyi_service.local.db
+07_后端/lingyi_service/*.db
+07_后端/lingyi_service/*.sqlite
+07_后端/lingyi_service/*.sqlite3
+07_后端/lingyi_service/backups/
 07_后端/lingyi_service/.pytest-postgresql.xml
 07_后端/lingyi_service/uploaded_files/
+04_测试与验收/测试证据/
