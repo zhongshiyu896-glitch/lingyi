@@ -2,8 +2,28 @@
 
 from __future__ import annotations
 
+import json
 import os
 import unittest
+
+from app.core.permissions import DEFAULT_STATIC_ROLE_ACTIONS
+
+
+def _default_fastapi_role_actions_json() -> str:
+    return json.dumps(
+        {
+            "roles": {
+                role: sorted(actions)
+                for role, actions in sorted(DEFAULT_STATIC_ROLE_ACTIONS.items(), key=lambda item: item[0])
+            }
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+def ensure_test_fastapi_role_actions() -> None:
+    os.environ.setdefault("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", _default_fastapi_role_actions_json())
 
 
 def configure_test_env() -> None:
@@ -12,6 +32,7 @@ def configure_test_env() -> None:
     os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
     os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
     os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+    ensure_test_fastapi_role_actions()
 
 
 class ConfigureTestEnvTest(unittest.TestCase):
@@ -21,6 +42,7 @@ class ConfigureTestEnvTest(unittest.TestCase):
             "LINGYI_ALLOW_DEV_AUTH": os.environ.get("LINGYI_ALLOW_DEV_AUTH"),
             "LINGYI_ERPNEXT_BASE_URL": os.environ.get("LINGYI_ERPNEXT_BASE_URL"),
             "LINGYI_PERMISSION_SOURCE": os.environ.get("LINGYI_PERMISSION_SOURCE"),
+            "LINGYI_FASTAPI_ROLE_ACTIONS_JSON": os.environ.get("LINGYI_FASTAPI_ROLE_ACTIONS_JSON"),
             "LINGYI_AUTH_CACHE_TTL_SECONDS": os.environ.get("LINGYI_AUTH_CACHE_TTL_SECONDS"),
         }
 
@@ -43,6 +65,9 @@ class ConfigureTestEnvTest(unittest.TestCase):
         self.assertEqual(os.environ["LINGYI_ALLOW_DEV_AUTH"], "true")
         self.assertEqual(os.environ["LINGYI_ERPNEXT_BASE_URL"], "")
         self.assertEqual(os.environ["LINGYI_PERMISSION_SOURCE"], "static")
+        role_actions = json.loads(os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"])
+        self.assertIn("System Manager", role_actions["roles"])
+        self.assertIn("factory_statement:read", role_actions["roles"]["System Manager"])
 
     def test_dev_auth_default_is_closed(self) -> None:
         from app.core.auth import is_local_session_auth_enabled

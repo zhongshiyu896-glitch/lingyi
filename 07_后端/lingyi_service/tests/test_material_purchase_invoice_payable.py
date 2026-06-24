@@ -150,6 +150,18 @@ class MaterialPurchaseInvoicePayableFlowTest(unittest.TestCase):
             LyMasterDataRecord(
                 entity_type="material",
                 company=cls.COMPANY,
+                code="MU-METER",
+                name="米",
+                status="active",
+                payload={"material_kind": "unit", "unit_code": "MU-METER", "unit_name": "米", "base_unit": "米"},
+                created_by="seed",
+                updated_by="seed",
+            )
+        )
+        session.add(
+            LyMasterDataRecord(
+                entity_type="material",
+                company=cls.COMPANY,
                 code=cls.ITEM_CODE,
                 name="B2棉布",
                 status="active",
