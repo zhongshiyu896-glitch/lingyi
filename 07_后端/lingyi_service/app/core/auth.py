@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
+from datetime import datetime
+from datetime import timezone
 import hashlib
 import hmac
 from http.cookies import SimpleCookie
@@ -17,9 +19,12 @@ from urllib import error
 from urllib import parse
 from urllib import request
 
+import bcrypt
 from fastapi import HTTPException
 from fastapi import Request
 from fastapi import Response
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.core.error_codes import ERPNEXT_RESPONSE_INVALID
 from app.core.error_codes import ERPNEXT_SERVICE_UNAVAILABLE
@@ -29,6 +34,7 @@ from app.core.permissions import AUTH_FORBIDDEN_CODE
 from app.core.permissions import AUTH_UNAUTHORIZED_CODE
 from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
 from app.core.permissions import get_permission_source
+from app.models.auth import LyAuthAdminUser
 
 DEV_AUTH_ALLOWED_ENVS = frozenset({"development", "test", "local"})
 LOCAL_SESSION_COOKIE_NAME = "lingyi_local_session"
@@ -44,6 +50,11 @@ ERPNEXT_API_SECRET_ENV = "LINGYI_ERPNEXT_API_SECRET"
 FASTAPI_AUTH_USERS_ENV = "LINGYI_FASTAPI_AUTH_USERS_JSON"
 FASTAPI_PASSWORD_HASH_SCHEME = "pbkdf2_sha256"
 FASTAPI_PASSWORD_HASH_ITERATIONS = 260_000
+FASTAPI_ADMIN_BCRYPT_ROUNDS_ENV = "LINGYI_AUTH_BCRYPT_ROUNDS"
+FASTAPI_LOGIN_MAX_FAILURES_ENV = "LINGYI_AUTH_LOGIN_MAX_FAILURES"
+FASTAPI_LOGIN_WINDOW_SECONDS_ENV = "LINGYI_AUTH_LOGIN_WINDOW_SECONDS"
+FASTAPI_LOGIN_LOCK_SECONDS_ENV = "LINGYI_AUTH_LOGIN_LOCK_SECONDS"
+AUTH_RATE_LIMITED_CODE = "AUTH_RATE_LIMITED"
 
 LOCAL_LOGIN_ROLE_PROFILES: dict[str, list[str]] = {
     "system_manager": ["System Manager"],
@@ -74,9 +85,18 @@ class ERPNextLoginSession:
     sid: str
 
 
+@dataclass
+class _LoginFailureBucket:
+    count: int
+    window_started_at: float
+    locked_until: float = 0.0
+
+
 _AuthSessionCacheValue = tuple[CurrentUser, float]
 _auth_session_cache: dict[str, _AuthSessionCacheValue] = {}
 _auth_session_cache_lock = threading.Lock()
+_login_failure_buckets: dict[str, _LoginFailureBucket] = {}
+_login_failure_lock = threading.Lock()
 
 
 def _clone_current_user(current_user: CurrentUser) -> CurrentUser:
@@ -165,6 +185,8 @@ def clear_auth_session_cache_for_request(request_obj: Request) -> None:
 def _reset_auth_session_cache_for_tests() -> None:
     with _auth_session_cache_lock:
         _auth_session_cache.clear()
+    with _login_failure_lock:
+        _login_failure_buckets.clear()
 
 
 def _auth_error(message: str = "未登录或 Token 无效") -> HTTPException:
@@ -178,6 +200,13 @@ def _auth_forbidden_error(message: str = "无权执行该操作") -> HTTPExcepti
     return HTTPException(
         status_code=403,
         detail={"code": AUTH_FORBIDDEN_CODE, "message": message, "data": {}},
+    )
+
+
+def _auth_rate_limited_error(message: str = "登录失败次数过多，请稍后再试") -> HTTPException:
+    return HTTPException(
+        status_code=429,
+        detail={"code": AUTH_RATE_LIMITED_CODE, "message": message, "data": {}},
     )
 
 
@@ -213,6 +242,17 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, *, default: int, minimum: int, maximum: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        parsed = int(value.strip())
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(maximum, parsed))
+
+
 def _normalized_app_env(default: str = "development") -> str:
     return os.getenv("APP_ENV", default).strip().lower() or default
 
@@ -228,6 +268,80 @@ def is_fastapi_session_auth_enabled() -> bool:
 def ensure_local_session_auth_enabled() -> None:
     if not is_local_session_auth_enabled():
         raise _local_auth_disabled_error()
+
+
+def _bcrypt_rounds() -> int:
+    return _env_int(FASTAPI_ADMIN_BCRYPT_ROUNDS_ENV, default=12, minimum=10, maximum=15)
+
+
+def make_admin_password_hash(password: str, *, rounds: int | None = None) -> str:
+    """Build a bcrypt password hash for the DB-backed admin account."""
+    encoded_password = (password or "").encode("utf-8")
+    if not encoded_password:
+        raise ValueError("password must not be empty")
+    if len(encoded_password) > 72:
+        raise ValueError("bcrypt password must be 72 bytes or fewer")
+    salt = bcrypt.gensalt(rounds=rounds or _bcrypt_rounds())
+    return bcrypt.hashpw(encoded_password, salt).decode("utf-8")
+
+
+def _verify_bcrypt_password(password: str, password_hash: str) -> bool:
+    encoded_password = (password or "").encode("utf-8")
+    if not encoded_password or len(encoded_password) > 72:
+        return False
+    try:
+        return bcrypt.checkpw(encoded_password, password_hash.encode("utf-8"))
+    except (TypeError, ValueError):
+        return False
+
+
+def _login_max_failures() -> int:
+    return _env_int(FASTAPI_LOGIN_MAX_FAILURES_ENV, default=5, minimum=1, maximum=50)
+
+
+def _login_window_seconds() -> int:
+    return _env_int(FASTAPI_LOGIN_WINDOW_SECONDS_ENV, default=300, minimum=1, maximum=3600)
+
+
+def _login_lock_seconds() -> int:
+    return _env_int(FASTAPI_LOGIN_LOCK_SECONDS_ENV, default=300, minimum=1, maximum=3600)
+
+
+def _login_rate_limit_key(*, username: str, request_obj: Request | None) -> str:
+    remote_host = "unknown"
+    if request_obj is not None and request_obj.client is not None:
+        remote_host = request_obj.client.host or remote_host
+    return f"{username.strip().lower()}:{remote_host}"
+
+
+def _ensure_login_not_rate_limited(*, key: str, now: float | None = None) -> None:
+    moment = now if now is not None else time.monotonic()
+    with _login_failure_lock:
+        bucket = _login_failure_buckets.get(key)
+        if bucket is None:
+            return
+        if bucket.locked_until > moment:
+            raise _auth_rate_limited_error()
+        if moment - bucket.window_started_at > _login_window_seconds():
+            _login_failure_buckets.pop(key, None)
+
+
+def _record_login_failure(*, key: str, now: float | None = None) -> None:
+    moment = now if now is not None else time.monotonic()
+    with _login_failure_lock:
+        bucket = _login_failure_buckets.get(key)
+        if bucket is None or moment - bucket.window_started_at > _login_window_seconds():
+            bucket = _LoginFailureBucket(count=0, window_started_at=moment)
+            _login_failure_buckets[key] = bucket
+        bucket.count += 1
+        if bucket.count >= _login_max_failures():
+            bucket.locked_until = moment + _login_lock_seconds()
+            raise _auth_rate_limited_error()
+
+
+def _record_login_success(*, key: str) -> None:
+    with _login_failure_lock:
+        _login_failure_buckets.pop(key, None)
 
 
 def _load_json(url: str, headers: dict[str, str]) -> dict[str, Any] | None:
@@ -314,6 +428,9 @@ def make_fastapi_password_hash(
 
 
 def _verify_fastapi_password(password: str, password_hash: str) -> bool:
+    if password_hash.startswith(("$2a$", "$2b$", "$2y$")):
+        return _verify_bcrypt_password(password, password_hash)
+
     parts = password_hash.split("$")
     if len(parts) != 4:
         return False
@@ -347,7 +464,59 @@ def _load_fastapi_auth_users_config() -> dict[str, Any]:
     return users_payload
 
 
-def login_fastapi_user(*, username: str, password: str) -> CurrentUser:
+def _load_fastapi_auth_user_from_env(username: str) -> dict[str, Any] | None:
+    users = _load_fastapi_auth_users_config()
+    entry = users.get(username)
+    if not isinstance(entry, dict) or bool(entry.get("disabled", False)):
+        return None
+    return entry
+
+
+def _load_fastapi_auth_user_from_db(session: Session, username: str) -> tuple[dict[str, Any] | None, LyAuthAdminUser | None, bool]:
+    try:
+        row = (
+            session.query(LyAuthAdminUser)
+            .filter(
+                LyAuthAdminUser.username == username,
+                LyAuthAdminUser.status == "active",
+            )
+            .one_or_none()
+        )
+    except SQLAlchemyError:
+        session.rollback()
+        return None, None, False
+
+    if row is None:
+        return None, None, True
+
+    return (
+        {
+            "password_hash": row.password_hash,
+            "roles": row.roles,
+            "is_service_account": bool(row.is_service_account),
+        },
+        row,
+        True,
+    )
+
+
+def _normalize_fastapi_auth_roles(entry: dict[str, Any]) -> list[str]:
+    roles_raw = entry.get("roles")
+    if not isinstance(roles_raw, list):
+        raise _auth_source_unavailable_error("FastAPI 认证用户角色未配置")
+    roles = sorted({role.strip() for role in roles_raw if isinstance(role, str) and role.strip()})
+    if not roles:
+        raise _auth_source_unavailable_error("FastAPI 认证用户角色未配置")
+    return roles
+
+
+def login_fastapi_user(
+    *,
+    session: Session,
+    username: str,
+    password: str,
+    request_obj: Request | None = None,
+) -> CurrentUser:
     if not is_fastapi_session_auth_enabled():
         raise _local_auth_disabled_error("FastAPI 原生登录仅在 production 且权限源 fastapi 时可用")
 
@@ -355,21 +524,36 @@ def login_fastapi_user(*, username: str, password: str) -> CurrentUser:
     if not normalized_username or not password:
         raise _auth_error("用户名或密码错误")
 
-    users = _load_fastapi_auth_users_config()
-    entry = users.get(normalized_username)
-    if not isinstance(entry, dict) or bool(entry.get("disabled", False)):
+    rate_key = _login_rate_limit_key(username=normalized_username, request_obj=request_obj)
+    _ensure_login_not_rate_limited(key=rate_key)
+
+    entry, row, db_available = _load_fastapi_auth_user_from_db(session, normalized_username)
+    if entry is None:
+        try:
+            entry = _load_fastapi_auth_user_from_env(normalized_username)
+        except HTTPException:
+            if not db_available:
+                raise _auth_source_unavailable_error("FastAPI 管理员账号表不可用，请先运行迁移")
+            raise _auth_source_unavailable_error("FastAPI 管理员账号未创建，请先运行 scripts/create_admin_user.py")
+
+    if entry is None:
+        _record_login_failure(key=rate_key)
         raise _auth_error("用户名或密码错误")
 
     password_hash = str(entry.get("password_hash") or "")
     if not password_hash or not _verify_fastapi_password(password, password_hash):
+        _record_login_failure(key=rate_key)
         raise _auth_error("用户名或密码错误")
 
-    roles_raw = entry.get("roles")
-    if not isinstance(roles_raw, list):
-        raise _auth_source_unavailable_error("FastAPI 认证用户角色未配置")
-    roles = sorted({role.strip() for role in roles_raw if isinstance(role, str) and role.strip()})
-    if not roles:
-        raise _auth_source_unavailable_error("FastAPI 认证用户角色未配置")
+    roles = _normalize_fastapi_auth_roles(entry)
+    _record_login_success(key=rate_key)
+
+    if row is not None:
+        try:
+            row.last_login_at = datetime.now(timezone.utc)
+            session.commit()
+        except SQLAlchemyError:
+            session.rollback()
 
     return CurrentUser(
         username=normalized_username,

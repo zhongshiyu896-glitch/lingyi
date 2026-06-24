@@ -52,7 +52,7 @@ def _is_secure_cookie_request(request: Request) -> bool:
 
 
 @router.post("/login")
-def login(payload: LocalLoginRequest, request: Request, response: Response):
+def login(payload: LocalLoginRequest, request: Request, response: Response, session: Session = Depends(get_db_session)):
     """Create an authenticated browser session.
 
     Local profile login is available only when development auth is explicitly enabled.
@@ -64,7 +64,12 @@ def login(payload: LocalLoginRequest, request: Request, response: Response):
         current_user = build_local_login_user(username=payload.username, profile=payload.profile or "system_manager")
         set_local_session_cookie(response, current_user)
     elif is_fastapi_session_auth_enabled():
-        current_user = login_fastapi_user(username=payload.username, password=payload.password or "")
+        current_user = login_fastapi_user(
+            session=session,
+            username=payload.username,
+            password=payload.password or "",
+            request_obj=request,
+        )
         set_local_session_cookie(response, current_user, secure=_is_secure_cookie_request(request))
     else:
         erpnext_session = login_erpnext_user(username=payload.username, password=payload.password or "")

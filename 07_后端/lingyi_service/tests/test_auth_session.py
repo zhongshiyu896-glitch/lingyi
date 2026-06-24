@@ -22,6 +22,8 @@ import app.core.auth as auth_core
 import app.main as main_module
 from app.main import app
 from app.models.audit import Base as AuditBase
+from app.models.auth import AuthBase
+from app.models.auth import LyAuthAdminUser
 from app.routers.auth import get_db_session as auth_db_dep
 from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 
@@ -83,6 +85,7 @@ class AuthSessionTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        AuthBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -112,7 +115,13 @@ class AuthSessionTest(unittest.TestCase):
         os.environ["LINGYI_AUTH_CACHE_TTL_SECONDS"] = "45"
         os.environ["LINGYI_ERPNEXT_API_KEY"] = ""
         os.environ["LINGYI_ERPNEXT_API_SECRET"] = ""
+        os.environ["LINGYI_AUTH_LOGIN_MAX_FAILURES"] = "5"
+        os.environ["LINGYI_AUTH_LOGIN_WINDOW_SECONDS"] = "300"
+        os.environ["LINGYI_AUTH_LOGIN_LOCK_SECONDS"] = "300"
         os.environ.pop("LINGYI_FASTAPI_AUTH_USERS_JSON", None)
+        with self.SessionLocal() as session:
+            session.query(LyAuthAdminUser).delete()
+            session.commit()
 
     def _login(self, *, username: str = "w003a.local", profile: str = "system_manager"):
         response = self.client.post(
@@ -172,6 +181,99 @@ class AuthSessionTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
+
+    def test_production_business_endpoint_requires_login(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+            },
+            clear=False,
+        ):
+            response = self.client.get("/api/master-data/customers")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
+
+    def test_production_fastapi_login_uses_db_admin_bcrypt_cookie_and_logout(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyAuthAdminUser(
+                    username="admin",
+                    password_hash=auth_core.make_admin_password_hash("secret-pass", rounds=10),
+                    roles=["System Manager"],
+                    status="active",
+                )
+            )
+            session.commit()
+
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+            },
+            clear=False,
+        ):
+            unauthenticated = self.client.get("/api/auth/me")
+            login_response = self.client.post(
+                "/api/auth/login",
+                json={"username": "admin", "password": "secret-pass"},
+            )
+            me_response = self.client.get("/api/auth/me")
+            logout_response = self.client.post("/api/auth/logout")
+            after_logout = self.client.get("/api/auth/me")
+
+        self.assertEqual(unauthenticated.status_code, 401)
+        self.assertEqual(login_response.status_code, 200, login_response.text)
+        self.assertIn("lingyi_local_session=", login_response.headers.get("set-cookie", ""))
+        self.assertEqual(login_response.json()["data"]["source"], "fastapi_session")
+        self.assertEqual(me_response.status_code, 200)
+        self.assertEqual(me_response.json()["data"]["username"], "admin")
+        self.assertEqual(me_response.json()["data"]["roles"], ["System Manager"])
+        self.assertEqual(logout_response.status_code, 200)
+        self.assertEqual(after_logout.status_code, 401)
+
+    def test_production_fastapi_login_rate_limits_bad_passwords(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyAuthAdminUser(
+                    username="admin",
+                    password_hash=auth_core.make_admin_password_hash("secret-pass", rounds=10),
+                    roles=["System Manager"],
+                    status="active",
+                )
+            )
+            session.commit()
+
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+                "LINGYI_AUTH_LOGIN_MAX_FAILURES": "2",
+                "LINGYI_AUTH_LOGIN_WINDOW_SECONDS": "300",
+                "LINGYI_AUTH_LOGIN_LOCK_SECONDS": "300",
+            },
+            clear=False,
+        ):
+            first = self.client.post("/api/auth/login", json={"username": "admin", "password": "bad-pass"})
+            second = self.client.post("/api/auth/login", json={"username": "admin", "password": "bad-pass"})
+            third = self.client.post("/api/auth/login", json={"username": "admin", "password": "secret-pass"})
+
+        self.assertEqual(first.status_code, 401)
+        self.assertEqual(first.json()["code"], "AUTH_UNAUTHORIZED")
+        self.assertEqual(second.status_code, 429)
+        self.assertEqual(second.json()["code"], "AUTH_RATE_LIMITED")
+        self.assertEqual(third.status_code, 429)
+        self.assertEqual(third.json()["code"], "AUTH_RATE_LIMITED")
 
     def test_production_login_uses_fastapi_native_session_without_erpnext(self) -> None:
         def _fake_urlopen(req, timeout=0):
