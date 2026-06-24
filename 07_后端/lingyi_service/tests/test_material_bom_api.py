@@ -21,6 +21,7 @@ from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyApparelBomWriteOperation
+from app.models.bom import LyBomOperation
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.master_data import Base as MasterDataBase
@@ -45,6 +46,7 @@ from app.models.style_master import LyStyleGallery
 from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
 from app.routers.auth import get_db_session as auth_db_dep
+from app.routers.bom import get_db_session as bom_db_dep
 from app.routers.production import get_db_session as production_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.sample import get_db_session as sample_db_dep
@@ -82,6 +84,7 @@ class MaterialBomApiTest(unittest.TestCase):
                 db.close()
 
         app.dependency_overrides[auth_db_dep] = _override_db
+        app.dependency_overrides[bom_db_dep] = _override_db
         app.dependency_overrides[style_master_db_dep] = _override_db
         app.dependency_overrides[sales_inventory_db_dep] = _override_db
         app.dependency_overrides[sample_db_dep] = _override_db
@@ -94,6 +97,7 @@ class MaterialBomApiTest(unittest.TestCase):
     def tearDownClass(cls) -> None:
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
+        app.dependency_overrides.pop(bom_db_dep, None)
         app.dependency_overrides.pop(style_master_db_dep, None)
         app.dependency_overrides.pop(sales_inventory_db_dep, None)
         app.dependency_overrides.pop(sample_db_dep, None)
@@ -119,6 +123,7 @@ class MaterialBomApiTest(unittest.TestCase):
             session.query(LySampleMaterialBom).delete()
             session.query(LySampleOrder).delete()
             session.query(LyApparelBomWriteOperation).delete()
+            session.query(LyBomOperation).delete()
             session.query(LyApparelBomItem).delete()
             session.query(LyApparelBom).delete()
             session.query(LyMasterDataRecord).delete()
@@ -439,6 +444,47 @@ class MaterialBomApiTest(unittest.TestCase):
             self.assertEqual(bom.style_master_id, style_id)
             self.assertEqual(bom.item_code, "ST-MB-001-R")
             self.assertEqual(session.query(LyApparelBomWriteOperation).count(), 1)
+
+    def test_style_material_bom_upsert_writes_subcontract_operation_for_processing_types(self) -> None:
+        style_id = self._seed_style(style_no="ST-MB-SUB")
+        payload = self._style_bom_payload(idempotency_key="IDEMP-STYLE-MB-SUB-OP")
+        payload["operations"] = [
+            {
+                "process_name": "外发裁剪",
+                "sequence_no": 1,
+                "is_subcontract": True,
+                "subcontract_cost_per_piece": "8.50",
+                "remark": "A5 委外入口",
+            }
+        ]
+        upserted = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="STYLE-MB-SUB-OP"),
+            json=payload,
+        )
+        self.assertEqual(upserted.status_code, 200, upserted.text)
+        data = upserted.json()["data"]
+        self.assertEqual(data["bom"]["item_code"], "ST-MB-SUB")
+        self.assertEqual(data["operations"][0]["process_name"], "外发裁剪")
+        self.assertTrue(data["operations"][0]["is_subcontract"])
+        self.assertEqual(data["operations"][0]["subcontract_cost_per_piece"], "8.500000")
+
+        processing = self.client.get(
+            "/api/bom/processing-types?item_code=ST-MB-SUB&subcontract_mode=委外&status=可用&page=1&page_size=20",
+            headers=self._headers(request_id="STYLE-MB-SUB-OP-PROCESSING"),
+        )
+        self.assertEqual(processing.status_code, 200, processing.text)
+        rows = processing.json()["data"]["items"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["item_code"], "ST-MB-SUB")
+        self.assertEqual(rows[0]["bom_id"], data["bom"]["id"])
+        self.assertEqual(rows[0]["process_name"], "外发裁剪")
+        self.assertEqual(rows[0]["subcontract_mode"], "委外")
+        self.assertEqual(Decimal(str(rows[0]["unit_rate"])), Decimal("8.5"))
+        with self.SessionLocal() as session:
+            operation = session.query(LyBomOperation).one()
+            self.assertEqual(operation.bom_id, data["bom"]["id"])
+            self.assertTrue(operation.is_subcontract)
 
     def test_empty_style_material_bom_explode_returns_explicit_error(self) -> None:
         style_id = self._seed_style()

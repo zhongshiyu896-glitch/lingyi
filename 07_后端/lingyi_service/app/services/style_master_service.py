@@ -29,6 +29,7 @@ from app.core.exceptions import BusinessException
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyApparelBomWriteOperation
+from app.models.bom import LyBomOperation
 from app.models.master_data import LyMasterDataRecord
 from app.models.style_master import LyStyleDictionary
 from app.models.style_master import LyStyleGallery
@@ -47,6 +48,7 @@ from app.schemas.style_master import StyleMaterialBomData
 from app.schemas.style_master import StyleMaterialBomExplodeData
 from app.schemas.style_master import StyleMaterialBomHeader
 from app.schemas.style_master import StyleMaterialBomItem
+from app.schemas.style_master import StyleMaterialBomOperation
 from app.schemas.style_master import StyleMaterialBomRequirementItem
 from app.schemas.style_master import StyleMaterialBomUpsertRequest
 from app.schemas.style_master import StyleMasterCreateRequest
@@ -645,6 +647,7 @@ class StyleMasterService:
         if str(style.ys_style_status) == "disabled":
             raise BusinessException(code=STYLE_MASTER_INVALID_STATUS, message="停用款式不允许维护用料 BOM")
         payload_items = [item.model_dump(mode="json") for item in payload.items]
+        payload_operations = [item.model_dump(mode="json") for item in payload.operations] if payload.operations is not None else None
         request_hash = self._request_hash(
             operation="style_material_bom_upsert",
             company=company,
@@ -652,6 +655,7 @@ class StyleMasterService:
             item_code=str(style.ys_style_no),
             version_no=payload.version_no,
             items=payload_items,
+            operations=payload_operations,
         )
         idem = self._get_bom_operation(company=company, operation="style_material_bom_upsert", idempotency_key=idempotency_key)
         if idem:
@@ -671,6 +675,8 @@ class StyleMasterService:
 
         self._ensure_unique_style_material_bom_items(items=payload.items)
         self._ensure_style_bom_materials_active(company=company, items=payload.items)
+        if payload.operations is not None:
+            self._ensure_style_material_bom_operations(operations=payload.operations)
         existing = self._find_style_material_bom(style=style)
         before = self._style_material_bom_data(style=style, bom=existing).model_dump(mode="json") if existing else None
         now = datetime.now(UTC)
@@ -721,6 +727,23 @@ class StyleMasterService:
                     )
                 )
                 next_item_id += 1
+            if payload.operations is not None:
+                self.session.query(LyBomOperation).filter(LyBomOperation.bom_id == int(bom.id)).delete()
+                next_operation_id = self._next_id(LyBomOperation)
+                for operation in payload.operations:
+                    self.session.add(
+                        LyBomOperation(
+                            id=next_operation_id,
+                            bom_id=int(bom.id),
+                            process_name=operation.process_name.strip(),
+                            sequence_no=int(operation.sequence_no),
+                            is_subcontract=bool(operation.is_subcontract),
+                            wage_rate=operation.wage_rate,
+                            subcontract_cost_per_piece=operation.subcontract_cost_per_piece,
+                            remark=self._optional_text(operation.remark),
+                        )
+                    )
+                    next_operation_id += 1
             self.session.flush()
             data = self._style_material_bom_data(style=style, bom=bom)
             self.session.add(
@@ -1253,6 +1276,23 @@ class StyleMasterService:
                 )
             seen.add(key)
 
+    def _ensure_style_material_bom_operations(self, *, operations: list[Any]) -> None:
+        seen_sequences: set[int] = set()
+        for operation in operations:
+            process_name = self._require_text(getattr(operation, "process_name", ""), "process_name")
+            sequence_no = int(getattr(operation, "sequence_no", 0))
+            if sequence_no in seen_sequences:
+                raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"工序序号重复: {sequence_no}")
+            seen_sequences.add(sequence_no)
+            if bool(getattr(operation, "is_subcontract", False)):
+                unit_cost = getattr(operation, "subcontract_cost_per_piece", None)
+                if unit_cost is None or Decimal(str(unit_cost)) <= 0:
+                    raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"工序工价缺失: {process_name}")
+            else:
+                wage_rate = getattr(operation, "wage_rate", None)
+                if wage_rate is None or Decimal(str(wage_rate)) <= 0:
+                    raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"工序工价缺失: {process_name}")
+
     def _material_name_lookup(self, *, company: str, material_codes: list[str]) -> dict[str, str]:
         codes = [code for code in dict.fromkeys(material_codes) if code]
         if not codes:
@@ -1276,6 +1316,12 @@ class StyleMasterService:
             self.session.query(LyApparelBomItem)
             .filter(LyApparelBomItem.bom_id == int(bom.id))
             .order_by(LyApparelBomItem.id.asc())
+            .all()
+        )
+        operations = (
+            self.session.query(LyBomOperation)
+            .filter(LyBomOperation.bom_id == int(bom.id))
+            .order_by(LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc())
             .all()
         )
         material_names = self._material_name_lookup(
@@ -1308,6 +1354,22 @@ class StyleMasterService:
                     remark=item.remark,
                 )
                 for item in items
+            ],
+            operations=[
+                StyleMaterialBomOperation(
+                    id=int(operation.id),
+                    process_name=str(operation.process_name),
+                    sequence_no=int(operation.sequence_no),
+                    is_subcontract=bool(operation.is_subcontract),
+                    wage_rate=Decimal(str(operation.wage_rate)) if operation.wage_rate is not None else None,
+                    subcontract_cost_per_piece=(
+                        Decimal(str(operation.subcontract_cost_per_piece))
+                        if operation.subcontract_cost_per_piece is not None
+                        else None
+                    ),
+                    remark=operation.remark,
+                )
+                for operation in operations
             ],
         )
 

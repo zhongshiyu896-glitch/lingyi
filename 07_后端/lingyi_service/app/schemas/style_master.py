@@ -315,6 +315,17 @@ class StyleMaterialBomItemPayload(BaseModel):
     remark: str | None = Field(default=None, max_length=500)
 
 
+class StyleMaterialBomOperationPayload(BaseModel):
+    """Style material BOM operation payload."""
+
+    process_name: str = Field(..., min_length=1, max_length=100)
+    sequence_no: int = Field(..., ge=1)
+    is_subcontract: bool = False
+    wage_rate: Decimal | None = None
+    subcontract_cost_per_piece: Decimal | None = None
+    remark: str | None = Field(default=None, max_length=500)
+
+
 class StyleMaterialBomUpsertRequest(BaseModel):
     """Upsert style material BOM."""
 
@@ -323,6 +334,7 @@ class StyleMaterialBomUpsertRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     version_no: str = Field(default="V1", min_length=1, max_length=32)
     items: list[StyleMaterialBomItemPayload] = Field(...)
+    operations: list[StyleMaterialBomOperationPayload] | None = None
 
 
 class StyleMaterialBomExplodeRequest(BaseModel):
@@ -360,11 +372,24 @@ class StyleMaterialBomItem(BaseModel):
     remark: str | None = None
 
 
+class StyleMaterialBomOperation(BaseModel):
+    """Style material BOM operation."""
+
+    id: int
+    process_name: str
+    sequence_no: int
+    is_subcontract: bool
+    wage_rate: Decimal | None = None
+    subcontract_cost_per_piece: Decimal | None = None
+    remark: str | None = None
+
+
 class StyleMaterialBomData(BaseModel):
     """Style material BOM response."""
 
     bom: StyleMaterialBomHeader | None = None
     items: list[StyleMaterialBomItem] = Field(default_factory=list)
+    operations: list[StyleMaterialBomOperation] = Field(default_factory=list)
 
 
 class StyleMaterialBomRequirementItem(BaseModel):
