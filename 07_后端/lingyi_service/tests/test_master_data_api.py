@@ -377,6 +377,45 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertEqual(listed_payload["phone"], "13900000000")
         self.assertEqual(listed_payload["wechat"], "follow-zhang")
 
+    def test_phone_payload_rejects_invalid_format_across_master_data(self) -> None:
+        invalid_phone = "13958329VV3多少"
+        cases = [
+            (
+                "customers",
+                "CUST-BAD-PHONE",
+                {"phone": invalid_phone},
+            ),
+            (
+                "suppliers",
+                "SUP-BAD-PHONE",
+                {"contact_phone": invalid_phone},
+            ),
+            (
+                "common-addresses",
+                "ADDR-BAD-PHONE",
+                {"receiver": "王收货", "phone": invalid_phone, "address": "测试地址"},
+            ),
+        ]
+        for entity_path, code, payload in cases:
+            with self.subTest(entity_path=entity_path):
+                response = self.client.post(
+                    f"/api/master-data/{entity_path}",
+                    headers=self._headers(request_id=f"MASTER-DATA-PHONE-{code}"),
+                    json={
+                        "operation": "create",
+                        "company": "COMP-A",
+                        "code": code,
+                        "name": f"{code}-NAME",
+                        "idempotency_key": f"IDEMP-{code}",
+                        "payload": payload,
+                    },
+                )
+                self.assertEqual(response.status_code, 422, response.text)
+                self.assertEqual(response.json()["code"], "MASTER_DATA_INVALID_PHONE")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMasterDataRecord).count(), 0)
+
     def test_create_material_without_code_syncs_generated_code_to_payload(self) -> None:
         self._seed_supplier(code="SUP-MAT-AUTO", name="自动物料供应商")
         self._seed_material_unit(code="MU-METER", name="米")
@@ -530,6 +569,22 @@ class MasterDataApiTest(unittest.TestCase):
         )
         self.assertEqual(blocked.status_code, 409)
         self.assertEqual(blocked.json()["code"], "MASTER_DATA_CONFLICT")
+
+        update_blocked = self.client.patch(
+            f"/api/master-data/warehouses/{parent_id}",
+            headers=self._headers(request_id="MASTER-DATA-WH-TREE-006"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "code": "WH-TREE-P2",
+                "name": "仓库父级改",
+                "status": "inactive",
+                "idempotency_key": "IDEMP-WH-TREE-P-U-STATUS",
+                "payload": {"location_kind": "warehouse", "manager": "王仓管"},
+            },
+        )
+        self.assertEqual(update_blocked.status_code, 409)
+        self.assertEqual(update_blocked.json()["code"], "MASTER_DATA_CONFLICT")
 
     def test_warehouse_parent_payload_rejects_missing_inactive_and_cycle(self) -> None:
         parent = self.client.post(
@@ -685,6 +740,23 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertEqual(deactivated.status_code, 200)
         self.assertTrue(deactivated.json()["data"]["disabled"])
         self.assertEqual(deactivated.json()["data"]["status"], "inactive")
+
+        reactivated = self.client.patch(
+            f"/api/master-data/customers/{record_id}",
+            headers=self._headers(request_id="MASTER-DATA-MUT-004"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "name": "客户 A2 修改",
+                "status": "active",
+                "payload": {"contact": "李客户", "phone": "13900000000", "wechat": "wx-updated"},
+                "idempotency_key": "IDEMP-CUST-A2-002-U-STATUS",
+            },
+        )
+        self.assertEqual(reactivated.status_code, 200)
+        self.assertFalse(reactivated.json()["data"]["disabled"])
+        self.assertEqual(reactivated.json()["data"]["status"], "active")
+        self.assertIsNone(reactivated.json()["data"]["deactivated_at"])
 
     def test_material_payload_update_and_deactivate(self) -> None:
         self._seed_supplier(code="SUP-QH", name="青禾面辅料")
@@ -940,6 +1012,7 @@ class MasterDataApiTest(unittest.TestCase):
                         "company": "COMP-A",
                         "code": code,
                         "name": f"{code}-名称",
+                        "status": "inactive" if path == "common-addresses" else "active",
                         "idempotency_key": f"IDEMP-{code}-C",
                         "payload": {"displayName": f"{code}-显示", **payload},
                     },
@@ -947,6 +1020,8 @@ class MasterDataApiTest(unittest.TestCase):
                 self.assertEqual(created.status_code, 201)
                 record_id = int(created.json()["data"]["id"])
                 self.assertEqual(created.json()["data"]["entity_type"], entity_type)
+                if path == "common-addresses":
+                    self.assertTrue(created.json()["data"]["disabled"])
 
                 listed = self.client.get(
                     f"/api/master-data/{path}?company=COMP-A&keyword={code}",
@@ -962,12 +1037,14 @@ class MasterDataApiTest(unittest.TestCase):
                         "operation": "update",
                         "company": "COMP-A",
                         "name": f"{code}-名称-改",
+                        "status": "active",
                         "idempotency_key": f"IDEMP-{code}-U",
                         "payload": {"displayName": f"{code}-显示-改", **payload},
                     },
                 )
                 self.assertEqual(updated.status_code, 200)
                 self.assertEqual(updated.json()["data"]["name"], f"{code}-名称-改")
+                self.assertFalse(updated.json()["data"]["disabled"])
 
                 deactivated = self.client.post(
                     f"/api/master-data/{path}/{record_id}/deactivate",

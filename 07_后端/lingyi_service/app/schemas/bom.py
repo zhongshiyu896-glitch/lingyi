@@ -546,6 +546,7 @@ class FoundationTemplateCreateRequest(BaseModel):
     template_code: Optional[str] = Field(default=None, max_length=140)
     name: str = Field(..., min_length=1, max_length=255)
     scene: str = Field(default="业务配置", min_length=1, max_length=140)
+    status: Optional[str] = Field(default=None, min_length=1, max_length=16)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
 
 

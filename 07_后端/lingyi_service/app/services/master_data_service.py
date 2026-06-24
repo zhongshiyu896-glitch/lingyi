@@ -7,6 +7,7 @@ from datetime import UTC
 from datetime import datetime
 import hashlib
 import json
+import re
 from typing import Any
 
 from sqlalchemy import func
@@ -20,6 +21,8 @@ from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.error_codes import DATABASE_WRITE_FAILED
 from app.core.error_codes import MASTER_DATA_CONFLICT
 from app.core.error_codes import MASTER_DATA_IDEMPOTENCY_CONFLICT
+from app.core.error_codes import MASTER_DATA_INVALID_PHONE
+from app.core.error_codes import MASTER_DATA_INVALID_STATUS
 from app.core.error_codes import MASTER_DATA_INVALID_TYPE
 from app.core.error_codes import MASTER_DATA_NOT_FOUND
 from app.core.exceptions import BusinessException
@@ -72,6 +75,8 @@ MATERIAL_KIND_CODE_PREFIXES = {
     "category": "MT",
     "unit": "MU",
 }
+PHONE_PAYLOAD_ALIASES = ("phone", "contact_phone", "contactPhone", "telephone", "tel")
+PHONE_PATTERN = re.compile(r"^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8}(?:-\d{1,6})?|(?:400|800)-?\d{3}-?\d{4})$")
 
 
 @dataclass(frozen=True)
@@ -172,16 +177,20 @@ class MasterDataService:
         company = self._require_text(payload.company, "company")
         requested_code = self._optional_text(payload.code)
         name = self._require_text(payload.name, "name")
+        next_status = self._normalize_status(payload.status, default="active")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         next_payload = self._clean_payload(payload.payload)
         if normalized_entity_type in {"customer", "supplier"}:
             next_payload = self._normalize_contact_payload(payload=next_payload)
+        else:
+            next_payload = self._validate_phone_payload(payload=next_payload)
         request_hash = self._request_hash(
             operation="create",
             entity_type=normalized_entity_type,
             company=company,
             requested_code=requested_code,
             name=name,
+            status=next_status,
             payload=next_payload,
         )
         existing_idem = self._get_idempotency(
@@ -224,12 +233,16 @@ class MasterDataService:
                 company=company,
                 code=code,
                 name=name,
-                status="active",
+                status=next_status,
                 payload=next_payload,
                 version=1,
                 created_by=actor,
                 updated_by=actor,
             )
+            if next_status == "inactive":
+                row.deactivated_by = actor
+                row.deactivated_at = datetime.now(UTC)
+                row.deactivate_reason = "创建时设为停用"
             self.session.add(row)
             self.session.flush()
             self._insert_idempotency(
@@ -261,9 +274,12 @@ class MasterDataService:
         row = self._get_record_for_mutation(entity_type=normalized_entity_type, record_id=record_id, company=company)
         next_code = self._optional_text(payload.code) or row.code
         next_name = self._optional_text(payload.name) or row.name
+        next_status = self._normalize_status(payload.status, default=str(row.status))
         next_payload = self._clean_payload(payload.payload) if payload.payload is not None else dict(row.payload or {})
         if normalized_entity_type in {"customer", "supplier"}:
             next_payload = self._normalize_contact_payload(payload=next_payload)
+        else:
+            next_payload = self._validate_phone_payload(payload=next_payload)
         if normalized_entity_type == "warehouse":
             next_payload = self._normalize_warehouse_payload(
                 company=company,
@@ -283,6 +299,7 @@ class MasterDataService:
             record_id=record_id,
             code=next_code,
             name=next_name,
+            status=next_status,
             payload=next_payload,
         )
         existing_idem = self._get_idempotency(
@@ -313,8 +330,21 @@ class MasterDataService:
         before = self._snapshot(row)
         old_code = str(row.code)
         try:
+            if normalized_entity_type == "warehouse" and next_status == "inactive" and row.status != "inactive":
+                if self._has_active_warehouse_children(company=company, parent_code=str(row.code)):
+                    raise BusinessException(code=MASTER_DATA_CONFLICT, message="存在启用中的仓库子级，不能停用父级")
             row.code = next_code
             row.name = next_name
+            if next_status != row.status:
+                row.status = next_status
+                if next_status == "inactive":
+                    row.deactivated_by = actor
+                    row.deactivated_at = datetime.now(UTC)
+                    row.deactivate_reason = "编辑时设为停用"
+                else:
+                    row.deactivated_by = None
+                    row.deactivated_at = None
+                    row.deactivate_reason = None
             row.payload = next_payload
             row.updated_by = actor
             row.version = int(row.version or 0) + 1
@@ -437,6 +467,17 @@ class MasterDataService:
             raise BusinessException(code=MASTER_DATA_CONFLICT, message=f"{field_name} 不能为空")
         return text
 
+    @classmethod
+    def _normalize_status(cls, value: Any, *, default: str) -> str:
+        normalized = (cls._optional_text(value) or default).lower()
+        if normalized in {"enabled", "enable", "启用"}:
+            return "active"
+        if normalized in {"disabled", "disable", "停用"}:
+            return "inactive"
+        if normalized not in {"active", "inactive"}:
+            raise BusinessException(code=MASTER_DATA_INVALID_STATUS)
+        return normalized
+
     @staticmethod
     def _clean_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
         if not payload:
@@ -546,6 +587,7 @@ class MasterDataService:
             else:
                 normalized.pop(key, None)
         if phone:
+            cls._ensure_valid_phone(phone)
             normalized["phone"] = phone
         else:
             normalized.pop("phone", None)
@@ -557,6 +599,21 @@ class MasterDataService:
         for alias in ("contact_phone", "contactPhone", "telephone", "tel", "weixin", "weChat"):
             normalized.pop(alias, None)
         return cls._clean_payload(normalized)
+
+    @classmethod
+    def _validate_phone_payload(cls, *, payload: dict[str, Any]) -> dict[str, Any]:
+        normalized = dict(payload)
+        for key in PHONE_PAYLOAD_ALIASES:
+            phone = cls._optional_text(normalized.get(key))
+            if phone:
+                cls._ensure_valid_phone(phone)
+                normalized[key] = phone
+        return cls._clean_payload(normalized)
+
+    @staticmethod
+    def _ensure_valid_phone(phone: str) -> None:
+        if not PHONE_PATTERN.fullmatch(phone):
+            raise BusinessException(code=MASTER_DATA_INVALID_PHONE)
 
     def _normalize_warehouse_payload(
         self,

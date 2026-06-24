@@ -51,6 +51,7 @@ class MasterDataCreateRequest(BaseModel):
     company: str = Field(..., min_length=1, max_length=140)
     code: str | None = Field(default=None, max_length=140)
     name: str = Field(..., min_length=1, max_length=255)
+    status: str | None = Field(default=None, max_length=16)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     payload: dict[str, Any] = Field(default_factory=dict)
 
@@ -65,6 +66,7 @@ class MasterDataUpdateRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     code: str | None = Field(default=None, min_length=1, max_length=140)
     name: str | None = Field(default=None, min_length=1, max_length=255)
+    status: str | None = Field(default=None, max_length=16)
     payload: dict[str, Any] | None = None
 
 

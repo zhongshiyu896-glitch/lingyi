@@ -171,11 +171,23 @@ class FoundationTemplateApiTest(unittest.TestCase):
                 self.assertEqual(stopped_template.status_code, 200)
                 self.assertEqual(stopped_template.json()["data"]["status"], "inactive")
 
+                reactivated_template = self.client.patch(
+                    f"/api/bom/{path}/{template_id}",
+                    headers=self._headers(request_id=f"{prefix}-TPL-REACTIVATE"),
+                    json={
+                        "company": "COMP-TPL",
+                        "status": "active",
+                        "idempotency_key": f"IDEM-{prefix}-TPL-R",
+                    },
+                )
+                self.assertEqual(reactivated_template.status_code, 200)
+                self.assertEqual(reactivated_template.json()["data"]["status"], "active")
+
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyFoundationTemplate).count(), 2)
             self.assertEqual(session.query(LyFoundationTemplateNode).count(), 2)
-            self.assertEqual(session.query(LyFoundationTemplateIdempotency).count(), 10)
-            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "bom").count(), 10)
+            self.assertEqual(session.query(LyFoundationTemplateIdempotency).count(), 12)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "bom").count(), 12)
 
     def test_template_create_idempotency_conflict_is_409(self) -> None:
         payload = self._template_payload("WK-IDEM-001", "IDEM-WK-IDEM")

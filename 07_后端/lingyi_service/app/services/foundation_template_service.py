@@ -134,6 +134,7 @@ class FoundationTemplateService:
         requested_template_code = self._optional_text(payload.template_code)
         name = self._require_text(payload.name, "name")
         scene = self._optional_text(payload.scene) or "业务配置"
+        next_status = self._optional_status(payload.status) or ACTIVE_STATUS
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         request_hash = self._request_hash(
             operation="create",
@@ -142,6 +143,7 @@ class FoundationTemplateService:
             requested_template_code=requested_template_code,
             name=name,
             scene=scene,
+            status=next_status,
         )
         existing = self._get_idempotency(
             entity_type="template",
@@ -166,7 +168,7 @@ class FoundationTemplateService:
                 template_code=template_code,
                 name=name,
                 scene=scene,
-                status=ACTIVE_STATUS,
+                status=next_status,
                 version=1,
                 created_by=actor,
                 updated_by=actor,
