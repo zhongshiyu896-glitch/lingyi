@@ -27,6 +27,7 @@ from app.models.material_purchase import LyMaterialPurchasePayment
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LySalesPaymentEntry
+from app.core.permissions import FACTORY_STATEMENT_READ
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.factory_statement import get_db_session as factory_statement_db_dep
 
@@ -78,6 +79,7 @@ class FactoryStatementFinancialSummaryTest(unittest.TestCase):
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ.pop("LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON", None)
+        os.environ.pop("LINGYI_FASTAPI_ROLE_ACTIONS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LyFactoryStatementPayment).delete()
@@ -354,6 +356,9 @@ class FactoryStatementFinancialSummaryTest(unittest.TestCase):
         self._seed_customer_receivable()
         self._seed_extra_customer_receivable(customer="CUS-OUT", suffix="OUT")
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"] = json.dumps(
+            {"roles": {"Finance Manager": [FACTORY_STATEMENT_READ]}}
+        )
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
             {"users": {"finance.summary.user": {"company": [self.COMPANY], "customer": ["CUS-FIN"]}}}
         )
@@ -370,6 +375,9 @@ class FactoryStatementFinancialSummaryTest(unittest.TestCase):
 
     def test_customer_unpaid_reports_use_fastapi_customer_scope(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "fastapi"
+        os.environ["LINGYI_FASTAPI_ROLE_ACTIONS_JSON"] = json.dumps(
+            {"roles": {"Finance Manager": [FACTORY_STATEMENT_READ]}}
+        )
         os.environ["LINGYI_FASTAPI_RESOURCE_PERMISSIONS_JSON"] = json.dumps(
             {
                 "users": {

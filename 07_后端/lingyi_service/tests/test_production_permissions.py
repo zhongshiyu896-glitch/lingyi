@@ -342,6 +342,7 @@ class ProductionPermissionTest(unittest.TestCase):
                 headers=self._headers(),
                 json={
                     "sales_order": "SO-PERM-CREATE",
+                    "sales_order_item": "SOI-PERM-CREATE",
                     "item_code": "ITEM-A",
                     "planned_qty": "10",
                     "idempotency_key": "idem-perm-create-1",
