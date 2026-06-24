@@ -69,6 +69,7 @@ from app.routers.sample import get_db_session as sample_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
 from app.routers.warehouse import get_db_session as warehouse_db_dep
 from app.services.material_purchase_service import MaterialPurchaseService
+from app.services.production_service import DEFAULT_MATERIAL_CHECK_WAREHOUSE_CODE
 from app.services.production_service import ProductionService
 
 
@@ -2009,6 +2010,114 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertIn("material_purchase:write", audit_actions)
             self.assertIn("warehouse:stock_entry_draft", audit_actions)
             self.assertIn("sales_inventory:write", audit_actions)
+
+    def test_material_check_allows_blank_warehouse_and_uses_default_material_warehouse(self) -> None:
+        order = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers("req-a6-optional-warehouse-order"),
+            json={
+                "company": self.COMPANY,
+                "customer": "CUST-A6",
+                "operation": "create_draft",
+                "sales_order_no": "SO-A6-OPTIONAL-WH",
+                "source_order_ref": "SO-A6-OPTIONAL-WH",
+                "idempotency_key": "idem-so-a6-optional-wh",
+                "transaction_date": "2026-06-17",
+                "delivery_date": "2026-06-30",
+                "currency": "CNY",
+                "items": [
+                    {
+                        "style_master_id": self._style_id(),
+                        "item_code": self.STYLE,
+                        "item_name": "A6 Tee",
+                        "color": "白",
+                        "size": "M",
+                        "qty": 40,
+                        "rate": 80,
+                        "uom": "件",
+                    }
+                ],
+            },
+        )
+        self.assertEqual(order.status_code, 201, order.text)
+        self._submit_sales_order(
+            draft_id=int(order.json()["data"]["id"]),
+            sales_order_no="SO-A6-OPTIONAL-WH",
+            suffix="optional-warehouse",
+        )
+        detail = self.client.get("/api/sales-inventory/sales-orders/SO-A6-OPTIONAL-WH", headers=self._headers())
+        self.assertEqual(detail.status_code, 200, detail.text)
+        sales_order_item = detail.json()["data"]["items"][0]["name"]
+
+        plan = self.client.post(
+            "/api/production/plans",
+            headers=self._headers("req-a6-optional-warehouse-plan"),
+            json={
+                "sales_order": "SO-A6-OPTIONAL-WH",
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "planned_qty": 40,
+                "planned_start_date": "2026-06-18",
+                "operation": "create_plan",
+                "idempotency_key": "idem-plan-a6-optional-wh",
+                "company": self.COMPANY,
+            },
+        )
+        self.assertEqual(plan.status_code, 200, plan.text)
+        plan_id = int(plan.json()["data"]["plan_id"])
+        scenario_tag = "Z003-PROD-PLAN-DETAIL-20260617-399"
+        request_id = f"req-{scenario_tag}"
+
+        material_check = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers={**self._headers(request_id), "X-Request-ID": request_id},
+            json={
+                "warehouse": "",
+                "operation": "material_check",
+                "idempotency_key": f"{scenario_tag}:idem-a6-optional-warehouse-material-check",
+                "scenario_tag": scenario_tag,
+                "plan_id": plan_id,
+                "sales_order": "SO-A6-OPTIONAL-WH",
+                "sales_order_item": sales_order_item,
+                "item_code": self.STYLE,
+                "bom_id": 601,
+                "request_id": request_id,
+            },
+        )
+        self.assertEqual(material_check.status_code, 200, material_check.text)
+        self.assertNotEqual(material_check.json().get("code"), "PRODUCTION_WAREHOUSE_REQUIRED")
+        material_row = material_check.json()["data"]["items"][0]
+        self.assertEqual(material_row["warehouse"], DEFAULT_MATERIAL_CHECK_WAREHOUSE_CODE)
+        self.assertEqual(Decimal(str(material_row["required_qty"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(material_row["available_qty"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(material_row["shortage_qty"])), Decimal(str(material_row["required_qty"])))
+
+        requirements = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&status=pending&keyword=SO-A6-OPTIONAL-WH",
+            headers=self._headers("req-a6-optional-warehouse-requirements"),
+        )
+        self.assertEqual(requirements.status_code, 200, requirements.text)
+        requirement_rows = requirements.json()["data"]["items"]
+        self.assertEqual(len(requirement_rows), 1)
+        requirement = requirement_rows[0]
+        self.assertEqual(requirement["sales_order"], "SO-A6-OPTIONAL-WH")
+        self.assertEqual(requirement["warehouse"], DEFAULT_MATERIAL_CHECK_WAREHOUSE_CODE)
+        self.assertEqual(Decimal(str(requirement["required_qty"])), Decimal("84.000000"))
+        self.assertEqual(Decimal(str(requirement["available_qty"])), Decimal("0.000000"))
+        self.assertEqual(Decimal(str(requirement["net_required_qty"])), Decimal("84.000000"))
+
+        with self.SessionLocal() as session:
+            snapshot = session.query(LyProductionPlanMaterial).filter_by(plan_id=plan_id).one()
+            self.assertEqual(str(snapshot.warehouse), DEFAULT_MATERIAL_CHECK_WAREHOUSE_CODE)
+            self.assertEqual(Decimal(str(snapshot.available_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(snapshot.shortage_qty)), Decimal(str(snapshot.required_qty)))
+            self.assertEqual(
+                session.query(LyMaterialPurchaseRequirement)
+                .filter_by(sales_order="SO-A6-OPTIONAL-WH", status="pending")
+                .count(),
+                1,
+            )
 
     def test_submit_sales_order_can_trigger_material_check_and_requirement_pool(self) -> None:
         order = self.client.post(
