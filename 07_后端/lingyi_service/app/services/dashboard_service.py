@@ -8,9 +8,13 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
+import os
+from threading import RLock
+from time import monotonic
 from typing import Any
 
 from fastapi import Request
+from sqlalchemy import and_
 from sqlalchemy import case
 from sqlalchemy import distinct
 from sqlalchemy import func
@@ -55,6 +59,30 @@ class DashboardSourceUnavailableError(Exception):
     status_code: int = 503
 
 
+@dataclass(slots=True)
+class DashboardOverviewCacheResult:
+    """Result wrapper used by the router to expose cache evidence headers."""
+
+    data: DashboardOverviewData
+    cache_status: str
+    ttl_seconds: int
+
+
+@dataclass(slots=True)
+class _DashboardOverviewCacheEntry:
+    """Short-lived in-process dashboard cache entry."""
+
+    expires_at: float
+    data: DashboardOverviewData
+
+
+_DASHBOARD_OVERVIEW_CACHE_LOCK = RLock()
+_DASHBOARD_OVERVIEW_CACHE: dict[
+    tuple[str, str | None, str | None, str | None, str | None, str | None],
+    _DashboardOverviewCacheEntry,
+] = {}
+
+
 class DashboardService:
     """Compose quality/sales-inventory/warehouse summaries under fail-closed policy."""
 
@@ -63,6 +91,92 @@ class DashboardService:
         self.request_obj = request_obj
         self.quality_service = QualityService(session=session)
         self.warehouse_service = WarehouseService(session=session)
+
+    @classmethod
+    def get_cached_overview(
+        cls,
+        *,
+        session: Session,
+        request_obj: Request,
+        company: str,
+        from_date: date | None,
+        to_date: date | None,
+        item_code: str | None,
+        warehouse: str | None,
+        keyword: str | None = None,
+    ) -> DashboardOverviewCacheResult:
+        ttl_seconds = cls._overview_cache_ttl_seconds()
+        cache_key = cls._overview_cache_key(
+            company=company,
+            from_date=from_date,
+            to_date=to_date,
+            item_code=item_code,
+            warehouse=warehouse,
+            keyword=keyword,
+        )
+        if cls._overview_cache_enabled():
+            now = monotonic()
+            with _DASHBOARD_OVERVIEW_CACHE_LOCK:
+                entry = _DASHBOARD_OVERVIEW_CACHE.get(cache_key)
+                if entry is not None and entry.expires_at > now:
+                    return DashboardOverviewCacheResult(data=entry.data, cache_status="hit", ttl_seconds=ttl_seconds)
+                if entry is not None:
+                    _DASHBOARD_OVERVIEW_CACHE.pop(cache_key, None)
+
+        data = cls(session=session, request_obj=request_obj).get_overview(
+            company=company,
+            from_date=from_date,
+            to_date=to_date,
+            item_code=item_code,
+            warehouse=warehouse,
+            keyword=keyword,
+        )
+        if cls._overview_cache_enabled():
+            with _DASHBOARD_OVERVIEW_CACHE_LOCK:
+                _DASHBOARD_OVERVIEW_CACHE[cache_key] = _DashboardOverviewCacheEntry(
+                    expires_at=monotonic() + ttl_seconds,
+                    data=data,
+                )
+        return DashboardOverviewCacheResult(data=data, cache_status="miss", ttl_seconds=ttl_seconds)
+
+    @staticmethod
+    def clear_overview_cache() -> None:
+        with _DASHBOARD_OVERVIEW_CACHE_LOCK:
+            _DASHBOARD_OVERVIEW_CACHE.clear()
+
+    @staticmethod
+    def _overview_cache_enabled() -> bool:
+        if os.getenv("APP_ENV", "").strip().lower() == "test":
+            return False
+        return os.getenv("LINGYI_DASHBOARD_OVERVIEW_CACHE_DISABLED", "").strip().lower() not in {"1", "true", "yes"}
+
+    @staticmethod
+    def _overview_cache_ttl_seconds() -> int:
+        raw_value = os.getenv("LINGYI_DASHBOARD_OVERVIEW_CACHE_TTL_SECONDS", "45")
+        try:
+            ttl_seconds = int(raw_value)
+        except ValueError:
+            ttl_seconds = 45
+        return min(60, max(30, ttl_seconds))
+
+    @staticmethod
+    def _overview_cache_key(
+        *,
+        company: str,
+        from_date: date | None,
+        to_date: date | None,
+        item_code: str | None,
+        warehouse: str | None,
+        keyword: str | None,
+    ) -> tuple[str, str | None, str | None, str | None, str | None, str | None]:
+        return (
+            company,
+            from_date.isoformat() if from_date else None,
+            to_date.isoformat() if to_date else None,
+            item_code,
+            warehouse,
+            keyword,
+        )
 
     def get_overview(
         self,
@@ -157,15 +271,12 @@ class DashboardService:
         period_start, period_end = self._home_period(from_date=from_date, to_date=to_date)
         previous_start, previous_end = self._previous_period(period_start=period_start, period_end=period_end)
         try:
-            current_totals = self._build_business_metric_totals(
+            current_totals, previous_totals = self._build_business_metric_totals_pair(
                 company=company,
                 period_start=period_start,
                 period_end=period_end,
-            )
-            previous_totals = self._build_business_metric_totals(
-                company=company,
-                period_start=previous_start,
-                period_end=previous_end,
+                previous_start=previous_start,
+                previous_end=previous_end,
             )
             charts = self._build_home_charts(company=company, end_date=period_end)
         except SQLAlchemyError as exc:
@@ -370,14 +481,9 @@ class DashboardService:
         previous_start = previous_end - timedelta(days=span_days)
         return previous_start, previous_end
 
-    def _build_business_metric_totals(
-        self,
-        *,
-        company: str,
-        period_start: date,
-        period_end: date,
-    ) -> dict[str, Decimal | str]:
-        totals: dict[str, Decimal | str] = {
+    @staticmethod
+    def _empty_business_metric_totals() -> dict[str, Decimal | str]:
+        return {
             "order_count": Decimal("0"),
             "sales_amount": Decimal("0"),
             "receivable_balance": Decimal("0"),
@@ -388,23 +494,47 @@ class DashboardService:
             "gross_profit_status": "incomplete",
         }
 
+    def _build_business_metric_totals_pair(
+        self,
+        *,
+        company: str,
+        period_start: date,
+        period_end: date,
+        previous_start: date,
+        previous_end: date,
+    ) -> tuple[dict[str, Decimal | str], dict[str, Decimal | str]]:
+        current_totals = self._empty_business_metric_totals()
+        previous_totals = self._empty_business_metric_totals()
+
         if self._has_tables({LySalesOrder.__tablename__}):
+            current_order_window = and_(
+                LySalesOrder.transaction_date >= period_start,
+                LySalesOrder.transaction_date <= period_end,
+            )
+            previous_order_window = and_(
+                LySalesOrder.transaction_date >= previous_start,
+                LySalesOrder.transaction_date <= previous_end,
+            )
             sales_row = (
                 self.session.query(
-                    func.count(LySalesOrder.id),
-                    func.coalesce(func.sum(LySalesOrder.grand_total), 0),
+                    func.coalesce(func.sum(case((current_order_window, 1), else_=0)), 0),
+                    func.coalesce(func.sum(case((current_order_window, LySalesOrder.grand_total), else_=0)), 0),
+                    func.coalesce(func.sum(case((previous_order_window, 1), else_=0)), 0),
+                    func.coalesce(func.sum(case((previous_order_window, LySalesOrder.grand_total), else_=0)), 0),
                 )
                 .filter(
                     LySalesOrder.company == company,
                     LySalesOrder.status != "cancelled",
                     LySalesOrder.transaction_date.isnot(None),
-                    LySalesOrder.transaction_date >= period_start,
+                    LySalesOrder.transaction_date >= previous_start,
                     LySalesOrder.transaction_date <= period_end,
                 )
                 .one()
             )
-            totals["order_count"] = self._decimal_or_zero(sales_row[0])
-            totals["sales_amount"] = self._decimal_or_zero(sales_row[1])
+            current_totals["order_count"] = self._decimal_or_zero(sales_row[0])
+            current_totals["sales_amount"] = self._decimal_or_zero(sales_row[1])
+            previous_totals["order_count"] = self._decimal_or_zero(sales_row[2])
+            previous_totals["sales_amount"] = self._decimal_or_zero(sales_row[3])
 
         if self._has_tables({LyDeliveryInvoice.__tablename__}):
             receivable = (
@@ -412,7 +542,7 @@ class DashboardService:
                 .filter(LyDeliveryInvoice.company == company, LyDeliveryInvoice.status != "cancelled")
                 .scalar()
             )
-            totals["receivable_balance"] = self._decimal_or_zero(receivable)
+            current_totals["receivable_balance"] = self._decimal_or_zero(receivable)
 
         if self._has_tables({LyMaterialPurchaseInvoice.__tablename__}):
             payable = (
@@ -420,7 +550,7 @@ class DashboardService:
                 .filter(LyMaterialPurchaseInvoice.company == company, LyMaterialPurchaseInvoice.status != "cancelled")
                 .scalar()
             )
-            totals["payable_balance"] = self._decimal_or_zero(payable)
+            current_totals["payable_balance"] = self._decimal_or_zero(payable)
 
         if self._has_tables({LyProductionPlan.__tablename__}):
             in_production = (
@@ -439,7 +569,7 @@ class DashboardService:
                 )
                 .scalar()
             )
-            totals["in_production_order_count"] = self._decimal_or_zero(in_production)
+            current_totals["in_production_order_count"] = self._decimal_or_zero(in_production)
 
         if self._has_tables({LySalesOrder.__tablename__, LySalesOrderItem.__tablename__}):
             delivery_date_expr = func.coalesce(LySalesOrderItem.delivery_date, LySalesOrder.delivery_date)
@@ -456,27 +586,39 @@ class DashboardService:
                 )
                 .scalar()
             )
-            totals["delivery_warning_count"] = self._decimal_or_zero(delivery_warnings)
+            current_totals["delivery_warning_count"] = self._decimal_or_zero(delivery_warnings)
 
         if self._has_tables({LyStyleProfitSnapshot.__tablename__}):
-            complete_profit_row = (
+            current_profit_overlap = and_(
+                or_(LyStyleProfitSnapshot.to_date.is_(None), LyStyleProfitSnapshot.to_date >= period_start),
+                or_(LyStyleProfitSnapshot.from_date.is_(None), LyStyleProfitSnapshot.from_date <= period_end),
+            )
+            previous_profit_overlap = and_(
+                or_(LyStyleProfitSnapshot.to_date.is_(None), LyStyleProfitSnapshot.to_date >= previous_start),
+                or_(LyStyleProfitSnapshot.from_date.is_(None), LyStyleProfitSnapshot.from_date <= previous_end),
+            )
+            profit_row = (
                 self.session.query(
-                    func.count(LyStyleProfitSnapshot.id),
-                    func.coalesce(func.sum(LyStyleProfitSnapshot.profit_amount), 0),
+                    func.coalesce(func.sum(case((current_profit_overlap, 1), else_=0)), 0),
+                    func.coalesce(func.sum(case((current_profit_overlap, LyStyleProfitSnapshot.profit_amount), else_=0)), 0),
+                    func.coalesce(func.sum(case((previous_profit_overlap, 1), else_=0)), 0),
+                    func.coalesce(func.sum(case((previous_profit_overlap, LyStyleProfitSnapshot.profit_amount), else_=0)), 0),
                 )
                 .filter(
                     LyStyleProfitSnapshot.company == company,
                     LyStyleProfitSnapshot.snapshot_status == "complete",
-                    or_(LyStyleProfitSnapshot.to_date.is_(None), LyStyleProfitSnapshot.to_date >= period_start),
-                    or_(LyStyleProfitSnapshot.from_date.is_(None), LyStyleProfitSnapshot.from_date <= period_end),
+                    or_(current_profit_overlap, previous_profit_overlap),
                 )
                 .one()
             )
-            if int(complete_profit_row[0] or 0) > 0:
-                totals["gross_profit"] = self._decimal_or_zero(complete_profit_row[1])
-                totals["gross_profit_status"] = "complete"
+            if int(profit_row[0] or 0) > 0:
+                current_totals["gross_profit"] = self._decimal_or_zero(profit_row[1])
+                current_totals["gross_profit_status"] = "complete"
+            if int(profit_row[2] or 0) > 0:
+                previous_totals["gross_profit"] = self._decimal_or_zero(profit_row[3])
+                previous_totals["gross_profit_status"] = "complete"
 
-        return totals
+        return current_totals, previous_totals
 
     def _build_home_charts(self, *, company: str, end_date: date) -> list[DashboardHomeChartData]:
         start_date = end_date - timedelta(days=29)

@@ -12,6 +12,7 @@ from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Request
+from fastapi import Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
@@ -98,6 +99,7 @@ def _dev_dashboard_company_fallback_enabled() -> bool:
 @router.get("/overview")
 def get_dashboard_overview(
     request: Request,
+    response: Response,
     company: str | None = Query(default=None),
     from_date: str | None = Query(default=None),
     to_date: str | None = Query(default=None),
@@ -141,7 +143,9 @@ def get_dashboard_overview(
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
 
     try:
-        data = DashboardService(session=session, request_obj=request).get_overview(
+        overview_result = DashboardService.get_cached_overview(
+            session=session,
+            request_obj=request,
             company=normalized_company,
             from_date=parsed_from_date,
             to_date=parsed_to_date,
@@ -149,6 +153,7 @@ def get_dashboard_overview(
             warehouse=normalized_warehouse,
             keyword=_scope_text(keyword),
         )
+        data = overview_result.data
     except DashboardSourceUnavailableError as exc:
         raise HTTPException(
             status_code=int(exc.status_code),
@@ -159,4 +164,6 @@ def get_dashboard_overview(
             },
         ) from exc
 
+    response.headers["X-Lingyi-Dashboard-Cache"] = overview_result.cache_status
+    response.headers["X-Lingyi-Dashboard-Cache-Ttl"] = str(overview_result.ttl_seconds)
     return _ok(data)
