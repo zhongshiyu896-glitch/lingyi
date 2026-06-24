@@ -23,6 +23,8 @@ from sqlalchemy.orm import Session
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
 from app.core.auth import is_internal_worker_api_enabled
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.config import warehouse_enable_stock_entry_worker_sync
 from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.error_codes import INTERNAL_API_DISABLED
@@ -88,7 +90,7 @@ from app.core.request_id import get_request_id_from_request
 from app.core.request_id import is_request_id_valid
 
 router = APIRouter(prefix="/api/warehouse", tags=["warehouse"])
-WAREHOUSE_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+WAREHOUSE_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 WAREHOUSE_LOCAL_STOCK_SCENARIO_PATTERN = re.compile(r"(Z003-WAREHOUSE-\d{8}-\d{3})")
 WAREHOUSE_LOCAL_COUNT_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})")
 WAREHOUSE_LOCAL_STOCK_REQUEST_PATTERN = re.compile(
@@ -243,20 +245,15 @@ def _write_service(session: Session, request: Request | None = None) -> Warehous
 
 
 def _is_local_warehouse_write_enabled() -> bool:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env == "development" and db_url == WAREHOUSE_LOCAL_ALLOWED_DB_URL
+    return is_allowed_local_dev_database()
 
 
 def _is_local_warehouse_read_enabled() -> bool:
     if get_permission_source() == "fastapi":
         return True
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
     allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
     return (
-        app_env in {"development", "dev", "local"}
-        and db_url == WAREHOUSE_LOCAL_ALLOWED_DB_URL
+        is_allowed_local_dev_database(app_envs=("development", "dev", "local"))
         and allow_dev_auth == "true"
         and get_permission_source() == "static"
     )

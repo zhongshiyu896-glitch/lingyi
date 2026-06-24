@@ -21,6 +21,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import INTERNAL_ERROR
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
@@ -1494,13 +1495,10 @@ class WarehouseService:
     def _local_read_fallback_enabled(self) -> bool:
         if self.session is not None and get_permission_source() == "fastapi":
             return True
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        db_url = os.getenv("LINGYI_DB_URL", "").strip()
         allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
         return (
             self.session is not None
-            and app_env in {"development", "dev", "local"}
-            and db_url == "sqlite:///./lingyi_service.local.db"
+            and is_allowed_local_dev_database(app_envs=("development", "dev", "local"))
             and allow_dev_auth == "true"
         )
 

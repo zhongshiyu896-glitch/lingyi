@@ -25,6 +25,8 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import AUDIT_WRITE_FAILED
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.error_codes import DATABASE_WRITE_FAILED
@@ -71,7 +73,7 @@ from app.services.style_profit_service import StyleProfitService
 
 router = APIRouter(prefix="/api/reports/style-profit", tags=["style_profit"])
 compatibility_router = APIRouter(prefix="/api/style-profit", tags=["style_profit"])
-STYLE_PROFIT_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+STYLE_PROFIT_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 STYLE_PROFIT_SCENARIO_PATTERN = re.compile(r"(Z003-STYLE-PROFIT-\d{8}-\d{3})")
 STYLE_PROFIT_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-STYLE-PROFIT-\d{8}-\d{3}$")
 STYLE_PROFIT_IDEMPOTENCY_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{8,128}$")
@@ -125,9 +127,7 @@ def _read_write_carrier_value(payload: dict[str, Any], *keys: str) -> str | None
 
 
 def _is_local_style_profit_write_enabled() -> bool:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env == "development" and db_url == STYLE_PROFIT_LOCAL_ALLOWED_DB_URL
+    return is_allowed_local_dev_database()
 
 
 def _should_validate_local_style_profit_write_gate() -> bool:

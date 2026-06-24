@@ -16,6 +16,8 @@ from typing import Any
 from fastapi import Request
 from sqlalchemy.orm import Session
 
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.error_codes import QUALITY_INVALID_RESULT
 from app.core.error_codes import QUALITY_INVALID_SOURCE
@@ -69,7 +71,7 @@ SOURCE_TYPE_LABELS = {
 RESULT_VALUES = {"pending", "pass", "fail", "partial"}
 FINAL_STATUSES = {"confirmed", "cancelled"}
 _RATE_QUANT = Decimal("0.000001")
-QUALITY_LOCAL_DB_URL = "sqlite:///./lingyi_service.local.db"
+QUALITY_LOCAL_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 
 
 @dataclass(frozen=True)
@@ -86,9 +88,7 @@ class QualitySourceValidator:
     def __init__(self, request_obj: Request | None = None):
         self.request_obj = request_obj
         self.base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        db_url = os.getenv("LINGYI_DB_URL", "").strip()
-        self.local_dev_mode = app_env == "development" and db_url == QUALITY_LOCAL_DB_URL
+        self.local_dev_mode = is_allowed_local_dev_database()
         self.fastapi_native_mode = os.getenv("LINGYI_PERMISSION_SOURCE", "").strip().lower() == "fastapi"
         self.adapter = None if self.local_dev_mode or self.fastapi_native_mode else ERPNextQualityAdapter(request_obj=request_obj, base_url=self.base_url)
 

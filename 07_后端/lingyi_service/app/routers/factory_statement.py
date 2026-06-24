@@ -25,7 +25,9 @@ from sqlalchemy.orm import Session
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
 from app.core.auth import is_internal_worker_api_enabled
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
 from app.core.config import factory_statement_enable_payable_worker_sync
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import FACTORY_STATEMENT_DATABASE_WRITE_FAILED
 from app.core.error_codes import FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT
@@ -84,7 +86,7 @@ from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/factory-statements", tags=["factory_statement"])
 logger = logging.getLogger(__name__)
-FACTORY_STATEMENT_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+FACTORY_STATEMENT_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 FACTORY_STATEMENT_SCENARIO_PATTERN = re.compile(r"((?:Z003-FACTORY-STMT|Z005-READBACK-PRECONDITION)-\d{8}-\d{3})")
 
 
@@ -159,9 +161,7 @@ def _scope_text(value: Any) -> str | None:
 
 
 def _is_local_factory_statement_write_enabled() -> bool:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env == "development" and db_url == FACTORY_STATEMENT_LOCAL_ALLOWED_DB_URL
+    return is_allowed_local_dev_database()
 
 
 def _match_factory_statement_scenario_tag(value: str) -> str | None:

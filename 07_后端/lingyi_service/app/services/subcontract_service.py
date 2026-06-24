@@ -16,6 +16,8 @@ from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import SUBCONTRACT_MATERIAL_NOT_IN_BOM
 from app.core.error_codes import SUBCONTRACT_MATERIAL_QTY_EXCEEDED
 from app.core.error_codes import SUBCONTRACT_COMPANY_AMBIGUOUS
@@ -90,7 +92,7 @@ from app.services.warehouse_service import WarehouseService
 class SubcontractService:
     """Subcontract order service with state transitions."""
 
-    _LOCAL_DEV_DB_URL = "sqlite:///./lingyi_service.local.db"
+    _LOCAL_DEV_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 
     _INSPECTION_DECIMAL_KEYS = {
         "inspected_qty",
@@ -111,9 +113,7 @@ class SubcontractService:
 
     def _local_dev_sync_substitute_enabled(self) -> bool:
         """Allow local-dev receipt sync substitution to unblock inspection closure."""
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        db_url = os.getenv("LINGYI_DB_URL", "").strip()
-        return self._is_sqlite and app_env == "development" and db_url == self._LOCAL_DEV_DB_URL
+        return self._is_sqlite and is_allowed_local_dev_database()
 
     def create_order(self, *, payload: SubcontractCreateRequest, operator: str) -> SubcontractCreateData:
         """Create subcontract order (no commit in service)."""

@@ -24,6 +24,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import ERPNEXT_SERVICE_UNAVAILABLE
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import WORKSHOP_EMPLOYEE_NOT_FOUND
@@ -103,7 +105,7 @@ from app.services.workshop_outbox_service import WorkshopOutboxService
 
 logger = logging.getLogger(__name__)
 WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z003-WORKSHOP-TICKET-\d{8}-\d{3})")
-WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+WORKSHOP_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 WORKSHOP_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 WORKSHOP_LOCAL_DEFAULT_ITEM_CODE = "DEMO-TEE"
 WORKSHOP_LOCAL_DEFAULT_UNIT_WAGE = Decimal("1")
@@ -1891,9 +1893,7 @@ class WorkshopService:
 
     @staticmethod
     def _is_local_synthetic_context_enabled() -> bool:
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        db_url = os.getenv("LINGYI_DB_URL", "").strip()
-        return app_env in {"development", "test"} and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+        return is_allowed_local_dev_database(app_envs=("development", "test"))
 
     @staticmethod
     def _is_fastapi_native_source() -> bool:

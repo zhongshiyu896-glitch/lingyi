@@ -24,6 +24,8 @@ from sqlalchemy.orm import Session
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
 from app.core.auth import is_internal_worker_api_enabled
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.config import workshop_dry_run_audit_required
 from app.core.config import workshop_enable_forbidden_diagnostics
 from app.core.config import workshop_enable_job_card_worker_sync
@@ -105,7 +107,7 @@ from app.services.workshop_service import WorkshopService
 
 router = APIRouter(prefix="/api/workshop", tags=["workshop"])
 logger = logging.getLogger(__name__)
-WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+WORKSHOP_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z003-WORKSHOP-TICKET-\d{8}-\d{3})")
 WORKSHOP_LOCAL_BATCH_SCENARIO_PATTERN = re.compile(r"(Z003-WORKSHOP-TICKET-\d{8}-\d{3})")
 WORKSHOP_LOCAL_TICKET_REQUEST_PATTERN = re.compile(
@@ -296,9 +298,7 @@ def _batch_row_fail(
 
 
 def _is_local_workshop_write_enabled() -> bool:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env == "development" and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+    return is_allowed_local_dev_database()
 
 
 def _has_local_ticket_carriers(payload: WorkshopTicketRegisterRequest | WorkshopTicketReversalRequest) -> bool:

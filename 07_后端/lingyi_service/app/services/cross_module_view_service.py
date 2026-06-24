@@ -10,6 +10,8 @@ from typing import Any
 from fastapi import Request
 from sqlalchemy.orm import Session
 
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.exceptions import ERPNextServiceAccountForbiddenError
 from app.core.exceptions import ERPNextServiceUnavailableError
 from app.core.permissions import get_permission_source
@@ -27,7 +29,7 @@ from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_job_card_adapter import ERPNextJobCardAdapter
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
 
-_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 
 
 def _text(value: Any) -> str | None:
@@ -204,9 +206,7 @@ class CrossModuleViewService:
 
     @staticmethod
     def _is_local_dev_sqlite_mode() -> bool:
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        db_url = os.getenv("LINGYI_DB_URL", "").strip()
-        return app_env == "development" and db_url == _LOCAL_ALLOWED_DB_URL
+        return is_allowed_local_dev_database()
 
     def _build_local_work_order_trail(
         self,

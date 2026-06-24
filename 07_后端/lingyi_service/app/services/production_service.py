@@ -17,6 +17,8 @@ from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import PRODUCTION_BOM_ITEM_MISMATCH
 from app.core.error_codes import PRODUCTION_BOM_NOT_ACTIVE
 from app.core.error_codes import PRODUCTION_BOM_NOT_FOUND
@@ -196,7 +198,7 @@ PRODUCTION_TRACKING_NODE_DEFAULT_NAMES = {
     "job_card": "工票进度",
     "exception": "异常处理",
 }
-PRODUCTION_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+PRODUCTION_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 PRODUCTION_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 PRODUCTION_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
 
@@ -6731,9 +6733,7 @@ class ProductionService:
 
     @staticmethod
     def _is_local_scenario_context_enabled() -> bool:
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        db_url = os.getenv("LINGYI_DB_URL", "").strip()
-        return app_env == "development" and db_url == PRODUCTION_LOCAL_ALLOWED_DB_URL
+        return is_allowed_local_dev_database()
 
     @staticmethod
     def _extract_local_scenario_tag(
@@ -6770,9 +6770,7 @@ class ProductionService:
 
     @staticmethod
     def _ensure_local_dev_write_gate() -> None:
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        db_url = os.getenv("LINGYI_DB_URL", "").strip()
-        if app_env != "development" or db_url != PRODUCTION_LOCAL_ALLOWED_DB_URL:
+        if not is_allowed_local_dev_database():
             ProductionService._raise_gate_error("non_local_dev_gate")
 
     def _validate_create_plan_gate(

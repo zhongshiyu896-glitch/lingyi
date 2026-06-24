@@ -24,6 +24,8 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.config import subcontract_enable_internal_stock_worker_api
 from app.core.config import subcontract_enable_stock_worker_dry_run
 from app.core.error_codes import AUTH_FORBIDDEN
@@ -96,7 +98,7 @@ SUBCONTRACT_SCENARIO_TAG_PATTERN = re.compile(r"Z003-SUBCONTRACT-\d{8}-\d{3}")
 SUBCONTRACT_REQUEST_ID_CARRIER_PATTERN = re.compile(
     r"^(Z003-SUBCONTRACT-\d{8}-\d{3})-SC-([A-Z]{2})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$"
 )
-SUBCONTRACT_LOCAL_DB_URL = "sqlite:///./lingyi_service.local.db"
+SUBCONTRACT_LOCAL_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 SUBCONTRACT_OPERATION_CODE_BY_NAME = {
     "create": "CR",
     "issue_material": "IM",
@@ -444,9 +446,7 @@ def _raise_subcontract_gate_error(reason: str) -> None:
 
 
 def _ensure_local_dev_write_gate() -> None:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    if app_env != "development" or db_url != SUBCONTRACT_LOCAL_DB_URL:
+    if not is_allowed_local_dev_database():
         _raise_subcontract_gate_error("non_local_dev_gate_failed")
 
 

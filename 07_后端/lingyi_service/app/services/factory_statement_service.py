@@ -19,6 +19,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import FACTORY_STATEMENT_COMPANY_REQUIRED
 from app.core.error_codes import FACTORY_STATEMENT_ACTIVE_SCOPE_EXISTS
 from app.core.error_codes import FACTORY_STATEMENT_COST_CENTER_INVALID
@@ -132,7 +134,7 @@ class FactoryStatementService:
     _OP_PAYABLE_DRAFT_CREATE = "payable_draft_create"
     _OP_PAYMENT_CREATE = "create_payment_entry"
     _OP_PAYMENT_CANCEL = "cancel_payment_entry"
-    _LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+    _LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 
     def __init__(self, session: Session):
         self.session = session
@@ -4548,9 +4550,7 @@ class FactoryStatementService:
 
     @staticmethod
     def _is_local_dev_sqlite_mode() -> bool:
-        app_env = os.getenv("APP_ENV", "").strip().lower()
-        db_url = os.getenv("LINGYI_DB_URL", "").strip()
-        return app_env == "development" and db_url == FactoryStatementService._LOCAL_ALLOWED_DB_URL
+        return is_allowed_local_dev_database()
 
     @staticmethod
     def _to_decimal(value: Decimal | int | float | str | None) -> Decimal:

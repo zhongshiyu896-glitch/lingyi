@@ -24,6 +24,8 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import ERPNEXT_RESOURCE_NOT_FOUND
 from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.error_codes import RESOURCE_ACCESS_DENIED
@@ -71,14 +73,14 @@ from app.services.sales_inventory_service import SalesInventoryServiceError
 
 router = APIRouter(prefix="/api/sales-inventory", tags=["sales_inventory"])
 reference_local_router = APIRouter(tags=["sales_inventory"])
-SALES_ORDER_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+SALES_ORDER_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 SALES_ORDER_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-ORDER-\d{8}-\d{3}$")
 SALES_ORDER_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-ORDER-\d{8}-\d{3})(?:$|[-_.].*)$")
 SALES_ORDER_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-ORDER-\d{8}-\d{3})$")
 SALES_ORDER_SOURCE_REF_PATTERN = re.compile(r"^SRC-(Z003-SALES-ORDER-\d{8}-\d{3})$")
 SALES_ORDER_NO_PATTERN = re.compile(r"^SO-(Z003-SALES-ORDER-\d{8}-\d{3})$")
 SALES_ORDER_CANCEL_REASON_PATTERN = re.compile(r"^VOID-(Z003-SALES-ORDER-\d{8}-\d{3})$")
-REFERENCE_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+REFERENCE_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 REFERENCE_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-INV-REF-\d{8}-\d{3}$")
 REFERENCE_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-INV-REF-\d{8}-\d{3})(?:$|[-_.].*)$")
 REFERENCE_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-INV-REF-\d{8}-\d{3})(?:[-_.].*)?$")
@@ -106,15 +108,11 @@ def _created(data: Any) -> JSONResponse:
 
 
 def _is_local_sales_order_write_enabled() -> bool:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env == "development" and db_url == SALES_ORDER_LOCAL_ALLOWED_DB_URL
+    return is_allowed_local_dev_database()
 
 
 def _is_local_reference_write_enabled() -> bool:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env in {"development", "dev", "local"} and db_url == REFERENCE_LOCAL_ALLOWED_DB_URL
+    return is_allowed_local_dev_database(app_envs=("development", "dev", "local"))
 
 
 def _is_local_reference_route_enabled() -> bool:
@@ -124,12 +122,9 @@ def _is_local_reference_route_enabled() -> bool:
 def _is_local_sales_inventory_read_enabled() -> bool:
     if get_permission_source() == "fastapi":
         return True
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
     allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
     return (
-        app_env in {"development", "dev", "local"}
-        and db_url in {SALES_ORDER_LOCAL_ALLOWED_DB_URL, REFERENCE_LOCAL_ALLOWED_DB_URL}
+        is_allowed_local_dev_database(app_envs=("development", "dev", "local"))
         and allow_dev_auth == "true"
         and get_permission_source() == "static"
     )

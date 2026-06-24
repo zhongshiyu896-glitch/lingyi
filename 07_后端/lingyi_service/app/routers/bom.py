@@ -23,6 +23,8 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.error_codes import BOM_DEFAULT_CONFLICT
 from app.core.error_codes import BOM_INTERNAL_ERROR
 from app.core.error_codes import DATABASE_WRITE_FAILED
@@ -107,7 +109,7 @@ BOM_TEMPLATE_DEACTIVATE_ACTION = "bom:template_deactivate"
 BOM_TEMPLATE_NODE_CREATE_ACTION = "bom:template_node_create"
 BOM_TEMPLATE_NODE_UPDATE_ACTION = "bom:template_node_update"
 BOM_TEMPLATE_NODE_DEACTIVATE_ACTION = "bom:template_node_deactivate"
-BOM_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+BOM_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 BOM_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-BOM-\d{8}-\d{3})")
 BOM_LOCAL_REQUEST_PATTERN = re.compile(
     r"(Z002-BOM-\d{8}-\d{3})-RQ-I([0-9A-F]{4})-B([0-9A-F]{4})-R([0-9A-F]{4})"
@@ -115,9 +117,7 @@ BOM_LOCAL_REQUEST_PATTERN = re.compile(
 
 
 def _is_local_bom_write_enabled() -> bool:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env == "development" and db_url == BOM_LOCAL_ALLOWED_DB_URL
+    return is_allowed_local_dev_database()
 
 
 def _scope_text(value: Any) -> str | None:

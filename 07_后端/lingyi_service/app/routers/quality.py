@@ -26,6 +26,8 @@ from sqlalchemy.orm import Session
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
 from app.core.auth import is_internal_worker_api_enabled
+from app.core.config import DEFAULT_LOCAL_DEV_DATABASE_URL
+from app.core.config import is_allowed_local_dev_database
 from app.core.config import quality_enable_outbox_worker_sync
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import ERPNEXT_RESOURCE_NOT_FOUND
@@ -83,7 +85,7 @@ QUALITY_SCENARIO_TAG_PATTERN = re.compile(r"Z003-QUALITY-INSPECTION-\d{8}-\d{3}"
 QUALITY_REQUEST_ID_CARRIER_PATTERN = re.compile(
     r"^(Z003-QUALITY-INSPECTION-\d{8}-\d{3})-QI-([A-Z])-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$"
 )
-QUALITY_LOCAL_DB_URL = "sqlite:///./lingyi_service.local.db"
+QUALITY_LOCAL_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 QUALITY_OPERATION_CODE_BY_NAME = {
     "create": "C",
     "update": "U",
@@ -341,12 +343,10 @@ def _raise_quality_gate_error(reason: str) -> None:
 
 
 def _ensure_local_dev_write_gate() -> None:
-    app_env = os.getenv("APP_ENV", "").strip().lower()
-    db_url = os.getenv("LINGYI_DB_URL", "").strip()
     permission_source = os.getenv("LINGYI_PERMISSION_SOURCE", "").strip().lower()
     if permission_source == "fastapi":
         return
-    if app_env != "development" or db_url != QUALITY_LOCAL_DB_URL:
+    if not is_allowed_local_dev_database():
         _raise_quality_gate_error("non_local_dev")
 
 

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import os
 
+DEFAULT_LOCAL_DEV_DATABASE_URL = "sqlite:///./lingyi_service.local.db"
+DEFAULT_DEV_B_DATABASE_URL = "sqlite:///./lingyi_service.b.db"
+DEFAULT_ALLOWED_LOCAL_DATABASE_URLS = (DEFAULT_LOCAL_DEV_DATABASE_URL, DEFAULT_DEV_B_DATABASE_URL)
+
 
 def _env_flag(name: str, *, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -21,6 +25,35 @@ def _env_int(name: str, *, default: int, minimum: int = 0, maximum: int = 1_000_
     except (TypeError, ValueError):
         return default
     return max(minimum, min(maximum, parsed))
+
+
+def configured_database_url() -> str:
+    """Return the active app database URL from runtime env."""
+    return (os.getenv("LINGYI_DB_URL", "").strip() or os.getenv("DATABASE_URL", "").strip())
+
+
+def allowed_local_database_urls() -> set[str]:
+    """Local write-gate DB allowlist.
+
+    By default both the A local dev DB and the isolated dev/b DB are allowed.
+    Operators may override with LINGYI_ALLOWED_LOCAL_DB_URLS as a comma/semicolon
+    separated list when a new isolated local DB is introduced.
+    """
+    raw = os.getenv("LINGYI_ALLOWED_LOCAL_DB_URLS", "").strip()
+    if not raw:
+        return set(DEFAULT_ALLOWED_LOCAL_DATABASE_URLS)
+    normalized = raw.replace(";", ",").replace("\n", ",")
+    return {part.strip() for part in normalized.split(",") if part.strip()}
+
+
+def is_allowed_local_database_url(database_url: str | None = None) -> bool:
+    db_url = (database_url if database_url is not None else configured_database_url()).strip()
+    return db_url in allowed_local_database_urls()
+
+
+def is_allowed_local_dev_database(*, app_envs: set[str] | tuple[str, ...] = ("development",), database_url: str | None = None) -> bool:
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+    return app_env in set(app_envs) and is_allowed_local_database_url(database_url)
 
 
 def workshop_forbidden_diagnostic_limit() -> int:
