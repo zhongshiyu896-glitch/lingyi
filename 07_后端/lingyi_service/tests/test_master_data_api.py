@@ -22,8 +22,11 @@ from app.models.audit import LySecurityAuditLog
 from app.models.master_data import Base as MasterDataBase
 from app.models.master_data import LyMasterDataIdempotency
 from app.models.master_data import LyMasterDataRecord
+from app.models.recycle_bin import Base as RecycleBinBase
+from app.models.recycle_bin import LyRecycleBinItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.master_data import get_db_session as master_data_db_dep
+from app.routers.recycle_bin import get_db_session as recycle_bin_db_dep
 from app.services.permission_service import FASTAPI_RESOURCE_PERMISSIONS_ENV
 from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
 
@@ -42,6 +45,7 @@ class MasterDataApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         MasterDataBase.metadata.create_all(bind=cls.engine)
+        RecycleBinBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -53,6 +57,7 @@ class MasterDataApiTest(unittest.TestCase):
 
         app.dependency_overrides[auth_db_dep] = _override_db
         app.dependency_overrides[master_data_db_dep] = _override_db
+        app.dependency_overrides[recycle_bin_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
         main_module.SessionLocal = cls.SessionLocal
         cls.client = TestClient(app)
@@ -62,6 +67,7 @@ class MasterDataApiTest(unittest.TestCase):
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
         app.dependency_overrides.pop(master_data_db_dep, None)
+        app.dependency_overrides.pop(recycle_bin_db_dep, None)
         cls.engine.dispose()
 
     def setUp(self) -> None:
@@ -72,6 +78,7 @@ class MasterDataApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyRecycleBinItem).delete()
             session.query(LyMasterDataIdempotency).delete()
             session.query(LyMasterDataRecord).delete()
             session.commit()
@@ -758,6 +765,119 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertEqual(reactivated.json()["data"]["status"], "active")
         self.assertIsNone(reactivated.json()["data"]["deactivated_at"])
 
+    def test_delete_customer_moves_to_recycle_bin_and_restores(self) -> None:
+        created = self.client.post(
+            "/api/master-data/customers",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-CREATE"),
+            json={**self._payload(code="CUST-DELETE-001", idempotency_key="IDEMP-CUST-DELETE-C"), "name": "待删除客户"},
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        record_id = int(created.json()["data"]["id"])
+
+        deleted = self.client.delete(
+            f"/api/master-data/customers/{record_id}?company=COMP-A",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-DELETE"),
+        )
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        self.assertEqual(deleted.json()["data"]["id"], record_id)
+
+        listed = self.client.get(
+            "/api/master-data/customers?company=COMP-A&keyword=CUST-DELETE-001",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["data"]["total"], 0)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMasterDataRecord).filter_by(entity_type="customer", code="CUST-DELETE-001").count(), 0)
+            trash = session.query(LyRecycleBinItem).filter_by(module="master_data", entity_type="customer", code="CUST-DELETE-001").one()
+            trash_id = int(trash.id)
+            self.assertEqual(trash.status, "deleted")
+            self.assertEqual(trash.original_id, record_id)
+
+        recycle_list = self.client.get(
+            "/api/recycle-bin?module=master_data&entity_type=customer&company=COMP-A&keyword=CUST-DELETE-001",
+            headers=self._headers(request_id="MASTER-DATA-TRASH-LIST"),
+        )
+        self.assertEqual(recycle_list.status_code, 200, recycle_list.text)
+        self.assertEqual(recycle_list.json()["data"]["total"], 1)
+
+        restored = self.client.post(
+            f"/api/recycle-bin/{trash_id}/restore",
+            headers=self._headers(request_id="MASTER-DATA-TRASH-RESTORE"),
+        )
+        self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertEqual(restored.json()["data"]["status"], "restored")
+        with self.SessionLocal() as session:
+            restored_row = session.query(LyMasterDataRecord).filter_by(entity_type="customer", code="CUST-DELETE-001").one()
+            self.assertEqual(int(restored_row.id), record_id)
+            self.assertEqual(session.query(LyRecycleBinItem).filter_by(id=trash_id).one().status, "restored")
+
+        deleted_again = self.client.delete(
+            f"/api/master-data/customers/{record_id}?company=COMP-A",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-AGAIN"),
+        )
+        self.assertEqual(deleted_again.status_code, 200, deleted_again.text)
+        with self.SessionLocal() as session:
+            purge_id = int(
+                session.query(LyRecycleBinItem)
+                .filter_by(module="master_data", entity_type="customer", code="CUST-DELETE-001", status="deleted")
+                .one()
+                .id
+            )
+        purged = self.client.delete(
+            f"/api/recycle-bin/{purge_id}",
+            headers=self._headers(request_id="MASTER-DATA-TRASH-PURGE"),
+        )
+        self.assertEqual(purged.status_code, 200, purged.text)
+        self.assertTrue(purged.json()["data"]["purged"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyRecycleBinItem).filter_by(id=purge_id).count(), 0)
+
+    def test_delete_warehouse_blocks_parent_until_children_removed(self) -> None:
+        parent = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-WH-P"),
+            json={
+                **self._payload(code="WH-DELETE-P", idempotency_key="IDEMP-WH-DELETE-P-C"),
+                "name": "待删除父仓",
+                "payload": {"location_kind": "warehouse"},
+            },
+        )
+        child = self.client.post(
+            "/api/master-data/warehouses",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-WH-C"),
+            json={
+                **self._payload(code="WH-DELETE-C", idempotency_key="IDEMP-WH-DELETE-C-C"),
+                "name": "待删除子仓",
+                "payload": {"parent_code": "WH-DELETE-P", "location_kind": "area"},
+            },
+        )
+        self.assertEqual(parent.status_code, 201, parent.text)
+        self.assertEqual(child.status_code, 201, child.text)
+        parent_id = int(parent.json()["data"]["id"])
+        child_id = int(child.json()["data"]["id"])
+
+        blocked = self.client.delete(
+            f"/api/master-data/warehouses/{parent_id}?company=COMP-A",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-WH-P-BLOCK"),
+        )
+        self.assertEqual(blocked.status_code, 409)
+        self.assertEqual(blocked.json()["code"], "MASTER_DATA_CONFLICT")
+
+        child_deleted = self.client.delete(
+            f"/api/master-data/warehouses/{child_id}?company=COMP-A",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-WH-C-DELETE"),
+        )
+        self.assertEqual(child_deleted.status_code, 200, child_deleted.text)
+        parent_deleted = self.client.delete(
+            f"/api/master-data/warehouses/{parent_id}?company=COMP-A",
+            headers=self._headers(request_id="MASTER-DATA-DELETE-WH-P-DELETE"),
+        )
+        self.assertEqual(parent_deleted.status_code, 200, parent_deleted.text)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.code.in_(["WH-DELETE-P", "WH-DELETE-C"])).count(), 0)
+            self.assertEqual(session.query(LyRecycleBinItem).filter(LyRecycleBinItem.code.in_(["WH-DELETE-P", "WH-DELETE-C"])).count(), 2)
+
     def test_material_payload_update_and_deactivate(self) -> None:
         self._seed_supplier(code="SUP-QH", name="青禾面辅料")
         self._seed_supplier(code="SUP-JC", name="锦程纺织")
@@ -992,11 +1112,75 @@ class MasterDataApiTest(unittest.TestCase):
             self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "sample_type").count(), 1)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "master_data").count(), 3)
 
+    def test_sample_stage_dictionary_crud_uses_master_data(self) -> None:
+        created = self.client.post(
+            "/api/master-data/sample-stages",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-STAGE-001"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "SMP-STAGE-FILE",
+                "name": "建档",
+                "idempotency_key": "IDEMP-SMP-STAGE-001-C",
+                "payload": {"displayName": "建档", "usage": "设计打样", "sort": 10},
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        record_id = int(created.json()["data"]["id"])
+        self.assertEqual(created.json()["data"]["entity_type"], "sample_stage")
+
+        listed = self.client.get(
+            "/api/master-data/sample-stages?company=COMP-A&keyword=SMP-STAGE-FILE",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-STAGE-002"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["data"]["total"], 1)
+        self.assertEqual(listed.json()["data"]["items"][0]["name"], "建档")
+
+        updated = self.client.patch(
+            f"/api/master-data/sample-stages/{record_id}",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-STAGE-003"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "name": "打版中",
+                "idempotency_key": "IDEMP-SMP-STAGE-001-U",
+                "payload": {"displayName": "打版中", "usage": "设计打样", "sort": 20},
+            },
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["data"]["name"], "打版中")
+        self.assertEqual(updated.json()["data"]["payload"]["sort"], 20)
+
+        deactivated = self.client.post(
+            f"/api/master-data/sample-stages/{record_id}/deactivate",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-STAGE-004"),
+            json={
+                "operation": "deactivate",
+                "company": "COMP-A",
+                "reason": "样板节点停用测试",
+                "idempotency_key": "IDEMP-SMP-STAGE-001-X",
+            },
+        )
+        self.assertEqual(deactivated.status_code, 200)
+        self.assertTrue(deactivated.json()["data"]["disabled"])
+
+        active_only = self.client.get(
+            "/api/master-data/sample-stages?company=COMP-A&disabled=false",
+            headers=self._headers(request_id="MASTER-DATA-SAMPLE-STAGE-005"),
+        )
+        self.assertEqual(active_only.status_code, 200)
+        self.assertEqual(active_only.json()["data"]["total"], 0)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "sample_stage").count(), 1)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "master_data").count(), 3)
+
     def test_foundation_config_dictionaries_crud_use_master_data(self) -> None:
         cases = [
             ("common-addresses", "common_address", "ADDR-A2-001", {"receiver": "王收货", "phone": "13800000000"}),
             ("trade-terms", "trade_term", "TERM-A2-001", {"usage": "采购/销售"}),
             ("invoice-types", "invoice_type", "INV-A2-001", {"tax_rate": "13%"}),
+            ("sample-stages", "sample_stage", "SSTG-A2-001", {"usage": "设计打样"}),
             ("cost-types", "cost_type", "COST-A2-001", {"usage": "成本归集"}),
             ("size-sorts", "size_sort", "SIZE-A2-001", {"sizeGroup": "成人", "sort": 10}),
             ("distribution-channels", "distribution_channel", "CH-A2-001", {"usage": "销售订单"}),

@@ -149,6 +149,8 @@ SYSTEM_READ = "system:read"
 SYSTEM_CONFIG_READ = "system:config_read"
 SYSTEM_DICTIONARY_READ = "system:dictionary_read"
 SYSTEM_DIAGNOSTIC = "system:diagnostic"
+RECYCLE_BIN_READ = "recycle_bin:read"
+RECYCLE_BIN_MANAGE = "recycle_bin:manage"
 
 ALL_BOM_ACTIONS = {
     BOM_READ,
@@ -340,6 +342,11 @@ ALL_SYSTEM_ACTIONS = {
     SYSTEM_DIAGNOSTIC,
 }
 
+ALL_RECYCLE_BIN_ACTIONS = {
+    RECYCLE_BIN_READ,
+    RECYCLE_BIN_MANAGE,
+}
+
 # 动作别名兼容：保留历史 publish/deactivate，同时支持 submit/cancel。
 ACTION_ALIAS_TO_CANONICAL = {
     BOM_SUBMIT: BOM_PUBLISH,
@@ -373,6 +380,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_DASHBOARD_ACTIONS
         | ALL_REPORT_ACTIONS
         | ALL_SYSTEM_ACTIONS
+        | ALL_RECYCLE_BIN_ACTIONS
     ),
     "LY Integration Service": {
         WORKSHOP_READ,
@@ -452,7 +460,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         SAMPLE_READ,
         STYLE_MASTER_READ,
     },
-    "Master Data Manager": set(ALL_MASTER_DATA_ACTIONS),
+    "Master Data Manager": set(ALL_MASTER_DATA_ACTIONS | ALL_RECYCLE_BIN_ACTIONS),
     "Sample Manager": set(ALL_SAMPLE_ACTIONS | {STYLE_MASTER_READ}),
     "Style Manager": set(ALL_STYLE_MASTER_ACTIONS),
     "Purchasing Manager": set(ALL_MATERIAL_PURCHASE_ACTIONS | {WAREHOUSE_READ, WAREHOUSE_STOCK_ENTRY_DRAFT}),
@@ -534,6 +542,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "dashboard": set(ALL_DASHBOARD_ACTIONS),
     "report": set(ALL_REPORT_ACTIONS),
     "system": set(ALL_SYSTEM_ACTIONS),
+    "recycle_bin": set(ALL_RECYCLE_BIN_ACTIONS),
 }
 
 

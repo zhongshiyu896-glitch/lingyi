@@ -17,6 +17,8 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.recycle_bin import Base as RecycleBinBase
+from app.models.recycle_bin import LyRecycleBinItem
 from app.models.style_master import Base as StyleMasterBase
 from app.models.style_master import LyStyleDictionary
 from app.models.style_master import LyStyleGallery
@@ -24,6 +26,7 @@ from app.models.style_master import LyStyleMaster
 from app.models.style_master import LyStyleMasterIdempotency
 from app.models.style_master import LyStyleSku
 from app.routers.auth import get_db_session as auth_db_dep
+from app.routers.recycle_bin import get_db_session as recycle_bin_db_dep
 from app.routers.style_master import get_db_session as style_master_db_dep
 
 
@@ -41,6 +44,7 @@ class StyleMasterApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         StyleMasterBase.metadata.create_all(bind=cls.engine)
+        RecycleBinBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -51,6 +55,7 @@ class StyleMasterApiTest(unittest.TestCase):
                 db.close()
 
         app.dependency_overrides[auth_db_dep] = _override_db
+        app.dependency_overrides[recycle_bin_db_dep] = _override_db
         app.dependency_overrides[style_master_db_dep] = _override_db
         cls._old_main_session_local = main_module.SessionLocal
         main_module.SessionLocal = cls.SessionLocal
@@ -60,6 +65,7 @@ class StyleMasterApiTest(unittest.TestCase):
     def tearDownClass(cls) -> None:
         main_module.SessionLocal = cls._old_main_session_local
         app.dependency_overrides.pop(auth_db_dep, None)
+        app.dependency_overrides.pop(recycle_bin_db_dep, None)
         app.dependency_overrides.pop(style_master_db_dep, None)
         cls.engine.dispose()
 
@@ -71,6 +77,7 @@ class StyleMasterApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyRecycleBinItem).delete()
             session.query(LyStyleMasterIdempotency).delete()
             session.query(LyStyleSku).delete()
             session.query(LyStyleGallery).delete()
@@ -333,6 +340,107 @@ class StyleMasterApiTest(unittest.TestCase):
         self.assertEqual(listed.status_code, 200, listed.text)
         codes = [item["code"] for item in listed.json()["data"]["items"]]
         self.assertEqual(codes[:3], ["SORT-BRAND-003", "SORT-BRAND-002", "SORT-BRAND-001"])
+
+    def test_style_dictionary_create_auto_generates_code_when_missing(self) -> None:
+        payload = {
+            "operation": "create",
+            "company": "COMP-A",
+            "dict_type": "brand",
+            "name": "自动编码品牌",
+            "sort_no": 10,
+            "idempotency_key": "IDEMP-DICT-AUTO-CODE",
+        }
+        created = self.client.post(
+            "/api/style-master/dictionaries",
+            headers=self._headers(request_id="STYLE-DICT-AUTO-CREATE-001"),
+            json=payload,
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        body = created.json()["data"]
+        self.assertEqual(body["code"], "BRAND-000001")
+        self.assertEqual(body["name"], "自动编码品牌")
+
+        replayed = self.client.post(
+            "/api/style-master/dictionaries",
+            headers=self._headers(request_id="STYLE-DICT-AUTO-CREATE-002"),
+            json=payload,
+        )
+        self.assertEqual(replayed.status_code, 201, replayed.text)
+        self.assertEqual(replayed.json()["data"]["code"], "BRAND-000001")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyStyleDictionary).count(), 1)
+
+    def test_style_dictionary_delete_moves_to_recycle_bin_and_blocks_referenced(self) -> None:
+        created = self.client.post(
+            "/api/style-master/dictionaries",
+            headers=self._headers(request_id="STYLE-DICT-DELETE-CREATE"),
+            json=self._dictionary_payload("brand", "DEL-BRAND-001", "待删除品牌", "IDEMP-DICT-DELETE-CREATE"),
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        dictionary_id = int(created.json()["data"]["id"])
+
+        deleted = self.client.delete(
+            f"/api/style-master/dictionaries/{dictionary_id}?company=COMP-A",
+            headers=self._headers(request_id="STYLE-DICT-DELETE-OK"),
+        )
+        self.assertEqual(deleted.status_code, 200, deleted.text)
+        self.assertTrue(deleted.json()["data"]["deleted"])
+        self.assertEqual(deleted.json()["data"]["id"], dictionary_id)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyStyleDictionary).filter_by(code="DEL-BRAND-001").count(), 0)
+            trash = session.query(LyRecycleBinItem).filter_by(module="style_master", entity_type="style_dictionary", code="DEL-BRAND-001").one()
+            trash_id = int(trash.id)
+            self.assertEqual(trash.status, "deleted")
+            self.assertEqual(trash.original_id, dictionary_id)
+
+        restored = self.client.post(
+            f"/api/recycle-bin/{trash_id}/restore",
+            headers=self._headers(request_id="STYLE-DICT-RESTORE-OK"),
+        )
+        self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertEqual(restored.json()["data"]["status"], "restored")
+        with self.SessionLocal() as session:
+            restored_row = session.query(LyStyleDictionary).filter_by(company="COMP-A", dict_type="brand", code="DEL-BRAND-001").one()
+            self.assertEqual(int(restored_row.id), dictionary_id)
+
+        deleted_again = self.client.delete(
+            f"/api/style-master/dictionaries/{dictionary_id}?company=COMP-A",
+            headers=self._headers(request_id="STYLE-DICT-DELETE-AGAIN"),
+        )
+        self.assertEqual(deleted_again.status_code, 200, deleted_again.text)
+        with self.SessionLocal() as session:
+            purge_id = int(
+                session.query(LyRecycleBinItem)
+                .filter_by(module="style_master", entity_type="style_dictionary", code="DEL-BRAND-001", status="deleted")
+                .one()
+                .id
+            )
+        purged = self.client.delete(
+            f"/api/recycle-bin/{purge_id}",
+            headers=self._headers(request_id="STYLE-DICT-PURGE-OK"),
+        )
+        self.assertEqual(purged.status_code, 200, purged.text)
+        self.assertTrue(purged.json()["data"]["purged"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyRecycleBinItem).filter_by(id=purge_id).count(), 0)
+
+        self._seed_style_dictionaries()
+        style = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-DICT-DELETE-STYLE"),
+            json=self._style_payload(style_no="ST-DICT-REF-001", idempotency_key="IDEMP-ST-DICT-REF-001"),
+        )
+        self.assertEqual(style.status_code, 201, style.text)
+        with self.SessionLocal() as session:
+            brand_id = int(session.query(LyStyleDictionary).filter_by(company="COMP-A", dict_type="brand", code="LY").one().id)
+        blocked = self.client.delete(
+            f"/api/style-master/dictionaries/{brand_id}?company=COMP-A",
+            headers=self._headers(request_id="STYLE-DICT-DELETE-BLOCK"),
+        )
+        self.assertEqual(blocked.status_code, 409, blocked.text)
+        self.assertEqual(blocked.json()["code"], "STYLE_MASTER_INVALID_REFERENCE")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyStyleDictionary).filter_by(company="COMP-A", dict_type="brand", code="LY").count(), 1)
 
     def test_style_idempotency_conflict_and_invalid_reference(self) -> None:
         self._seed_style_dictionaries()

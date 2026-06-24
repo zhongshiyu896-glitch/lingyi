@@ -990,7 +990,7 @@ class ProductionMaterialCheckData(BaseModel):
 class ProductionSalesOrderMaterialCheckRequest(BaseModel):
     """Material-check all sales-order lines through existing production plans."""
 
-    warehouse: str = Field(..., min_length=1, max_length=140)
+    warehouse: Optional[str] = Field(default=None, max_length=140)
     company: Optional[str] = Field(default=None, max_length=140)
     planned_start_date: Optional[date] = None
     operation: Optional[str] = Field(default="sales_order_material_check", max_length=40)

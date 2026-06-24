@@ -318,6 +318,7 @@ def create_tables_from_models(target: DatabaseTarget) -> None:
         from app.models.production import Base as ProductionBase
         from app.models.quality import Base as QualityBase
         import app.models.quality_outbox  # noqa: F401
+        from app.models.recycle_bin import Base as RecycleBinBase
         from app.models.sample import Base as SampleBase
         from app.models.sales_order import Base as SalesOrderBase
         from app.models.style_master import Base as StyleMasterBase
@@ -341,6 +342,7 @@ def create_tables_from_models(target: DatabaseTarget) -> None:
             QualityBase.metadata,
             StyleProfitBase.metadata,
             WorkshopBase.metadata,
+            RecycleBinBase.metadata,
         ]
         for metadata in metadatas:
             metadata.create_all(bind=engine)

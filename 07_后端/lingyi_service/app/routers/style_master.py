@@ -551,7 +551,7 @@ def create_dictionary(
             action="create_dictionary",
             resource_type="STYLE_DICTIONARY",
             resource_id=None,
-            resource_no=f"{payload.dict_type}:{payload.code}",
+            resource_no=f"{payload.dict_type}:{payload.code or 'AUTO'}",
             request=request,
             current_user=current_user,
             session=session,
@@ -608,6 +608,34 @@ def deactivate_dictionary(
                 company=payload.company,
                 idempotency_key=payload.idempotency_key,
                 reason=payload.reason,
+                actor=current_user.username,
+            ),
+        )
+    except AppException as exc:
+        return _err(exc)
+    return _ok(result.item)
+
+
+@router.delete("/dictionaries/{dictionary_id}")
+def delete_dictionary(
+    dictionary_id: int,
+    request: Request,
+    company: str = Query(default="默认公司"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    try:
+        result = _mutate(
+            action="delete_dictionary",
+            resource_type="STYLE_DICTIONARY",
+            resource_id=dictionary_id,
+            resource_no=None,
+            request=request,
+            current_user=current_user,
+            session=session,
+            mutate=lambda service: service.delete_dictionary(
+                dictionary_id=dictionary_id,
+                company=company,
                 actor=current_user.username,
             ),
         )

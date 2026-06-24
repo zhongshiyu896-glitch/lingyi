@@ -58,10 +58,18 @@ from app.schemas.style_master import StyleMasterUpdateRequest
 from app.schemas.style_master import StyleSkuItem
 from app.schemas.style_master import StyleSkuListData
 from app.schemas.style_master import StyleSkuUpsertRequest
+from app.services.recycle_bin_service import RecycleBinService
 
 STYLE_STATUSES = {"draft", "enabled", "disabled"}
 DICTIONARY_TYPES = {"season", "year", "brand", "color", "size"}
 DICTIONARY_STATUSES = {"active", "inactive"}
+DICTIONARY_CODE_PREFIXES = {
+    "season": "SEA",
+    "year": "YEAR",
+    "brand": "BRAND",
+    "color": "COLOR",
+    "size": "SIZE",
+}
 GALLERY_IMAGE_TYPES = {"main", "detail", "color", "process", "other"}
 STYLE_GALLERY_UPLOAD_PREFIX = "/uploads/images/style_gallery/"
 
@@ -851,15 +859,15 @@ class StyleMasterService:
     def create_dictionary(self, *, payload: StyleDictionaryCreateRequest, actor: str) -> StyleMasterMutationResult:
         company = self._require_text(payload.company, "company")
         dict_type = self._normalize_dictionary_type(payload.dict_type)
-        code = self._require_text(payload.code, "code")
-        values = {
+        requested_code = self._optional_text(payload.code)
+        values_for_hash = {
             "dict_type": dict_type,
-            "code": code,
+            "code": requested_code,
             "name": self._require_text(payload.name, "name"),
             "sort_no": int(payload.sort_no),
         }
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
-        request_hash = self._request_hash(operation="create", entity_type="dictionary", company=company, values=values)
+        request_hash = self._request_hash(operation="create", entity_type="dictionary", company=company, values=values_for_hash)
         idem = self._get_idempotency(entity_type="dictionary", company=company, idempotency_key=idempotency_key)
         if idem:
             self._ensure_same_idempotency(idem, operation="create", request_hash=request_hash)
@@ -867,6 +875,8 @@ class StyleMasterService:
             after = self._snapshot_dictionary(row)
             return self._dictionary_result(row=row, before=after, after=after, idempotent=True)
 
+        code = requested_code or self._next_dictionary_code(company=company, dict_type=dict_type)
+        values = {**values_for_hash, "code": code}
         if self._get_dictionary_by_code(company=company, dict_type=dict_type, code=code):
             raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"{dict_type}:{code} 已存在")
         try:
@@ -985,6 +995,48 @@ class StyleMasterService:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
         after = self._snapshot_dictionary(row)
         return self._dictionary_result(row=row, before=before, after=after)
+
+    def delete_dictionary(
+        self,
+        *,
+        dictionary_id: int,
+        company: str,
+        actor: str,
+    ) -> StyleMasterMutationResult:
+        company = self._require_text(company, "company")
+        row = self._get_dictionary_for_mutation(dictionary_id=dictionary_id, company=company, allow_inactive=True)
+        reference_no = self._referencing_style_no(row)
+        if reference_no:
+            raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"字典 {row.dict_type}:{row.code} 已被款式 {reference_no} 引用，不能删除")
+
+        before = self._snapshot_dictionary(row)
+        try:
+            RecycleBinService(self.session).move_style_dictionary_to_trash(row=row, actor=actor)
+            self.session.query(LyStyleMasterIdempotency).filter(
+                LyStyleMasterIdempotency.entity_type == "dictionary",
+                LyStyleMasterIdempotency.record_id == int(row.id),
+            ).delete(synchronize_session=False)
+            self.session.delete(row)
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+
+        after = {
+            "id": int(before["id"]),
+            "company": before["company"],
+            "dict_type": before["dict_type"],
+            "code": before["code"],
+            "name": before["name"],
+            "deleted": True,
+        }
+        return StyleMasterMutationResult(
+            item=after,
+            before=before,
+            after=after,
+            resource_type="STYLE_DICTIONARY",
+            resource_id=int(before["id"]),
+            resource_no=f"{before['dict_type']}:{before['code']}",
+        )
 
     def _ensure_dictionary_refs(self, *, company: str, ys_season: str, ys_year: str, ys_brand: str) -> None:
         refs = {
@@ -1465,6 +1517,47 @@ class StyleMasterService:
             )
             .first()
         )
+
+    def _referencing_style_no(self, row: LyStyleDictionary) -> str | None:
+        styles = self.session.query(LyStyleMaster).filter(LyStyleMaster.company == row.company).all()
+        for style in styles:
+            if row.dict_type == "season" and style.ys_season == row.code:
+                return str(style.ys_style_no)
+            if row.dict_type == "year" and style.ys_year == row.code:
+                return str(style.ys_style_no)
+            if row.dict_type == "brand" and style.ys_brand == row.code:
+                return str(style.ys_style_no)
+            if row.dict_type == "color" and self._style_pair_contains(style.colors, "ys_color_code", row.code):
+                return str(style.ys_style_no)
+            if row.dict_type == "size" and self._style_pair_contains(style.sizes, "ys_size_code", row.code):
+                return str(style.ys_style_no)
+        return None
+
+    @staticmethod
+    def _style_pair_contains(items: Any, code_key: str, code: str) -> bool:
+        if not isinstance(items, list):
+            return False
+        return any(isinstance(item, dict) and str(item.get(code_key) or "") == code for item in items)
+
+    def _next_dictionary_code(self, *, company: str, dict_type: str) -> str:
+        prefix = DICTIONARY_CODE_PREFIXES[self._normalize_dictionary_type(dict_type)]
+        existing_codes = {
+            str(row[0])
+            for row in self.session.query(LyStyleDictionary.code)
+            .filter(
+                LyStyleDictionary.company == company,
+                LyStyleDictionary.dict_type == dict_type,
+                LyStyleDictionary.code.like(f"{prefix}-%"),
+            )
+            .all()
+        }
+        next_number = len(existing_codes) + 1
+        while next_number < 1_000_000:
+            candidate = f"{prefix}-{next_number:06d}"
+            if candidate not in existing_codes:
+                return candidate
+            next_number += 1
+        raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"{prefix} 自动编码已用尽")
 
     def _insert_idempotency(
         self,

@@ -1371,26 +1371,77 @@ class ProductionPlanTest(unittest.TestCase):
             self.assertEqual(session.query(LyFactoryPacking).count(), 1)
             self.assertEqual(session.query(LyProductionPlanOperation).count(), 1)
 
-    def test_material_check_requires_warehouse(self) -> None:
+    def test_material_check_without_warehouse_uses_default_simplified_mode(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="supplier",
+                    company="COMP-A",
+                    code="SUP-MAT-A",
+                    name="默认物料供应商",
+                    status="active",
+                    payload={},
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="material",
+                    company="COMP-A",
+                    code="MAT-A",
+                    name="主料 A",
+                    status="active",
+                    payload={
+                        "material_item_code": "MAT-A",
+                        "material_name": "主料 A",
+                        "supplier_code": "SUP-MAT-A",
+                        "supplier_name": "默认物料供应商",
+                    },
+                    version=1,
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
             create_response = self.client.post(
                 "/api/production/plans",
                 headers=self._headers(),
-                json=self._payload(idempotency_key="idem-pp-warehouse-required", planned_qty="12"),
+                json=self._payload(idempotency_key="idem-pp-default-warehouse", planned_qty="12"),
             )
+        self.assertEqual(create_response.status_code, 200, create_response.text)
         plan_id = create_response.json()["data"]["plan_id"]
+        payload = self._material_check_payload(
+            plan_id=plan_id,
+            idempotency_key="idem-material-default-warehouse",
+            warehouse=None,
+        )
+        payload.pop("warehouse", None)
 
         response = self.client.post(
             f"/api/production/plans/{plan_id}/material-check",
             headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
-            json=self._material_check_payload(
-                plan_id=plan_id,
-                idempotency_key="idem-material-warehouse-required",
-                warehouse=None,
-            ),
+            json=payload,
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()["data"]
+        self.assertEqual(data["snapshot_count"], 1)
+        snapshot = data["items"][0]
+        self.assertEqual(snapshot["warehouse"], "DEFAULT-MATERIAL-WH")
+        self.assertEqual(Decimal(str(snapshot["required_qty"])), Decimal("19.800000"))
+        self.assertEqual(Decimal(str(snapshot["available_qty"])), Decimal("0"))
+        self.assertEqual(Decimal(str(snapshot["shortage_qty"])), Decimal("19.800000"))
+        with self.SessionLocal() as session:
+            requirement = session.query(LyMaterialPurchaseRequirement).one()
+            self.assertEqual(str(requirement.warehouse), "DEFAULT-MATERIAL-WH")
+            self.assertEqual(str(requirement.status), "pending")
+            self.assertEqual(Decimal(str(requirement.required_qty)), Decimal("19.800000"))
+            self.assertEqual(Decimal(str(requirement.available_qty)), Decimal("0"))
+            self.assertEqual(Decimal(str(requirement.net_required_qty)), Decimal("19.800000"))
+            self.assertEqual(str(requirement.material_name), "主料 A")
+            self.assertEqual(str(requirement.supplier_name), "默认物料供应商")
 
     def test_material_check_rejects_inactive_warehouse_master(self) -> None:
         warehouse = "WIP-OFFLINE-001"

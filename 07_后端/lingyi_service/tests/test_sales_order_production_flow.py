@@ -803,7 +803,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                     "item_code": "DEMO-TEE",
                     "item_name": "Ignored Name",
                     "color": "白色",
-                    "size": "M",
+                    "size": "L",
                     "qty": 20,
                     "rate": 80,
                     "uom": "件",
@@ -819,7 +819,6 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         draft_id = int(create_order.json()["data"]["id"])
 
         material_check_payload = {
-            "warehouse": "WH-BATCH",
             "company": "COMP-A",
             "planned_start_date": "2026-06-18",
             "operation": "sales_order_material_check",
@@ -862,6 +861,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         data = material_check.json()["data"]
         replay_data = material_check_replay.json()["data"]
         self.assertEqual(data["sales_order"], "SO-A4-BATCH-MAT-001")
+        self.assertEqual(data["warehouse"], "DEFAULT-MATERIAL-WH")
         self.assertEqual(data["plan_count"], 2)
         self.assertEqual(data["created_plan_count"], 2)
         self.assertEqual(data["snapshot_count"], 2)
@@ -909,7 +909,11 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertEqual([str(plan.status) for plan in plans], ["material_checked", "material_checked"])
             self.assertEqual([item.ys_material_calc_state for item in sales_items], ["已算料", "已算料"])
             self.assertEqual(sum(Decimal(str(row.required_qty)) for row in snapshots), Decimal("105.000000"))
+            self.assertEqual(sum(Decimal(str(row.available_qty)) for row in snapshots), Decimal("0.000000"))
+            self.assertEqual(sum(Decimal(str(row.shortage_qty)) for row in snapshots), Decimal("105.000000"))
             self.assertEqual(sum(Decimal(str(row.net_required_qty)) for row in requirements), Decimal("105.000000"))
+            self.assertEqual({row.warehouse for row in snapshots}, {"DEFAULT-MATERIAL-WH"})
+            self.assertEqual({row.warehouse for row in requirements}, {"DEFAULT-MATERIAL-WH"})
             self.assertEqual({row.status for row in requirements}, {"pending"})
             self.assertEqual({row.sales_order for row in requirements}, {"SO-A4-BATCH-MAT-001"})
             self.assertEqual(session.query(LyProductionPlanOperation).filter(LyProductionPlanOperation.operation == "material_check").count(), 2)
@@ -1804,6 +1808,49 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(plan_detail_data["sales_order_item"], "EXT-LINE-WHITE-L")
         self.assertEqual(plan_detail_data["color"], "白色")
         self.assertEqual(plan_detail_data["size"], "L")
+
+    def test_sales_order_rejects_duplicate_style_color_size_lines(self) -> None:
+        order_payload = {
+            "company": "COMP-A",
+            "customer": "CUST-A",
+            "operation": "create_draft",
+            "sales_order_no": "SO-A4-DUP-SKU-001",
+            "source_order_ref": "SO-A4-DUP-SKU-001",
+            "idempotency_key": "idem-so-a4-dup-sku-001",
+            "transaction_date": "2026-06-21",
+            "delivery_date": "2026-07-15",
+            "currency": "CNY",
+            "items": [
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Demo Tee",
+                    "color": "绿色",
+                    "size": "M",
+                    "qty": 20,
+                    "rate": 80,
+                    "uom": "件",
+                },
+                {
+                    "item_code": "DEMO-TEE",
+                    "item_name": "Demo Tee",
+                    "color": "绿色",
+                    "size": "M",
+                    "qty": 30,
+                    "rate": 80,
+                    "uom": "件",
+                },
+            ],
+        }
+
+        response = self.client.post(
+            "/api/sales-inventory/sales-orders/drafts",
+            headers=self._headers(),
+            json=order_payload,
+        )
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "SALES_ORDER_ITEM_DUPLICATED")
+        self.assertIn("款号、颜色、尺码重复", response.json()["message"])
 
     def test_sales_order_multi_sku_items_survive_update_and_plan_specific_line(self) -> None:
         with self.SessionLocal() as session:

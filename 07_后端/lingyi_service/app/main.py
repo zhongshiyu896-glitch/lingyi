@@ -106,6 +106,8 @@ from app.core.permissions import PERMISSION_READ
 from app.core.permissions import REPORT_DIAGNOSTIC
 from app.core.permissions import REPORT_EXPORT
 from app.core.permissions import REPORT_READ
+from app.core.permissions import RECYCLE_BIN_MANAGE
+from app.core.permissions import RECYCLE_BIN_READ
 from app.core.permissions import SYSTEM_CONFIG_READ
 from app.core.permissions import SYSTEM_DIAGNOSTIC
 from app.core.permissions import SYSTEM_DICTIONARY_READ
@@ -156,6 +158,8 @@ from app.routers.permission_governance import get_db_session as permission_gover
 from app.routers.permission_governance import router as permission_governance_router
 from app.routers.system_management import get_db_session as system_management_router_session_dep
 from app.routers.system_management import router as system_management_router
+from app.routers.recycle_bin import get_db_session as recycle_bin_router_session_dep
+from app.routers.recycle_bin import router as recycle_bin_router
 from app.routers.upload import get_db_session as upload_router_session_dep
 from app.routers.upload import router as upload_router
 from app.routers.upload import upload_root_dir
@@ -219,6 +223,7 @@ app.dependency_overrides[dashboard_router_session_dep] = get_db_session
 app.dependency_overrides[report_router_session_dep] = get_db_session
 app.dependency_overrides[permission_governance_router_session_dep] = get_db_session
 app.dependency_overrides[system_management_router_session_dep] = get_db_session
+app.dependency_overrides[recycle_bin_router_session_dep] = get_db_session
 app.dependency_overrides[upload_router_session_dep] = get_db_session
 upload_root_dir().mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(upload_root_dir())), name="uploads")
@@ -245,6 +250,7 @@ app.include_router(dashboard_router)
 app.include_router(report_router)
 app.include_router(permission_governance_router)
 app.include_router(system_management_router)
+app.include_router(recycle_bin_router)
 app.include_router(upload_router)
 if frontend_readiness_enabled():
     app.include_router(frontend_readiness_router)
@@ -479,6 +485,11 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         return "system", SYSTEM_DICTIONARY_READ, "SystemDictionaryCatalog", None
     if path in {"/api/system/health/summary", "/api/system/health/summary/"}:
         return "system", SYSTEM_DIAGNOSTIC, "SystemHealthSummary", None
+    if path.startswith("/api/recycle-bin"):
+        recycle_id = path.removeprefix("/api/recycle-bin/").split("/", 1)[0] if path.startswith("/api/recycle-bin/") else None
+        if method == "GET":
+            return "recycle_bin", RECYCLE_BIN_READ, "RECYCLE_BIN_ITEM", recycle_id or None
+        return "recycle_bin", RECYCLE_BIN_MANAGE, "RECYCLE_BIN_ITEM", recycle_id or None
 
     if path.startswith("/api/factory-statements"):
         if path in {"/api/factory-statements", "/api/factory-statements/"}:

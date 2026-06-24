@@ -163,6 +163,7 @@ from app.schemas.production import ProductionWorkOrderOutboxSummary
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
 from app.schemas.sales_inventory import SalesOrderDraftLineItemCreateRequest
+from app.services.recycle_bin_service import RecycleBinService
 from app.services.sales_inventory_service import SalesInventoryService
 from app.services.sales_inventory_service import SalesInventoryServiceError
 from app.services.erpnext_production_adapter import ERPNextSalesOrder
@@ -172,6 +173,8 @@ from app.services.production_work_order_outbox_service import ProductionWorkOrde
 PRODUCTION_WRITE_ENTRY_FROZEN_REASON = (
     "受控写门禁：create-work-order 与 sync-job-cards 仅允许 local-dev + local sqlite + scenario carrier 完整校验。"
 )
+DEFAULT_MATERIAL_CHECK_WAREHOUSE_CODE = "DEFAULT-MATERIAL-WH"
+DEFAULT_MATERIAL_CHECK_WAREHOUSE_NAME = "默认物料仓"
 PRODUCTION_MATERIAL_CHECK_ALLOWED_STATUSES = frozenset(
     {
         "planned",
@@ -777,6 +780,13 @@ class ProductionService:
                 code=PRODUCTION_BOM_NOT_ACTIVE,
                 message=f"仓库主数据不存在或已停用: {normalized}",
             )
+
+    @staticmethod
+    def _resolve_material_check_warehouse(warehouse: str | None) -> tuple[str, bool]:
+        normalized = str(warehouse or "").strip()
+        if normalized in {"", DEFAULT_MATERIAL_CHECK_WAREHOUSE_CODE, DEFAULT_MATERIAL_CHECK_WAREHOUSE_NAME}:
+            return DEFAULT_MATERIAL_CHECK_WAREHOUSE_CODE, True
+        return normalized, False
 
     @staticmethod
     def _empty_material_readiness_summary(*, include_private: bool = False) -> dict[str, Any]:
@@ -2560,6 +2570,7 @@ class ProductionService:
             self.session.query(LyProductionFollowupTemplateNodeOperation).filter(
                 LyProductionFollowupTemplateNodeOperation.node_id == int(row.id),
             ).update({"node_id": None}, synchronize_session=False)
+            RecycleBinService(self.session).move_production_followup_node_to_trash(row=row, actor=operator)
             self.session.delete(row)
             template.updated_by = operator
             self._insert_followup_template_node_operation(
@@ -5014,11 +5025,7 @@ class ProductionService:
         )
         native_order, native_item = self._ensure_plan_native_sales_order_link(plan=plan)
         self._ensure_native_sales_order_approved(order=native_order)
-        warehouse = self._require_non_blank(
-            payload.warehouse,
-            code=PRODUCTION_WAREHOUSE_REQUIRED,
-            message="warehouse 不能为空",
-        )
+        warehouse, simplified_material_check = self._resolve_material_check_warehouse(payload.warehouse)
         idempotency_key = self._require_non_blank(
             payload.idempotency_key,
             code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
@@ -5031,6 +5038,7 @@ class ProductionService:
                 "operation": "material_check",
                 "scenario_tag": str(payload.scenario_tag or "").strip(),
                 "warehouse": warehouse,
+                "material_check_mode": "small_factory" if simplified_material_check else "stock",
                 "sales_order": str(plan.sales_order),
                 "sales_order_item": str(plan.sales_order_item),
                 "item_code": str(plan.item_code),
@@ -5051,7 +5059,8 @@ class ProductionService:
                 sales_order_item=native_item,
             )
 
-        self._ensure_warehouse_master_active(company=str(plan.company), warehouse=warehouse)
+        if not simplified_material_check:
+            self._ensure_warehouse_master_active(company=str(plan.company), warehouse=warehouse)
         self._ensure_material_check_status_allowed(plan=plan)
 
         bom_rows, bom_source = self._material_bom_rows_for_plan(plan=plan)
@@ -5091,23 +5100,27 @@ class ProductionService:
             required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
             material_item_code = str(row.material_item_code)
             uom = str(getattr(row, "uom", None) or "米").strip() or "米"
-            availability_key = (str(plan.company), warehouse, material_item_code)
-            if availability_key not in available_budget:
-                stock_balance = self._local_material_stock_balance(
-                    company=str(plan.company),
-                    item_code=material_item_code,
-                    warehouse=warehouse,
-                )
-                reserved_qty = self._reserved_material_stock_for_open_plans(
-                    company=str(plan.company),
-                    item_code=material_item_code,
-                    warehouse=warehouse,
-                    exclude_plan_id=int(plan.id),
-                )
-                available_budget[availability_key] = max(stock_balance - reserved_qty, Decimal("0"))
-            available_qty = min(required_qty, max(available_budget[availability_key], Decimal("0")))
-            available_budget[availability_key] -= available_qty
-            shortage_qty = max(Decimal("0"), required_qty - available_qty)
+            if simplified_material_check:
+                available_qty = Decimal("0")
+                shortage_qty = required_qty
+            else:
+                availability_key = (str(plan.company), warehouse, material_item_code)
+                if availability_key not in available_budget:
+                    stock_balance = self._local_material_stock_balance(
+                        company=str(plan.company),
+                        item_code=material_item_code,
+                        warehouse=warehouse,
+                    )
+                    reserved_qty = self._reserved_material_stock_for_open_plans(
+                        company=str(plan.company),
+                        item_code=material_item_code,
+                        warehouse=warehouse,
+                        exclude_plan_id=int(plan.id),
+                    )
+                    available_budget[availability_key] = max(stock_balance - reserved_qty, Decimal("0"))
+                available_qty = min(required_qty, max(available_budget[availability_key], Decimal("0")))
+                available_budget[availability_key] -= available_qty
+                shortage_qty = max(Decimal("0"), required_qty - available_qty)
             bom_color = self._text(getattr(row, "color", None))
             bom_size = self._text(getattr(row, "size", None))
             bom_part = self._text(getattr(row, "part", None))
@@ -5211,23 +5224,21 @@ class ProductionService:
         order, lines = self._load_native_sales_order_with_items(sales_order=sales_order, company=payload.company)
         company = str(order.company)
         self._ensure_native_sales_order_approved(order=order)
-        warehouse = self._require_non_blank(
-            payload.warehouse,
-            code=PRODUCTION_WAREHOUSE_REQUIRED,
-            message="warehouse 不能为空",
-        )
+        warehouse, simplified_material_check = self._resolve_material_check_warehouse(payload.warehouse)
         parent_idempotency = self._require_non_blank(
             payload.idempotency_key,
             code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
             message="idempotency_key 不能为空",
         )
-        self._ensure_warehouse_master_active(company=company, warehouse=warehouse)
+        if not simplified_material_check:
+            self._ensure_warehouse_master_active(company=company, warehouse=warehouse)
         parent_request_hash = self._production_operation_request_hash(
             {
                 "sales_order": str(order.sales_order_no),
                 "company": company,
                 "operation": operation,
                 "warehouse": warehouse,
+                "material_check_mode": "small_factory" if simplified_material_check else "stock",
                 "planned_start_date": payload.planned_start_date.isoformat() if payload.planned_start_date else None,
                 "lines": [
                     {

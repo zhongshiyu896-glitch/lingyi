@@ -244,7 +244,7 @@ class StyleDictionaryCreateRequest(BaseModel):
     operation: Literal["create"] = "create"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     dict_type: StyleDictionaryType
-    code: str = Field(..., min_length=1, max_length=140)
+    code: str | None = Field(default=None, min_length=1, max_length=140)
     name: str = Field(..., min_length=1, max_length=255)
     sort_no: int = Field(default=10, ge=0)
     idempotency_key: str = Field(..., min_length=1, max_length=140)

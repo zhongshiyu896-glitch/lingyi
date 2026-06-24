@@ -68,6 +68,7 @@ from app.schemas.sample import SampleTrackingEventItem
 from app.schemas.sample import SampleTrackingEventListData
 from app.schemas.sample import SampleTrackingTemplateCreateRequest
 from app.schemas.sample import SampleTrackingTemplateItem
+from app.services.recycle_bin_service import RecycleBinService
 from app.schemas.sample import SampleTrackingTemplateListData
 from app.schemas.sample import SampleTrackingTemplateUpdateRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
@@ -247,6 +248,8 @@ class SampleService:
                 order=row,
                 actor=actor,
                 idempotency_key=f"create:{idempotency_key}",
+                colors=payload.bom_colors,
+                sizes=payload.bom_sizes,
             )
             self._insert_idempotency(
                 entity_type="order",
@@ -578,8 +581,13 @@ class SampleService:
             .order_by(LyApparelBomItem.id.asc())
             .all()
         )
+        source_items = self._filter_style_bom_items_for_sample(
+            source_items,
+            colors=payload.colors,
+            sizes=payload.sizes,
+        )
         if not source_items:
-            raise BusinessException(code=BOM_NOT_FOUND, message="款式用料 BOM 明细为空，无法复制到样板")
+            raise BusinessException(code=BOM_NOT_FOUND, message="所选颜色/尺码没有匹配的款式用料 BOM 明细")
 
         self._ensure_sample_material_bom_source_items_ready(company=company, items=source_items)
         request_hash = self._request_hash(
@@ -588,6 +596,8 @@ class SampleService:
             order_id=order_id,
             source_bom_id=int(style_bom.id),
             source_item_ids=[int(item.id) for item in source_items],
+            colors=self._normalize_bom_dimension_filter(payload.colors),
+            sizes=self._normalize_bom_dimension_filter(payload.sizes),
         )
         existing_operation = self._get_material_bom_operation(
             company=company,
@@ -1084,6 +1094,7 @@ class SampleService:
             )
             template.updated_by = actor
             template.version = int(template.version or 0) + 1
+            RecycleBinService(self.session).move_sample_tracking_node_to_trash(row=row, actor=actor, company=company)
             self.session.delete(row)
             self.session.flush()
         except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
@@ -1415,6 +1426,8 @@ class SampleService:
         order: LySampleOrder,
         actor: str,
         idempotency_key: str,
+        colors: list[str] | None = None,
+        sizes: list[str] | None = None,
     ) -> None:
         try:
             style_bom = self._resolve_style_material_bom_for_sample(order=order, style_bom_id=None)
@@ -1428,8 +1441,13 @@ class SampleService:
             .order_by(LyApparelBomItem.id.asc())
             .all()
         )
+        source_items = self._filter_style_bom_items_for_sample(
+            source_items,
+            colors=colors,
+            sizes=sizes,
+        )
         if not source_items:
-            raise BusinessException(code=BOM_NOT_FOUND, message="款式用料 BOM 明细为空，无法复制到样板")
+            raise BusinessException(code=BOM_NOT_FOUND, message="所选颜色/尺码没有匹配的款式用料 BOM 明细")
         self._ensure_sample_material_bom_source_items_ready(company=str(order.company), items=source_items)
         request_hash = self._request_hash(
             operation="sample_material_bom_auto_copy_from_style",
@@ -1437,6 +1455,8 @@ class SampleService:
             order_id=int(order.id),
             source_bom_id=int(style_bom.id),
             source_item_ids=[int(item.id) for item in source_items],
+            colors=self._normalize_bom_dimension_filter(colors),
+            sizes=self._normalize_bom_dimension_filter(sizes),
         )
         existing_operation = self._get_material_bom_operation(
             company=str(order.company),
@@ -1464,6 +1484,36 @@ class SampleService:
             response=data,
             actor=actor,
         )
+
+    def _normalize_bom_dimension_filter(self, values: list[str] | None) -> list[str]:
+        normalized: list[str] = []
+        for value in values or []:
+            text = self._optional_text(value)
+            if text and text not in normalized:
+                normalized.append(text)
+        return normalized
+
+    def _matches_bom_dimension(self, item_value: Any, selected_values: list[str]) -> bool:
+        if not selected_values:
+            return True
+        text = self._optional_text(item_value)
+        return not text or text in selected_values
+
+    def _filter_style_bom_items_for_sample(
+        self,
+        items: list[LyApparelBomItem],
+        *,
+        colors: list[str] | None = None,
+        sizes: list[str] | None = None,
+    ) -> list[LyApparelBomItem]:
+        selected_colors = self._normalize_bom_dimension_filter(colors)
+        selected_sizes = self._normalize_bom_dimension_filter(sizes)
+        return [
+            item
+            for item in items
+            if self._matches_bom_dimension(item.color, selected_colors)
+            and self._matches_bom_dimension(getattr(item, "size", None), selected_sizes)
+        ]
 
     def _replace_sample_material_bom_from_style(
         self,

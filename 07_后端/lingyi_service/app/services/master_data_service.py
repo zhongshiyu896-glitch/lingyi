@@ -33,6 +33,7 @@ from app.schemas.master_data import MasterDataDeactivateRequest
 from app.schemas.master_data import MasterDataItem
 from app.schemas.master_data import MasterDataListData
 from app.schemas.master_data import MasterDataUpdateRequest
+from app.services.recycle_bin_service import RecycleBinService
 
 ENTITY_PATH_TO_TYPE = {
     "customers": "customer",
@@ -41,6 +42,7 @@ ENTITY_PATH_TO_TYPE = {
     "warehouses": "warehouse",
     "materials": "material",
     "sample-types": "sample_type",
+    "sample-stages": "sample_stage",
     "common-addresses": "common_address",
     "trade-terms": "trade_term",
     "invoice-types": "invoice_type",
@@ -59,6 +61,7 @@ ENTITY_CODE_PREFIXES = {
     "warehouse": "WH",
     "material": "MAT",
     "sample_type": "ST",
+    "sample_stage": "SSTG",
     "common_address": "ADDR",
     "trade_term": "TERM",
     "invoice_type": "INV",
@@ -432,6 +435,30 @@ class MasterDataService:
         after = self._snapshot(row)
         return MasterDataMutationResult(item=self._to_item(row), before=before, after=after)
 
+    def delete_record(
+        self,
+        *,
+        entity_type: str,
+        record_id: int,
+        company: str,
+        actor: str,
+    ) -> MasterDataMutationResult:
+        normalized_entity_type = self._normalize_entity_type(entity_type)
+        normalized_company = self._require_text(company, "company")
+        row = self._get_record_for_mutation(entity_type=normalized_entity_type, record_id=record_id, company=normalized_company)
+        if normalized_entity_type == "warehouse" and self._has_warehouse_children(company=normalized_company, parent_code=str(row.code)):
+            raise BusinessException(code=MASTER_DATA_CONFLICT, message="存在仓库子级，不能删除父级")
+
+        item = self._to_item(row)
+        before = self._snapshot(row)
+        try:
+            RecycleBinService(self.session).move_master_data_to_trash(row=row, actor=actor)
+            self.session.delete(row)
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        return MasterDataMutationResult(item=item, before=before, after={**before, "deleted": True, "deleted_by": actor})
+
     def get_record_for_permission(self, *, entity_type: str, record_id: int, company: str | None = None) -> MasterDataItem:
         normalized_entity_type = self._normalize_entity_type(entity_type)
         query = self.session.query(LyMasterDataRecord).filter(
@@ -770,6 +797,24 @@ class MasterDataService:
                 LyMasterDataRecord.entity_type == "warehouse",
                 LyMasterDataRecord.company == company,
                 LyMasterDataRecord.status == "active",
+            )
+            .all()
+        )
+        return any(
+            (
+                self._optional_text(dict(row.payload or {}).get("parent_code"))
+                or self._optional_text(dict(row.payload or {}).get("parentCode"))
+            )
+            == parent_code
+            for row in rows
+        )
+
+    def _has_warehouse_children(self, *, company: str, parent_code: str) -> bool:
+        rows = (
+            self.session.query(LyMasterDataRecord)
+            .filter(
+                LyMasterDataRecord.entity_type == "warehouse",
+                LyMasterDataRecord.company == company,
             )
             .all()
         )

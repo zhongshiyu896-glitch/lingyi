@@ -22,6 +22,8 @@ from app.models.bom import Base as BomBase
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyApparelBomWriteOperation
+from app.models.recycle_bin import Base as RecycleBinBase
+from app.models.recycle_bin import LyRecycleBinItem
 from app.models.sample import Base as SampleBase
 from app.models.sample import LySampleMaterialBom
 from app.models.sample import LySampleMaterialBomItem
@@ -59,6 +61,7 @@ class SampleApiTest(unittest.TestCase):
         BomBase.metadata.create_all(bind=cls.engine)
         SampleBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
+        RecycleBinBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -89,6 +92,7 @@ class SampleApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyRecycleBinItem).delete()
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
@@ -1070,6 +1074,7 @@ class SampleApiTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LySampleTrackingNode).count(), 0)
+            self.assertEqual(session.query(LyRecycleBinItem).filter_by(module="sample", entity_type="sample_tracking_node").count(), 1)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 7)
 
     def test_tracking_template_list_orders_by_latest_created_not_latest_updated(self) -> None:

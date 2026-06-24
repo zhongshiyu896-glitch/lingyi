@@ -4882,6 +4882,37 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(str(requirement.status), "pending")
             self.assertIsNone(requirement.purchase_order_id)
 
+    def test_from_requirements_auto_creates_default_material_warehouse(self) -> None:
+        warehouse = "DEFAULT-MATERIAL-WH"
+        requirement_id = self._seed_requirement(requirement_no="REQ-A6-DEFAULT-WH", warehouse=warehouse)
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-default-warehouse"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_id],
+                idempotency_key="idem-a6-default-warehouse",
+                purchase_no="PO-A6-DEFAULT-WH",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 201, response.text)
+        data = response.json()["data"]
+        purchase_order = data["purchase_order"]
+        self.assertEqual(purchase_order["purchase_no"], "PO-A6-DEFAULT-WH")
+        self.assertEqual(purchase_order["items"][0]["warehouse"], warehouse)
+        with self.SessionLocal() as session:
+            default_warehouse = (
+                session.query(LyMasterDataRecord)
+                .filter_by(company=self.COMPANY, entity_type="warehouse", code=warehouse)
+                .one()
+            )
+            self.assertEqual(str(default_warehouse.name), "默认物料仓")
+            self.assertEqual(str(default_warehouse.status), "active")
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(requirement_no="REQ-A6-DEFAULT-WH").one()
+            self.assertEqual(str(requirement.status), "purchased")
+            self.assertEqual(str(requirement.warehouse), warehouse)
+
     def test_from_requirements_rejects_missing_or_inactive_unit_master(self) -> None:
         with self.SessionLocal() as session:
             self._seed_material_unit(session=session, code="MU-INACTIVE-YARD", name="英码", status="inactive")

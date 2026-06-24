@@ -262,6 +262,7 @@ class SalesInventoryService:
                     "delivery_date": line.delivery_date,
                 }
             )
+        self._ensure_unique_sales_order_line_dimensions(line_rows)
 
         request_hash = self._native_sales_order_request_hash(
             {
@@ -447,6 +448,7 @@ class SalesInventoryService:
                     "delivery_date": line.delivery_date,
                 }
             )
+        self._ensure_unique_sales_order_line_dimensions(line_rows)
 
         request_hash = self._native_sales_order_request_hash(
             {
@@ -5442,6 +5444,24 @@ class SalesInventoryService:
         if row.get("requested_style_master_id") is not None:
             item["style_master_id"] = int(row["style_master_id"])
         return item
+
+    @classmethod
+    def _ensure_unique_sales_order_line_dimensions(cls, rows: list[dict[str, Any]]) -> None:
+        seen: dict[tuple[str, str, str], int] = {}
+        for index, row in enumerate(rows, start=1):
+            key = (
+                cls._text(row.get("item_code")) or "",
+                cls._text(row.get("color")) or "",
+                cls._text(row.get("size")) or "",
+            )
+            first_index = seen.get(key)
+            if first_index is not None:
+                raise SalesInventoryServiceError(
+                    409,
+                    "SALES_ORDER_ITEM_DUPLICATED",
+                    f"订单明细第 {index} 行与第 {first_index} 行款号、颜色、尺码重复，请合并数量后再保存",
+                )
+            seen[key] = index
 
     @staticmethod
     def _sales_order_draft_response_json(response: SalesOrderDraftData) -> dict[str, Any]:

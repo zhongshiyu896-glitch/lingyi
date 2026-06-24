@@ -43,6 +43,8 @@ class SampleOrderCreateRequest(SampleOrderWriteBase):
     style_master_id: int = Field(..., gt=0)
     operation: Literal["create"] = "create"
     idempotency_key: str = Field(..., min_length=1, max_length=140)
+    bom_colors: list[str] = Field(default_factory=list)
+    bom_sizes: list[str] = Field(default_factory=list)
 
 
 class SampleOrderUpdateRequest(BaseModel):
@@ -318,6 +320,8 @@ class SampleMaterialBomCopyRequest(BaseModel):
     company: str = Field(default="默认公司", min_length=1, max_length=140)
     idempotency_key: str = Field(..., min_length=1, max_length=140)
     style_bom_id: int | None = Field(default=None, ge=1)
+    colors: list[str] = Field(default_factory=list)
+    sizes: list[str] = Field(default_factory=list)
 
 
 class SampleMaterialBomExplodeRequest(BaseModel):

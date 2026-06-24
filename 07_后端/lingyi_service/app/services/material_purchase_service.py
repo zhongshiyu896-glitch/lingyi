@@ -52,6 +52,9 @@ from app.schemas.material_purchase import MaterialPurchaseRequirementListItem
 from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderData
 from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderRequest
 
+DEFAULT_MATERIAL_WAREHOUSE_CODE = "DEFAULT-MATERIAL-WH"
+DEFAULT_MATERIAL_WAREHOUSE_NAME = "默认物料仓"
+
 
 @dataclass(frozen=True)
 class PurchaseMutationResult:
@@ -454,6 +457,10 @@ class MaterialPurchaseService:
             company=str(plan.company),
             material_codes=[str(row.material_item_code) for row in snapshots if row.material_item_code],
         )
+        material_suppliers = self._material_default_supplier_lookup(
+            company=str(plan.company),
+            material_codes=[str(row.material_item_code) for row in snapshots if row.material_item_code],
+        )
 
         synced: list[LyMaterialPurchaseRequirement] = []
         pending_by_key: dict[
@@ -542,7 +549,9 @@ class MaterialPurchaseService:
                 row.sales_order_item = self._optional_text(plan.sales_order_item)
                 row.item_code = self._optional_text(plan.item_code)
                 row.material_name = material_names.get(material_code, material_code)
-                row.supplier_name = self._extract_supplier_from_remark(bom_item.remark if bom_item is not None else None)
+                row.supplier_name = self._extract_supplier_from_remark(
+                    bom_item.remark if bom_item is not None else None
+                ) or material_suppliers.get(material_code)
                 row.required_qty = required_qty
                 row.available_qty = available_qty
                 row.net_required_qty = net_required_qty
@@ -707,6 +716,8 @@ class MaterialPurchaseService:
         )
         warehouses = [warehouse for requirement in requirements if (warehouse := self._optional_text(requirement.warehouse))]
         if warehouses:
+            if DEFAULT_MATERIAL_WAREHOUSE_CODE in warehouses:
+                self._ensure_default_material_warehouse(company=company, actor=actor)
             self._ensure_active_master_records(
                 company=company,
                 entity_type="warehouse",
@@ -2722,6 +2733,45 @@ class MaterialPurchaseService:
                 message=f"{label}不存在或已停用: {', '.join(invalid_values)}",
             )
 
+    def _ensure_default_material_warehouse(self, *, company: str, actor: str) -> None:
+        try:
+            row = (
+                self.session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "warehouse",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code == DEFAULT_MATERIAL_WAREHOUSE_CODE,
+                )
+                .first()
+            )
+            now = datetime.now(UTC)
+            if row is None:
+                self.session.add(
+                    LyMasterDataRecord(
+                        entity_type="warehouse",
+                        company=company,
+                        code=DEFAULT_MATERIAL_WAREHOUSE_CODE,
+                        name=DEFAULT_MATERIAL_WAREHOUSE_NAME,
+                        status="active",
+                        payload={"system_default": True, "warehouse_type": "material"},
+                        version=1,
+                        created_by=actor,
+                        updated_by=actor,
+                        updated_at=now,
+                    )
+                )
+            elif str(row.status) != "active":
+                row.status = "active"
+                row.name = DEFAULT_MATERIAL_WAREHOUSE_NAME
+                row.updated_by = actor
+                row.updated_at = now
+                row.deactivated_by = None
+                row.deactivated_at = None
+                row.deactivate_reason = None
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+
     def _material_name_lookup(self, *, company: str, material_codes: list[str]) -> dict[str, str]:
         codes: list[str] = []
         for code in material_codes:
@@ -2743,6 +2793,64 @@ class MaterialPurchaseService:
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
         return {str(row.code): str(row.name) for row in rows if str(row.name or "").strip()}
+
+    def _material_default_supplier_lookup(self, *, company: str, material_codes: list[str]) -> dict[str, str]:
+        codes: list[str] = []
+        for code in material_codes:
+            normalized = str(code or "").strip()
+            if normalized and normalized not in codes:
+                codes.append(normalized)
+        if not codes or not self._has_sqlite_tables({LyMasterDataRecord.__tablename__}):
+            return {}
+        try:
+            rows = (
+                self.session.query(LyMasterDataRecord.code, LyMasterDataRecord.payload)
+                .filter(
+                    LyMasterDataRecord.entity_type == "material",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.status == "active",
+                    LyMasterDataRecord.code.in_(codes),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+
+        result: dict[str, str] = {}
+        supplier_code_candidates: dict[str, str] = {}
+        for row in rows:
+            material_code = str(row.code)
+            payload = self._payload_dict(row.payload)
+            supplier_name = self._optional_text(payload.get("supplier_name") or payload.get("supplierName"))
+            if supplier_name:
+                result[material_code] = supplier_name
+                continue
+            supplier_code = self._optional_text(payload.get("supplier_code") or payload.get("supplierCode"))
+            if supplier_code:
+                result[material_code] = supplier_code
+                supplier_code_candidates[material_code] = supplier_code
+
+        if not supplier_code_candidates:
+            return result
+        try:
+            supplier_rows = (
+                self.session.query(LyMasterDataRecord.code, LyMasterDataRecord.name)
+                .filter(
+                    LyMasterDataRecord.entity_type == "supplier",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.status == "active",
+                    LyMasterDataRecord.code.in_(sorted(set(supplier_code_candidates.values()))),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+        supplier_names = {str(row.code): str(row.name) for row in supplier_rows if self._optional_text(row.name)}
+        for material_code, supplier_code in supplier_code_candidates.items():
+            supplier_name = supplier_names.get(supplier_code)
+            if supplier_name:
+                result[material_code] = supplier_name
+        return result
 
     def _has_sqlite_tables(self, table_names: set[str]) -> bool:
         bind = self.session.get_bind()
@@ -3033,6 +3141,18 @@ class MaterialPurchaseService:
             return None
         text = str(value).strip()
         return text or None
+
+    @staticmethod
+    def _payload_dict(value: Any) -> dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except (TypeError, ValueError):
+                return {}
+            return parsed if isinstance(parsed, dict) else {}
+        return {}
 
     def _require_text(self, value: Any, field_name: str) -> str:
         text = self._optional_text(value)

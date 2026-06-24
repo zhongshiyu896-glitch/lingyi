@@ -22,6 +22,8 @@ from app.models.production import LyProductionFollowupTemplateNode
 from app.models.production import LyProductionFollowupTemplateNodeOperation
 from app.models.production import LyProductionFollowupTemplateOperation
 from app.models.production import LyProductionPlan
+from app.models.recycle_bin import Base as RecycleBinBase
+from app.models.recycle_bin import LyRecycleBinItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.production import get_db_session as production_db_dep
 
@@ -40,6 +42,7 @@ class ProductionFollowupTemplateApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         ProductionBase.metadata.create_all(bind=cls.engine)
+        RecycleBinBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -70,6 +73,7 @@ class ProductionFollowupTemplateApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyRecycleBinItem).delete()
             session.query(LyProductionFollowupTemplateNodeOperation).delete()
             session.query(LyProductionFollowupTemplateOperation).delete()
             session.query(LyProductionFollowupTemplateNode).delete()
@@ -307,6 +311,7 @@ class ProductionFollowupTemplateApiTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyProductionFollowupTemplateNode).count(), 0)
+            self.assertEqual(session.query(LyRecycleBinItem).filter_by(module="production", entity_type="production_followup_node").count(), 1)
             self.assertEqual(session.query(LyProductionFollowupTemplateNodeOperation).count(), 3)
             self.assertEqual(
                 session.query(LyOperationAuditLog)

@@ -66,6 +66,7 @@ from app.models.production import LyProductionPlan  # noqa: E402
 from app.models.production import LyProductionPlanMaterial  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 import app.models.quality_outbox  # noqa: E402,F401
+from app.models.recycle_bin import Base as RecycleBinBase  # noqa: E402
 from app.models.sample import Base as SampleBase  # noqa: E402
 from app.models.sales_order import Base as SalesOrderBase  # noqa: E402
 from app.models.sales_order import LySalesOrder  # noqa: E402
@@ -111,6 +112,7 @@ def _create_local_tables() -> None:
     QualityBase.metadata.create_all(bind=main_module.engine)
     StyleProfitBase.metadata.create_all(bind=main_module.engine)
     WorkshopBase.metadata.create_all(bind=main_module.engine)
+    RecycleBinBase.metadata.create_all(bind=main_module.engine)
 
     # Subcontract models reference BOM metadata from a separate declarative Base.
     # Copying the table definition into this metadata is enough for SQLite local DDL.
@@ -157,6 +159,7 @@ def _ensure_local_master_data_config_entities() -> None:
         return
     required_fragments = [
         "'sample_type'",
+        "'sample_stage'",
         "'common_address'",
         "'trade_term'",
         "'invoice_type'",
@@ -195,7 +198,7 @@ def _ensure_local_master_data_config_entities() -> None:
                 deactivated_at DATETIME,
                 deactivate_reason TEXT,
                 PRIMARY KEY (id),
-                CONSTRAINT ck_ly_master_data_entity_type CHECK (entity_type IN ('customer','supplier','factory','warehouse','material','sample_type','common_address','trade_term','invoice_type','cost_type','size_sort','distribution_channel','bank_account')),
+                CONSTRAINT ck_ly_master_data_entity_type CHECK (entity_type IN ('customer','supplier','factory','warehouse','material','sample_type','sample_stage','common_address','trade_term','invoice_type','cost_type','size_sort','distribution_channel','bank_account')),
                 CONSTRAINT ck_ly_master_data_status CHECK (status IN ('active','inactive'))
             );
             INSERT INTO ly_master_data_record_new (

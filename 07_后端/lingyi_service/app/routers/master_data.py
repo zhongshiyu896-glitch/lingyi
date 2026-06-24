@@ -561,3 +561,99 @@ def deactivate_master_data(
         )
         raise HTTPException(status_code=error.status_code, detail={"code": error.code, "message": error.message, "data": None}) from exc
     return _ok(result.item)
+
+
+@router.delete("/{entity_path}/{record_id}")
+def delete_master_data(
+    entity_path: str,
+    record_id: int,
+    request: Request,
+    company: str = Query(..., min_length=1, max_length=140),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    entity_type = MasterDataService.entity_type_from_path(entity_path)
+    action = "delete"
+    _require_action(
+        session=session,
+        request=request,
+        current_user=current_user,
+        action=MASTER_DATA_MANAGE,
+        entity_type=entity_type,
+        resource_id=record_id,
+    )
+    resource_no: str | None = None
+    try:
+        service = MasterDataService(session)
+        existing = service.get_record_for_permission(entity_type=entity_type, record_id=record_id, company=company)
+        resource_no = existing.code
+        scope = _master_data_scope_target(
+            entity_type=entity_type,
+            company=company,
+            code=existing.code,
+            payload=existing.payload,
+        )
+        permissions = _master_data_scope_permissions(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_MANAGE,
+            entity_type=entity_type,
+            resource_id=record_id,
+            resource_no=existing.code,
+        )
+        _ensure_master_data_scope(
+            session=session,
+            request=request,
+            current_user=current_user,
+            action=MASTER_DATA_MANAGE,
+            entity_type=entity_type,
+            resource_id=record_id,
+            resource_no=existing.code,
+            scope=scope,
+            permissions=permissions,
+        )
+        result = service.delete_record(
+            entity_type=entity_type,
+            record_id=record_id,
+            company=company,
+            actor=current_user.username,
+        )
+        _commit_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            entity_type=entity_type,
+            action=action,
+            result=result,
+        )
+    except HTTPException:
+        raise
+    except AuditWriteFailed as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.message, "data": None}) from exc
+    except AppException as exc:
+        _record_failure_and_commit(
+            session=session,
+            request=request,
+            current_user=current_user,
+            entity_type=entity_type,
+            action=action,
+            resource_id=record_id,
+            resource_no=resource_no,
+            error_code=exc.code,
+        )
+        return _err(exc)
+    except Exception as exc:
+        error = BusinessException(code=INTERNAL_ERROR, message=message_of(INTERNAL_ERROR))
+        _record_failure_and_commit(
+            session=session,
+            request=request,
+            current_user=current_user,
+            entity_type=entity_type,
+            action=action,
+            resource_id=record_id,
+            resource_no=resource_no,
+            error_code=error.code,
+        )
+        raise HTTPException(status_code=error.status_code, detail={"code": error.code, "message": error.message, "data": None}) from exc
+    return _ok(result.item)
