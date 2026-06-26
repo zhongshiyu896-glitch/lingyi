@@ -82,6 +82,8 @@ from app.schemas.production import ProductionPlanCreateRequest
 from app.schemas.production import ProductionPlanDetailData
 from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionSalesOrderPlanCreateData
+from app.schemas.production import ProductionSalesOrderPlanCreateRequest
 from app.schemas.production import ProductionQuoteConvertData
 from app.schemas.production import ProductionQuoteConvertRequest
 from app.schemas.production import ProductionQuoteCopyRequest
@@ -459,6 +461,109 @@ def create_production_plan(
             resource_no=payload.sales_order,
             before_data=None,
             after_data={"item_code": payload.item_code},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.post("/sales-orders/{sales_order}/plans", response_model=ApiResponse[ProductionSalesOrderPlanCreateData])
+def create_sales_order_production_plan(
+    sales_order: str,
+    payload: ProductionSalesOrderPlanCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_PLAN_CREATE
+    raw_request_id = request.headers.get("X-Request-ID")
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="sales_order",
+            resource_id=None,
+        )
+        service = _service(session=session, request=request)
+        scope_company, scope_item_codes = service.resolve_sales_order_plan_create_scope(
+            sales_order=sales_order,
+            payload=payload,
+        )
+        for item_code in scope_item_codes:
+            permission_service.ensure_production_resource_permission(
+                current_user=current_user,
+                request_obj=request,
+                action=action,
+                item_code=item_code,
+                company=scope_company,
+                resource_type="sales_order",
+                resource_id=None,
+                resource_no=sales_order,
+                enforce_action=False,
+            )
+
+        data = service.create_sales_order_plan(
+            sales_order=sales_order,
+            payload=payload,
+            operator=current_user.username,
+            request_id=raw_request_id,
+        )
+        audit.record_success(
+            module="production",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_order",
+            resource_id=None,
+            resource_no=sales_order,
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type="sales_order",
+            resource_id=None,
+            resource_no=sales_order,
+            before_data=None,
+            after_data={"company": payload.company, "sales_order_items": payload.sales_order_items},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type="sales_order",
+            resource_id=None,
+            resource_no=sales_order,
+            before_data=None,
+            after_data={"company": payload.company, "sales_order_items": payload.sales_order_items},
             error_code=app_exc.code,
         )
         return _app_err(app_exc)

@@ -33,6 +33,7 @@ class ProductionPlanCreateRequest(BaseModel):
     sales_order: str = Field(..., min_length=1, max_length=140)
     sales_order_item: str = Field(..., min_length=1, max_length=140)
     item_code: str = Field(..., min_length=1, max_length=140)
+    plan_group_no: Optional[str] = Field(default=None, max_length=64)
     bom_id: Optional[int] = Field(default=None, ge=1)
     planned_qty: Decimal = Field(..., gt=0)
     planned_start_date: Optional[date] = None
@@ -47,6 +48,7 @@ class ProductionPlanCreateData(BaseModel):
 
     plan_id: int
     plan_no: str
+    plan_group_no: Optional[str] = None
     status: str
     company: str
     sales_order_item: str
@@ -54,6 +56,48 @@ class ProductionPlanCreateData(BaseModel):
     size: Optional[str] = None
     planned_qty: Decimal
     sales_order_item_qty: Optional[Decimal] = None
+
+
+class ProductionSalesOrderPlanCreateRequest(BaseModel):
+    """Create one business production plan for one sales order."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    sales_order_items: Optional[List[str]] = Field(default=None)
+    planned_start_date: Optional[date] = None
+    operation: Optional[str] = Field(default=None, max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionSalesOrderPlanLineItem(BaseModel):
+    """Underlying plan row inside one business production plan."""
+
+    plan_id: int
+    plan_no: str
+    plan_group_no: str
+    sales_order_item: str
+    item_code: str
+    color: Optional[str] = None
+    size: Optional[str] = None
+    bom_id: int
+    bom_version: Optional[str] = None
+    planned_qty: Decimal
+    sales_order_item_qty: Optional[Decimal] = None
+    created_plan: bool = False
+
+
+class ProductionSalesOrderPlanCreateData(BaseModel):
+    """Create one business production plan response."""
+
+    plan_group_no: str
+    display_plan_no: str
+    sales_order: str
+    company: str
+    customer: Optional[str] = None
+    planned_start_date: Optional[date] = None
+    planned_qty: Decimal
+    line_count: int
+    created_plan_count: int
+    items: List[ProductionSalesOrderPlanLineItem]
 
 
 class ProductionPlanQuery(BaseModel):
@@ -97,6 +141,7 @@ class ProductionPlanListItem(BaseModel):
 
     id: int
     plan_no: str
+    plan_group_no: Optional[str] = None
     company: str
     sales_order: str
     sales_order_item: str
@@ -938,6 +983,7 @@ class ProductionPlanDetailData(BaseModel):
 
     id: int
     plan_no: str
+    plan_group_no: Optional[str] = None
     company: str
     sales_order: str
     sales_order_item: str

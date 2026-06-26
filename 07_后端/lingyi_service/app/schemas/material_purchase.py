@@ -52,9 +52,18 @@ class MaterialPurchaseOrderListItem(BaseModel):
     company: str
     purchase_no: str
     supplier_name: str
+    style_no: str | None = None
     item_code: str
     material_item_code: str
     material_name: str
+    bom_color: str | None = None
+    bom_size: str | None = None
+    specification: str | None = None
+    spec_by_size: dict[str, str] = Field(default_factory=dict)
+    bom_part: str | None = None
+    bom_version: str | None = None
+    requirement_ids: list[int] = Field(default_factory=list)
+    requirement_count: int = 0
     qty: Decimal
     received_qty: Decimal
     uom: str
@@ -120,6 +129,9 @@ class MaterialPurchaseRequirementListItem(BaseModel):
     bom_color: str | None = None
     bom_size: str | None = None
     bom_part: str | None = None
+    specification: str | None = None
+    spec_by_size: dict[str, str] = Field(default_factory=dict)
+    bom_version: str | None = None
     sales_order: str | None = None
     sales_order_item: str | None = None
     item_code: str | None = None

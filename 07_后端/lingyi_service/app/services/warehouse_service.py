@@ -3877,6 +3877,7 @@ class WarehouseService:
                 "qty": Decimal(str(row["qty"])),
                 "uom": self._text(row.get("uom")) or source_row.get("uom"),
                 "target_warehouse": self._text(row.get("warehouse")) or source_row.get("target_warehouse"),
+                "purchase_order_item_id": row.get("purchase_order_item_id") or source_row.get("purchase_order_item_id"),
                 "purchase_requirement_id": row.get("purchase_requirement_id"),
                 "sales_order_item": self._text(row.get("sales_order_item")),
                 "bom_color": self._text(row.get("bom_color")),
@@ -3912,6 +3913,7 @@ class WarehouseService:
                 "qty": Decimal(str(item["qty"])),
                 "uom": self._text(item.get("uom")),
                 "warehouse": self._text(item.get("target_warehouse")) or self._text(item.get("warehouse")),
+                "purchase_order_item_id": item.get("purchase_order_item_id"),
                 "purchase_requirement_id": item.get("purchase_requirement_id"),
             }
             for item in items
@@ -4776,6 +4778,9 @@ class WarehouseService:
             purchase_requirement_id = item.purchase_requirement_id
             if purchase_requirement_id is not None and purchase_requirement_id <= 0:
                 raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PAYLOAD", f"items[{idx}].purchase_requirement_id 必须大于 0")
+            purchase_order_item_id = item.purchase_order_item_id
+            if purchase_order_item_id is not None and purchase_order_item_id <= 0:
+                raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PAYLOAD", f"items[{idx}].purchase_order_item_id 必须大于 0")
 
             normalized_rows.append(
                 {
@@ -4786,6 +4791,7 @@ class WarehouseService:
                     "serial_no": self._text(item.serial_no),
                     "source_warehouse": source_warehouse,
                     "target_warehouse": target_warehouse,
+                    "purchase_order_item_id": purchase_order_item_id,
                     "purchase_requirement_id": purchase_requirement_id,
                     "sales_order_item": self._text(item.sales_order_item),
                     "bom_color": self._text(item.bom_color),

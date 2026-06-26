@@ -509,6 +509,7 @@ class WarehouseStockEntryDraftItemCreateRequest(BaseModel):
     serial_no: str | None = None
     source_warehouse: str | None = None
     target_warehouse: str | None = None
+    purchase_order_item_id: int | None = None
     purchase_requirement_id: int | None = None
     sales_order_item: str | None = None
     bom_color: str | None = None

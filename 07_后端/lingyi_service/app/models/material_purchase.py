@@ -295,6 +295,87 @@ class LyMaterialPurchasePaymentOperation(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class LyMaterialPurchaseReturn(Base):
+    """FastAPI-native purchase return document with payable reversal."""
+
+    __tablename__ = "ly_material_purchase_return"
+    __table_args__ = (
+        Index("uk_ly_material_purchase_return_company_no", "company", "purchase_return", unique=True),
+        Index("uk_ly_material_purchase_return_company_idem", "company", "idempotency_key", unique=True),
+        Index("uk_ly_material_purchase_return_company_source", "company", "source_ref", unique=True),
+        Index("idx_ly_material_purchase_return_invoice", "company", "purchase_invoice"),
+        Index("idx_ly_material_purchase_return_order", "company", "purchase_no"),
+        CheckConstraint("status IN ('submitted','cancelled')", name="ck_ly_material_purchase_return_status"),
+        CheckConstraint("return_qty > 0", name="ck_ly_material_purchase_return_qty_positive"),
+        CheckConstraint("return_amount >= 0", name="ck_ly_material_purchase_return_amount_nonnegative"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生采购退货红冲单"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    purchase_return = Column(String(140), nullable=False)
+    purchase_invoice_id = Column(IDType, ForeignKey("ly_schema.ly_material_purchase_invoice.id"), nullable=False)
+    purchase_invoice = Column(String(140), nullable=False)
+    purchase_order_id = Column(IDType, ForeignKey("ly_schema.ly_material_purchase_order.id"), nullable=False)
+    purchase_no = Column(String(140), nullable=False)
+    supplier_name = Column(String(255), nullable=False)
+    material_item_code = Column(String(140), nullable=False)
+    material_name = Column(String(255), nullable=False, default="")
+    warehouse = Column(String(140), nullable=False)
+    return_qty = Column(Numeric(18, 6), nullable=False)
+    uom = Column(String(32), nullable=False, default="米")
+    rate = Column(Numeric(18, 6), nullable=False, default=0)
+    return_amount = Column(Numeric(18, 6), nullable=False, default=0)
+    posting_date = Column(Date, nullable=False)
+    status = Column(String(32), nullable=False, default="submitted")
+    docstatus = Column(Integer, nullable=False, default=1)
+    source_ref = Column(String(140), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    scenario_tag = Column(String(64), nullable=True)
+    warehouse_draft_id = Column(IDType, nullable=True)
+    payload = Column(JSON, nullable=False, default=dict)
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    cancelled_by = Column(String(140), nullable=True)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancel_reason = Column(String(255), nullable=True)
+
+
+class LyMaterialPurchaseReturnOperation(Base):
+    """FastAPI-native purchase return operation idempotency ledger."""
+
+    __tablename__ = "ly_material_purchase_return_operation"
+    __table_args__ = (
+        Index(
+            "uk_ly_material_purchase_return_op_idem",
+            "company",
+            "operation_type",
+            "idempotency_key",
+            unique=True,
+        ),
+        Index("idx_ly_material_purchase_return_op_return", "purchase_return_id", "operation_type", "created_at"),
+        Index("idx_ly_material_purchase_return_op_invoice", "company", "purchase_invoice", "operation_type", "created_at"),
+        CheckConstraint("operation_type IN ('cancel_purchase_return')", name="ck_ly_material_purchase_return_op_type"),
+        {"schema": "ly_schema", "comment": "FastAPI 原生采购退货操作幂等记录"},
+    )
+
+    id = Column(IDType, primary_key=True, autoincrement=True)
+    company = Column(String(140), nullable=False)
+    purchase_invoice = Column(String(140), nullable=False)
+    purchase_return_id = Column(IDType, ForeignKey("ly_schema.ly_material_purchase_return.id"), nullable=False)
+    operation_type = Column(String(64), nullable=False)
+    idempotency_key = Column(String(140), nullable=False)
+    request_hash = Column(String(64), nullable=False)
+    result_status = Column(String(32), nullable=False)
+    result_user = Column(String(140), nullable=False)
+    result_at = Column(DateTime(timezone=True), nullable=False)
+    reason = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class LyMaterialPurchaseIdempotency(Base):
     """Idempotency ledger for purchase order writes."""
 

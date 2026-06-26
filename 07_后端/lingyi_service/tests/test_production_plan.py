@@ -499,6 +499,91 @@ class ProductionPlanTest(unittest.TestCase):
             self.assertIsNotNone(line)
             self.assertEqual(Decimal(str(line.planned_qty)), Decimal("10.000000"))
 
+    def test_create_sales_order_plan_groups_all_unplanned_lines(self) -> None:
+        sales_order_no = "SO-GROUP-001"
+        self._seed_sales_order(
+            sales_order_no=sales_order_no,
+            items=[
+                {"sales_order_item": "SO-GROUP-001-S", "item_code": "ITEM-A", "qty": "8", "color": "黑", "size": "S"},
+                {"sales_order_item": "SO-GROUP-001-M", "item_code": "ITEM-A", "qty": "9", "color": "黑", "size": "M"},
+                {"sales_order_item": "SO-GROUP-001-L", "item_code": "ITEM-A", "qty": "10", "color": "白", "size": "L"},
+            ],
+        )
+
+        payload = {
+            "company": "COMP-A",
+            "planned_start_date": "2026-04-13",
+            "operation": "sales_order_plan_create",
+            "idempotency_key": "idem-sales-order-plan-group-001",
+        }
+        response = self.client.post(f"/api/production/sales-orders/{sales_order_no}/plans", headers=self._headers(), json=payload)
+        replay = self.client.post(f"/api/production/sales-orders/{sales_order_no}/plans", headers=self._headers(), json=payload)
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        data = response.json()["data"]
+        self.assertEqual(replay.json()["data"], data)
+        self.assertTrue(data["plan_group_no"].startswith("PPG-"))
+        self.assertEqual(data["display_plan_no"], data["plan_group_no"])
+        self.assertEqual(data["line_count"], 3)
+        self.assertEqual(data["created_plan_count"], 3)
+        self.assertEqual(Decimal(str(data["planned_qty"])), Decimal("27.000000"))
+        self.assertEqual({item["sales_order_item"] for item in data["items"]}, {"SO-GROUP-001-S", "SO-GROUP-001-M", "SO-GROUP-001-L"})
+        self.assertEqual({item["plan_group_no"] for item in data["items"]}, {data["plan_group_no"]})
+
+        list_response = self.client.get(f"/api/production/plans?sales_order={sales_order_no}&page=1&page_size=20", headers=self._headers())
+        self.assertEqual(list_response.status_code, 200, list_response.text)
+        rows = list_response.json()["data"]["items"]
+        self.assertEqual(len(rows), 3)
+        self.assertEqual({row["plan_group_no"] for row in rows}, {data["plan_group_no"]})
+        self.assertEqual(sum(Decimal(str(row["planned_qty"])) for row in rows), Decimal("27.000000"))
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionPlan).filter(LyProductionPlan.sales_order == sales_order_no).count(), 3)
+            self.assertEqual(
+                {
+                    row.sales_order_item: Decimal(str(row.planned_qty))
+                    for row in session.query(LySalesOrderItem).filter(LySalesOrderItem.sales_order_item.like("SO-GROUP-001-%")).all()
+                },
+                {
+                    "SO-GROUP-001-S": Decimal("8.000000"),
+                    "SO-GROUP-001-M": Decimal("9.000000"),
+                    "SO-GROUP-001-L": Decimal("10.000000"),
+                },
+            )
+
+    def test_create_sales_order_plan_can_select_partial_lines(self) -> None:
+        sales_order_no = "SO-GROUP-PART-001"
+        self._seed_sales_order(
+            sales_order_no=sales_order_no,
+            items=[
+                {"sales_order_item": "SO-GROUP-PART-001-S", "item_code": "ITEM-A", "qty": "6", "color": "黑", "size": "S"},
+                {"sales_order_item": "SO-GROUP-PART-001-M", "item_code": "ITEM-A", "qty": "7", "color": "黑", "size": "M"},
+            ],
+        )
+
+        response = self.client.post(
+            f"/api/production/sales-orders/{sales_order_no}/plans",
+            headers=self._headers(),
+            json={
+                "company": "COMP-A",
+                "sales_order_items": ["SO-GROUP-PART-001-M"],
+                "planned_start_date": "2026-04-13",
+                "operation": "sales_order_plan_create",
+                "idempotency_key": "idem-sales-order-plan-partial-001",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()["data"]
+        self.assertEqual(data["line_count"], 1)
+        self.assertEqual(Decimal(str(data["planned_qty"])), Decimal("7.000000"))
+        self.assertEqual(data["items"][0]["sales_order_item"], "SO-GROUP-PART-001-M")
+        with self.SessionLocal() as session:
+            plans = session.query(LyProductionPlan).filter(LyProductionPlan.sales_order == sales_order_no).all()
+            self.assertEqual(len(plans), 1)
+            self.assertEqual(str(plans[0].sales_order_item), "SO-GROUP-PART-001-M")
+
     def test_create_plan_uses_company_when_sales_order_number_overlaps(self) -> None:
         sales_order_no = "SO-CROSS-COMPANY-001"
         sales_order_item = f"{sales_order_no}-001"

@@ -730,6 +730,7 @@ class StyleMasterService:
                         part=self._optional_text(item.part),
                         qty_per_piece=item.qty_per_piece,
                         usage_count=item.usage_count,
+                        spec_by_size=self._bom_spec_by_size(item.spec_by_size),
                         loss_rate=item.loss_rate,
                         uom=item.uom.strip(),
                         remark=self._optional_text(item.remark),
@@ -806,6 +807,7 @@ class StyleMasterService:
                     uom=item.uom,
                     qty_per_piece=item.qty_per_piece,
                     usage_count=usage_count,
+                    spec_by_size=item.spec_by_size,
                     loss_rate=item.loss_rate,
                     required_qty=required_qty,
                 )
@@ -1407,6 +1409,7 @@ class StyleMasterService:
                     part=getattr(item, "part", None),
                     qty_per_piece=Decimal(str(item.qty_per_piece)),
                     usage_count=Decimal(str(getattr(item, "usage_count", 1) or 1)),
+                    spec_by_size=self._bom_spec_by_size(getattr(item, "spec_by_size", None)),
                     loss_rate=Decimal(str(item.loss_rate or 0)),
                     uom=str(item.uom),
                     remark=item.remark,
@@ -1544,6 +1547,25 @@ class StyleMasterService:
         if not isinstance(items, list):
             return False
         return any(isinstance(item, dict) and str(item.get(code_key) or "") == code for item in items)
+
+    @classmethod
+    def _bom_spec_by_size(cls, value: Any) -> dict[str, str]:
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except (TypeError, ValueError):
+                return {}
+        else:
+            parsed = value
+        if not isinstance(parsed, dict):
+            return {}
+        result: dict[str, str] = {}
+        for key, spec in parsed.items():
+            size = cls._optional_text(key)
+            text = cls._optional_text(spec)
+            if size and text:
+                result[size] = text
+        return result
 
     def _next_dictionary_code(self, *, company: str, dict_type: str) -> str:
         prefix = DICTIONARY_CODE_PREFIXES[self._normalize_dictionary_type(dict_type)]

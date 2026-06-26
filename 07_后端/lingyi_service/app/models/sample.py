@@ -9,6 +9,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import Numeric
 from sqlalchemy import String
 from sqlalchemy import Text
@@ -218,6 +219,7 @@ class LySampleMaterialBomItem(Base):
     part = Column(String(100), nullable=True)
     qty_per_piece = Column(Numeric(18, 6), nullable=False)
     usage_count = Column(Numeric(18, 6), nullable=False, default=1, server_default="1")
+    spec_by_size = Column(JSON, nullable=True, default=dict)
     loss_rate = Column(Numeric(12, 6), nullable=False, default=0)
     uom = Column(String(32), nullable=False)
     is_alternative = Column(Integer, nullable=False, default=0)

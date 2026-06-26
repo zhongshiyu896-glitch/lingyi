@@ -133,6 +133,7 @@ def _create_local_tables() -> None:
     _ensure_local_factory_statement_payment_pending_approval_status()
     _ensure_local_bom_company_style_columns()
     _ensure_local_production_material_uom_column()
+    _ensure_local_production_plan_group_column()
     _ensure_local_bom_dimension_columns()
     _ensure_local_stock_entry_purchase_requirement_column()
     _ensure_local_stock_ledger_context_columns()
@@ -515,6 +516,11 @@ def _ensure_local_material_bom_size_columns() -> None:
     database_path = main_module.engine.url.database
     if not database_path or database_path == ":memory:":
         return
+    columns = {
+        "size": "VARCHAR(64)",
+        "usage_count": "NUMERIC(18, 6) NOT NULL DEFAULT 1",
+        "spec_by_size": "JSON",
+    }
     with sqlite3.connect(database_path) as conn:
         for table_name in ("ly_apparel_bom_item", "ly_sample_material_bom_item"):
             table_exists = conn.execute(
@@ -526,8 +532,9 @@ def _ensure_local_material_bom_size_columns() -> None:
             existing_columns = {
                 str(row[1]) for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
             }
-            if "size" not in existing_columns:
-                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN size VARCHAR(64)")
+            for column_name, column_type in columns.items():
+                if column_name not in existing_columns:
+                    conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
 
 
 def _ensure_local_subcontract_create_idempotency_columns() -> None:
@@ -852,6 +859,25 @@ def _ensure_local_production_material_uom_column() -> None:
             conn.execute(
                 "ALTER TABLE ly_production_plan_material ADD COLUMN uom VARCHAR(32) NOT NULL DEFAULT '米'"
             )
+
+
+def _ensure_local_production_plan_group_column() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_production_plan'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_production_plan)").fetchall()
+        }
+        if "plan_group_no" not in existing_columns:
+            conn.execute("ALTER TABLE ly_production_plan ADD COLUMN plan_group_no VARCHAR(64)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ly_production_plan_group ON ly_production_plan(plan_group_no)")
 
 
 def _ensure_local_bom_dimension_columns() -> None:

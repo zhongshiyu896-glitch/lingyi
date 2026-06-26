@@ -416,6 +416,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         bom_size: str | None = None,
         bom_part: str | None = None,
         uom: str = "米",
+        style_no: str | None = None,
+        payload: dict[str, object] | None = None,
     ) -> int:
         material_code = material_item_code or self.MATERIAL
         target_warehouse = warehouse or self.WAREHOUSE
@@ -430,7 +432,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 bom_item_id=6011,
                 sales_order=sales_order,
                 sales_order_item=sales_order_item,
-                item_code=self.STYLE,
+                item_code=style_no or self.STYLE,
                 bom_color=bom_color,
                 bom_size=bom_size,
                 bom_part=bom_part,
@@ -446,6 +448,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                 uom=uom,
                 unit_price=Decimal(unit_price),
                 status=status,
+                payload=payload or {},
                 created_by="seed",
                 updated_by="seed",
             )
@@ -665,6 +668,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         qty: str,
         item_code: str | None = None,
         uom: str = "米",
+        purchase_order_item_id: int | None = None,
         purchase_requirement_id: int | None = None,
     ) -> dict[str, object]:
         receipt_item_code = item_code or self.MATERIAL
@@ -674,6 +678,8 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             "uom": uom,
             "target_warehouse": self.WAREHOUSE,
         }
+        if purchase_order_item_id is not None:
+            receipt_item["purchase_order_item_id"] = purchase_order_item_id
         if purchase_requirement_id is not None:
             receipt_item["purchase_requirement_id"] = purchase_requirement_id
         response = self.client.post(
@@ -2769,16 +2775,27 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(create_po.status_code, 201, create_po.text)
         purchase_order = create_po.json()["data"]["purchase_order"]
         self.assertEqual(purchase_order["purchase_no"], "PO-A6-PART-001")
-        self.assertEqual(len(purchase_order["items"]), 1)
-        self.assertEqual(purchase_order["items"][0]["material_item_code"], self.MATERIAL)
-        self.assertEqual(Decimal(str(purchase_order["items"][0]["qty"])), Decimal("15.000000"))
+        self.assertEqual(len(purchase_order["items"]), 2)
+        purchase_items_by_part = {row["bom_part"]: row for row in purchase_order["items"]}
+        self.assertEqual(set(purchase_items_by_part), {"门襟", "袖口"})
+        self.assertEqual({row["material_item_code"] for row in purchase_order["items"]}, {self.MATERIAL})
+        self.assertEqual(Decimal(str(purchase_items_by_part["门襟"]["qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(purchase_items_by_part["袖口"]["qty"])), Decimal("5.000000"))
         self.assertEqual({row["bom_part"] for row in create_po.json()["data"]["requirements"]}, {"门襟", "袖口"})
 
         self._create_stock_receipt(
             source_type="material_purchase_order",
-            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-PART-001",
-            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-PART-001",
-            qty="15",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-PART-001:{self.MATERIAL}:line:{purchase_items_by_part['门襟']['line_id']}",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-PART-001:front",
+            qty="10",
+            purchase_order_item_id=int(purchase_items_by_part["门襟"]["line_id"]),
+        )
+        self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-PART-001:{self.MATERIAL}:line:{purchase_items_by_part['袖口']['line_id']}",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-PART-001:cuff",
+            qty="5",
+            purchase_order_item_id=int(purchase_items_by_part["袖口"]["line_id"]),
         )
 
         completed = self.client.get(
@@ -3998,6 +4015,67 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual({str(row.bom_size) for row in requirement_rows}, {"M"})
         self.assertEqual([Decimal(str(row.net_required_qty)) for row in requirement_rows], [Decimal("7.000000"), Decimal("13.000000")])
 
+    def test_sync_requirements_carries_bom_specification_without_changing_qty(self) -> None:
+        with self.SessionLocal() as session:
+            bom_item = session.query(LyApparelBomItem).filter_by(id=6011).one()
+            bom_item.spec_by_size = {"S": "4cm", "M": "4.8cm", "L": "5.6cm"}
+            plan = LyProductionPlan(
+                id=9604,
+                plan_no="PP-A6-SPEC-001",
+                company=self.COMPANY,
+                sales_order="SO-A6-SPEC",
+                sales_order_item="SO-A6-SPEC-ITEM",
+                customer="CUST-A6",
+                item_code=self.STYLE,
+                bom_id=601,
+                bom_version="V1",
+                planned_qty=Decimal("100"),
+                status="material_checked",
+                idempotency_key="idem-a6-spec-plan",
+                request_hash="hash-a6-spec-plan",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.add(
+                LyProductionPlanMaterial(
+                    plan_id=9604,
+                    bom_item_id=6011,
+                    bom_color="黑",
+                    bom_size="M",
+                    bom_part="口袋",
+                    material_item_code=self.MATERIAL,
+                    warehouse=self.WAREHOUSE,
+                    uom="条",
+                    qty_per_piece=Decimal("2"),
+                    loss_rate=Decimal("0"),
+                    required_qty=Decimal("200"),
+                    available_qty=Decimal("0"),
+                    shortage_qty=Decimal("200"),
+                )
+            )
+            session.commit()
+
+            synced = MaterialPurchaseService(session).sync_requirements_from_production_plan(plan=plan, actor="a6.procurement.user")
+            session.commit()
+
+            requirement = session.query(LyMaterialPurchaseRequirement).filter_by(plan_id=9604).one()
+
+        self.assertEqual(len(synced), 1)
+        self.assertEqual(synced[0].specification, "4.8cm")
+        self.assertEqual(synced[0].spec_by_size, {"S": "4cm", "M": "4.8cm", "L": "5.6cm"})
+        self.assertEqual(Decimal(str(synced[0].net_required_qty)), Decimal("200.000000"))
+        self.assertEqual(Decimal(str(requirement.net_required_qty)), Decimal("200.000000"))
+
+        listed = self.client.get(
+            f"/api/material-purchase/requirements?company={self.COMPANY}&keyword=PP-A6-SPEC-001",
+            headers=self._headers("req-a6-spec-list"),
+        )
+        self.assertEqual(listed.status_code, 200, listed.text)
+        item = listed.json()["data"]["items"][0]
+        self.assertEqual(item["specification"], "4.8cm")
+        self.assertEqual(item["spec_by_size"], {"S": "4cm", "M": "4.8cm", "L": "5.6cm"})
+        self.assertEqual(item["net_required_qty"], "200.000000")
+
     def test_sync_requirements_deduplicates_identical_bom_dimension_snapshots_without_bom_item_id(self) -> None:
         with self.SessionLocal() as session:
             plan = LyProductionPlan(
@@ -4094,9 +4172,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             net_required_qty="10",
             sales_order="SO-A6-GROUP-002",
             sales_order_item="SO-A6-GROUP-002-ITEM",
-            bom_color="白",
-            bom_size="M",
-            bom_part="袖口",
+            bom_color="黑",
+            bom_size="S",
+            bom_part="门襟",
         )
 
         payload = self._from_requirements_payload(
@@ -4126,9 +4204,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(Decimal(str(purchase_order["total_amount"])), Decimal("187.500000"))
         self.assertEqual({row["sales_order"] for row in data["requirements"]}, {"SO-A6-GROUP-001", "SO-A6-GROUP-002"})
         self.assertEqual({row["sales_order_item"] for row in data["requirements"]}, {"SO-A6-GROUP-001-ITEM", "SO-A6-GROUP-002-ITEM"})
-        self.assertEqual({row["bom_color"] for row in data["requirements"]}, {"黑", "白"})
-        self.assertEqual({row["bom_size"] for row in data["requirements"]}, {"S", "M"})
-        self.assertEqual({row["bom_part"] for row in data["requirements"]}, {"门襟", "袖口"})
+        self.assertEqual({row["bom_color"] for row in data["requirements"]}, {"黑"})
+        self.assertEqual({row["bom_size"] for row in data["requirements"]}, {"S"})
+        self.assertEqual({row["bom_part"] for row in data["requirements"]}, {"门襟"})
         self.assertTrue(all(row["status"] == "purchased" for row in data["requirements"]))
         self.assertTrue(all(row["purchase_no"] == purchase_no for row in data["requirements"]))
         self.assertTrue(all(row["has_completed"] is False for row in data["requirements"]))
@@ -4154,9 +4232,9 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         completed_rows = completed.json()["data"]["items"]
         self.assertEqual(len(completed_rows), 2)
         self.assertEqual({row["sales_order_item"] for row in completed_rows}, {"SO-A6-GROUP-001-ITEM", "SO-A6-GROUP-002-ITEM"})
-        self.assertEqual({row["bom_color"] for row in completed_rows}, {"黑", "白"})
-        self.assertEqual({row["bom_size"] for row in completed_rows}, {"S", "M"})
-        self.assertEqual({row["bom_part"] for row in completed_rows}, {"门襟", "袖口"})
+        self.assertEqual({row["bom_color"] for row in completed_rows}, {"黑"})
+        self.assertEqual({row["bom_size"] for row in completed_rows}, {"S"})
+        self.assertEqual({row["bom_part"] for row in completed_rows}, {"门襟"})
         self.assertTrue(all(row["has_completed"] for row in completed_rows))
         self.assertEqual(sum(Decimal(str(row["received_qty"])) for row in completed_rows), Decimal("15.000000"))
 
@@ -4181,24 +4259,187 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(ledger.json()["data"]["total"], 2)
         self.assertEqual(len(summary_rows), 2)
         self.assertEqual(len(receipt_rows), 2)
-        ledger_by_part = {str(row["bom_part"]): row for row in ledger_rows}
-        summary_by_part = {str(row["bom_part"]): row for row in summary_rows}
-        receipt_by_part = {str(row["bom_part"]): row for row in receipt_rows}
-        self.assertEqual(set(ledger_by_part), {"门襟", "袖口"})
-        self.assertEqual(set(summary_by_part), {"门襟", "袖口"})
-        self.assertEqual(set(receipt_by_part), {"门襟", "袖口"})
-        self.assertEqual(ledger_by_part["门襟"]["purchase_requirement_id"], requirement_a)
-        self.assertEqual(ledger_by_part["袖口"]["purchase_requirement_id"], requirement_b)
-        self.assertEqual(receipt_by_part["门襟"]["purchase_requirement_id"], requirement_a)
-        self.assertEqual(receipt_by_part["袖口"]["purchase_requirement_id"], requirement_b)
-        self.assertEqual(ledger_by_part["门襟"]["sales_order_item"], "SO-A6-GROUP-001-ITEM")
-        self.assertEqual(ledger_by_part["袖口"]["sales_order_item"], "SO-A6-GROUP-002-ITEM")
-        self.assertEqual(receipt_by_part["门襟"]["sales_order_item"], "SO-A6-GROUP-001-ITEM")
-        self.assertEqual(receipt_by_part["袖口"]["sales_order_item"], "SO-A6-GROUP-002-ITEM")
-        self.assertEqual(Decimal(str(ledger_by_part["门襟"]["actual_qty"])), Decimal("5.000000"))
-        self.assertEqual(Decimal(str(ledger_by_part["袖口"]["actual_qty"])), Decimal("10.000000"))
-        self.assertEqual(Decimal(str(summary_by_part["门襟"]["actual_qty"])), Decimal("5.000000"))
-        self.assertEqual(Decimal(str(summary_by_part["袖口"]["actual_qty"])), Decimal("10.000000"))
+        ledger_by_requirement = {int(row["purchase_requirement_id"]): row for row in ledger_rows}
+        summary_by_requirement = {int(row["purchase_requirement_id"]): row for row in summary_rows}
+        receipt_by_requirement = {int(row["purchase_requirement_id"]): row for row in receipt_rows}
+        self.assertEqual(set(ledger_by_requirement), {requirement_a, requirement_b})
+        self.assertEqual(set(summary_by_requirement), {requirement_a, requirement_b})
+        self.assertEqual(set(receipt_by_requirement), {requirement_a, requirement_b})
+        self.assertEqual(ledger_by_requirement[requirement_a]["sales_order_item"], "SO-A6-GROUP-001-ITEM")
+        self.assertEqual(ledger_by_requirement[requirement_b]["sales_order_item"], "SO-A6-GROUP-002-ITEM")
+        self.assertEqual(receipt_by_requirement[requirement_a]["sales_order_item"], "SO-A6-GROUP-001-ITEM")
+        self.assertEqual(receipt_by_requirement[requirement_b]["sales_order_item"], "SO-A6-GROUP-002-ITEM")
+        self.assertEqual(Decimal(str(ledger_by_requirement[requirement_a]["actual_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(ledger_by_requirement[requirement_b]["actual_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(summary_by_requirement[requirement_a]["actual_qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(summary_by_requirement[requirement_b]["actual_qty"])), Decimal("10.000000"))
+
+    def test_from_requirements_rejects_cross_style_merge(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-STYLE-A",
+            net_required_qty="5",
+            style_no="STYLE-A6-A",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-STYLE-B",
+            net_required_qty="6",
+            style_no="STYLE-A6-B",
+        )
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-cross-style"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_a, requirement_b],
+                idempotency_key="idem-a6-cross-style",
+                purchase_no="PO-A6-CROSS-STYLE",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "MATERIAL_PURCHASE_CONFLICT")
+        self.assertIn("款号不一致", response.json()["message"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseOrder).count(), 0)
+            requirement_rows = session.query(LyMaterialPurchaseRequirement).order_by(LyMaterialPurchaseRequirement.requirement_no.asc()).all()
+            self.assertEqual(len(requirement_rows), 2)
+            self.assertTrue(all(str(row.status) == "pending" for row in requirement_rows))
+            self.assertTrue(all(row.purchase_order_id is None for row in requirement_rows))
+
+    def test_from_requirements_splits_purchase_lines_by_size_spec_part_and_bom_version(self) -> None:
+        requirement_s = self._seed_requirement(
+            requirement_no="REQ-A6-LINE-S",
+            net_required_qty="100",
+            bom_color="黑",
+            bom_size="S",
+            bom_part="口袋",
+            uom="条",
+            payload={"specification": "4cm", "spec_by_size": {"S": "4cm"}, "bom_version": "V1"},
+        )
+        requirement_m = self._seed_requirement(
+            requirement_no="REQ-A6-LINE-M",
+            net_required_qty="100",
+            bom_color="黑",
+            bom_size="M",
+            bom_part="口袋",
+            uom="条",
+            payload={"specification": "4.8cm", "spec_by_size": {"M": "4.8cm"}, "bom_version": "V1"},
+        )
+        requirement_l = self._seed_requirement(
+            requirement_no="REQ-A6-LINE-L",
+            net_required_qty="100",
+            bom_color="黑",
+            bom_size="L",
+            bom_part="口袋",
+            uom="条",
+            payload={"specification": "5.6cm", "spec_by_size": {"L": "5.6cm"}, "bom_version": "V1"},
+        )
+
+        response = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-line-dimensions"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_s, requirement_m, requirement_l],
+                idempotency_key="idem-a6-line-dimensions",
+                purchase_no="PO-A6-LINE-DIMS",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 201, response.text)
+        purchase_order = response.json()["data"]["purchase_order"]
+        self.assertEqual(purchase_order["purchase_no"], "PO-A6-LINE-DIMS")
+        self.assertEqual(len(purchase_order["items"]), 3)
+        items_by_size = {row["bom_size"]: row for row in purchase_order["items"]}
+        self.assertEqual(set(items_by_size), {"S", "M", "L"})
+        self.assertEqual({row["material_item_code"] for row in purchase_order["items"]}, {self.MATERIAL})
+        self.assertEqual({row["style_no"] for row in purchase_order["items"]}, {self.STYLE})
+        self.assertEqual({row["supplier_name"] for row in purchase_order["items"]}, {"SUP-A6"})
+        self.assertEqual(items_by_size["S"]["specification"], "4cm")
+        self.assertEqual(items_by_size["M"]["specification"], "4.8cm")
+        self.assertEqual(items_by_size["L"]["specification"], "5.6cm")
+        self.assertEqual({row["bom_part"] for row in purchase_order["items"]}, {"口袋"})
+        self.assertEqual({row["uom"] for row in purchase_order["items"]}, {"条"})
+        self.assertEqual({row["bom_version"] for row in purchase_order["items"]}, {"V1"})
+        self.assertEqual({Decimal(str(row["qty"])) for row in purchase_order["items"]}, {Decimal("100.000000")})
+        self.assertTrue(all(int(row["requirement_count"]) == 1 for row in purchase_order["items"]))
+
+    def test_purchase_receipt_without_requirement_id_auto_allocates_by_purchase_line(self) -> None:
+        requirement_a = self._seed_requirement(
+            requirement_no="REQ-A6-SIMPLE-A",
+            net_required_qty="5",
+            sales_order="SO-A6-SIMPLE-001",
+            sales_order_item="SO-A6-SIMPLE-001-ITEM",
+            bom_color="黑",
+            bom_size="M",
+            bom_part="口袋",
+        )
+        requirement_b = self._seed_requirement(
+            requirement_no="REQ-A6-SIMPLE-B",
+            net_required_qty="5",
+            sales_order="SO-A6-SIMPLE-002",
+            sales_order_item="SO-A6-SIMPLE-002-ITEM",
+            bom_color="黑",
+            bom_size="M",
+            bom_part="口袋",
+        )
+        create_po = self.client.post(
+            "/api/material-purchase/orders/from-requirements",
+            headers=self._headers("req-a6-simple-po"),
+            json=self._from_requirements_payload(
+                requirement_ids=[requirement_a, requirement_b],
+                idempotency_key="idem-a6-simple-po",
+                purchase_no="PO-A6-SIMPLE",
+            ),
+        )
+        self.assertEqual(create_po.status_code, 201, create_po.text)
+        purchase_order = create_po.json()["data"]["purchase_order"]
+        self.assertEqual(len(purchase_order["items"]), 1)
+        line = purchase_order["items"][0]
+        self.assertEqual(int(line["requirement_count"]), 2)
+
+        first_receipt = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-SIMPLE:{self.MATERIAL}:line:{line['line_id']}:part1",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-SIMPLE:part1",
+            qty="4",
+            purchase_order_item_id=int(line["line_id"]),
+        )
+        self.assertEqual(first_receipt["source_type"], "material_purchase_order")
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-SIMPLE").one()
+            line_row = session.query(LyMaterialPurchaseOrderItem).filter_by(id=int(line["line_id"])).one()
+            req_a = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_a).one()
+            req_b = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_b).one()
+            self.assertEqual(str(order.status), "partially_received")
+            self.assertEqual(Decimal(str(line_row.received_qty)), Decimal("4.000000"))
+            self.assertEqual(Decimal(str(req_a.received_qty)), Decimal("4.000000"))
+            self.assertEqual(Decimal(str(req_b.received_qty)), Decimal("0.000000"))
+            ledger_rows = session.query(LyWarehouseStockLedgerEntry).filter_by(company=self.COMPANY, item_code=self.MATERIAL).all()
+            self.assertEqual(len(ledger_rows), 1)
+            self.assertEqual(ledger_rows[0].purchase_requirement_id, requirement_a)
+            self.assertEqual(Decimal(str(ledger_rows[0].actual_qty)), Decimal("4.000000"))
+
+        self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-SIMPLE:{self.MATERIAL}:line:{line['line_id']}:part2",
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-SIMPLE:part2",
+            qty="6",
+            purchase_order_item_id=int(line["line_id"]),
+        )
+        with self.SessionLocal() as session:
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-SIMPLE").one()
+            line_row = session.query(LyMaterialPurchaseOrderItem).filter_by(id=int(line["line_id"])).one()
+            req_a = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_a).one()
+            req_b = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_b).one()
+            self.assertEqual(str(order.status), "received")
+            self.assertEqual(Decimal(str(line_row.received_qty)), Decimal("10.000000"))
+            self.assertEqual(Decimal(str(req_a.received_qty)), Decimal("5.000000"))
+            self.assertEqual(Decimal(str(req_b.received_qty)), Decimal("5.000000"))
+            self.assertEqual(str(req_a.status), "completed")
+            self.assertEqual(str(req_b.status), "completed")
+            ledger_rows = session.query(LyWarehouseStockLedgerEntry).filter_by(company=self.COMPANY, item_code=self.MATERIAL).all()
+            self.assertEqual(sum(Decimal(str(row.actual_qty)) for row in ledger_rows), Decimal("10.000000"))
+            self.assertEqual({int(row.purchase_requirement_id) for row in ledger_rows}, {requirement_a, requirement_b})
 
     def test_material_check_cross_order_requirements_grouped_po_receipt_marks_both_ready(self) -> None:
         def create_checked_plan(*, sequence: str) -> tuple[str, str, int]:
@@ -4363,7 +4604,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(ready_plan["pending_requirement_count"], 0)
             self.assertEqual(Decimal(str(ready_plan["shortage_qty_total"])), Decimal("0.000000"))
 
-    def test_grouped_material_partial_receipt_requires_explicit_requirement_allocation(self) -> None:
+    def test_grouped_material_partial_receipt_auto_allocates_and_keeps_explicit_requirement_mode(self) -> None:
         requirement_a = self._seed_requirement(
             requirement_no="REQ-A6-ALLOC-A",
             net_required_qty="5",
@@ -4386,45 +4627,35 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             ),
         )
         self.assertEqual(response.status_code, 201, response.text)
+        line_id = int(response.json()["data"]["purchase_order"]["items"][0]["line_id"])
 
-        ambiguous_source_ref = f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-ALLOC"
-        ambiguous_receipt = self.client.post(
-            "/api/warehouse/stock-entry-drafts",
-            headers=self._headers(
-                self._warehouse_request_id(
-                    idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-ALLOC:ambiguous",
-                    source_ref=ambiguous_source_ref,
-                    item_code=self.MATERIAL,
-                    quantity="10",
-                )
-            ),
-            json={
-                "operation": "create_stock_entry_draft",
-                "company": self.COMPANY,
-                "purpose": "Material Receipt",
-                "source_type": "material_purchase_order",
-                "source_id": ambiguous_source_ref,
-                "source_ref": ambiguous_source_ref,
-                "warehouse": self.WAREHOUSE,
-                "item_code": self.MATERIAL,
-                "quantity": "10",
-                "business_date": self.BUSINESS_DATE,
-                "status_action": "create",
-                "scenario_tag": self.WAREHOUSE_SCENARIO,
-                "target_warehouse": self.WAREHOUSE,
-                "idempotency_key": f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-ALLOC:ambiguous",
-                "items": [
-                    {
-                        "item_code": self.MATERIAL,
-                        "qty": "10",
-                        "uom": "米",
-                        "target_warehouse": self.WAREHOUSE,
-                    }
-                ],
-            },
+        simple_source_ref = f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-ALLOC:{self.MATERIAL}:line:{line_id}:simple"
+        simple_draft = self._create_stock_receipt(
+            source_type="material_purchase_order",
+            source_id=simple_source_ref,
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-ALLOC:simple",
+            qty="4",
+            purchase_order_item_id=line_id,
         )
-        self.assertEqual(ambiguous_receipt.status_code, 409, ambiguous_receipt.text)
-        self.assertIn("必须指定采购需求行", ambiguous_receipt.text)
+        with self.SessionLocal() as session:
+            req_a = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_a).one()
+            req_b = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_b).one()
+            order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-ALLOC").one()
+            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).one()
+            self.assertEqual(str(req_a.status), "purchased")
+            self.assertEqual(Decimal(str(req_a.received_qty)), Decimal("4.000000"))
+            self.assertEqual(str(req_b.status), "purchased")
+            self.assertEqual(Decimal(str(req_b.received_qty)), Decimal("0.000000"))
+            self.assertEqual(Decimal(str(line.received_qty)), Decimal("4.000000"))
+            self.assertEqual(str(order.status), "partially_received")
+
+        cancel_simple = self._cancel_stock_receipt(
+            draft=simple_draft,
+            source_id=simple_source_ref,
+            idempotency_key=f"{self.WAREHOUSE_SCENARIO}:receipt:PO-A6-ALLOC:simple",
+            qty="4",
+        )
+        self.assertEqual(cancel_simple.status_code, 200, cancel_simple.text)
 
         draft = self._create_stock_receipt(
             source_type="material_purchase_order",
@@ -4498,9 +4729,12 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 201, response.text)
         purchase_order = response.json()["data"]["purchase_order"]
-        self.assertEqual(len(purchase_order["items"]), 1)
-        self.assertEqual(purchase_order["items"][0]["material_item_code"], self.MATERIAL)
-        self.assertEqual(Decimal(str(purchase_order["items"][0]["qty"])), Decimal("15.000000"))
+        self.assertEqual(len(purchase_order["items"]), 2)
+        purchase_items_by_part = {row["bom_part"]: row for row in purchase_order["items"]}
+        self.assertEqual(set(purchase_items_by_part), {"前片", "后片"})
+        self.assertEqual({row["material_item_code"] for row in purchase_order["items"]}, {self.MATERIAL})
+        self.assertEqual(Decimal(str(purchase_items_by_part["前片"]["qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(purchase_items_by_part["后片"]["qty"])), Decimal("10.000000"))
 
         draft_a = self._create_stock_receipt(
             source_type="material_purchase_order",
@@ -4602,17 +4836,21 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             req_a = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_a).one()
             req_b = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_b).one()
             order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-SPLIT").one()
-            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).one()
+            lines = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).all()
+            lines_by_id = {int(line.id): line for line in lines}
             draft_count = session.query(LyWarehouseStockEntryDraft).filter(
                 LyWarehouseStockEntryDraft.source_id.like(f"{self.WAREHOUSE_SCENARIO}:purchase:PO-A6-SPLIT:%")
             ).count()
 
             self.assertEqual(draft_count, 2)
+            self.assertEqual(len(lines), 2)
+            self.assertNotEqual(req_a.purchase_order_item_id, req_b.purchase_order_item_id)
             self.assertEqual(str(req_a.status), "completed")
             self.assertEqual(str(req_b.status), "completed")
             self.assertEqual(Decimal(str(req_a.received_qty)), Decimal("5.000000"))
             self.assertEqual(Decimal(str(req_b.received_qty)), Decimal("10.000000"))
-            self.assertEqual(Decimal(str(line.received_qty)), Decimal("15.000000"))
+            self.assertEqual(Decimal(str(lines_by_id[int(req_a.purchase_order_item_id)].received_qty)), Decimal("5.000000"))
+            self.assertEqual(Decimal(str(lines_by_id[int(req_b.purchase_order_item_id)].received_qty)), Decimal("10.000000"))
             self.assertEqual(str(order.status), "received")
 
     def test_grouped_material_partial_receipt_splits_cross_order_size_traceability(self) -> None:
@@ -4645,9 +4883,12 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 201, response.text)
         purchase_order = response.json()["data"]["purchase_order"]
-        self.assertEqual(len(purchase_order["items"]), 1)
-        self.assertEqual(purchase_order["items"][0]["material_item_code"], self.MATERIAL)
-        self.assertEqual(Decimal(str(purchase_order["items"][0]["qty"])), Decimal("13.000000"))
+        self.assertEqual(len(purchase_order["items"]), 2)
+        purchase_items_by_size = {row["bom_size"]: row for row in purchase_order["items"]}
+        self.assertEqual(set(purchase_items_by_size), {"S", "M"})
+        self.assertEqual({row["material_item_code"] for row in purchase_order["items"]}, {self.MATERIAL})
+        self.assertEqual(Decimal(str(purchase_items_by_size["S"]["qty"])), Decimal("5.000000"))
+        self.assertEqual(Decimal(str(purchase_items_by_size["M"]["qty"])), Decimal("8.000000"))
 
         draft_s = self._create_stock_receipt(
             source_type="material_purchase_order",
@@ -4713,13 +4954,17 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             req_s = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_s).one()
             req_m = session.query(LyMaterialPurchaseRequirement).filter_by(id=requirement_m).one()
             order = session.query(LyMaterialPurchaseOrder).filter_by(purchase_no="PO-A6-XSIZE").one()
-            line = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).one()
+            lines = session.query(LyMaterialPurchaseOrderItem).filter_by(order_id=order.id).all()
+            lines_by_id = {int(line.id): line for line in lines}
 
+            self.assertEqual(len(lines), 2)
+            self.assertNotEqual(req_s.purchase_order_item_id, req_m.purchase_order_item_id)
             self.assertEqual(str(req_s.status), "completed")
             self.assertEqual(str(req_m.status), "completed")
             self.assertEqual(Decimal(str(req_s.received_qty)), Decimal("5.000000"))
             self.assertEqual(Decimal(str(req_m.received_qty)), Decimal("8.000000"))
-            self.assertEqual(Decimal(str(line.received_qty)), Decimal("13.000000"))
+            self.assertEqual(Decimal(str(lines_by_id[int(req_s.purchase_order_item_id)].received_qty)), Decimal("5.000000"))
+            self.assertEqual(Decimal(str(lines_by_id[int(req_m.purchase_order_item_id)].received_qty)), Decimal("8.000000"))
             self.assertEqual(str(order.status), "received")
 
     def test_purchase_receipt_rejects_unknown_purchase_requirement_id_before_draft_create(self) -> None:

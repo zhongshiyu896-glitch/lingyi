@@ -274,6 +274,7 @@ class MaterialBomApiTest(unittest.TestCase):
                     "size": "M",
                     "part": "前片",
                     "qty_per_piece": "2",
+                    "spec_by_size": {"M": "4.8cm"},
                     "loss_rate": "0.05",
                     "uom": "米",
                     "remark": "面料",
@@ -420,6 +421,7 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(upserted.json()["data"]["items"][0]["part"], "前片")
         self.assertEqual(upserted.json()["data"]["items"][0]["size"], "M")
         self.assertEqual(Decimal(upserted.json()["data"]["items"][0]["usage_count"]), Decimal("2"))
+        self.assertEqual(upserted.json()["data"]["items"][0]["spec_by_size"], {"M": "4.8cm"})
         self.assertEqual(upserted.json()["data"]["items"][0]["material_name"], "黑色主面料")
 
         exploded = self.client.post(
@@ -431,6 +433,7 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(Decimal(exploded.json()["data"]["items"][0]["usage_count"]), Decimal("2"))
         self.assertEqual(exploded.json()["data"]["items"][0]["required_qty"], "42.000000")
         self.assertEqual(exploded.json()["data"]["items"][0]["size"], "M")
+        self.assertEqual(exploded.json()["data"]["items"][0]["spec_by_size"], {"M": "4.8cm"})
 
         updated_style = self.client.patch(
             f"/api/style-master/styles/{style_id}",
@@ -597,6 +600,7 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(copied.json()["data"]["items"][0]["material_item_code"], "FAB-BLK-001")
         self.assertEqual(copied.json()["data"]["items"][0]["material_name"], "黑色主面料")
         self.assertEqual(copied.json()["data"]["items"][0]["size"], "M")
+        self.assertEqual(copied.json()["data"]["items"][0]["spec_by_size"], {"M": "4.8cm"})
         copied_source_item_id = copied.json()["data"]["items"][0]["source_bom_item_id"]
         self.assertIsNotNone(copied_source_item_id)
 
@@ -612,6 +616,7 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(copied_readback_item["color"], "黑")
         self.assertEqual(copied_readback_item["size"], "M")
         self.assertEqual(copied_readback_item["part"], "前片")
+        self.assertEqual(copied_readback_item["spec_by_size"], {"M": "4.8cm"})
         self.assertEqual(copied_readback_item["uom"], "米")
 
         edited = self.client.put(
@@ -630,6 +635,7 @@ class MaterialBomApiTest(unittest.TestCase):
                         "size": "M",
                         "part": "袖口",
                         "qty_per_piece": "1.5",
+                        "spec_by_size": {"M": "5.2cm"},
                         "loss_rate": "0.10",
                         "uom": "米",
                         "is_alternative": True,
@@ -656,6 +662,7 @@ class MaterialBomApiTest(unittest.TestCase):
         self.assertEqual(edited_readback_item["color"], "黑")
         self.assertEqual(edited_readback_item["size"], "M")
         self.assertEqual(edited_readback_item["part"], "袖口")
+        self.assertEqual(edited_readback_item["spec_by_size"], {"M": "5.2cm"})
         self.assertEqual(edited_readback_item["uom"], "米")
         self.assertTrue(edited_readback_item["is_alternative"])
         self.assertEqual(edited_readback_item["replace_group"], "FAB-01")

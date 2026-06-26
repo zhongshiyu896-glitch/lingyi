@@ -19,6 +19,7 @@ from sqlalchemy.pool import StaticPool
 from migrations.versions import task_071a_create_material_bom_write_tables as migration_071a
 from migrations.versions import task_095a_extend_apparel_bom_write_operations as migration_095a
 from migrations.versions import task_101a_add_bom_item_usage_count as migration_101a
+from migrations.versions import task_102a_add_bom_item_spec_by_size as migration_102a
 
 
 class MaterialBomMigrationTest(unittest.TestCase):
@@ -110,6 +111,28 @@ class MaterialBomMigrationTest(unittest.TestCase):
                 migration_101a.downgrade()
             finally:
                 migration_101a.op = previous_op
+
+    def _run_102a_upgrade(self) -> None:
+        with self.engine.begin() as conn:
+            context = MigrationContext.configure(conn)
+            operations = Operations(context)
+            previous_op = migration_102a.op
+            migration_102a.op = operations
+            try:
+                migration_102a.upgrade()
+            finally:
+                migration_102a.op = previous_op
+
+    def _run_102a_downgrade(self) -> None:
+        with self.engine.begin() as conn:
+            context = MigrationContext.configure(conn)
+            operations = Operations(context)
+            previous_op = migration_102a.op
+            migration_102a.op = operations
+            try:
+                migration_102a.downgrade()
+            finally:
+                migration_102a.op = previous_op
 
     def test_upgrade_creates_style_write_ledger_and_sample_bom_tables(self) -> None:
         self._run_upgrade()
@@ -232,3 +255,20 @@ class MaterialBomMigrationTest(unittest.TestCase):
         inspector = inspect(self.engine)
         self.assertNotIn("usage_count", {row["name"] for row in inspector.get_columns("ly_apparel_bom_item")})
         self.assertNotIn("usage_count", {row["name"] for row in inspector.get_columns("ly_sample_material_bom_item")})
+
+    def test_102a_adds_spec_by_size_to_style_and_sample_bom_items(self) -> None:
+        self._run_upgrade()
+        self._run_101a_upgrade()
+        self._run_102a_upgrade()
+        self._run_102a_upgrade()
+
+        inspector = inspect(self.engine)
+        style_columns = {row["name"] for row in inspector.get_columns("ly_apparel_bom_item")}
+        sample_columns = {row["name"] for row in inspector.get_columns("ly_sample_material_bom_item")}
+        self.assertIn("spec_by_size", style_columns)
+        self.assertIn("spec_by_size", sample_columns)
+
+        self._run_102a_downgrade()
+        inspector = inspect(self.engine)
+        self.assertNotIn("spec_by_size", {row["name"] for row in inspector.get_columns("ly_apparel_bom_item")})
+        self.assertNotIn("spec_by_size", {row["name"] for row in inspector.get_columns("ly_sample_material_bom_item")})

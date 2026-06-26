@@ -297,6 +297,7 @@ class SampleMaterialBomItemPayload(BaseModel):
     part: str | None = Field(default=None, max_length=100)
     qty_per_piece: Decimal = Field(..., gt=0)
     usage_count: Decimal = Field(default=Decimal("1"), gt=0)
+    spec_by_size: dict[str, str] = Field(default_factory=dict)
     loss_rate: Decimal = Field(default=Decimal("0"), ge=0)
     uom: str = Field(..., min_length=1, max_length=32)
     is_alternative: bool = False
@@ -358,6 +359,7 @@ class SampleMaterialBomItem(BaseModel):
     part: str | None = None
     qty_per_piece: Decimal
     usage_count: Decimal = Decimal("1")
+    spec_by_size: dict[str, str] = Field(default_factory=dict)
     loss_rate: Decimal
     uom: str
     is_alternative: bool = False
@@ -382,6 +384,7 @@ class SampleMaterialBomRequirementItem(BaseModel):
     uom: str
     qty_per_piece: Decimal
     usage_count: Decimal = Decimal("1")
+    spec_by_size: dict[str, str] = Field(default_factory=dict)
     loss_rate: Decimal
     required_qty: Decimal
 

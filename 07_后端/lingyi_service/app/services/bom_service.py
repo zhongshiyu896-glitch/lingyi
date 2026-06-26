@@ -7,7 +7,9 @@ from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 from decimal import ROUND_HALF_UP
+import json
 import os
+from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -1653,6 +1655,7 @@ class BomService:
                     size=row.size,
                     qty_per_piece=Decimal(row.qty_per_piece),
                     usage_count=self._bom_usage_count(row),
+                    spec_by_size=self._bom_spec_by_size(getattr(row, "spec_by_size", None)),
                     loss_rate=Decimal(row.loss_rate),
                     uom=str(row.uom),
                     remark=row.remark,
@@ -1862,6 +1865,7 @@ class BomService:
             raise DatabaseReadFailed() from exc
 
         grouped: Dict[Tuple[str, str, str, str, str], Decimal] = {}
+        grouped_specs: Dict[Tuple[str, str, str, str, str], dict[str, str]] = {}
         total_material_qty = Decimal("0")
 
         for row in item_rows:
@@ -1881,6 +1885,7 @@ class BomService:
                 str(row.uom),
             )
             grouped[key] = self._round(grouped.get(key, Decimal("0")) + final_qty)
+            grouped_specs.setdefault(key, self._bom_spec_by_size(getattr(row, "spec_by_size", None)))
             total_material_qty = self._round(total_material_qty + final_qty)
 
         material_requirements = [
@@ -1889,6 +1894,7 @@ class BomService:
                 color=k[1] or None,
                 part=k[2] or None,
                 size=k[3] or None,
+                spec_by_size=grouped_specs.get(k, {}),
                 uom=k[4],
                 qty=v,
             )
@@ -2053,6 +2059,7 @@ class BomService:
                 size=item.size,
                 qty_per_piece=item.qty_per_piece,
                 usage_count=item.usage_count,
+                spec_by_size=self._bom_spec_by_size(item.spec_by_size),
                 loss_rate=item.loss_rate,
                 uom=item.uom,
                 remark=item.remark,
@@ -2140,3 +2147,29 @@ class BomService:
         except Exception:
             return Decimal("1")
         return value if value > 0 else Decimal("1")
+
+    @staticmethod
+    def _optional_text(value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    @classmethod
+    def _bom_spec_by_size(cls, value: Any) -> dict[str, str]:
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except (TypeError, ValueError):
+                return {}
+        else:
+            parsed = value
+        if not isinstance(parsed, dict):
+            return {}
+        result: dict[str, str] = {}
+        for key, spec in parsed.items():
+            size = cls._optional_text(key)
+            text = cls._optional_text(spec)
+            if size and text:
+                result[size] = text
+        return result

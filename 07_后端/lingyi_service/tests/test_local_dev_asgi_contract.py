@@ -278,6 +278,51 @@ class LocalDevAsgiContractTest(unittest.TestCase):
         self.assertEqual(linked_id, 101)
         self._assert_repo_db_stats_unchanged()
 
+    def test_local_dev_migrates_legacy_material_bom_spec_columns(self) -> None:
+        with sqlite3.connect(self._temp_db_path) as connection:
+            for table_name in ("ly_apparel_bom_item", "ly_sample_material_bom_item"):
+                connection.execute(
+                    f"""
+                    CREATE TABLE {table_name} (
+                        id INTEGER PRIMARY KEY,
+                        bom_id INTEGER NOT NULL,
+                        material_item_code VARCHAR(140) NOT NULL,
+                        color VARCHAR(64),
+                        part VARCHAR(100),
+                        qty_per_piece NUMERIC NOT NULL,
+                        loss_rate NUMERIC NOT NULL DEFAULT 0,
+                        uom VARCHAR(32) NOT NULL,
+                        remark TEXT
+                    )
+                    """
+                )
+                connection.execute(
+                    f"""
+                    INSERT INTO {table_name} (
+                        id, bom_id, material_item_code, color, part, qty_per_piece, loss_rate, uom, remark
+                    )
+                    VALUES (999, 1, 'LEGACY-MAT', '黑色', '门襟', 1, 0, '米', 'legacy')
+                    """
+                )
+            connection.commit()
+
+        self._load_local_dev_module()
+
+        with sqlite3.connect(self._temp_db_path) as connection:
+            for table_name in ("ly_apparel_bom_item", "ly_sample_material_bom_item"):
+                columns = {
+                    str(row[1])
+                    for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+                }
+                usage_count = connection.execute(
+                    f"SELECT usage_count FROM {table_name} WHERE id = 999"
+                ).fetchone()[0]
+                self.assertIn("size", columns)
+                self.assertIn("usage_count", columns)
+                self.assertIn("spec_by_size", columns)
+                self.assertEqual(str(usage_count), "1")
+        self._assert_repo_db_stats_unchanged()
+
     def test_local_dev_checkpoint_rollback_is_explicit_no_op(self) -> None:
         local_dev_module = self._load_local_dev_module()
 

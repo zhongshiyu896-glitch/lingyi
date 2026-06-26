@@ -533,6 +533,7 @@ class SampleService:
                         part=self._optional_text(item.part),
                         qty_per_piece=item.qty_per_piece,
                         usage_count=item.usage_count,
+                        spec_by_size=self._bom_spec_by_size(item.spec_by_size),
                         loss_rate=item.loss_rate,
                         uom=item.uom.strip(),
                         is_alternative=1 if item.is_alternative else 0,
@@ -678,6 +679,7 @@ class SampleService:
                     uom=item.uom,
                     qty_per_piece=item.qty_per_piece,
                     usage_count=usage_count,
+                    spec_by_size=item.spec_by_size,
                     loss_rate=item.loss_rate,
                     required_qty=required_qty,
                 )
@@ -1182,6 +1184,25 @@ class SampleService:
         return text
 
     @classmethod
+    def _bom_spec_by_size(cls, value: Any) -> dict[str, str]:
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except (TypeError, ValueError):
+                return {}
+        else:
+            parsed = value
+        if not isinstance(parsed, dict):
+            return {}
+        result: dict[str, str] = {}
+        for key, spec in parsed.items():
+            size = cls._optional_text(key)
+            text = cls._optional_text(spec)
+            if size and text:
+                result[size] = text
+        return result
+
+    @classmethod
     def _normalize_order_status(cls, value: str) -> str:
         status = str(value or "").strip()
         if status not in cls.ORDER_STATUSES:
@@ -1339,6 +1360,7 @@ class SampleService:
                     part=item.part,
                     qty_per_piece=Decimal(str(item.qty_per_piece)),
                     usage_count=Decimal(str(getattr(item, "usage_count", 1) or 1)),
+                    spec_by_size=self._bom_spec_by_size(getattr(item, "spec_by_size", None)),
                     loss_rate=Decimal(str(item.loss_rate or 0)),
                     uom=str(item.uom),
                     is_alternative=bool(item.is_alternative),
@@ -1551,6 +1573,7 @@ class SampleService:
                     part=getattr(item, "part", None),
                     qty_per_piece=Decimal(str(item.qty_per_piece)),
                     usage_count=Decimal(str(getattr(item, "usage_count", 1) or 1)),
+                    spec_by_size=self._bom_spec_by_size(getattr(item, "spec_by_size", None)),
                     loss_rate=Decimal(str(item.loss_rate or 0)),
                     uom=str(item.uom),
                     is_alternative=0,

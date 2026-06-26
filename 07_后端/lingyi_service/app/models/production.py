@@ -35,12 +35,14 @@ class LyProductionPlan(Base):
         Index("uk_ly_production_plan_company_idempotency", "company", "idempotency_key", unique=True),
         Index("idx_ly_production_plan_company_status", "company", "status"),
         Index("idx_ly_production_plan_so_item", "sales_order", "sales_order_item"),
+        Index("idx_ly_production_plan_group", "plan_group_no"),
         Index("idx_ly_production_plan_item_status", "item_code", "status"),
         {"schema": "ly_schema", "comment": "生产计划主表"},
     )
 
     id = Column(IDType, autoincrement=True)
     plan_no = Column(String(64), nullable=False)
+    plan_group_no = Column(String(64), nullable=True)
     company = Column(String(140), nullable=False)
     sales_order = Column(String(140), nullable=False)
     sales_order_item = Column(String(140), nullable=False)

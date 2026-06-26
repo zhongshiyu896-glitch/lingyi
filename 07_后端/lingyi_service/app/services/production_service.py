@@ -123,6 +123,9 @@ from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanListItem
 from app.schemas.production import ProductionPlanMaterialSnapshotItem
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionSalesOrderPlanCreateData
+from app.schemas.production import ProductionSalesOrderPlanCreateRequest
+from app.schemas.production import ProductionSalesOrderPlanLineItem
 from app.schemas.production import ProductionQuoteConvertData
 from app.schemas.production import ProductionQuoteConvertRequest
 from app.schemas.production import ProductionQuoteCopyRequest
@@ -259,6 +262,7 @@ class ProductionService:
                 return ProductionPlanCreateData(
                     plan_id=int(existing.id),
                     plan_no=str(existing.plan_no),
+                    plan_group_no=(str(existing.plan_group_no) if getattr(existing, "plan_group_no", None) else str(existing.plan_no)),
                     status=str(existing.status),
                     company=str(existing.company),
                     sales_order_item=str(target_item.name),
@@ -272,6 +276,7 @@ class ProductionService:
         plan_no = self._next_plan_no()
         row = LyProductionPlan(
             plan_no=plan_no,
+            plan_group_no=(str(payload.plan_group_no).strip() if payload.plan_group_no else plan_no),
             company=company,
             sales_order=sales_order.name,
             sales_order_item=target_item.name,
@@ -314,6 +319,7 @@ class ProductionService:
         return ProductionPlanCreateData(
             plan_id=int(row.id),
             plan_no=plan_no,
+            plan_group_no=(str(row.plan_group_no) if row.plan_group_no else plan_no),
             status="planned",
             company=company,
             sales_order_item=str(target_item.name),
@@ -333,6 +339,153 @@ class ProductionService:
         self._validate_create_plan_gate(payload=payload, request_id=request_id)
         _, target_item, company = self._load_sales_order_context(payload=payload, request_id=request_id)
         return company, str(target_item.item_code)
+
+    def resolve_sales_order_plan_create_scope(
+        self,
+        *,
+        sales_order: str,
+        payload: ProductionSalesOrderPlanCreateRequest,
+    ) -> tuple[str, list[str]]:
+        """Resolve all company/item scopes before order-level plan creation."""
+        order, lines = self._load_native_sales_order_with_items(sales_order=sales_order, company=payload.company)
+        target_lines = self._sales_order_plan_target_lines(lines=lines, sales_order_items=payload.sales_order_items)
+        item_codes = sorted({str(line.item_code) for line in target_lines if str(line.item_code or "").strip()})
+        return str(order.company), item_codes
+
+    def create_sales_order_plan(
+        self,
+        *,
+        sales_order: str,
+        payload: ProductionSalesOrderPlanCreateRequest,
+        operator: str,
+        request_id: str | None = None,
+    ) -> ProductionSalesOrderPlanCreateData:
+        operation = str(payload.operation or "sales_order_plan_create").strip()
+        if operation != "sales_order_plan_create":
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="operation 非法")
+
+        order, lines = self._load_native_sales_order_with_items(sales_order=sales_order, company=payload.company)
+        company = str(order.company)
+        target_lines = self._sales_order_plan_target_lines(lines=lines, sales_order_items=payload.sales_order_items)
+        parent_idempotency = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        parent_request_hash = self._production_operation_request_hash(
+            {
+                "sales_order": str(order.sales_order_no),
+                "company": company,
+                "operation": operation,
+                "planned_start_date": payload.planned_start_date.isoformat() if payload.planned_start_date else None,
+                "sales_order_items": [
+                    {
+                        "sales_order_item": str(line.sales_order_item),
+                        "item_code": str(line.item_code),
+                        "qty": str(Decimal(str(line.qty or 0))),
+                    }
+                    for line in target_lines
+                ],
+            }
+        )
+        existing_parent_operation = self._get_plan_operation(
+            company=company,
+            operation=operation,
+            idempotency_key=parent_idempotency,
+        )
+        if existing_parent_operation is not None:
+            if str(existing_parent_operation.request_hash) != parent_request_hash:
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+            return self._production_sales_order_plan_create_data_from_json(existing_parent_operation.response_json)
+
+        group_no = self._plan_group_no_from_idempotency(parent_idempotency)
+        parent_digest = hashlib.sha1(parent_idempotency.encode("utf-8")).hexdigest()[:16].upper()
+        result_items: list[ProductionSalesOrderPlanLineItem] = []
+
+        for line in target_lines:
+            line_item = ERPNextSalesOrderItem(
+                name=str(line.sales_order_item),
+                item_code=str(line.item_code),
+                qty=Decimal(str(line.qty or 0)),
+                color=str(line.color) if line.color else None,
+                size=str(line.size) if line.size else None,
+            )
+            remaining_qty = self._remaining_plannable_qty(
+                company=company,
+                sales_order=str(order.sales_order_no),
+                sales_order_item=line_item,
+            )
+            if remaining_qty <= Decimal("0"):
+                continue
+
+            line_digest = hashlib.sha1(str(line.sales_order_item).encode("utf-8")).hexdigest()[:12].upper()
+            created = self.create_plan(
+                payload=ProductionPlanCreateRequest(
+                    sales_order=str(order.sales_order_no),
+                    sales_order_item=str(line.sales_order_item),
+                    item_code=str(line.item_code),
+                    plan_group_no=group_no,
+                    bom_id=None,
+                    planned_qty=remaining_qty,
+                    planned_start_date=payload.planned_start_date,
+                    scenario_tag=None,
+                    operation="create_plan",
+                    idempotency_key=f"sales-order-plan-{parent_digest}-{line_digest}",
+                    company=company,
+                ),
+                operator=operator,
+                request_id=request_id,
+            )
+            created_plan = self._must_get_plan(plan_id=int(created.plan_id))
+            result_items.append(
+                ProductionSalesOrderPlanLineItem(
+                    plan_id=int(created.plan_id),
+                    plan_no=str(created.plan_no),
+                    plan_group_no=group_no,
+                    sales_order_item=str(line.sales_order_item),
+                    item_code=str(line.item_code),
+                    color=str(line.color) if line.color else None,
+                    size=str(line.size) if line.size else None,
+                    bom_id=int(created_plan.bom_id),
+                    bom_version=(str(created_plan.bom_version) if created_plan.bom_version else None),
+                    planned_qty=Decimal(str(created.planned_qty)),
+                    sales_order_item_qty=Decimal(str(line.qty)) if line.qty is not None else None,
+                    created_plan=True,
+                )
+            )
+
+        if not result_items:
+            raise BusinessException(code=PRODUCTION_PLANNED_QTY_EXCEEDED, message="当前订单没有未排产明细")
+
+        planned_qty_total = sum((Decimal(str(item.planned_qty)) for item in result_items), Decimal("0"))
+        response = ProductionSalesOrderPlanCreateData(
+            plan_group_no=group_no,
+            display_plan_no=group_no,
+            sales_order=str(order.sales_order_no),
+            company=company,
+            customer=(str(order.customer) if order.customer else None),
+            planned_start_date=payload.planned_start_date,
+            planned_qty=planned_qty_total.quantize(Decimal("0.000001")),
+            line_count=len(result_items),
+            created_plan_count=len(result_items),
+            items=result_items,
+        )
+        self.session.add(
+            LyProductionPlanOperation(
+                plan_id=int(result_items[0].plan_id),
+                company=company,
+                operation=operation,
+                idempotency_key=parent_idempotency,
+                request_hash=parent_request_hash,
+                response_json=self._production_model_to_json(response),
+                created_by=operator,
+            )
+        )
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return response
 
     def list_plans(
         self,
@@ -430,6 +583,7 @@ class ProductionService:
                 ProductionPlanListItem(
                     id=int(row.id),
                     plan_no=str(row.plan_no),
+                    plan_group_no=(str(row.plan_group_no) if getattr(row, "plan_group_no", None) else str(row.plan_no)),
                     company=str(row.company),
                     sales_order=str(row.sales_order),
                     sales_order_item=str(row.sales_order_item),
@@ -620,7 +774,10 @@ class ProductionService:
 
     @staticmethod
     def _normalized_dimension(value: Any) -> str:
-        return str(value or "").strip().lower()
+        normalized = str(value or "").strip().lower()
+        if normalized in {"通用", "全部", "全部颜色", "所有颜色", "all", "all colors", "__all__"}:
+            return ""
+        return normalized
 
     @classmethod
     def _dimension_matches(cls, bom_value: Any, order_value: str) -> bool:
@@ -4486,6 +4643,7 @@ class ProductionService:
         return ProductionPlanDetailData(
             id=int(plan.id),
             plan_no=str(plan.plan_no),
+            plan_group_no=(str(plan.plan_group_no) if getattr(plan, "plan_group_no", None) else str(plan.plan_no)),
             company=str(plan.company),
             sales_order=str(plan.sales_order),
             sales_order_item=str(plan.sales_order_item),
@@ -6248,6 +6406,21 @@ class ProductionService:
         return grouped
 
     @staticmethod
+    def _sales_order_plan_target_lines(
+        *,
+        lines: list[LySalesOrderItem],
+        sales_order_items: list[str] | None,
+    ) -> list[LySalesOrderItem]:
+        requested = {str(item or "").strip() for item in (sales_order_items or []) if str(item or "").strip()}
+        if not requested:
+            return lines
+        line_map = {str(line.sales_order_item): line for line in lines}
+        missing = sorted(item for item in requested if item not in line_map)
+        if missing:
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message=f"Sales Order 行不存在: {', '.join(missing)}")
+        return [line for line in lines if str(line.sales_order_item) in requested]
+
+    @staticmethod
     def _sales_order_material_check_scenario_tag(
         *,
         payload: ProductionSalesOrderMaterialCheckRequest,
@@ -6546,6 +6719,12 @@ class ProductionService:
         if hasattr(ProductionSalesOrderMaterialCheckData, "model_validate"):
             return ProductionSalesOrderMaterialCheckData.model_validate(payload)
         return ProductionSalesOrderMaterialCheckData.parse_obj(payload)
+
+    @classmethod
+    def _production_sales_order_plan_create_data_from_json(cls, payload: dict[str, Any]) -> ProductionSalesOrderPlanCreateData:
+        if hasattr(ProductionSalesOrderPlanCreateData, "model_validate"):
+            return ProductionSalesOrderPlanCreateData.model_validate(payload)
+        return ProductionSalesOrderPlanCreateData.parse_obj(payload)
 
     @staticmethod
     def _ensure_material_check_status_allowed(*, plan: LyProductionPlan) -> str:
@@ -8168,6 +8347,11 @@ class ProductionService:
     def _next_plan_no() -> str:
         ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         return f"PP-{ts}"
+
+    @staticmethod
+    def _plan_group_no_from_idempotency(idempotency_key: str) -> str:
+        digest = hashlib.sha1(idempotency_key.strip().encode("utf-8")).hexdigest()[:18].upper()
+        return f"PPG-{digest}"
 
     @staticmethod
     def _next_factory_packing_no() -> str:

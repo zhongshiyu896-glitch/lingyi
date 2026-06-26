@@ -497,6 +497,8 @@ class MaterialPurchaseService:
                 bom_size = self._optional_text(getattr(snapshot, "bom_size", None))
                 bom_part = self._optional_text(getattr(snapshot, "bom_part", None))
                 bom_item_id = int(snapshot.bom_item_id) if snapshot.bom_item_id is not None else None
+                spec_by_size = self._bom_spec_by_size(getattr(bom_item, "spec_by_size", None))
+                specification = self._specification_for_size(spec_by_size=spec_by_size, size=bom_size)
                 requirement_key = (
                     str(plan.company),
                     "production_plan",
@@ -564,8 +566,11 @@ class MaterialPurchaseService:
                     "bom_color": row.bom_color,
                     "bom_size": row.bom_size,
                     "bom_part": row.bom_part,
+                    "bom_version": self._optional_text(getattr(plan, "bom_version", None)),
                     "qty_per_piece": str(snapshot.qty_per_piece or 0),
                     "loss_rate": str(snapshot.loss_rate or 0),
+                    "spec_by_size": spec_by_size,
+                    "specification": specification,
                     "checked_at": snapshot.checked_at.isoformat() if snapshot.checked_at else None,
                 }
                 row.updated_by = actor
@@ -696,6 +701,7 @@ class MaterialPurchaseService:
             requirements=requirements,
             requested_supplier=requested_supplier,
         )
+        style_no = self._resolve_requirement_style_no(requirements=requirements)
         self._ensure_active_master_records(
             company=company,
             entity_type="supplier",
@@ -725,7 +731,11 @@ class MaterialPurchaseService:
                 label="仓库",
                 match_name=True,
             )
-        grouped = self._group_requirements_for_order(requirements=requirements, group_by_material=payload.group_by_material)
+        grouped = self._group_requirements_for_order(
+            requirements=requirements,
+            group_by_material=payload.group_by_material,
+            style_no=style_no,
+        )
         total_qty = Decimal("0")
         total_amount = Decimal("0")
         try:
@@ -756,7 +766,7 @@ class MaterialPurchaseService:
                 line = LyMaterialPurchaseOrderItem(
                     order_id=int(order.id),
                     company=company,
-                    item_code=str(bucket["material_item_code"]),
+                    item_code=self._optional_text(bucket.get("style_no")) or str(bucket["material_item_code"]),
                     material_item_code=str(bucket["material_item_code"]),
                     material_name=str(bucket["material_name"]),
                     qty=qty,
@@ -783,6 +793,7 @@ class MaterialPurchaseService:
                     requirement.updated_by = actor
                     requirement.updated_at = datetime.now(UTC)
 
+            self.session.flush()
             data = self._requirement_order_data(order=order, requirements=requirements)
             self.session.add(
                 LyMaterialPurchaseIdempotency(
@@ -958,10 +969,18 @@ class MaterialPurchaseService:
         lines = self._get_lines(order_id=int(order.id))
         expanded: list[dict[str, Any]] = []
         for source_index, item in enumerate(self._normalize_receipt_rows(items)):
+            requirement_id = item.get("purchase_requirement_id")
+            purchase_order_item_id = item.get("purchase_order_item_id")
+            if purchase_order_item_id is None and requirement_id is not None:
+                purchase_order_item_id = self._purchase_order_item_id_from_requirement(
+                    order=order,
+                    requirement_id=int(requirement_id),
+                )
             line = self._match_receipt_line(
                 lines=lines,
                 item_code=str(item["item_code"]),
                 warehouse=self._optional_text(item.get("warehouse")),
+                purchase_order_item_id=purchase_order_item_id,
             )
             requested_uom = self._optional_text(item.get("uom"))
             line_uom = self._optional_text(line.uom) or "米"
@@ -971,7 +990,6 @@ class MaterialPurchaseService:
                     message=f"采购入库单位与采购明细不一致: {item['item_code']} {requested_uom} != {line_uom}",
                 )
             receipt_qty = Decimal(str(item["qty"]))
-            requirement_id = item.get("purchase_requirement_id")
             if requirement_id is not None:
                 requirement = self._match_receipt_requirement(
                     order=order,
@@ -997,6 +1015,7 @@ class MaterialPurchaseService:
                     {
                         **item,
                         "_source_index": source_index,
+                        "purchase_order_item_id": int(line.id),
                     }
                 )
                 continue
@@ -1013,19 +1032,14 @@ class MaterialPurchaseService:
                 )
                 continue
 
-            line_qty = Decimal(str(line.qty or 0))
-            if receipt_qty != line_qty:
-                raise BusinessException(
-                    code=MATERIAL_PURCHASE_CONFLICT,
-                    message=f"{line.material_item_code} 合并采购部分入库必须指定采购需求行",
-                )
-
             remaining_qty = receipt_qty
             for requirement in requirements:
                 purchased_qty = Decimal(str(requirement.purchased_qty or requirement.net_required_qty or 0))
-                if purchased_qty <= Decimal("0"):
+                requirement_received = Decimal(str(requirement.received_qty or 0))
+                receivable_qty = purchased_qty - requirement_received
+                if receivable_qty <= Decimal("0"):
                     continue
-                allocated_qty = min(purchased_qty, remaining_qty)
+                allocated_qty = min(receivable_qty, remaining_qty)
                 if allocated_qty <= Decimal("0"):
                     continue
                 expanded.append(
@@ -1062,10 +1076,18 @@ class MaterialPurchaseService:
         directed_line_ids: set[int] = set()
         undirected_line_ids: set[int] = set()
         for item in self._normalize_receipt_rows(items):
+            requirement_id = item.get("purchase_requirement_id")
+            purchase_order_item_id = item.get("purchase_order_item_id")
+            if purchase_order_item_id is None and requirement_id is not None:
+                purchase_order_item_id = self._purchase_order_item_id_from_requirement(
+                    order=order,
+                    requirement_id=int(requirement_id),
+                )
             line = self._match_receipt_line(
                 lines=lines,
                 item_code=str(item["item_code"]),
                 warehouse=self._optional_text(item.get("warehouse")),
+                purchase_order_item_id=purchase_order_item_id,
             )
             requested_uom = self._optional_text(item.get("uom"))
             line_uom = self._optional_text(line.uom) or "米"
@@ -1075,7 +1097,6 @@ class MaterialPurchaseService:
                     message=f"采购入库单位与采购明细不一致: {item['item_code']} {requested_uom} != {line_uom}",
                 )
             line_id = int(line.id)
-            requirement_id = item.get("purchase_requirement_id")
             if requirement_id is not None:
                 directed_line_ids.add(line_id)
                 requirement = self._match_receipt_requirement(
@@ -1946,6 +1967,7 @@ class MaterialPurchaseService:
         )
 
     def _list_item(self, order: LyMaterialPurchaseOrder, line: LyMaterialPurchaseOrderItem) -> MaterialPurchaseOrderListItem:
+        requirement_context = self._line_requirement_context(line=line)
         return MaterialPurchaseOrderListItem(
             id=int(line.id),
             order_id=int(order.id),
@@ -1953,9 +1975,18 @@ class MaterialPurchaseService:
             company=str(order.company),
             purchase_no=str(order.purchase_no),
             supplier_name=str(order.supplier_name),
+            style_no=requirement_context["style_no"],
             item_code=str(line.item_code),
             material_item_code=str(line.material_item_code),
             material_name=str(line.material_name or ""),
+            bom_color=requirement_context["bom_color"],
+            bom_size=requirement_context["bom_size"],
+            specification=requirement_context["specification"],
+            spec_by_size=requirement_context["spec_by_size"],
+            bom_part=requirement_context["bom_part"],
+            bom_version=requirement_context["bom_version"],
+            requirement_ids=requirement_context["requirement_ids"],
+            requirement_count=requirement_context["requirement_count"],
             qty=Decimal(str(line.qty or 0)),
             received_qty=Decimal(str(line.received_qty or 0)),
             uom=str(line.uom or ""),
@@ -1968,6 +1999,39 @@ class MaterialPurchaseService:
             currency=str(order.currency or "CNY"),
             created_at=order.created_at,
         )
+
+    def _line_requirement_context(self, *, line: LyMaterialPurchaseOrderItem) -> dict[str, Any]:
+        requirements = self._requirements_for_order_line(line=line)
+        if not requirements:
+            line_item_code = self._optional_text(line.item_code)
+            material_item_code = self._optional_text(line.material_item_code)
+            return {
+                "style_no": line_item_code if line_item_code and line_item_code != material_item_code else None,
+                "bom_color": None,
+                "bom_size": None,
+                "specification": None,
+                "spec_by_size": {},
+                "bom_part": None,
+                "bom_version": None,
+                "requirement_ids": [],
+                "requirement_count": 0,
+            }
+
+        requirement_items = [self._requirement_item(requirement) for requirement in requirements]
+        spec_by_size: dict[str, str] = {}
+        for item in requirement_items:
+            spec_by_size.update(item.spec_by_size or {})
+        return {
+            "style_no": self._join_texts(self._unique_texts(item.item_code for item in requirement_items)),
+            "bom_color": self._join_texts(self._unique_texts(item.bom_color for item in requirement_items)),
+            "bom_size": self._join_texts(self._unique_texts(item.bom_size for item in requirement_items)),
+            "specification": self._join_texts(self._unique_texts(item.specification for item in requirement_items)),
+            "spec_by_size": spec_by_size,
+            "bom_part": self._join_texts(self._unique_texts(item.bom_part for item in requirement_items)),
+            "bom_version": self._join_texts(self._unique_texts(item.bom_version for item in requirement_items)),
+            "requirement_ids": [int(requirement.id) for requirement in requirements],
+            "requirement_count": len(requirements),
+        }
 
     def _invoice_data(self, row: LyMaterialPurchaseInvoice) -> MaterialPurchaseInvoiceData:
         financial_ledger = self._purchase_invoice_financial_ledger(row)
@@ -2132,6 +2196,9 @@ class MaterialPurchaseService:
             bom_color=self._optional_text(row.bom_color),
             bom_size=self._optional_text(row.bom_size),
             bom_part=self._optional_text(row.bom_part),
+            specification=self._requirement_specification(row),
+            spec_by_size=self._requirement_spec_by_size(row),
+            bom_version=self._requirement_bom_version(row),
             sales_order=self._optional_text(row.sales_order),
             sales_order_item=self._optional_text(row.sales_order_item),
             item_code=self._optional_text(row.item_code),
@@ -2201,6 +2268,11 @@ class MaterialPurchaseService:
         bom_colors = self._unique_texts(item.bom_color for item in items)
         bom_sizes = self._unique_texts(item.bom_size for item in items)
         bom_parts = self._unique_texts(item.bom_part for item in items)
+        specifications = self._unique_texts(item.specification for item in items)
+        bom_versions = self._unique_texts(item.bom_version for item in items)
+        spec_by_size: dict[str, str] = {}
+        for item in items:
+            spec_by_size.update(item.spec_by_size or {})
         unit_prices = {Decimal(str(item.unit_price or 0)) for item in items}
         unit_price = unit_prices.pop() if len(unit_prices) == 1 else Decimal("0")
 
@@ -2219,6 +2291,9 @@ class MaterialPurchaseService:
             bom_color=self._join_texts(bom_colors),
             bom_size=self._join_texts(bom_sizes),
             bom_part=self._join_texts(bom_parts),
+            specification=self._join_texts(specifications),
+            spec_by_size=spec_by_size,
+            bom_version=self._join_texts(bom_versions),
             sales_order=self._join_texts(sales_orders),
             sales_order_item=self._join_texts(sales_order_items),
             item_code=self._join_texts(item_codes),
@@ -2390,13 +2465,27 @@ class MaterialPurchaseService:
         *,
         requirements: list[LyMaterialPurchaseRequirement],
         group_by_material: bool,
+        style_no: str,
     ) -> list[dict[str, Any]]:
         grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
         for requirement in requirements:
+            requirement_style_no = self._optional_text(requirement.item_code) or style_no
+            bom_color = self._optional_text(requirement.bom_color)
+            bom_size = self._optional_text(requirement.bom_size)
+            bom_part = self._optional_text(requirement.bom_part)
+            specification = self._requirement_specification(requirement)
+            spec_by_size = self._requirement_spec_by_size(requirement)
+            bom_version = self._requirement_bom_version(requirement)
             if group_by_material:
                 key = (
+                    requirement_style_no,
                     str(requirement.material_item_code),
+                    bom_color or "",
+                    bom_size or "",
+                    specification or "",
+                    bom_part or "",
                     str(requirement.uom or "米"),
+                    bom_version or "",
                     str(requirement.warehouse),
                 )
             else:
@@ -2404,8 +2493,15 @@ class MaterialPurchaseService:
             bucket = grouped.setdefault(
                 key,
                 {
+                    "style_no": requirement_style_no,
                     "material_item_code": str(requirement.material_item_code),
                     "material_name": str(requirement.material_name or requirement.material_item_code),
+                    "bom_color": bom_color,
+                    "bom_size": bom_size,
+                    "specification": specification,
+                    "spec_by_size": spec_by_size,
+                    "bom_part": bom_part,
+                    "bom_version": bom_version,
                     "uom": str(requirement.uom or "米"),
                     "warehouse": str(requirement.warehouse),
                     "unit_price": Decimal(str(requirement.unit_price or 0)),
@@ -2462,10 +2558,50 @@ class MaterialPurchaseService:
             )
         return requested_supplier or requirement_supplier or "未指定供应商"
 
+    def _resolve_requirement_style_no(
+        self,
+        *,
+        requirements: list[LyMaterialPurchaseRequirement],
+    ) -> str:
+        style_nos = sorted(
+            {
+                style_no
+                for style_no in (
+                    self._optional_text(requirement.item_code)
+                    for requirement in requirements
+                )
+                if style_no is not None
+            }
+        )
+        has_missing_style = any(self._optional_text(requirement.item_code) is None for requirement in requirements)
+        if len(style_nos) > 1:
+            raise BusinessException(
+                code=MATERIAL_PURCHASE_CONFLICT,
+                message=f"所选需求款号不一致: {'、'.join(style_nos)}",
+            )
+        if has_missing_style and style_nos:
+            raise BusinessException(
+                code=MATERIAL_PURCHASE_CONFLICT,
+                message=f"所选需求款号不完整，不能与款号 {style_nos[0]} 合并",
+            )
+        return style_nos[0] if style_nos else "未指定款号"
+
     def _normalize_receipt_rows(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         normalized: list[dict[str, Any]] = []
         for index, item in enumerate(items, start=1):
             item_code = self._require_text(item.get("item_code"), f"items[{index}].item_code")
+            raw_order_item_id = item.get("purchase_order_item_id", item.get("purchase_order_line_id", item.get("line_id")))
+            purchase_order_item_id: int | None = None
+            if raw_order_item_id not in (None, ""):
+                try:
+                    purchase_order_item_id = int(raw_order_item_id)
+                except Exception as exc:
+                    raise BusinessException(
+                        code=MATERIAL_PURCHASE_CONFLICT,
+                        message=f"items[{index}].purchase_order_item_id 非法",
+                    ) from exc
+                if purchase_order_item_id <= 0:
+                    raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"items[{index}].purchase_order_item_id 必须大于 0")
             raw_requirement_id = item.get("purchase_requirement_id", item.get("requirement_id"))
             requirement_id: int | None = None
             if raw_requirement_id not in (None, ""):
@@ -2492,6 +2628,7 @@ class MaterialPurchaseService:
                     "warehouse": self._optional_text(item.get("warehouse"))
                     or self._optional_text(item.get("target_warehouse"))
                     or self._optional_text(item.get("source_warehouse")),
+                    "purchase_order_item_id": purchase_order_item_id,
                     "purchase_requirement_id": requirement_id,
                 }
             )
@@ -2503,7 +2640,21 @@ class MaterialPurchaseService:
         lines: list[LyMaterialPurchaseOrderItem],
         item_code: str,
         warehouse: str | None,
+        purchase_order_item_id: int | None = None,
     ) -> LyMaterialPurchaseOrderItem:
+        if purchase_order_item_id is not None:
+            matched_by_id = [line for line in lines if int(line.id) == int(purchase_order_item_id)]
+            if not matched_by_id:
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购明细不存在: {purchase_order_item_id}")
+            line = matched_by_id[0]
+            if item_code not in {str(line.material_item_code), str(line.item_code)}:
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购明细物料与入库物料不一致: {item_code}")
+            if warehouse is not None:
+                line_warehouse = self._optional_text(line.warehouse)
+                if line_warehouse is not None and line_warehouse != warehouse:
+                    raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"收货仓库与采购明细不一致: {item_code}")
+            return line
+
         candidates = [
             line
             for line in lines
@@ -2540,6 +2691,25 @@ class MaterialPurchaseService:
             .all()
         )
 
+    def _purchase_order_item_id_from_requirement(
+        self,
+        *,
+        order: LyMaterialPurchaseOrder,
+        requirement_id: int,
+    ) -> int:
+        requirement = (
+            self.session.query(LyMaterialPurchaseRequirement)
+            .filter(
+                LyMaterialPurchaseRequirement.id == int(requirement_id),
+                LyMaterialPurchaseRequirement.company == str(order.company),
+                LyMaterialPurchaseRequirement.purchase_order_id == int(order.id),
+            )
+            .first()
+        )
+        if requirement is None or requirement.purchase_order_item_id is None:
+            raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"采购需求行不属于当前采购单: {requirement_id}")
+        return int(requirement.purchase_order_item_id)
+
     def _receipt_context_item(
         self,
         *,
@@ -2552,14 +2722,18 @@ class MaterialPurchaseService:
         return {
             **item,
             "_source_index": source_index,
+            "purchase_order_item_id": int(line.id),
             "qty": qty,
             "uom": self._optional_text(item.get("uom")) or self._optional_text(line.uom) or self._optional_text(requirement.uom) or "米",
             "warehouse": self._optional_text(item.get("warehouse")) or self._optional_text(requirement.warehouse) or self._optional_text(line.warehouse),
             "purchase_requirement_id": int(requirement.id),
             "sales_order_item": self._optional_text(requirement.sales_order_item),
+            "style_no": self._optional_text(requirement.item_code) or self._optional_text(line.item_code),
             "bom_color": self._optional_text(requirement.bom_color),
             "bom_size": self._optional_text(requirement.bom_size),
+            "specification": self._requirement_specification(requirement),
             "bom_part": self._optional_text(requirement.bom_part),
+            "bom_version": self._requirement_bom_version(requirement),
         }
 
     def _ensure_undirected_receipt_is_unambiguous(
@@ -2568,16 +2742,8 @@ class MaterialPurchaseService:
         line: LyMaterialPurchaseOrderItem,
         next_received: Decimal,
     ) -> None:
-        requirements = self._requirements_for_order_line(line=line)
-        if len(requirements) <= 1:
-            return
-        line_qty = Decimal(str(line.qty or 0))
-        if next_received in {Decimal("0"), line_qty}:
-            return
-        raise BusinessException(
-            code=MATERIAL_PURCHASE_CONFLICT,
-            message=f"{line.material_item_code} 合并采购部分入库必须指定采购需求行",
-        )
+        _ = (line, next_received)
+        return
 
     def _match_receipt_requirement(
         self,
@@ -2880,7 +3046,7 @@ class MaterialPurchaseService:
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
 
-        active_values: set[str] = set()
+        active_values: set[str] = {"米", "码", "件", "条", "个", "厘米", "CM", "cm", "M", "m"}
         for row in rows:
             payload = row.payload if isinstance(row.payload, dict) else {}
             material_kind = self._optional_text(payload.get("material_kind") or payload.get("kind"))
@@ -3153,6 +3319,47 @@ class MaterialPurchaseService:
                 return {}
             return parsed if isinstance(parsed, dict) else {}
         return {}
+
+    @classmethod
+    def _bom_spec_by_size(cls, value: Any) -> dict[str, str]:
+        payload = cls._payload_dict(value)
+        result: dict[str, str] = {}
+        for key, spec in payload.items():
+            size = cls._optional_text(key)
+            text = cls._optional_text(spec)
+            if size and text:
+                result[size] = text
+        return result
+
+    @classmethod
+    def _specification_for_size(cls, *, spec_by_size: dict[str, str], size: str | None) -> str | None:
+        size_text = cls._optional_text(size)
+        if size_text and size_text in spec_by_size:
+            return spec_by_size[size_text]
+        if not size_text:
+            for key in ("通用", "ALL", "all", "*"):
+                if key in spec_by_size:
+                    return spec_by_size[key]
+        return None
+
+    @classmethod
+    def _requirement_spec_by_size(cls, row: LyMaterialPurchaseRequirement) -> dict[str, str]:
+        payload = cls._payload_dict(row.payload)
+        return cls._bom_spec_by_size(payload.get("spec_by_size"))
+
+    @classmethod
+    def _requirement_specification(cls, row: LyMaterialPurchaseRequirement) -> str | None:
+        payload = cls._payload_dict(row.payload)
+        direct = cls._optional_text(payload.get("specification"))
+        if direct:
+            return direct
+        spec_by_size = cls._bom_spec_by_size(payload.get("spec_by_size"))
+        return cls._specification_for_size(spec_by_size=spec_by_size, size=cls._optional_text(row.bom_size))
+
+    @classmethod
+    def _requirement_bom_version(cls, row: LyMaterialPurchaseRequirement) -> str | None:
+        payload = cls._payload_dict(row.payload)
+        return cls._optional_text(payload.get("bom_version"))
 
     def _require_text(self, value: Any, field_name: str) -> str:
         text = self._optional_text(value)
