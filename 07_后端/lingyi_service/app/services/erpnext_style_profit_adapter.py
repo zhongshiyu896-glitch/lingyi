@@ -208,8 +208,9 @@ class StyleProfitLocalSourceAdapter:
             if not material_code:
                 continue
             qty_per_piece = self._to_decimal(row.qty_per_piece)
+            usage_count = self._to_decimal(getattr(row, "usage_count", 1)) or Decimal("1")
             loss_rate = self._to_decimal(row.loss_rate)
-            required_qty = qty_per_piece * safe_planned_qty * (Decimal("1") + loss_rate)
+            required_qty = qty_per_piece * usage_count * safe_planned_qty * (Decimal("1") + loss_rate)
 
             unit_cost, unit_cost_source = self._resolve_material_unit_cost(
                 material_item_code=material_code,

@@ -1956,8 +1956,9 @@ class SubcontractService:
             if not item_code:
                 continue
             qty_per_piece = Decimal(str(row.qty_per_piece or "0"))
+            usage_count = Decimal(str(getattr(row, "usage_count", 1) or "1"))
             loss_rate = Decimal(str(row.loss_rate or "0"))
-            required_total = planned_qty * qty_per_piece * (Decimal("1") + loss_rate)
+            required_total = planned_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)
             if item_code not in plan:
                 plan[item_code] = {"required_qty": Decimal("0"), "uom": str(row.uom or "").strip() or "Nos"}
             plan[item_code]["required_qty"] = Decimal(str(plan[item_code]["required_qty"])) + required_total

@@ -408,15 +408,18 @@ class MaterialBomApiTest(unittest.TestCase):
 
     def test_style_material_bom_upsert_explode_and_style_no_sync(self) -> None:
         style_id = self._seed_style()
+        payload = self._style_bom_payload()
+        payload["items"][0]["usage_count"] = "2"
         upserted = self.client.put(
             f"/api/style-master/styles/{style_id}/material-bom",
             headers=self._headers(request_id="STYLE-MB-UPSERT"),
-            json=self._style_bom_payload(),
+            json=payload,
         )
         self.assertEqual(upserted.status_code, 200, upserted.text)
         self.assertEqual(upserted.json()["data"]["bom"]["item_code"], "ST-MB-001")
         self.assertEqual(upserted.json()["data"]["items"][0]["part"], "前片")
         self.assertEqual(upserted.json()["data"]["items"][0]["size"], "M")
+        self.assertEqual(Decimal(upserted.json()["data"]["items"][0]["usage_count"]), Decimal("2"))
         self.assertEqual(upserted.json()["data"]["items"][0]["material_name"], "黑色主面料")
 
         exploded = self.client.post(
@@ -425,7 +428,8 @@ class MaterialBomApiTest(unittest.TestCase):
             json={"order_qty": "10"},
         )
         self.assertEqual(exploded.status_code, 200, exploded.text)
-        self.assertEqual(exploded.json()["data"]["items"][0]["required_qty"], "21.000000")
+        self.assertEqual(Decimal(exploded.json()["data"]["items"][0]["usage_count"]), Decimal("2"))
+        self.assertEqual(exploded.json()["data"]["items"][0]["required_qty"], "42.000000")
         self.assertEqual(exploded.json()["data"]["items"][0]["size"], "M")
 
         updated_style = self.client.patch(

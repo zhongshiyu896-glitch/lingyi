@@ -619,6 +619,7 @@ class BomService:
                     size=item_row.size,
                     uom=str(item_row.uom),
                     qty_per_piece=Decimal(item_row.qty_per_piece),
+                    usage_count=self._bom_usage_count(item_row),
                     loss_rate=Decimal(item_row.loss_rate),
                     status=str(bom_row.status),
                     is_default=bool(bom_row.is_default),
@@ -702,6 +703,7 @@ class BomService:
                     supplier_name=supplier_name,
                     uom=str(item_row.uom),
                     qty_per_piece=Decimal(item_row.qty_per_piece),
+                    usage_count=self._bom_usage_count(item_row),
                     loss_rate=Decimal(item_row.loss_rate),
                     status=fabric_status,
                     is_default=bool(bom_row.is_default),
@@ -789,6 +791,7 @@ class BomService:
                     supplier_name=supplier_name,
                     uom=str(item_row.uom),
                     qty_per_piece=Decimal(item_row.qty_per_piece),
+                    usage_count=self._bom_usage_count(item_row),
                     loss_rate=Decimal(item_row.loss_rate),
                     status=row_status,
                     is_default=bool(bom_row.is_default),
@@ -1377,7 +1380,8 @@ class BomService:
                 item_id=int(item_row.id),
             )
 
-            planned_outbound_qty = self._round(Decimal(item_row.qty_per_piece) * Decimal("120"))
+            usage_count = self._bom_usage_count(item_row)
+            planned_outbound_qty = self._round(Decimal(item_row.qty_per_piece) * usage_count * Decimal("120"))
             if status == "已出仓":
                 outbound_qty = self._round(planned_outbound_qty * Decimal("0.94"))
             elif status == "已关闭":
@@ -1648,6 +1652,7 @@ class BomService:
                     part=getattr(row, "part", None),
                     size=row.size,
                     qty_per_piece=Decimal(row.qty_per_piece),
+                    usage_count=self._bom_usage_count(row),
                     loss_rate=Decimal(row.loss_rate),
                     uom=str(row.uom),
                     remark=row.remark,
@@ -1865,7 +1870,8 @@ class BomService:
                 size=row.size,
                 size_ratio=payload.size_ratio,
             )
-            final_qty = self._round(base_qty * Decimal(row.qty_per_piece) * (Decimal("1") + Decimal(row.loss_rate)))
+            usage_count = self._bom_usage_count(row)
+            final_qty = self._round(base_qty * Decimal(row.qty_per_piece) * usage_count * (Decimal("1") + Decimal(row.loss_rate)))
 
             key = (
                 str(row.material_item_code),
@@ -2046,6 +2052,7 @@ class BomService:
                 part=item.part,
                 size=item.size,
                 qty_per_piece=item.qty_per_piece,
+                usage_count=item.usage_count,
                 loss_rate=item.loss_rate,
                 uom=item.uom,
                 remark=item.remark,
@@ -2125,3 +2132,11 @@ class BomService:
     @staticmethod
     def _round(value: Decimal) -> Decimal:
         return Decimal(value).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+    @classmethod
+    def _bom_usage_count(cls, row: object) -> Decimal:
+        try:
+            value = Decimal(str(getattr(row, "usage_count", 1) or 1))
+        except Exception:
+            return Decimal("1")
+        return value if value > 0 else Decimal("1")

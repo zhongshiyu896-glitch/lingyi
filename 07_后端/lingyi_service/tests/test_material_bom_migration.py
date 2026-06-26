@@ -18,6 +18,7 @@ from sqlalchemy.pool import StaticPool
 
 from migrations.versions import task_071a_create_material_bom_write_tables as migration_071a
 from migrations.versions import task_095a_extend_apparel_bom_write_operations as migration_095a
+from migrations.versions import task_101a_add_bom_item_usage_count as migration_101a
 
 
 class MaterialBomMigrationTest(unittest.TestCase):
@@ -87,6 +88,28 @@ class MaterialBomMigrationTest(unittest.TestCase):
                 migration_095a.downgrade()
             finally:
                 migration_095a.op = previous_op
+
+    def _run_101a_upgrade(self) -> None:
+        with self.engine.begin() as conn:
+            context = MigrationContext.configure(conn)
+            operations = Operations(context)
+            previous_op = migration_101a.op
+            migration_101a.op = operations
+            try:
+                migration_101a.upgrade()
+            finally:
+                migration_101a.op = previous_op
+
+    def _run_101a_downgrade(self) -> None:
+        with self.engine.begin() as conn:
+            context = MigrationContext.configure(conn)
+            operations = Operations(context)
+            previous_op = migration_101a.op
+            migration_101a.op = operations
+            try:
+                migration_101a.downgrade()
+            finally:
+                migration_101a.op = previous_op
 
     def test_upgrade_creates_style_write_ledger_and_sample_bom_tables(self) -> None:
         self._run_upgrade()
@@ -193,3 +216,19 @@ class MaterialBomMigrationTest(unittest.TestCase):
         with self.assertRaises(Exception):
             with self.engine.begin() as conn:
                 conn.execute(insert_sql)
+
+    def test_101a_adds_usage_count_to_style_and_sample_bom_items(self) -> None:
+        self._run_upgrade()
+        self._run_101a_upgrade()
+        self._run_101a_upgrade()
+
+        inspector = inspect(self.engine)
+        style_columns = {row["name"] for row in inspector.get_columns("ly_apparel_bom_item")}
+        sample_columns = {row["name"] for row in inspector.get_columns("ly_sample_material_bom_item")}
+        self.assertIn("usage_count", style_columns)
+        self.assertIn("usage_count", sample_columns)
+
+        self._run_101a_downgrade()
+        inspector = inspect(self.engine)
+        self.assertNotIn("usage_count", {row["name"] for row in inspector.get_columns("ly_apparel_bom_item")})
+        self.assertNotIn("usage_count", {row["name"] for row in inspector.get_columns("ly_sample_material_bom_item")})

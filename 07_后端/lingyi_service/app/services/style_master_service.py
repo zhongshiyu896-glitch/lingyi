@@ -729,6 +729,7 @@ class StyleMasterService:
                         size=self._optional_text(item.size),
                         part=self._optional_text(item.part),
                         qty_per_piece=item.qty_per_piece,
+                        usage_count=item.usage_count,
                         loss_rate=item.loss_rate,
                         uom=item.uom.strip(),
                         remark=self._optional_text(item.remark),
@@ -791,7 +792,10 @@ class StyleMasterService:
         items: list[StyleMaterialBomRequirementItem] = []
         total = Decimal("0")
         for item in data.items:
-            required_qty = (Decimal(str(order_qty)) * item.qty_per_piece * (Decimal("1") + item.loss_rate)).quantize(Decimal("0.000001"))
+            usage_count = Decimal(str(item.usage_count or 1))
+            required_qty = (
+                Decimal(str(order_qty)) * item.qty_per_piece * usage_count * (Decimal("1") + item.loss_rate)
+            ).quantize(Decimal("0.000001"))
             total += required_qty
             items.append(
                 StyleMaterialBomRequirementItem(
@@ -801,6 +805,7 @@ class StyleMasterService:
                     part=item.part,
                     uom=item.uom,
                     qty_per_piece=item.qty_per_piece,
+                    usage_count=usage_count,
                     loss_rate=item.loss_rate,
                     required_qty=required_qty,
                 )
@@ -1401,6 +1406,7 @@ class StyleMasterService:
                     size=getattr(item, "size", None),
                     part=getattr(item, "part", None),
                     qty_per_piece=Decimal(str(item.qty_per_piece)),
+                    usage_count=Decimal(str(getattr(item, "usage_count", 1) or 1)),
                     loss_rate=Decimal(str(item.loss_rate or 0)),
                     uom=str(item.uom),
                     remark=item.remark,

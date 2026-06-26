@@ -1223,8 +1223,9 @@ class ProductionService:
                 if normalized_supplier and normalized_supplier not in (supplier or "").lower():
                     continue
                 qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+                usage_count = self._bom_usage_count(bom_item)
                 loss_rate = Decimal(str(bom_item.loss_rate or 0))
-                required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                required_qty = (planned_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
                 rows.append(
                     ProductionMaterialCostListItem(
                         plan_id=plan_id,
@@ -1358,9 +1359,10 @@ class ProductionService:
             else:
                 for bom_item in bom_map.get(int(plan.bom_id), []):
                     qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+                    usage_count = self._bom_usage_count(bom_item)
                     loss_rate = Decimal(str(bom_item.loss_rate or 0))
                     unit_price = self._extract_unit_price_from_remark(bom_item.remark)
-                    required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                    required_qty = (planned_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
                     plan_material_cost += required_qty * unit_price
 
             if planned_qty > 0:
@@ -1596,9 +1598,10 @@ class ProductionService:
             else:
                 for bom_item in bom_map.get(int(plan.bom_id), []):
                     qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+                    usage_count = self._bom_usage_count(bom_item)
                     loss_rate = Decimal(str(bom_item.loss_rate or 0))
                     unit_price = self._extract_unit_price_from_remark(bom_item.remark)
-                    required_qty = (quote_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                    required_qty = (quote_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
                     quote_material_cost += required_qty * unit_price
 
             if quote_qty > 0:
@@ -3708,8 +3711,9 @@ class ProductionService:
             for bom_item in context["bom_item_map"].get(int(plan.bom_id), []):
                 material_code = str(bom_item.material_item_code)
                 qty_per_piece = self._dec(bom_item.qty_per_piece)
+                usage_count = self._bom_usage_count(bom_item)
                 loss_rate = self._dec(bom_item.loss_rate)
-                required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                required_qty = (planned_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
                 unit_price = self._material_unit_price(
                     material_item_code=material_code,
                     company=str(plan.company),
@@ -4055,8 +4059,9 @@ class ProductionService:
             for bom_item in bom_rows:
                 material_code = str(bom_item.material_item_code)
                 qty_per_piece = self._dec(bom_item.qty_per_piece)
+                usage_count = self._bom_usage_count(bom_item)
                 loss_rate = self._dec(bom_item.loss_rate)
-                required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                required_qty = (planned_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
                 unit_price = self._material_unit_price(
                     material_item_code=material_code,
                     company=str(plan.company),
@@ -4216,6 +4221,11 @@ class ProductionService:
             return Decimal(str(value))
         except Exception:
             return Decimal("0")
+
+    @classmethod
+    def _bom_usage_count(cls, row: Any) -> Decimal:
+        value = cls._dec(getattr(row, "usage_count", 1))
+        return value if value > 0 else Decimal("1")
 
     @staticmethod
     def _divide(numerator: Decimal, denominator: Decimal) -> Decimal:
@@ -5098,8 +5108,9 @@ class ProductionService:
         available_budget: dict[tuple[str, str, str], Decimal] = {}
         for row in bom_rows:
             qty_per_piece = Decimal(str(row.qty_per_piece))
+            usage_count = self._bom_usage_count(row)
             loss_rate = Decimal(str(row.loss_rate or 0))
-            required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+            required_qty = (planned_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
             material_item_code = str(row.material_item_code)
             uom = str(getattr(row, "uom", None) or "米").strip() or "米"
             if simplified_material_check:
@@ -7515,9 +7526,10 @@ class ProductionService:
 
         for bom_item in bom_items:
             qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+            usage_count = self._bom_usage_count(bom_item)
             loss_rate = Decimal(str(bom_item.loss_rate or 0))
             unit_price = self._extract_unit_price_from_remark(bom_item.remark)
-            required_qty = (quote_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+            required_qty = (quote_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
             material_cost += required_qty * unit_price
         return material_cost.quantize(Decimal("0.000001"))
 

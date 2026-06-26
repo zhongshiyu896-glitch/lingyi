@@ -80,6 +80,7 @@ class LyApparelBomItem(Base):
     part = Column(String(100), nullable=True)
     size = Column(String(64), nullable=True)
     qty_per_piece = Column(Numeric(18, 6), nullable=False)
+    usage_count = Column(Numeric(18, 6), nullable=False, default=1, server_default="1")
     loss_rate = Column(Numeric(12, 6), nullable=False, default=0)
     uom = Column(String(32), nullable=False)
     remark = Column(Text, nullable=True)

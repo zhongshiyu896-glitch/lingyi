@@ -32,6 +32,7 @@ class BomItemPayload(BaseModel):
     part: Optional[str] = Field(default=None, max_length=100)
     size: Optional[str] = None
     qty_per_piece: Decimal = Field(..., gt=0)
+    usage_count: Decimal = Field(default=Decimal("1"), gt=0)
     loss_rate: Decimal = Field(default=Decimal("0"), ge=0)
     uom: str = Field(..., min_length=1, max_length=32)
     remark: Optional[str] = None
@@ -315,6 +316,7 @@ class BomItemView(BaseModel):
     part: Optional[str] = None
     size: Optional[str]
     qty_per_piece: Decimal
+    usage_count: Decimal = Decimal("1")
     loss_rate: Decimal
     uom: str
     remark: Optional[str]
@@ -368,6 +370,7 @@ class BomMaterialGalleryItem(BaseModel):
     size: Optional[str]
     uom: str
     qty_per_piece: Decimal
+    usage_count: Decimal = Decimal("1")
     loss_rate: Decimal
     status: str
     is_default: bool
@@ -397,6 +400,7 @@ class BomFabricItem(BaseModel):
     supplier_name: str
     uom: str
     qty_per_piece: Decimal
+    usage_count: Decimal = Decimal("1")
     loss_rate: Decimal
     status: str
     is_default: bool
@@ -426,6 +430,7 @@ class BomAccessoriesPackagingItem(BaseModel):
     supplier_name: str
     uom: str
     qty_per_piece: Decimal
+    usage_count: Decimal = Decimal("1")
     loss_rate: Decimal
     status: str
     is_default: bool
