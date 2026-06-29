@@ -30,6 +30,9 @@ from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.quality import Base as QualityBase
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.models.subcontract import Base as SubcontractBase
 from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractOrder
@@ -69,6 +72,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
         SubcontractBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         with cls.SessionLocal() as session:
             session.add(
@@ -124,6 +128,8 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrder).delete()
             session.query(LyMaterialPurchaseIdempotency).delete()
             session.query(LyMaterialPurchaseOrderItem).delete()
             session.query(LyMaterialPurchaseOrder).delete()
@@ -685,6 +691,173 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400, response.text)
         self.assertEqual(response.json()["code"], "WAREHOUSE_INVALID_PAYLOAD")
         self.assertIn("仓库主数据不存在或已停用", response.json()["message"])
+
+    def test_finished_goods_draft_creates_default_finished_goods_warehouse_master(self) -> None:
+        default_warehouse = "FG-WH-LOCAL"
+        idempotency_key = f"{self.SCENARIO_TAG}:fg-default-warehouse"
+        source_ref = f"{self.SCENARIO_TAG}:fg-default-warehouse-src"
+        payload = self._stock_entry_payload(
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            item_code="FG-LOCAL-TEE",
+            warehouse=default_warehouse,
+            qty="3",
+            uom="件",
+        )
+        payload["finished_goods_source_id"] = source_ref
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_ref,
+                    warehouse=default_warehouse,
+                    item_code="FG-LOCAL-TEE",
+                    quantity="3",
+                )
+            ),
+            json=payload,
+        )
+
+        self.assertEqual(response.status_code, 201, response.text)
+        self.assertEqual(response.json()["data"]["source_type"], "finished_goods_inbound")
+        with self.SessionLocal() as session:
+            warehouse = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "warehouse",
+                    LyMasterDataRecord.company == "COMP-A",
+                    LyMasterDataRecord.code == default_warehouse,
+                )
+                .one()
+            )
+            self.assertEqual(warehouse.name, "默认成品仓")
+            self.assertEqual(warehouse.status, "active")
+            self.assertEqual(dict(warehouse.payload or {}).get("warehouse_type"), "finished_goods")
+
+    def test_finished_goods_drafts_expose_sales_order_fields_and_filter(self) -> None:
+        default_warehouse = "FG-WH-LOCAL"
+        sales_order = "SO-20260627-001"
+        notice_no = "PN-20260628013532750667"
+        plan_no = "PP-20260627-001"
+        source_ref = (
+            f"{self.SCENARIO_TAG}:finished-goods:fg:so-{sales_order}:"
+            f"pn-{notice_no}:pg-{plan_no}:li-{sales_order}-001"
+        )
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no=sales_order,
+                company="COMP-A",
+                customer="辛巴精选联盟",
+                status="planned",
+                docstatus=1,
+                grand_total=Decimal("0"),
+                quote_amount=Decimal("0"),
+                quote_unit_price=Decimal("0"),
+                quote_material_cost=Decimal("0"),
+                quote_labor_cost=Decimal("0"),
+                quote_management_fee=Decimal("0"),
+                quote_other_fee=Decimal("0"),
+                quote_total_cost=Decimal("0"),
+                gross_profit=Decimal("0"),
+                gross_margin_rate=Decimal("0"),
+                idempotency_key=f"{self.SCENARIO_TAG}:sales-order-fg-so-group",
+                request_hash="hash-fg-so-group",
+                payload={},
+                created_by="seed",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=order.id,
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item=f"{sales_order}-001",
+                    item_code="FG-LOCAL-TEE",
+                    item_name="G9哈灵顿夹克",
+                    qty=Decimal("45"),
+                    uom="件",
+                )
+            )
+            session.commit()
+
+        idempotency_key = f"{self.SCENARIO_TAG}:fg-so-group"
+        payload = self._stock_entry_payload(
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            item_code="FG-LOCAL-TEE",
+            warehouse=default_warehouse,
+            qty="45",
+            uom="件",
+        )
+        payload.update(
+            {
+                "source_type": "finished_goods_inbound",
+                "finished_goods_source_id": source_ref,
+                "items": [
+                    {
+                        "item_code": "FG-LOCAL-TEE",
+                        "qty": "45",
+                        "uom": "件",
+                        "target_warehouse": default_warehouse,
+                        "sales_order_item": f"{sales_order}-001",
+                        "bom_color": "白",
+                        "bom_size": "S",
+                    }
+                ],
+            }
+        )
+
+        create_response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                request_id=self._warehouse_request_id(
+                    idempotency_key=idempotency_key,
+                    source_ref=source_ref,
+                    warehouse=default_warehouse,
+                    item_code="FG-LOCAL-TEE",
+                    quantity="45",
+                )
+            ),
+            json=payload,
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.text)
+
+        list_response = self.client.get(
+            "/api/warehouse/stock-entry-drafts"
+            "?purpose=Material%20Receipt"
+            "&source_type=finished_goods_inbound"
+            f"&sales_order={sales_order}"
+            "&page=1&page_size=100",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(list_response.status_code, 200, list_response.text)
+        data = list_response.json()["data"]
+        self.assertEqual(data["total"], 1)
+        row = data["items"][0]
+        self.assertEqual(row["source_type"], "finished_goods_inbound")
+        self.assertEqual(row["sales_order"], sales_order)
+        self.assertEqual(row["customer"], "辛巴精选联盟")
+        self.assertEqual(row["style_name"], "G9哈灵顿夹克")
+        self.assertEqual(row["production_notice_no"], notice_no)
+        self.assertEqual(row["plan_no"], plan_no)
+        self.assertEqual(row["sales_order_item"], f"{sales_order}-001")
+        self.assertEqual(row["color"], "白")
+        self.assertEqual(row["size"], "S")
+        self.assertEqual(row["items"][0]["bom_color"], "白")
+        self.assertEqual(row["items"][0]["bom_size"], "S")
+
+        excluded_response = self.client.get(
+            "/api/warehouse/stock-entry-drafts"
+            "?purpose=Material%20Receipt"
+            "&source_type=finished_goods_inbound"
+            "&sales_order=SO-OTHER-001",
+            headers=self._headers(),
+        )
+        self.assertEqual(excluded_response.status_code, 200, excluded_response.text)
+        self.assertEqual(excluded_response.json()["data"]["total"], 0)
 
     def test_stock_entry_draft_rejects_missing_or_inactive_unit_master(self) -> None:
         with self.SessionLocal() as session:

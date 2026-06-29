@@ -4,13 +4,18 @@ from __future__ import annotations
 
 from datetime import date
 from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
 import hashlib
+from io import BytesIO
 import json
+import logging
 import os
+from pathlib import Path
 import re
 from typing import Any
 
+from sqlalchemy import and_
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import or_
@@ -50,6 +55,7 @@ from app.core.request_id import is_request_id_valid
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
+from app.models.bom import LyFoundationTemplate
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchaseInvoice
@@ -65,6 +71,7 @@ from app.models.production import LyProductionFollowupTemplateOperation
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
+from app.models.production import LyProductionNotice
 from app.models.production import LyProductionQuote
 from app.models.production import LyProductionQuoteOperation
 from app.models.production import LyProductionStatusLog
@@ -82,6 +89,8 @@ from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.style_profit import LyStyleProfitSnapshot
+from app.models.style_master import LyStyleGallery
+from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
@@ -123,17 +132,27 @@ from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanListItem
 from app.schemas.production import ProductionPlanMaterialSnapshotItem
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionPlanStatusAdvanceRequest
 from app.schemas.production import ProductionSalesOrderPlanCreateData
 from app.schemas.production import ProductionSalesOrderPlanCreateRequest
 from app.schemas.production import ProductionSalesOrderPlanLineItem
 from app.schemas.production import ProductionQuoteConvertData
 from app.schemas.production import ProductionQuoteConvertRequest
+from app.schemas.production import ProductionQuoteConfirmRequest
 from app.schemas.production import ProductionQuoteCopyRequest
+from app.schemas.production import ProductionQuoteLineItem
 from app.schemas.production import ProductionQuoteListData
 from app.schemas.production import ProductionQuoteListItem
 from app.schemas.production import ProductionQuoteCreateRequest
 from app.schemas.production import ProductionQuoteQuery
+from app.schemas.production import ProductionQuoteUpdateRequest
 from app.schemas.production import ProductionQuoteVoidRequest
+from app.schemas.production import ProductionNoticeCreateRequest
+from app.schemas.production import ProductionNoticeItem
+from app.schemas.production import ProductionNoticeLineItem
+from app.schemas.production import ProductionNoticeListData
+from app.schemas.production import ProductionNoticeUpdateRequest
+from app.schemas.production import ProductionPlanNoticeSummary
 from app.schemas.production import ProductionReportSuiteCompositionItem
 from app.schemas.production import ProductionReportSuiteData
 from app.schemas.production import ProductionReportSuiteQuery
@@ -204,6 +223,8 @@ PRODUCTION_TRACKING_NODE_DEFAULT_NAMES = {
 PRODUCTION_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 PRODUCTION_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 PRODUCTION_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
+PRODUCTION_NOTICE_TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "templates" / "production_notice_template.xlsx"
+logger = logging.getLogger(__name__)
 
 
 class ProductionService:
@@ -547,6 +568,8 @@ class ProductionService:
         readiness_map = self._material_readiness_by_plan_ids(plan_ids=plan_ids)
         tracking_context = self._tracking_context_by_plan_ids(plan_ids=plan_ids)
         sales_order_line_attrs = self._sales_order_line_attrs_by_plan_rows(rows=rows)
+        notice_map = self._production_notice_summaries_by_plan_rows(rows=rows)
+        quantity_facts = self._production_order_io_quantity_facts(rows)
 
         items: list[ProductionPlanListItem] = []
         for row in rows:
@@ -559,6 +582,11 @@ class ProductionService:
                 {},
             )
             material_readiness = readiness_map.get(int(row.id), self._empty_material_readiness_summary())
+            production_notice = notice_map.get((str(row.company), str(row.sales_order)))
+            finished_goods_summary = self._finished_goods_inbound_summary(
+                plan=row,
+                fact=quantity_facts.get(int(row.id), {}),
+            )
             summary = None
             latest = latest_map.get(int(row.id))
             if latest is not None:
@@ -596,6 +624,12 @@ class ProductionService:
                     bom_version=(str(row.bom_version) if row.bom_version else None),
                     planned_qty=Decimal(str(row.planned_qty)),
                     planned_start_date=row.planned_start_date,
+                    production_mode=self._text(getattr(row, "production_mode", None)),
+                    factory_id=self._text(getattr(row, "factory_id", None)),
+                    factory_name=self._text(getattr(row, "factory_name", None)),
+                    production_start_date=getattr(row, "production_start_date", None),
+                    expected_finish_date=getattr(row, "expected_finish_date", None),
+                    production_remark=self._text(getattr(row, "production_remark", None)),
                     status=str(row.status),
                     material_ready=bool(material_readiness["material_ready"]),
                     required_qty_total=Decimal(str(material_readiness["required_qty_total"])),
@@ -603,6 +637,11 @@ class ProductionService:
                     shortage_qty_total=Decimal(str(material_readiness["shortage_qty_total"])),
                     pending_requirement_count=int(material_readiness["pending_requirement_count"]),
                     purchase_status=str(material_readiness["purchase_status"]),
+                    production_notice=production_notice,
+                    finished_goods_inbound_qty=finished_goods_summary["inbound_qty"],
+                    finished_goods_remaining_qty=finished_goods_summary["remaining_qty"],
+                    finished_goods_inbound_status=finished_goods_summary["status"],
+                    finished_goods_inbound_ref_count=finished_goods_summary["ref_count"],
                     latest_work_order_outbox=summary,
                     tracking_summary=self._production_tracking_summary(
                         nodes=tracking_nodes,
@@ -673,8 +712,11 @@ class ProductionService:
             if key not in keys:
                 continue
             attrs[key] = {
+                "id": int(line.id),
                 "color": (str(line.color) if line.color else None),
                 "size": (str(line.size) if line.size else None),
+                "item_name": (str(line.item_name) if line.item_name else None),
+                "uom": (str(line.uom) if line.uom else None),
                 "qty": Decimal(str(line.qty)),
             }
         return attrs
@@ -794,7 +836,7 @@ class ProductionService:
             return (
                 self.session.query(LyApparelBomItem)
                 .filter(LyApparelBomItem.bom_id == int(plan.bom_id))
-                .order_by(LyApparelBomItem.id.asc())
+                .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                 .all()
             ), "style"
         except SQLAlchemyError as exc:
@@ -1313,7 +1355,7 @@ class ProductionService:
                 bom_rows = (
                     self.session.query(LyApparelBomItem)
                     .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
-                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                     .all()
                 )
         except SQLAlchemyError as exc:
@@ -1478,7 +1520,7 @@ class ProductionService:
                 bom_rows = (
                     self.session.query(LyApparelBomItem)
                     .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
-                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                     .all()
                 )
         except SQLAlchemyError as exc:
@@ -1569,12 +1611,18 @@ class ProductionService:
             readable_item_codes=readable_item_codes,
             readable_companies=readable_companies,
         )
-        saved_plan_ids = {int(row.plan_id) for row in saved_rows}
+        saved_plan_ids = {int(row.plan_id) for row in saved_rows if row.plan_id is not None}
+        saved_order_keys = {
+            (str(row.company), str(row.sales_order))
+            for row in saved_rows
+            if str(row.sales_order or "").strip() and str(row.status or "") != "void"
+        }
         derived_rows = self._list_derived_quotes(
             query=query,
             readable_item_codes=readable_item_codes,
             readable_companies=readable_companies,
             exclude_plan_ids=saved_plan_ids,
+            exclude_order_keys=saved_order_keys,
         )
         rows = saved_rows + derived_rows
         rows.sort(key=lambda item: item.quoted_at.isoformat() if item.quoted_at else "", reverse=True)
@@ -1588,6 +1636,886 @@ class ProductionService:
             page_size=query.page_size,
         )
 
+    def list_production_notices(
+        self,
+        *,
+        company: str | None = None,
+        sales_order: str | None = None,
+        keyword: str | None = None,
+        status: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionNoticeListData:
+        """List small-factory production notices without mutating order state."""
+        try:
+            sql = self.session.query(LyProductionNotice)
+            if company:
+                sql = sql.filter(LyProductionNotice.company == company)
+            if sales_order:
+                sql = sql.filter(LyProductionNotice.sales_order == sales_order)
+            if status:
+                sql = sql.filter(LyProductionNotice.status == status)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionNoticeListData(items=[], total=0, page=page, page_size=page_size)
+                sql = sql.filter(LyProductionNotice.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionNoticeListData(items=[], total=0, page=page, page_size=page_size)
+                sql = sql.filter(LyProductionNotice.company.in_(sorted(readable_companies)))
+            keyword_text = self._text(keyword)
+            if keyword_text:
+                like_value = f"%{keyword_text.lower()}%"
+                sql = sql.filter(
+                    or_(
+                        func.lower(LyProductionNotice.notice_no).like(like_value),
+                        func.lower(LyProductionNotice.sales_order).like(like_value),
+                        func.lower(LyProductionNotice.customer).like(like_value),
+                        func.lower(LyProductionNotice.item_code).like(like_value),
+                        func.lower(LyProductionNotice.item_name).like(like_value),
+                        func.lower(LyProductionNotice.factory_name).like(like_value),
+                    )
+                )
+            total = int(sql.count())
+            offset = max(page - 1, 0) * page_size
+            rows = (
+                sql.order_by(LyProductionNotice.updated_at.desc(), LyProductionNotice.id.desc())
+                .offset(offset)
+                .limit(page_size)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        return ProductionNoticeListData(
+            items=[self._production_notice_item(row) for row in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def create_production_notice(
+        self,
+        *,
+        payload: ProductionNoticeCreateRequest,
+        operator: str,
+    ) -> ProductionNoticeItem:
+        requested_status = self._normalize_production_notice_status(
+            payload.status if self._payload_has(payload, "status") and payload.status is not None else "draft"
+        )
+        sales_order_no = self._require_non_blank(
+            payload.sales_order,
+            code=PRODUCTION_SO_NOT_FOUND,
+            message="请选择销售订单后再生成生产通知单",
+        )
+        order = self._get_sales_order_for_notice(sales_order=sales_order_no, company=self._text(payload.company))
+        matrix, total_qty, first_line = self._production_notice_order_lines(order=order)
+        company = str(order.company)
+        notice_no = self._text(payload.notice_no) or self._next_production_notice_no()
+        existing = self._get_production_notice_by_sales_order(company=company, sales_order=str(order.sales_order_no))
+
+        row = existing
+        if row is None:
+            row = LyProductionNotice(
+                notice_no=notice_no,
+                company=company,
+                sales_order_id=int(order.id),
+                sales_order=str(order.sales_order_no),
+                status=requested_status,
+                created_by=operator,
+            )
+            self.session.add(row)
+
+        row.customer = self._text(order.customer)
+        row.item_code = str(first_line.item_code)
+        row.item_name = self._text(first_line.item_name)
+        row.order_date = order.transaction_date
+        row.delivery_date = order.delivery_date or first_line.delivery_date
+        row.order_qty = total_qty
+        row.color_size_matrix = matrix
+        row.cutting_plan = {"total_qty": str(total_qty), "lines": matrix}
+        row.style_image_url = self._production_notice_style_image_url(company=company, first_line=first_line)
+        row.updated_by = operator
+        self._apply_production_notice_payload(row=row, payload=payload, update_only=False)
+
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return self._production_notice_item(row)
+
+    def update_production_notice(
+        self,
+        *,
+        notice_id: int,
+        payload: ProductionNoticeUpdateRequest,
+        operator: str,
+    ) -> ProductionNoticeItem:
+        row = self._get_production_notice_for_update(notice_id=notice_id, company=self._text(payload.company))
+        self._apply_production_notice_payload(row=row, payload=payload, update_only=True)
+        row.updated_by = operator
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return self._production_notice_item(row)
+
+    def export_production_notice(self, *, notice_id: int, company: str | None = None) -> tuple[str, bytes]:
+        row = self._get_production_notice_for_update(notice_id=notice_id, company=self._text(company))
+        item = self._production_notice_item(row)
+        workbook = self._production_notice_template_workbook_bytes(row=row, item=item)
+        filename = f"{item.notice_no}-生产通知单.xlsx"
+        return filename, workbook
+
+    def _apply_production_notice_payload(
+        self,
+        *,
+        row: LyProductionNotice,
+        payload: ProductionNoticeCreateRequest | ProductionNoticeUpdateRequest,
+        update_only: bool,
+    ) -> None:
+        if update_only:
+            if self._payload_has(payload, "factory_name"):
+                row.factory_name = self._text(payload.factory_name)
+        else:
+            factory_name = self._text(payload.factory_name)
+            if factory_name:
+                row.factory_name = factory_name
+            elif not self._text(row.factory_name):
+                row.factory_name = "本厂"
+        if not update_only or self._payload_has(payload, "workmanship_template_id"):
+            row.workmanship_template_id = payload.workmanship_template_id
+            row.workmanship_snapshot = self._production_notice_template_snapshot(template_id=payload.workmanship_template_id)
+        if not update_only or self._payload_has(payload, "size_template_id"):
+            row.size_template_id = payload.size_template_id
+            row.size_chart_snapshot = self._production_notice_template_snapshot(template_id=payload.size_template_id)
+        if not update_only or self._payload_has(payload, "process_text"):
+            row.process_text = self._text(payload.process_text)
+        if not update_only or self._payload_has(payload, "packaging_text"):
+            row.packaging_text = self._text(payload.packaging_text)
+        if not update_only or self._payload_has(payload, "label_text"):
+            row.label_text = self._text(payload.label_text)
+        if not update_only or self._payload_has(payload, "remark"):
+            row.remark = self._text(payload.remark)
+        if self._payload_has(payload, "status") and payload.status is not None:
+            row.status = self._normalize_production_notice_status(payload.status)
+
+    def _get_sales_order_for_notice(self, *, sales_order: str, company: str | None) -> LySalesOrder:
+        try:
+            sql = self.session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == sales_order)
+            if company:
+                sql = sql.filter(LySalesOrder.company == company)
+            row = sql.order_by(LySalesOrder.id.desc()).first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="销售订单不存在，无法生成生产通知单")
+        return row
+
+    def _get_production_notice_by_sales_order(self, *, company: str, sales_order: str) -> LyProductionNotice | None:
+        try:
+            return (
+                self.session.query(LyProductionNotice)
+                .filter(
+                    LyProductionNotice.company == company,
+                    LyProductionNotice.sales_order == sales_order,
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    def _production_notice_summary(self, row: LyProductionNotice | None) -> ProductionPlanNoticeSummary | None:
+        if row is None:
+            return None
+        notice_status = str(row.status)
+        return ProductionPlanNoticeSummary(
+            notice_id=int(row.id),
+            notice_no=str(row.notice_no),
+            notice_status=notice_status,
+            allow_start_production=notice_status in {"confirmed", "sent"},
+        )
+
+    def _production_notice_summary_for_plan(self, *, plan: LyProductionPlan) -> ProductionPlanNoticeSummary | None:
+        return self._production_notice_summary(
+            self._get_production_notice_by_sales_order(
+                company=str(plan.company),
+                sales_order=str(plan.sales_order),
+            )
+        )
+
+    def _production_notice_summaries_by_plan_rows(
+        self,
+        *,
+        rows: list[LyProductionPlan],
+    ) -> dict[tuple[str, str], ProductionPlanNoticeSummary]:
+        order_keys = sorted({(str(row.company), str(row.sales_order)) for row in rows if row.sales_order})
+        if not order_keys:
+            return {}
+        filters = [
+            and_(
+                LyProductionNotice.company == company,
+                LyProductionNotice.sales_order == sales_order,
+            )
+            for company, sales_order in order_keys
+        ]
+        try:
+            notices = self.session.query(LyProductionNotice).filter(or_(*filters)).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        summaries: dict[tuple[str, str], ProductionPlanNoticeSummary] = {}
+        for notice in notices:
+            summary = self._production_notice_summary(notice)
+            if summary is not None:
+                summaries[(str(notice.company), str(notice.sales_order))] = summary
+        return summaries
+
+    def _ensure_production_notice_allows_start(self, *, plan: LyProductionPlan) -> ProductionPlanNoticeSummary:
+        summary = self._production_notice_summary_for_plan(plan=plan)
+        if summary is None or not summary.allow_start_production:
+            raise BusinessException(
+                code=PRODUCTION_TRACKING_NODE_INVALID,
+                message="请先确认/下发生产通知单，再开始生产",
+            )
+        return summary
+
+    def _get_production_notice_for_update(self, *, notice_id: int, company: str | None) -> LyProductionNotice:
+        try:
+            sql = self.session.query(LyProductionNotice).filter(LyProductionNotice.id == int(notice_id))
+            if company:
+                sql = sql.filter(LyProductionNotice.company == company)
+            row = sql.first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="生产通知单不存在")
+        return row
+
+    def _production_notice_order_lines(self, *, order: LySalesOrder) -> tuple[list[dict[str, Any]], Decimal, LySalesOrderItem]:
+        try:
+            order_lines = (
+                self.session.query(LySalesOrderItem)
+                .filter(LySalesOrderItem.sales_order_id == int(order.id))
+                .order_by(LySalesOrderItem.line_no.asc(), LySalesOrderItem.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if not order_lines:
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="销售订单没有明细，无法生成生产通知单")
+
+        matrix: list[dict[str, Any]] = []
+        total_qty = Decimal("0")
+        for line in order_lines:
+            qty = Decimal(str(line.qty or 0))
+            total_qty += qty
+            matrix.append(
+                {
+                    "sales_order_item": str(line.sales_order_item),
+                    "item_code": str(line.item_code),
+                    "item_name": self._text(line.item_name),
+                    "color": self._text(line.color) or "通用",
+                    "size": self._text(line.size) or "通用",
+                    "qty": str(qty),
+                    "uom": self._notice_uom(line.uom),
+                }
+            )
+        return matrix, total_qty.quantize(Decimal("0.000001")), order_lines[0]
+
+    def _production_notice_style_image_url(self, *, company: str, first_line: LySalesOrderItem) -> str | None:
+        style_master_id = getattr(first_line, "style_master_id", None)
+        if style_master_id is None:
+            return None
+        try:
+            gallery = (
+                self.session.query(LyStyleGallery)
+                .filter(
+                    LyStyleGallery.company == company,
+                    LyStyleGallery.style_master_id == int(style_master_id),
+                    LyStyleGallery.status == "active",
+                )
+                .order_by(LyStyleGallery.is_primary.desc(), LyStyleGallery.id.desc())
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if gallery is None:
+            return None
+        return self._text(gallery.image_url) or self._text(gallery.thumbnail_url)
+
+    def _production_notice_template_snapshot(self, *, template_id: int | None) -> dict[str, Any]:
+        if template_id is None:
+            return {}
+        try:
+            row = self.session.query(LyFoundationTemplate).filter(LyFoundationTemplate.id == int(template_id)).first()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            return {}
+        nodes = sorted(list(row.nodes or []), key=lambda node: (int(node.sort_no or 0), int(node.id or 0)))
+        return {
+            "id": int(row.id),
+            "template_code": str(row.template_code),
+            "name": str(row.name),
+            "scene": str(row.scene),
+            "status": str(row.status),
+            "nodes": [
+                {
+                    "id": int(node.id),
+                    "code": str(node.code),
+                    "name": str(node.name),
+                    "node_type": str(node.node_type),
+                    "required": bool(node.required),
+                    "status": str(node.status),
+                    "sort_no": int(node.sort_no or 0),
+                    "owner": str(node.owner),
+                }
+                for node in nodes
+                if str(node.status) == "active"
+            ],
+        }
+
+    def _production_notice_item(self, row: LyProductionNotice) -> ProductionNoticeItem:
+        lines: list[ProductionNoticeLineItem] = []
+        for raw_line in row.color_size_matrix or []:
+            line_data = dict(raw_line)
+            line_data["qty"] = Decimal(str(line_data.get("qty") or 0))
+            if hasattr(ProductionNoticeLineItem, "model_validate"):
+                lines.append(ProductionNoticeLineItem.model_validate(line_data))
+            else:  # pragma: no cover - pydantic v1 fallback
+                lines.append(ProductionNoticeLineItem.parse_obj(line_data))
+        return ProductionNoticeItem(
+            id=int(row.id),
+            notice_no=str(row.notice_no),
+            company=str(row.company),
+            sales_order_id=int(row.sales_order_id) if row.sales_order_id is not None else None,
+            sales_order=str(row.sales_order),
+            customer=self._text(row.customer),
+            item_code=str(row.item_code),
+            item_name=self._text(row.item_name),
+            factory_name=self._text(row.factory_name),
+            order_date=row.order_date,
+            delivery_date=row.delivery_date,
+            order_qty=Decimal(str(row.order_qty or 0)),
+            status=str(row.status),
+            style_image_url=self._text(row.style_image_url),
+            workmanship_template_id=int(row.workmanship_template_id) if row.workmanship_template_id is not None else None,
+            size_template_id=int(row.size_template_id) if row.size_template_id is not None else None,
+            color_size_matrix=lines,
+            workmanship_snapshot=row.workmanship_snapshot or {},
+            size_chart_snapshot=row.size_chart_snapshot or {},
+            cutting_plan=row.cutting_plan or {},
+            process_text=self._text(row.process_text),
+            packaging_text=self._text(row.packaging_text),
+            label_text=self._text(row.label_text),
+            remark=self._text(row.remark),
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    @staticmethod
+    def _normalize_production_notice_status(status: str | None) -> str:
+        normalized = str(status or "draft").strip()
+        if normalized not in {"draft", "confirmed", "sent"}:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="生产通知单状态必须为草稿、已确认或已发工厂")
+        return normalized
+
+    @staticmethod
+    def _payload_has(payload: Any, field_name: str) -> bool:
+        fields_set = getattr(payload, "model_fields_set", None)
+        if fields_set is None:
+            fields_set = getattr(payload, "__fields_set__", set())
+        return field_name in fields_set
+
+    @staticmethod
+    def _notice_uom(raw_uom: Any) -> str:
+        uom = str(raw_uom or "").strip()
+        if not uom or uom.lower() in {"nos", "pcs", "piece", "pieces"}:
+            return "件"
+        return uom
+
+    @staticmethod
+    def _next_production_notice_no() -> str:
+        return f"PN-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}"
+
+    def _production_notice_template_workbook_bytes(self, *, row: LyProductionNotice, item: ProductionNoticeItem) -> bytes:
+        from openpyxl import load_workbook
+
+        if not PRODUCTION_NOTICE_TEMPLATE_PATH.exists():
+            raise DatabaseReadFailed(message="生产通知单 Excel 模板不存在")
+        try:
+            workbook = load_workbook(PRODUCTION_NOTICE_TEMPLATE_PATH)
+        except Exception as exc:
+            raise DatabaseReadFailed(message="生产通知单 Excel 模板读取失败") from exc
+
+        worksheet = workbook.active
+        worksheet._images = []
+        worksheet.print_area = "A1:V28"
+        self._clear_production_notice_template_values(worksheet)
+
+        style = self._production_notice_style_master(row=row)
+        sizes = self._production_notice_export_sizes(item)
+        visible_sizes = sizes[:5]
+        qty_by_size = self._production_notice_qty_by_size(item)
+
+        self._set_worksheet_value(
+            worksheet,
+            "A1",
+            f"杭州领意服饰有限公司生产通知单（ {item.item_code or item.notice_no} ）",
+        )
+        self._set_worksheet_value(worksheet, "P1", "水洗标")
+        self._set_worksheet_value(worksheet, "A2", "样衣：")
+        self._set_worksheet_value(worksheet, "E2", "确认样：")
+        self._set_worksheet_value(worksheet, "H2", f"版号：{item.item_code or ''}")
+        self._set_worksheet_value(worksheet, "L2", f"下单日期：{self._production_notice_cn_date(item.order_date)}")
+        self._set_worksheet_value(worksheet, "A3", "客户")
+        self._set_worksheet_value(worksheet, "C3", item.customer)
+        self._set_worksheet_value(worksheet, "H3", "商标")
+        label_lines = self._split_notice_text(item.label_text, limit=2)
+        self._set_worksheet_value(worksheet, "I3", label_lines[0] if label_lines else None)
+        self._set_worksheet_value(worksheet, "I4", label_lines[1] if len(label_lines) > 1 else None)
+        self._set_worksheet_value(worksheet, "L3", "交货期")
+        self._set_worksheet_value(worksheet, "M3", self._production_notice_cn_date(item.delivery_date))
+
+        self._set_worksheet_value(worksheet, "A5", "样版")
+        self._set_worksheet_value(worksheet, "A6", "尺码")
+        self._set_worksheet_value(worksheet, "C6", " / ".join(sizes))
+        self._set_worksheet_value(worksheet, "A7", "面料")
+        self._set_worksheet_value(worksheet, "C7", "成分")
+        self._set_worksheet_value(worksheet, "C8", "耗量")
+        self._set_worksheet_value(worksheet, "A9", "大身里布")
+        self._set_worksheet_value(worksheet, "C9", "成分")
+        self._set_worksheet_value(worksheet, "C10", "耗量")
+        self._set_worksheet_value(worksheet, "A11", "大身里布")
+        self._set_worksheet_value(worksheet, "C11", "成分")
+        self._set_worksheet_value(worksheet, "C12", "耗量")
+        process_text = self._text(item.process_text) or ""
+        self._set_worksheet_value(
+            worksheet,
+            "A13",
+            f"工艺说明\n{process_text}\n\n裁剪码单" if process_text else "工艺说明\n\n\n\n\n裁剪码单",
+        )
+        self._set_worksheet_value(worksheet, "H16", self._production_notice_remark_block(item))
+
+        self._set_worksheet_value(worksheet, "A16", "色番")
+        self._set_worksheet_value(worksheet, "A17", "客户")
+        self._set_worksheet_value(worksheet, "A18", "自己")
+        self._set_worksheet_value(worksheet, "A19", "总裁剪数")
+        for offset, size in enumerate(visible_sizes, start=3):
+            self._set_worksheet_value(worksheet, self._cell_name(16, offset), size)
+            self._set_worksheet_value(worksheet, self._cell_name(17, offset), qty_by_size.get(size))
+            self._set_worksheet_value(worksheet, self._cell_name(19, offset), qty_by_size.get(size))
+
+        size_chart_rows = self._production_notice_style_size_chart_rows(style=style, visible_sizes=visible_sizes)
+        if size_chart_rows:
+            for offset, size in enumerate(visible_sizes, start=3):
+                self._set_worksheet_value(worksheet, self._cell_name(21, offset), size)
+            for row_offset, chart_row in enumerate(size_chart_rows[:7], start=22):
+                self._set_worksheet_value(worksheet, self._cell_name(row_offset, 1), chart_row["part"])
+                values = chart_row["values"]
+                for col_offset, size in enumerate(visible_sizes, start=3):
+                    self._set_worksheet_value(worksheet, self._cell_name(row_offset, col_offset), values.get(size))
+
+        self._add_production_notice_image(
+            worksheet=worksheet,
+            image_url=item.style_image_url,
+            target_range="H5:M15",
+            anchor_cell="H5",
+            image_role="style_main",
+        )
+        self._add_production_notice_image(
+            worksheet=worksheet,
+            image_url=self._production_notice_gallery_image_url(style=style, image_types=("wash_label",)),
+            target_range="P2:T28",
+            anchor_cell="P2",
+            image_role="wash_label",
+        )
+
+        buffer = BytesIO()
+        workbook.save(buffer)
+        return buffer.getvalue()
+
+    @staticmethod
+    def _clear_production_notice_template_values(worksheet: Any) -> None:
+        from openpyxl.cell.cell import MergedCell
+        from openpyxl.utils.cell import range_boundaries
+
+        dynamic_ranges = (
+            "A1:O1",
+            "H2:O2",
+            "C3:G4",
+            "I3:K4",
+            "M3:O4",
+            "C5:G12",
+            "H5:M15",
+            "A13:G15",
+            "A16:G19",
+            "A20:G28",
+            "H16:M28",
+            "N5:V28",
+            "P2:T28",
+        )
+        for cell_range in dynamic_ranges:
+            min_col, min_row, max_col, max_row = range_boundaries(cell_range)
+            for row in worksheet.iter_rows(min_row=min_row, max_row=max_row, min_col=min_col, max_col=max_col):
+                for cell in row:
+                    if isinstance(cell, MergedCell):
+                        continue
+                    cell.value = None
+
+    @staticmethod
+    def _set_worksheet_value(worksheet: Any, cell_name: str, value: Any) -> None:
+        if value is None:
+            worksheet[cell_name] = None
+            return
+        if isinstance(value, Decimal):
+            value = ProductionService._decimal_export_text(value)
+        if isinstance(value, (int, float)):
+            worksheet[cell_name] = value
+            return
+        text = str(value).strip()
+        worksheet[cell_name] = text or None
+
+    @staticmethod
+    def _cell_name(row: int, column: int) -> str:
+        from openpyxl.utils import get_column_letter
+
+        return f"{get_column_letter(column)}{row}"
+
+    @staticmethod
+    def _production_notice_cn_date(value: date | None) -> str:
+        if value is None:
+            return ""
+        return f"{value.year}年{value.month}月{value.day}日"
+
+    @staticmethod
+    def _split_notice_text(value: str | None, *, limit: int) -> list[str]:
+        text = str(value or "").strip()
+        if not text:
+            return []
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if not lines:
+            lines = [text]
+        if len(lines) <= limit:
+            return lines
+        return [*lines[: limit - 1], " ".join(lines[limit - 1 :])]
+
+    @staticmethod
+    def _production_notice_remark_block(item: ProductionNoticeItem) -> str | None:
+        lines: list[str] = []
+        if item.factory_name:
+            lines.append(f"加工厂：{item.factory_name}")
+        if item.packaging_text:
+            lines.append(f"包装要求：{item.packaging_text}")
+        if item.remark:
+            lines.append(f"备注：{item.remark}")
+        return "\n".join(lines) or None
+
+    @staticmethod
+    def _decimal_export_text(value: Decimal) -> str:
+        normalized = Decimal(str(value)).quantize(Decimal("0.000001")).normalize()
+        text = format(normalized, "f")
+        return text.rstrip("0").rstrip(".") if "." in text else text
+
+    @staticmethod
+    def _production_notice_export_sizes(item: ProductionNoticeItem) -> list[str]:
+        preferred_order = ["XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "XXXL", "4XL", "XXXXL", "通用"]
+        sizes = sorted({line.size or "通用" for line in item.color_size_matrix})
+        return sorted(sizes, key=lambda value: (preferred_order.index(value) if value in preferred_order else 999, value))
+
+    @staticmethod
+    def _production_notice_qty_by_size(item: ProductionNoticeItem) -> dict[str, Decimal]:
+        qty_by_size: dict[str, Decimal] = {}
+        for line in item.color_size_matrix:
+            size = line.size or "通用"
+            qty_by_size[size] = qty_by_size.get(size, Decimal("0")) + Decimal(str(line.qty or 0))
+        return qty_by_size
+
+    def _production_notice_style_master(self, *, row: LyProductionNotice) -> LyStyleMaster | None:
+        try:
+            style_id_row = (
+                self.session.query(LySalesOrderItem.style_master_id)
+                .filter(
+                    LySalesOrderItem.company == str(row.company),
+                    LySalesOrderItem.sales_order_id == int(row.sales_order_id or 0),
+                    LySalesOrderItem.style_master_id.isnot(None),
+                )
+                .order_by(LySalesOrderItem.line_no.asc(), LySalesOrderItem.id.asc())
+                .first()
+            )
+            style_id = style_id_row[0] if style_id_row else None
+            if style_id is None:
+                return None
+            return (
+                self.session.query(LyStyleMaster)
+                .filter(LyStyleMaster.company == str(row.company), LyStyleMaster.id == int(style_id))
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    @staticmethod
+    def _production_notice_style_size_chart_rows(
+        *,
+        style: LyStyleMaster | None,
+        visible_sizes: list[str],
+    ) -> list[dict[str, Any]]:
+        if style is None or not visible_sizes:
+            return []
+        raw_chart = style.size_chart if isinstance(style.size_chart, dict) else {}
+        rows = raw_chart.get("rows") if isinstance(raw_chart, dict) else None
+        if not isinstance(rows, list):
+            return []
+        normalized: list[dict[str, Any]] = []
+        for index, row in enumerate(rows):
+            if not isinstance(row, dict):
+                continue
+            part = str(row.get("part") or "").strip()
+            if not part:
+                continue
+            raw_values = row.get("values") if isinstance(row.get("values"), dict) else {}
+            values: dict[str, str] = {}
+            for size in visible_sizes:
+                text = str(raw_values.get(size) or "").strip()
+                values[size] = text
+            normalized.append(
+                {
+                    "part": part,
+                    "values": values,
+                    "sort_no": int(row.get("sort_no") or (index + 1) * 10),
+                }
+            )
+        return sorted(normalized, key=lambda item: int(item["sort_no"]))
+
+    def _production_notice_gallery_image_url(
+        self,
+        *,
+        style: LyStyleMaster | None,
+        image_types: tuple[str, ...],
+    ) -> str | None:
+        if style is None:
+            return None
+        try:
+            row = (
+                self.session.query(LyStyleGallery)
+                .filter(
+                    LyStyleGallery.company == str(style.company),
+                    LyStyleGallery.style_master_id == int(style.id),
+                    LyStyleGallery.status == "active",
+                    LyStyleGallery.image_type.in_(image_types),
+                )
+                .order_by(LyStyleGallery.is_primary.desc(), LyStyleGallery.id.asc())
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            return None
+        return self._text(row.image_url) or self._text(row.thumbnail_url)
+
+    def _add_production_notice_image(
+        self,
+        *,
+        worksheet: Any,
+        image_url: str | None,
+        target_range: str,
+        anchor_cell: str,
+        image_role: str,
+    ) -> None:
+        image_path = self._resolve_production_notice_image_path(image_url)
+        if image_path is None:
+            return
+        try:
+            from openpyxl.drawing.image import Image as WorksheetImage
+
+            image = WorksheetImage(str(image_path))
+            max_width, max_height = self._worksheet_range_size_pixels(worksheet, target_range)
+            ratio = min(max_width / max(image.width, 1), max_height / max(image.height, 1))
+            if ratio <= 0:
+                return
+            image.width = int(image.width * ratio)
+            image.height = int(image.height * ratio)
+            image.anchor = anchor_cell
+            worksheet.add_image(image)
+        except Exception as exc:  # pragma: no cover - defensive path for corrupt local images.
+            logger.warning("production_notice_export_image_skipped role=%s path=%s error=%s", image_role, image_path, exc)
+
+    @staticmethod
+    def _worksheet_range_size_pixels(worksheet: Any, cell_range: str) -> tuple[int, int]:
+        from openpyxl.utils import get_column_letter
+        from openpyxl.utils.cell import range_boundaries
+
+        min_col, min_row, max_col, max_row = range_boundaries(cell_range)
+        width = 0
+        for col_index in range(min_col, max_col + 1):
+            letter = get_column_letter(col_index)
+            excel_width = worksheet.column_dimensions[letter].width or 8.43
+            width += int(excel_width * 7 + 5)
+        height = 0
+        default_height = worksheet.sheet_format.defaultRowHeight or 15
+        for row_index in range(min_row, max_row + 1):
+            points = worksheet.row_dimensions[row_index].height or default_height
+            height += int(points * 96 / 72)
+        return max(width, 1), max(height, 1)
+
+    @staticmethod
+    def _resolve_production_notice_image_path(image_url: str | None) -> Path | None:
+        from urllib.parse import unquote
+
+        text = str(image_url or "").strip()
+        if not text:
+            return None
+        clean = unquote(text.split("?", 1)[0])
+        if clean.startswith("/uploads/") or clean.startswith("uploads/"):
+            relative = clean.lstrip("/")
+            if relative.startswith("uploads/"):
+                relative = relative[len("uploads/") :]
+            candidate = Path(os.getenv("LINGYI_UPLOAD_DIR", "uploaded_files")).resolve() / relative
+            return candidate if candidate.is_file() else None
+        candidate = Path(clean)
+        if candidate.is_absolute() and candidate.is_file():
+            return candidate
+        return None
+
+    @staticmethod
+    def _production_notice_export_rows(item: ProductionNoticeItem) -> list[list[Any]]:
+        def decimal_text(value: Decimal) -> str:
+            normalized = Decimal(str(value)).quantize(Decimal("0.000001")).normalize()
+            text = format(normalized, "f")
+            return text.rstrip("0").rstrip(".") if "." in text else text
+
+        sizes = sorted({line.size or "通用" for line in item.color_size_matrix})
+        preferred_order = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "通用"]
+        sizes.sort(key=lambda value: (preferred_order.index(value) if value in preferred_order else 999, value))
+        rows: list[list[Any]] = [
+            [f"领意智造 生产通知单  {item.item_code}"],
+            ["通知单号", item.notice_no, "订单号", item.sales_order, "客户", item.customer or ""],
+            ["款号", item.item_code, "款名", item.item_name or "", "加工厂", item.factory_name or ""],
+            ["下单日期", item.order_date.isoformat() if item.order_date else "", "交货日期", item.delivery_date.isoformat() if item.delivery_date else "", "订单数量", str(item.order_qty)],
+            [],
+            ["颜色尺码数量"],
+            ["颜色", *sizes, "合计"],
+        ]
+        by_color: dict[str, dict[str, Decimal]] = {}
+        for line in item.color_size_matrix:
+            color = line.color or "通用"
+            size = line.size or "通用"
+            by_color.setdefault(color, {})
+            by_color[color][size] = by_color[color].get(size, Decimal("0")) + Decimal(str(line.qty or 0))
+        for color, size_qty in by_color.items():
+            total = sum(size_qty.values(), Decimal("0"))
+            rows.append([color, *[decimal_text(size_qty.get(size, Decimal("0"))) for size in sizes], decimal_text(total)])
+        rows.extend(
+            [
+                [],
+                ["工艺说明", item.process_text or ""],
+                ["包装要求", item.packaging_text or ""],
+                ["商标/吊牌要求", item.label_text or ""],
+                ["备注", item.remark or ""],
+                [],
+                ["工艺模板", (item.workmanship_snapshot or {}).get("name", "")],
+            ]
+        )
+        for node in (item.workmanship_snapshot or {}).get("nodes", []):
+            rows.append([node.get("name", ""), node.get("node_type", ""), node.get("owner", "")])
+        rows.extend([[], ["尺寸表模板", (item.size_chart_snapshot or {}).get("name", ""), "单位", "CM"]])
+        for node in (item.size_chart_snapshot or {}).get("nodes", []):
+            rows.append([node.get("name", ""), node.get("node_type", ""), node.get("owner", "")])
+        return rows
+
+    @staticmethod
+    def _xlsx_workbook_bytes(*, sheet_name: str, rows: list[list[Any]]) -> bytes:
+        import zipfile
+        from html import escape
+
+        def column_name(index: int) -> str:
+            name = ""
+            while index > 0:
+                index, remainder = divmod(index - 1, 26)
+                name = chr(65 + remainder) + name
+            return name
+
+        worksheet_rows: list[str] = []
+        for row_index, row_values in enumerate(rows, start=1):
+            cells: list[str] = []
+            for col_index, value in enumerate(row_values, start=1):
+                cell_ref = f"{column_name(col_index)}{row_index}"
+                text = "" if value is None else str(value)
+                style = ' s="1"' if row_index in {1, 6} else ""
+                cells.append(
+                    f'<c r="{cell_ref}" t="inlineStr"{style}><is><t>{escape(text)}</t></is></c>'
+                )
+            worksheet_rows.append(f'<row r="{row_index}">{"".join(cells)}</row>')
+        max_col = max((len(row) for row in rows), default=1)
+        max_row = max(len(rows), 1)
+        dimension = f"A1:{column_name(max_col)}{max_row}"
+        sheet_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            f'<dimension ref="{dimension}"/>'
+            '<sheetViews><sheetView workbookViewId="0"/></sheetViews>'
+            '<sheetFormatPr defaultRowHeight="22"/>'
+            '<sheetData>'
+            f'{"".join(worksheet_rows)}'
+            '</sheetData>'
+            '</worksheet>'
+        )
+        workbook_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            '<sheets>'
+            f'<sheet name="{escape(sheet_name)}" sheetId="1" r:id="rId1"/>'
+            '</sheets>'
+            '</workbook>'
+        )
+        styles_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            '<fonts count="2"><font/><font><b/></font></fonts>'
+            '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
+            '<borders count="1"><border/></borders>'
+            '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
+            '</styleSheet>'
+        )
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr(
+                "[Content_Types].xml",
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+                '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+                '<Default Extension="xml" ContentType="application/xml"/>'
+                '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+                '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+                '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+                '</Types>',
+            )
+            archive.writestr(
+                "_rels/.rels",
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+                '</Relationships>',
+            )
+            archive.writestr(
+                "xl/_rels/workbook.xml.rels",
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+                '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+                '</Relationships>',
+            )
+            archive.writestr("xl/workbook.xml", workbook_xml)
+            archive.writestr("xl/styles.xml", styles_xml)
+            archive.writestr("xl/worksheets/sheet1.xml", sheet_xml)
+        return buffer.getvalue()
+
     def _list_saved_quotes(
         self,
         *,
@@ -1598,7 +2526,7 @@ class ProductionService:
         normalized_quote_no = (query.quote_no or "").strip().lower()
         normalized_keyword = (query.keyword or "").strip().lower()
         try:
-            sql = self.session.query(LyProductionQuote, LyProductionPlan).join(
+            sql = self.session.query(LyProductionQuote, LyProductionPlan).outerjoin(
                 LyProductionPlan,
                 LyProductionPlan.id == LyProductionQuote.plan_id,
             )
@@ -1652,6 +2580,7 @@ class ProductionService:
         readable_item_codes: set[str] | None,
         readable_companies: set[str] | None,
         exclude_plan_ids: set[int],
+        exclude_order_keys: set[tuple[str, str]],
     ) -> list[ProductionQuoteListItem]:
         try:
             plan_sql = self.session.query(LyProductionPlan)
@@ -1682,11 +2611,11 @@ class ProductionService:
                 plan_sql = plan_sql.filter(LyProductionPlan.status == query.status)
             if readable_item_codes is not None:
                 if not readable_item_codes:
-                    return ProductionQuoteListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                    return []
                 plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
             if readable_companies is not None:
                 if not readable_companies:
-                    return ProductionQuoteListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                    return []
                 plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
 
             plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
@@ -1709,7 +2638,7 @@ class ProductionService:
                 bom_rows = (
                     self.session.query(LyApparelBomItem)
                     .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
-                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                     .all()
                 )
         except SQLAlchemyError as exc:
@@ -1726,69 +2655,99 @@ class ProductionService:
             bom_map.setdefault(bom_id, []).append(row)
             bom_item_by_id[int(row.id)] = row
 
-        normalized_quote_no = (query.quote_no or "").strip().lower()
-        rows: list[ProductionQuoteListItem] = []
+        plans_by_order: dict[tuple[str, str], list[LyProductionPlan]] = {}
         for plan in plans:
-            quote_no = f"QT-{str(plan.plan_no)}"
+            order_key = (str(plan.company), str(plan.sales_order))
+            if order_key in exclude_order_keys:
+                continue
+            plans_by_order.setdefault(order_key, []).append(plan)
+
+        normalized_quote_no = (query.quote_no or "").strip().lower()
+        line_attrs = self._sales_order_line_attrs_by_plan_rows(rows=plans)
+        rows: list[ProductionQuoteListItem] = []
+        for (_company, sales_order), order_plans in plans_by_order.items():
+            order_plans.sort(key=lambda row: (str(row.sales_order_item), int(row.id)))
+            first_plan = order_plans[0]
+            quote_no = f"QT-{sales_order}"
             if normalized_quote_no and normalized_quote_no not in quote_no.lower():
                 continue
 
-            quoted_at = plan.updated_at or plan.created_at
+            quoted_at = max(
+                (row.updated_at or row.created_at for row in order_plans if (row.updated_at or row.created_at) is not None),
+                default=None,
+            )
             quoted_date = quoted_at.date() if quoted_at is not None else None
             if query.from_date and quoted_date is not None and quoted_date < query.from_date:
                 continue
             if query.to_date and quoted_date is not None and quoted_date > query.to_date:
                 continue
 
-            quote_qty = Decimal(str(plan.planned_qty or 0))
+            quote_qty = sum((Decimal(str(plan.planned_qty or 0)) for plan in order_plans), Decimal("0"))
             if quote_qty < 0:
                 quote_qty = Decimal("0")
 
-            quote_material_cost = Decimal("0")
-            snapshot_items = snapshot_map.get(int(plan.id)) or []
-            if snapshot_items:
-                for snapshot in snapshot_items:
-                    bom_item = bom_item_by_id.get(int(snapshot.bom_item_id)) if snapshot.bom_item_id is not None else None
-                    unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
-                    required_qty = Decimal(str(snapshot.required_qty or 0))
-                    quote_material_cost += required_qty * unit_price
-            else:
-                for bom_item in bom_map.get(int(plan.bom_id), []):
-                    qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
-                    usage_count = self._bom_usage_count(bom_item)
-                    loss_rate = Decimal(str(bom_item.loss_rate or 0))
-                    unit_price = self._extract_unit_price_from_remark(bom_item.remark)
-                    required_qty = (quote_qty * qty_per_piece * usage_count * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
-                    quote_material_cost += required_qty * unit_price
+            quote_material_cost = sum(
+                (
+                    self._quote_material_cost_from_rows(
+                        plan=plan,
+                        quote_qty=Decimal(str(plan.planned_qty or 0)),
+                        snapshot_items=snapshot_map.get(int(plan.id)) or [],
+                        bom_items=bom_map.get(int(plan.bom_id), []),
+                        bom_item_by_id=bom_item_by_id,
+                    )
+                    for plan in order_plans
+                ),
+                Decimal("0"),
+            ).quantize(Decimal("0.000001"))
 
-            if quote_qty > 0:
-                quote_unit_price = (quote_material_cost / quote_qty).quantize(Decimal("0.000001"))
-            else:
-                quote_unit_price = Decimal("0")
+            quote_unit_price = (quote_material_cost / quote_qty).quantize(Decimal("0.000001")) if quote_qty > 0 else Decimal("0")
             quote_amount = (quote_unit_price * quote_qty).quantize(Decimal("0.000001"))
+            quote_items = self._build_quote_items_from_plans(
+                plans=order_plans,
+                line_attrs=line_attrs,
+                material_cost_by_plan={
+                    int(plan.id): self._quote_material_cost_from_rows(
+                        plan=plan,
+                        quote_qty=Decimal(str(plan.planned_qty or 0)),
+                        snapshot_items=snapshot_map.get(int(plan.id)) or [],
+                        bom_items=bom_map.get(int(plan.bom_id), []),
+                        bom_item_by_id=bom_item_by_id,
+                    )
+                    for plan in order_plans
+                },
+                quote_unit_price=quote_unit_price,
+                labor_cost=Decimal("0"),
+                management_fee=Decimal("0"),
+                other_fee=Decimal("0"),
+                overrides=[],
+            )
 
             rows.append(
                 ProductionQuoteListItem(
                     quote_id=None,
-                    plan_id=int(plan.id),
+                    plan_id=int(first_plan.id),
                     quote_no=quote_no,
-                    plan_no=str(plan.plan_no),
-                    company=str(plan.company),
-                    sales_order=str(plan.sales_order),
-                    sales_order_item=str(plan.sales_order_item),
-                    customer=(str(plan.customer) if plan.customer else None),
-                    item_code=str(plan.item_code),
+                    plan_no=self._quote_display_plan_no(order_plans),
+                    company=str(first_plan.company),
+                    sales_order=sales_order,
+                    sales_order_item="整单",
+                    customer=(str(first_plan.customer) if first_plan.customer else None),
+                    item_code=str(first_plan.item_code),
                     quote_qty=quote_qty,
                     material_cost=quote_material_cost,
                     labor_cost=Decimal("0"),
                     management_fee=Decimal("0"),
+                    other_fee=Decimal("0"),
                     quote_unit_price=quote_unit_price,
                     quote_amount=quote_amount,
+                    gross_profit=Decimal("0"),
                     gross_margin=Decimal("0"),
-                    delivery_date=plan.planned_start_date,
+                    gross_margin_rate=Decimal("0"),
+                    delivery_date=first_plan.planned_start_date,
                     quoted_at=quoted_at,
-                    status=str(plan.status),
+                    status=str(first_plan.status),
                     source="derived",
+                    quote_items=quote_items,
                 )
             )
 
@@ -1809,15 +2768,53 @@ class ProductionService:
         quote_no_input = self._text(payload.quote_no)
         status = self._normalize_quote_status(payload.status)
         quote_qty_input = Decimal(str(payload.quote_qty)) if payload.quote_qty is not None else None
+        quote_unit_price = self._decimal_nonnegative(payload.quote_unit_price, field_name="quote_unit_price")
+        material_cost_amount = self._optional_decimal_nonnegative(payload.material_cost_amount, field_name="material_cost_amount")
         labor_cost = self._decimal_nonnegative(payload.labor_cost, field_name="labor_cost")
         management_fee = self._decimal_nonnegative(payload.management_fee, field_name="management_fee")
+        other_fee = self._decimal_nonnegative(payload.other_fee, field_name="other_fee")
+        labor_fee_per_piece = self._optional_decimal_nonnegative(payload.labor_fee_per_piece, field_name="labor_fee_per_piece")
+        management_fee_per_piece = self._optional_decimal_nonnegative(payload.management_fee_per_piece, field_name="management_fee_per_piece")
+        other_fee_amount = self._optional_decimal_nonnegative(payload.other_fee_amount, field_name="other_fee_amount")
         remark = self._text(payload.remark) or ""
+
+        if self._text(payload.sales_order) or payload.sales_order_id is not None:
+            return self._create_quote_for_sales_order(
+                payload=payload,
+                operator=operator,
+                idempotency_key=idempotency_key,
+                company_input=company_input,
+                quote_no_input=quote_no_input,
+                status=status,
+                quote_qty_input=quote_qty_input,
+                quote_unit_price=quote_unit_price,
+                material_cost_amount=material_cost_amount,
+                labor_cost=labor_cost,
+                management_fee=management_fee,
+                other_fee=other_fee,
+                labor_fee_per_piece=labor_fee_per_piece,
+                management_fee_per_piece=management_fee_per_piece,
+                other_fee_amount=other_fee_amount,
+                remark=remark,
+            )
+
+        if payload.plan_id is None:
+            raise BusinessException(code=PRODUCTION_QUOTE_NOT_FOUND, message="请选择销售订单或生产计划后再创建报价")
 
         plan = self._get_plan_for_quote(plan_id=payload.plan_id, company=company_input)
         company = str(plan.company)
         quote_qty = quote_qty_input if quote_qty_input is not None else Decimal(str(plan.planned_qty or 0))
         if quote_qty <= 0:
             raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="quote_qty 必须大于 0")
+        labor_cost, management_fee, other_fee = self._quote_fee_amounts(
+            quote_qty=quote_qty,
+            labor_cost=labor_cost,
+            management_fee=management_fee,
+            other_fee=other_fee,
+            labor_fee_per_piece=labor_fee_per_piece,
+            management_fee_per_piece=management_fee_per_piece,
+            other_fee_amount=other_fee_amount,
+        )
 
         request_hash = self._build_request_hash(
             {
@@ -1826,8 +2823,14 @@ class ProductionService:
                 "plan_id": int(plan.id),
                 "quote_no": quote_no_input,
                 "quote_qty": quote_qty,
+                "quote_unit_price": quote_unit_price,
+                "material_cost_amount": material_cost_amount,
                 "labor_cost": labor_cost,
                 "management_fee": management_fee,
+                "other_fee": other_fee,
+                "labor_fee_per_piece": labor_fee_per_piece,
+                "management_fee_per_piece": management_fee_per_piece,
+                "other_fee_amount": other_fee_amount,
                 "valid_until": payload.valid_until.isoformat() if payload.valid_until else None,
                 "status": status,
                 "remark": remark,
@@ -1842,13 +2845,32 @@ class ProductionService:
         if self._get_quote_by_no(company=company, quote_no=quote_no) is not None:
             raise BusinessException(code=PRODUCTION_QUOTE_CONFLICT, message=f"{quote_no} 已存在")
 
-        material_cost = self._calculate_quote_material_cost(plan=plan, quote_qty=quote_qty)
-        quote_amount = (material_cost + labor_cost + management_fee).quantize(Decimal("0.000001"))
+        material_cost = (
+            material_cost_amount
+            if material_cost_amount is not None
+            else self._calculate_quote_material_cost(plan=plan, quote_qty=quote_qty)
+        )
+        line_attrs = self._sales_order_line_attrs_by_plan_rows(rows=[plan])
+        quote_items = self._build_quote_items_from_plans(
+            plans=[plan],
+            line_attrs=line_attrs,
+            material_cost_by_plan={int(plan.id): material_cost},
+            quote_unit_price=quote_unit_price,
+            labor_cost=labor_cost,
+            management_fee=management_fee,
+            other_fee=other_fee,
+            overrides=payload.item_overrides,
+        )
+        quote_amount = self._quote_amount_from_items(quote_items=quote_items, quote_qty=quote_qty, quote_unit_price=quote_unit_price)
+        total_cost = (material_cost + labor_cost + management_fee + other_fee).quantize(Decimal("0.000001"))
+        gross_profit = (quote_amount - total_cost).quantize(Decimal("0.000001"))
+        gross_margin_rate = ((gross_profit / quote_amount) * Decimal("100")).quantize(Decimal("0.000001")) if quote_amount > 0 else Decimal("0")
 
         try:
             row = LyProductionQuote(
                 quote_no=quote_no,
                 company=company,
+                sales_order_id=self._find_sales_order_id(company=company, sales_order=str(plan.sales_order)),
                 plan_id=int(plan.id),
                 plan_no=str(plan.plan_no),
                 sales_order=str(plan.sales_order),
@@ -1859,7 +2881,12 @@ class ProductionService:
                 material_cost=material_cost,
                 labor_cost=labor_cost,
                 management_fee=management_fee,
+                other_fee=other_fee,
+                quote_unit_price=quote_unit_price,
                 quote_amount=quote_amount,
+                gross_profit=gross_profit,
+                gross_margin_rate=gross_margin_rate,
+                quote_items_json=[item.model_dump(mode="json") for item in quote_items],
                 currency="CNY",
                 valid_until=payload.valid_until,
                 status=status,
@@ -1874,6 +2901,303 @@ class ProductionService:
                 quote_id=int(row.id),
                 company=company,
                 operation="create",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return item
+
+    def _create_quote_for_sales_order(
+        self,
+        *,
+        payload: ProductionQuoteCreateRequest,
+        operator: str,
+        idempotency_key: str,
+        company_input: str | None,
+        quote_no_input: str | None,
+        status: str,
+        quote_qty_input: Decimal | None,
+        quote_unit_price: Decimal,
+        material_cost_amount: Decimal | None,
+        labor_cost: Decimal,
+        management_fee: Decimal,
+        other_fee: Decimal,
+        labor_fee_per_piece: Decimal | None,
+        management_fee_per_piece: Decimal | None,
+        other_fee_amount: Decimal | None,
+        remark: str,
+    ) -> ProductionQuoteListItem:
+        order, plans = self._order_quote_context(
+            sales_order=self._text(payload.sales_order),
+            sales_order_id=payload.sales_order_id,
+            company=company_input,
+        )
+        first_plan = plans[0]
+        company = str(first_plan.company)
+        sales_order = str(first_plan.sales_order)
+        order_id = int(order.id) if order is not None else self._find_sales_order_id(company=company, sales_order=sales_order)
+        quote_qty = quote_qty_input if quote_qty_input is not None else sum(
+            (Decimal(str(plan.planned_qty or 0)) for plan in plans),
+            Decimal("0"),
+        )
+        if quote_qty <= 0:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="整单报价数量必须大于 0")
+        labor_cost, management_fee, other_fee = self._quote_fee_amounts(
+            quote_qty=quote_qty,
+            labor_cost=labor_cost,
+            management_fee=management_fee,
+            other_fee=other_fee,
+            labor_fee_per_piece=labor_fee_per_piece,
+            management_fee_per_piece=management_fee_per_piece,
+            other_fee_amount=other_fee_amount,
+        )
+
+        request_hash = self._build_request_hash(
+            {
+                "operation": "create",
+                "company": company,
+                "sales_order": sales_order,
+                "sales_order_id": order_id,
+                "quote_no": quote_no_input,
+                "quote_qty": quote_qty,
+                "quote_unit_price": quote_unit_price,
+                "material_cost_amount": material_cost_amount,
+                "labor_cost": labor_cost,
+                "management_fee": management_fee,
+                "other_fee": other_fee,
+                "labor_fee_per_piece": labor_fee_per_piece,
+                "management_fee_per_piece": management_fee_per_piece,
+                "other_fee_amount": other_fee_amount,
+                "valid_until": payload.valid_until.isoformat() if payload.valid_until else None,
+                "status": status,
+                "remark": remark,
+                "item_overrides": [
+                    override.model_dump(mode="json") if hasattr(override, "model_dump") else override.dict()
+                    for override in payload.item_overrides
+                ],
+            }
+        )
+        existing_operation = self._get_quote_operation(company=company, operation="create", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_quote_operation_same(existing_operation, request_hash=request_hash)
+            return self._quote_item_from_operation(existing_operation)
+
+        existing_quote = self._get_active_quote_by_sales_order(company=company, sales_order=sales_order)
+        if existing_quote is not None:
+            return self._quote_item(existing_quote, plan=first_plan)
+
+        quote_no = quote_no_input or self._next_quote_no()
+        if self._get_quote_by_no(company=company, quote_no=quote_no) is not None:
+            raise BusinessException(code=PRODUCTION_QUOTE_CONFLICT, message=f"{quote_no} 已存在")
+
+        material_cost_by_plan = {
+            int(plan.id): self._calculate_quote_material_cost(plan=plan, quote_qty=Decimal(str(plan.planned_qty or 0)))
+            for plan in plans
+        }
+        if material_cost_amount is not None:
+            material_cost_by_plan = self._allocate_quote_cost_by_plan_qty(plans=plans, total_cost=material_cost_amount)
+            material_cost = material_cost_amount
+        else:
+            material_cost = sum(material_cost_by_plan.values(), Decimal("0")).quantize(Decimal("0.000001"))
+        line_attrs = self._sales_order_line_attrs_by_plan_rows(rows=plans)
+
+        quote_items = self._build_quote_items_from_plans(
+            plans=plans,
+            line_attrs=line_attrs,
+            material_cost_by_plan=material_cost_by_plan,
+            quote_unit_price=quote_unit_price,
+            labor_cost=labor_cost,
+            management_fee=management_fee,
+            other_fee=other_fee,
+            overrides=payload.item_overrides,
+        )
+        quote_amount = self._quote_amount_from_items(quote_items=quote_items, quote_qty=quote_qty, quote_unit_price=quote_unit_price)
+        total_cost = (material_cost + labor_cost + management_fee + other_fee).quantize(Decimal("0.000001"))
+        gross_profit = (quote_amount - total_cost).quantize(Decimal("0.000001"))
+        gross_margin_rate = ((gross_profit / quote_amount) * Decimal("100")).quantize(Decimal("0.000001")) if quote_amount > 0 else Decimal("0")
+
+        try:
+            row = LyProductionQuote(
+                quote_no=quote_no,
+                company=company,
+                sales_order_id=order_id,
+                plan_id=int(first_plan.id),
+                plan_no=self._quote_display_plan_no(plans),
+                sales_order=sales_order,
+                sales_order_item="整单",
+                customer=str(first_plan.customer) if first_plan.customer else None,
+                item_code=str(first_plan.item_code),
+                quote_qty=quote_qty,
+                material_cost=material_cost,
+                labor_cost=labor_cost,
+                management_fee=management_fee,
+                other_fee=other_fee,
+                quote_unit_price=quote_unit_price,
+                quote_amount=quote_amount,
+                gross_profit=gross_profit,
+                gross_margin_rate=gross_margin_rate,
+                quote_items_json=[item.model_dump(mode="json") for item in quote_items],
+                currency="CNY",
+                valid_until=payload.valid_until,
+                status=status,
+                remark=remark,
+                created_by=operator,
+                updated_by=operator,
+            )
+            self.session.add(row)
+            self.session.flush()
+            item = self._quote_item(row, plan=first_plan)
+            self._insert_quote_operation(
+                quote_id=int(row.id),
+                company=company,
+                operation="create",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return item
+
+    def update_quote(
+        self,
+        *,
+        quote_id: int,
+        payload: ProductionQuoteUpdateRequest,
+        operator: str,
+    ) -> ProductionQuoteListItem:
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        operation = (payload.operation or "update").strip().lower()
+        if operation != "update":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="operation 必须为 update")
+
+        company_input = self._text(payload.company)
+        row, plan = self._get_quote_for_update(quote_id=quote_id, company=company_input)
+        company = str(row.company)
+        quote_qty = Decimal(str(row.quote_qty or 0)).quantize(Decimal("0.000001"))
+        if quote_qty <= 0:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="报价数量必须大于 0")
+
+        quote_unit_price = (
+            self._optional_decimal_nonnegative(payload.quote_unit_price, field_name="quote_unit_price")
+            if payload.quote_unit_price is not None
+            else Decimal(str(getattr(row, "quote_unit_price", 0) or 0)).quantize(Decimal("0.000001"))
+        )
+        material_cost_amount = self._optional_decimal_nonnegative(payload.material_cost_amount, field_name="material_cost_amount")
+        labor_cost = (
+            self._optional_decimal_nonnegative(payload.labor_cost, field_name="labor_cost")
+            if payload.labor_cost is not None
+            else Decimal(str(row.labor_cost or 0)).quantize(Decimal("0.000001"))
+        )
+        management_fee = (
+            self._optional_decimal_nonnegative(payload.management_fee, field_name="management_fee")
+            if payload.management_fee is not None
+            else Decimal(str(row.management_fee or 0)).quantize(Decimal("0.000001"))
+        )
+        other_fee = (
+            self._optional_decimal_nonnegative(payload.other_fee, field_name="other_fee")
+            if payload.other_fee is not None
+            else Decimal(str(getattr(row, "other_fee", 0) or 0)).quantize(Decimal("0.000001"))
+        )
+        labor_fee_per_piece = self._optional_decimal_nonnegative(payload.labor_fee_per_piece, field_name="labor_fee_per_piece")
+        management_fee_per_piece = self._optional_decimal_nonnegative(payload.management_fee_per_piece, field_name="management_fee_per_piece")
+        other_fee_amount = self._optional_decimal_nonnegative(payload.other_fee_amount, field_name="other_fee_amount")
+        labor_cost, management_fee, other_fee = self._quote_fee_amounts(
+            quote_qty=quote_qty,
+            labor_cost=labor_cost,
+            management_fee=management_fee,
+            other_fee=other_fee,
+            labor_fee_per_piece=labor_fee_per_piece,
+            management_fee_per_piece=management_fee_per_piece,
+            other_fee_amount=other_fee_amount,
+        )
+        request_hash = self._build_request_hash(
+            {
+                "operation": "update",
+                "company": company,
+                "quote_id": int(row.id),
+                "quote_unit_price": quote_unit_price,
+                "material_cost_amount": material_cost_amount,
+                "labor_cost": labor_cost,
+                "management_fee": management_fee,
+                "other_fee": other_fee,
+                "labor_fee_per_piece": labor_fee_per_piece,
+                "management_fee_per_piece": management_fee_per_piece,
+                "other_fee_amount": other_fee_amount,
+                "valid_until": payload.valid_until.isoformat() if payload.valid_until else None,
+                "remark": self._text(payload.remark),
+                "item_overrides": [
+                    override.model_dump(mode="json") if hasattr(override, "model_dump") else override.dict()
+                    for override in payload.item_overrides
+                ],
+            }
+        )
+        existing_operation = self._get_quote_operation(company=company, operation="update", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_quote_operation_same(existing_operation, request_hash=request_hash)
+            return self._quote_item_from_operation(existing_operation)
+
+        previous_status = str(row.status or "")
+        if previous_status not in {"draft", "pricing", "quoted"}:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="只有草稿/待核价/已核价报价可以编辑核心金额")
+
+        try:
+            material_cost = (
+                material_cost_amount
+                if material_cost_amount is not None
+                else Decimal(str(row.material_cost or 0)).quantize(Decimal("0.000001"))
+            )
+            quote_items = self._rebuild_quote_items_from_existing(
+                quote_items=self._quote_items_from_json(row),
+                quote_unit_price=quote_unit_price,
+                material_cost_total=material_cost if material_cost_amount is not None else None,
+                labor_cost=labor_cost,
+                management_fee=management_fee,
+                other_fee=other_fee,
+                overrides=payload.item_overrides,
+            )
+            quote_amount = self._quote_amount_from_items(quote_items=quote_items, quote_qty=quote_qty, quote_unit_price=quote_unit_price)
+            total_cost = (material_cost + labor_cost + management_fee + other_fee).quantize(Decimal("0.000001"))
+            gross_profit = (quote_amount - total_cost).quantize(Decimal("0.000001"))
+            gross_margin_rate = ((gross_profit / quote_amount) * Decimal("100")).quantize(Decimal("0.000001")) if quote_amount > 0 else Decimal("0")
+
+            row.labor_cost = labor_cost
+            row.material_cost = material_cost
+            row.management_fee = management_fee
+            row.other_fee = other_fee
+            row.quote_unit_price = quote_unit_price
+            row.quote_amount = quote_amount
+            row.gross_profit = gross_profit
+            row.gross_margin_rate = gross_margin_rate
+            row.quote_items_json = self._quote_items_json(quote_items)
+            if payload.valid_until is not None:
+                row.valid_until = payload.valid_until
+            if payload.remark is not None:
+                row.remark = self._text(payload.remark) or ""
+            if previous_status == "quoted":
+                row.status = "draft"
+                order = self._find_sales_order_for_quote(row=row)
+                if order is not None and hasattr(order, "quote_status"):
+                    order.quote_status = "待核价"
+                    order.updated_by = operator
+            row.updated_by = operator
+            self.session.flush()
+
+            item = self._quote_item(row, plan=plan)
+            self._insert_quote_operation(
+                quote_id=int(row.id),
+                company=company,
+                operation="update",
                 idempotency_key=idempotency_key,
                 request_hash=request_hash,
                 response=item,
@@ -1985,6 +3309,65 @@ class ProductionService:
             raise DatabaseWriteFailed() from exc
         return data
 
+    def confirm_quote(
+        self,
+        *,
+        quote_id: int,
+        payload: ProductionQuoteConfirmRequest,
+        operator: str,
+    ) -> ProductionQuoteListItem:
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        operation = (payload.operation or "confirm").strip().lower()
+        if operation != "confirm":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="operation 必须为 confirm")
+
+        company_input = self._text(payload.company)
+        row, plan = self._get_quote_for_update(quote_id=quote_id, company=company_input)
+        company = str(row.company)
+        request_hash = self._build_request_hash(
+            {
+                "operation": "confirm",
+                "company": company,
+                "quote_id": int(row.id),
+                "quote_no": str(row.quote_no),
+            }
+        )
+        existing_operation = self._get_quote_operation(company=company, operation="confirm", idempotency_key=idempotency_key)
+        if existing_operation is not None:
+            self._ensure_quote_operation_same(existing_operation, request_hash=request_hash)
+            return self._quote_item_from_operation(existing_operation)
+
+        if str(row.status or "") == "void":
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="作废报价不能确认核价")
+        if Decimal(str(getattr(row, "quote_unit_price", 0) or 0)) <= 0:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="报价单价必须大于 0 才能确认核价")
+        if Decimal(str(row.quote_amount or 0)) <= 0:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="报价金额必须大于 0 才能确认核价")
+
+        try:
+            row.status = "quoted"
+            row.updated_by = operator
+            self._write_quote_back_to_sales_order(row=row)
+            self.session.flush()
+            item = self._quote_item(row, plan=plan)
+            self._insert_quote_operation(
+                quote_id=int(row.id),
+                company=company,
+                operation="confirm",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response=item,
+                operator=operator,
+            )
+            self.session.flush()
+        except (SQLAlchemyError, ValueError) as exc:
+            raise DatabaseWriteFailed() from exc
+        return item
+
     def copy_quote(
         self,
         *,
@@ -2034,6 +3417,7 @@ class ProductionService:
             row = LyProductionQuote(
                 quote_no=quote_no,
                 company=company,
+                sales_order_id=int(source.sales_order_id) if getattr(source, "sales_order_id", None) is not None else None,
                 plan_id=int(source.plan_id),
                 plan_no=str(source.plan_no),
                 sales_order=str(source.sales_order),
@@ -2044,7 +3428,12 @@ class ProductionService:
                 material_cost=Decimal(str(source.material_cost or 0)),
                 labor_cost=Decimal(str(source.labor_cost or 0)),
                 management_fee=Decimal(str(source.management_fee or 0)),
+                other_fee=Decimal(str(getattr(source, "other_fee", 0) or 0)),
+                quote_unit_price=Decimal(str(getattr(source, "quote_unit_price", 0) or 0)),
                 quote_amount=Decimal(str(source.quote_amount or 0)),
+                gross_profit=Decimal(str(getattr(source, "gross_profit", 0) or 0)),
+                gross_margin_rate=Decimal(str(getattr(source, "gross_margin_rate", 0) or 0)),
+                quote_items_json=getattr(source, "quote_items_json", None) or [],
                 currency=str(source.currency or "CNY"),
                 valid_until=payload.valid_until if payload.valid_until is not None else source.valid_until,
                 status=status,
@@ -2887,6 +4276,33 @@ class ProductionService:
             page_size=query.page_size,
         )
 
+    @staticmethod
+    def _finished_goods_inbound_summary(*, plan: LyProductionPlan, fact: dict[str, Any]) -> dict[str, Any]:
+        planned_qty = Decimal(str(getattr(plan, "planned_qty", None) or 0)).quantize(Decimal("0.000001"))
+        if planned_qty < Decimal("0"):
+            planned_qty = Decimal("0")
+        inbound_qty = Decimal(str(fact.get("inbound_qty", Decimal("0")) or 0)).quantize(Decimal("0.000001"))
+        if inbound_qty < Decimal("0"):
+            inbound_qty = Decimal("0")
+        remaining_qty = (planned_qty - inbound_qty).quantize(Decimal("0.000001"))
+        if remaining_qty < Decimal("0"):
+            remaining_qty = Decimal("0")
+        if planned_qty > Decimal("0") and inbound_qty >= planned_qty:
+            status = "completed"
+        elif planned_qty <= Decimal("0") and inbound_qty > Decimal("0"):
+            status = "completed"
+        elif inbound_qty > Decimal("0"):
+            status = "partial"
+        else:
+            status = "pending"
+        inbound_refs = {str(ref).strip() for ref in fact.get("inbound_refs", set()) if str(ref).strip()}
+        return {
+            "inbound_qty": inbound_qty,
+            "remaining_qty": remaining_qty,
+            "status": status,
+            "ref_count": len(inbound_refs),
+        }
+
     def _production_order_io_quantity_facts(self, plans: list[LyProductionPlan]) -> dict[int, dict[str, Any]]:
         facts: dict[int, dict[str, Any]] = {
             int(plan.id): {
@@ -2904,16 +4320,24 @@ class ProductionService:
         item_codes = {str(plan.item_code) for plan in plans if plan.item_code}
         sales_orders = {str(plan.sales_order) for plan in plans if plan.sales_order}
         inbound_refs: dict[tuple[str, str, str], list[LyProductionPlan]] = {}
+        inbound_line_refs: dict[tuple[str, str, str], list[LyProductionPlan]] = {}
+        inbound_order_refs: dict[tuple[str, str, str], list[LyProductionPlan]] = {}
+        plans_by_company_item: dict[tuple[str, str], list[LyProductionPlan]] = {}
         outbound_refs: dict[tuple[str, str, str], list[LyProductionPlan]] = {}
 
         for plan in sorted(plans, key=lambda row: int(row.id)):
             company = str(plan.company)
             item_code = str(plan.item_code)
+            plans_by_company_item.setdefault((company, item_code), []).append(plan)
             for ref in self._production_order_inbound_refs(plan):
                 key = (company, item_code, ref)
                 bucket = inbound_refs.setdefault(key, [])
                 if all(int(existing.id) != int(plan.id) for existing in bucket):
                     bucket.append(plan)
+            if str(plan.sales_order_item or "").strip():
+                inbound_line_refs.setdefault((company, item_code, str(plan.sales_order_item)), []).append(plan)
+            if str(plan.sales_order or "").strip():
+                inbound_order_refs.setdefault((company, item_code, str(plan.sales_order)), []).append(plan)
             outbound_refs.setdefault((company, item_code, str(plan.sales_order)), []).append(plan)
 
         try:
@@ -2922,7 +4346,7 @@ class ProductionService:
                     self.session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
                     .join(LyWarehouseStockEntryDraftItem, LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id)
                     .filter(
-                        LyWarehouseStockEntryDraft.status != "cancelled",
+                        LyWarehouseStockEntryDraft.status == "pending_outbox",
                         LyWarehouseStockEntryDraft.purpose == "Material Receipt",
                         LyWarehouseStockEntryDraft.source_type == "finished_goods_inbound",
                     )
@@ -2931,16 +4355,19 @@ class ProductionService:
                     inbound_query = inbound_query.filter(LyWarehouseStockEntryDraft.company.in_(sorted(companies)))
                 if item_codes:
                     inbound_query = inbound_query.filter(LyWarehouseStockEntryDraftItem.item_code.in_(sorted(item_codes)))
-                if inbound_refs:
-                    inbound_query = inbound_query.filter(
-                        LyWarehouseStockEntryDraft.source_id.in_(sorted({key[2] for key in inbound_refs}))
-                    )
                 for draft, line in inbound_query.all():
                     source_ref = self._display_order_io_source_ref(str(draft.source_id))
-                    key = (str(draft.company), str(line.item_code), str(draft.source_id))
+                    matched_plans = self._production_order_inbound_matching_plans(
+                        draft=draft,
+                        line=line,
+                        exact_refs=inbound_refs,
+                        line_refs=inbound_line_refs,
+                        order_refs=inbound_order_refs,
+                        plans_by_company_item=plans_by_company_item,
+                    )
                     self._allocate_order_io_quantity(
                         facts=facts,
-                        plans=inbound_refs.get(key, []),
+                        plans=matched_plans,
                         quantity=Decimal(str(line.qty or 0)),
                         field="inbound_qty",
                         ref_field="inbound_refs",
@@ -3000,6 +4427,102 @@ class ProductionService:
         except SQLAlchemyError as exc:
             raise DatabaseReadFailed() from exc
         return facts
+
+    @classmethod
+    def _production_order_inbound_matching_plans(
+        cls,
+        *,
+        draft: LyWarehouseStockEntryDraft,
+        line: LyWarehouseStockEntryDraftItem,
+        exact_refs: dict[tuple[str, str, str], list[LyProductionPlan]],
+        line_refs: dict[tuple[str, str, str], list[LyProductionPlan]],
+        order_refs: dict[tuple[str, str, str], list[LyProductionPlan]],
+        plans_by_company_item: dict[tuple[str, str], list[LyProductionPlan]],
+    ) -> list[LyProductionPlan]:
+        company = str(draft.company)
+        item_code = str(line.item_code)
+        source_id = str(draft.source_id or "").strip()
+        exact_plans = exact_refs.get((company, item_code, source_id), [])
+        if exact_plans:
+            return exact_plans
+
+        sales_order_item = str(line.sales_order_item or "").strip()
+        if sales_order_item:
+            line_plans = line_refs.get((company, item_code, sales_order_item), [])
+            if line_plans:
+                return line_plans
+
+        candidates = plans_by_company_item.get((company, item_code), [])
+        scored: list[tuple[int, LyProductionPlan]] = []
+        for plan in candidates:
+            score = cls._finished_goods_source_match_score(
+                source_id=source_id,
+                sales_order_item=sales_order_item,
+                plan=plan,
+            )
+            if score > 0:
+                scored.append((score, plan))
+        if scored:
+            best_score = max(score for score, _plan in scored)
+            return [plan for score, plan in scored if score == best_score]
+
+        sales_order = cls._sales_order_from_finished_goods_source(source_id)
+        if sales_order:
+            return order_refs.get((company, item_code, sales_order), [])
+        return []
+
+    @classmethod
+    def _finished_goods_source_match_score(
+        cls,
+        *,
+        source_id: str,
+        sales_order_item: str,
+        plan: LyProductionPlan,
+    ) -> int:
+        source_text = str(source_id or "").lower()
+        if not source_text:
+            return 0
+
+        plan_id = int(plan.id)
+        plan_refs = cls._production_order_inbound_refs(plan)
+        if str(source_id or "").strip() in plan_refs:
+            return 100
+        if f"production_plan:{plan_id}" in source_text or f"plan:{plan_id}" in source_text:
+            return 95
+
+        line_no = str(getattr(plan, "sales_order_item", "") or "").strip()
+        if line_no and cls._contains_finished_goods_token(source_text, "li", line_no):
+            return 90
+        if sales_order_item and line_no and sales_order_item == line_no:
+            return 88
+        if line_no and line_no.lower() in source_text:
+            return 84
+
+        for plan_ref in {str(getattr(plan, "plan_no", "") or ""), str(getattr(plan, "plan_group_no", "") or "")}:
+            if plan_ref and (cls._contains_finished_goods_token(source_text, "pg", plan_ref) or plan_ref.lower() in source_text):
+                return 80
+
+        sales_order = str(getattr(plan, "sales_order", "") or "").strip()
+        if sales_order and cls._contains_finished_goods_token(source_text, "so", sales_order):
+            return 40
+        if sales_order and sales_order.lower() in source_text:
+            return 30
+        return 0
+
+    @staticmethod
+    def _contains_finished_goods_token(source_text: str, prefix: str, value: str) -> bool:
+        normalized_value = str(value or "").strip().lower()
+        if not normalized_value:
+            return False
+        return f"{prefix}-{normalized_value}" in source_text
+
+    @staticmethod
+    def _sales_order_from_finished_goods_source(source_id: str) -> str | None:
+        match = re.search(r"(?:^|:)so-([^:]+)", str(source_id or ""), flags=re.IGNORECASE)
+        if not match:
+            return None
+        sales_order = match.group(1).strip()
+        return sales_order or None
 
     @staticmethod
     def _production_order_inbound_refs(plan: LyProductionPlan) -> set[str]:
@@ -3339,7 +4862,7 @@ class ProductionService:
                 bom_items = (
                     self.session.query(LyApparelBomItem)
                     .filter(LyApparelBomItem.bom_id.in_(bom_ids))
-                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                     .all()
                 )
                 bom_operations = (
@@ -4610,6 +6133,9 @@ class ProductionService:
             plan_id_value,
             self._empty_material_readiness_summary(),
         )
+        production_notice = self._production_notice_summary_for_plan(plan=plan)
+        quantity_fact = self._production_order_io_quantity_facts([plan]).get(plan_id_value, {})
+        finished_goods_summary = self._finished_goods_inbound_summary(plan=plan, fact=quantity_fact)
         summary = None
         if latest is not None:
             summary = ProductionWorkOrderOutboxSummary(
@@ -4656,6 +6182,12 @@ class ProductionService:
             bom_version=(str(plan.bom_version) if plan.bom_version else None),
             planned_qty=Decimal(str(plan.planned_qty)),
             planned_start_date=plan.planned_start_date,
+            production_mode=self._text(getattr(plan, "production_mode", None)),
+            factory_id=self._text(getattr(plan, "factory_id", None)),
+            factory_name=self._text(getattr(plan, "factory_name", None)),
+            production_start_date=getattr(plan, "production_start_date", None),
+            expected_finish_date=getattr(plan, "expected_finish_date", None),
+            production_remark=self._text(getattr(plan, "production_remark", None)),
             status=str(plan.status),
             work_order=(str(work_order_link.work_order) if work_order_link and work_order_link.work_order else None),
             erpnext_docstatus=(int(work_order_link.erpnext_docstatus) if work_order_link and work_order_link.erpnext_docstatus is not None else None),
@@ -4671,6 +6203,11 @@ class ProductionService:
             shortage_qty_total=Decimal(str(material_readiness["shortage_qty_total"])),
             pending_requirement_count=int(material_readiness["pending_requirement_count"]),
             purchase_status=str(material_readiness["purchase_status"]),
+            production_notice=production_notice,
+            finished_goods_inbound_qty=finished_goods_summary["inbound_qty"],
+            finished_goods_remaining_qty=finished_goods_summary["remaining_qty"],
+            finished_goods_inbound_status=finished_goods_summary["status"],
+            finished_goods_inbound_ref_count=finished_goods_summary["ref_count"],
             material_snapshots=[
                 ProductionPlanMaterialSnapshotItem(
                     bom_item_id=(int(row.bom_item_id) if row.bom_item_id is not None else None),
@@ -5169,6 +6706,361 @@ class ProductionService:
             raise DatabaseWriteFailed() from exc
         return data
 
+    def _normalize_production_mode(self, value: str | None) -> str:
+        mode = (self._text(value) or "in_house").lower()
+        aliases = {
+            "inhouse": "in_house",
+            "self": "in_house",
+            "local": "in_house",
+            "本厂生产": "in_house",
+            "本厂": "in_house",
+            "outsourcing": "outsourced",
+            "outsource": "outsourced",
+            "外发加工": "outsourced",
+            "外发": "outsourced",
+        }
+        mode = aliases.get(mode, mode)
+        if mode not in {"in_house", "outsourced"}:
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="生产方式必须为本厂生产或外发加工")
+        return mode
+
+    def _resolve_start_production_factory(
+        self,
+        *,
+        company: str,
+        production_mode: str,
+        factory_id: str | None,
+        factory_name: str | None,
+    ) -> tuple[str | None, str]:
+        if production_mode == "in_house":
+            return factory_id, factory_name or "本厂"
+
+        if not factory_id and not factory_name:
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="外发加工必须选择启用的加工厂")
+
+        filters = [
+            LyMasterDataRecord.entity_type == "factory",
+            LyMasterDataRecord.company == company,
+            LyMasterDataRecord.status == "active",
+        ]
+        match_filters = []
+        if factory_id:
+            match_filters.append(LyMasterDataRecord.code == factory_id)
+            if factory_id.isdigit():
+                match_filters.append(LyMasterDataRecord.id == int(factory_id))
+        if factory_name:
+            match_filters.append(LyMasterDataRecord.name == factory_name)
+        try:
+            factory = (
+                self.session.query(LyMasterDataRecord)
+                .filter(*filters)
+                .filter(or_(*match_filters))
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if factory is None:
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="外发加工厂不存在或未启用")
+        return str(factory.code), str(factory.name)
+
+    def advance_production_plan_status(
+        self,
+        *,
+        plan_id: int,
+        payload: ProductionPlanStatusAdvanceRequest,
+        operator: str,
+        request_id: str | None = None,
+    ) -> ProductionPlanDetailData:
+        plan = self._must_get_plan(plan_id=plan_id)
+        self._validate_production_status_payload(plan=plan, payload=payload, plan_id=plan_id, request_id=request_id)
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_KEY_REQUIRED,
+            message="idempotency_key 不能为空",
+        )
+        action = (self._text(payload.action) or "").lower()
+        remark = self._text(payload.remark) or ""
+        production_mode = self._normalize_production_mode(payload.production_mode) if action == "start" else None
+        factory_id: str | None = None
+        factory_name: str | None = None
+        if action == "start":
+            factory_id, factory_name = self._resolve_start_production_factory(
+                company=str(plan.company),
+                production_mode=production_mode or "in_house",
+                factory_id=self._text(payload.factory_id),
+                factory_name=self._text(payload.factory_name),
+            )
+        production_start_date = payload.production_start_date if action == "start" else None
+        expected_finish_date = payload.expected_finish_date if action == "start" else None
+        production_remark = self._text(payload.production_remark) if action == "start" else None
+        scenario_tag = self._text(payload.scenario_tag)
+        request_hash = self._production_operation_request_hash(
+            {
+                "plan_id": int(plan.id),
+                "company": str(plan.company),
+                "operation": "production_status",
+                "scenario_tag": scenario_tag,
+                "action": action,
+                "remark": remark,
+                "production_mode": production_mode,
+                "factory_id": factory_id,
+                "factory_name": factory_name,
+                "production_start_date": production_start_date,
+                "expected_finish_date": expected_finish_date,
+                "production_remark": production_remark,
+                "sales_order": str(plan.sales_order),
+                "sales_order_item": str(plan.sales_order_item),
+                "item_code": str(plan.item_code),
+            }
+        )
+        existing_operation = self._get_plan_operation(
+            company=str(plan.company),
+            operation="production_status",
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash) != request_hash:
+                raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+            return self._production_plan_detail_data_from_json(existing_operation.response_json)
+
+        previous = str(plan.status or "")
+        next_status = previous
+        if action == "start":
+            material_readiness = self._material_readiness_by_plan_ids(plan_ids=[int(plan.id)]).get(
+                int(plan.id),
+                self._empty_material_readiness_summary(),
+            )
+            if not bool(material_readiness["material_ready"]):
+                raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="该计划尚未齐料，不能开始生产")
+            self._ensure_production_notice_allows_start(plan=plan)
+            if previous == "production_in_progress":
+                raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="该计划已开始生产，不能重复开始")
+            if previous == "production_completed":
+                raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="该计划已完成生产，不能重新开始")
+            next_status = "production_in_progress"
+        elif action == "complete":
+            if previous == "production_completed":
+                next_status = "production_completed"
+            elif previous != "production_in_progress":
+                raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="请先开始生产，再完成生产")
+            else:
+                next_status = "production_completed"
+
+        if next_status != previous:
+            plan.status = next_status
+            plan.updated_at = datetime.utcnow()
+        if action == "start":
+            plan.production_mode = production_mode
+            plan.factory_id = factory_id
+            plan.factory_name = factory_name
+            plan.production_start_date = production_start_date or date.today()
+            plan.expected_finish_date = expected_finish_date
+            plan.production_remark = production_remark
+            plan.updated_at = datetime.utcnow()
+        data = self.get_plan_detail(plan_id=int(plan.id))
+        self.session.add(
+            LyProductionPlanOperation(
+                plan_id=int(plan.id),
+                company=str(plan.company),
+                operation="production_status",
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+                response_json=self._production_model_to_json(data),
+                created_by=operator,
+            )
+        )
+        self._log_status(
+            plan_id=int(plan.id),
+            from_status=previous,
+            to_status=next_status,
+            action=f"production_status:{action}",
+            operator=operator,
+            request_id=request_id,
+        )
+        try:
+            self.session.flush()
+        except SQLAlchemyError as exc:
+            raise DatabaseWriteFailed() from exc
+        return data
+
+    def _existing_material_check_data_for_plan(
+        self,
+        *,
+        plan: LyProductionPlan,
+        sales_order_item: LySalesOrderItem,
+    ) -> ProductionMaterialCheckData | None:
+        if str(plan.status or "") != "material_checked":
+            return None
+        try:
+            snapshots = (
+                self.session.query(LyProductionPlanMaterial)
+                .filter(LyProductionPlanMaterial.plan_id == int(plan.id))
+                .order_by(LyProductionPlanMaterial.id.asc())
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if not snapshots:
+            return None
+        material_names = self._material_names_by_code(
+            company=str(plan.company),
+            material_codes=[str(row.material_item_code) for row in snapshots if row.material_item_code],
+        )
+        items = [
+            ProductionPlanMaterialSnapshotItem(
+                bom_item_id=(int(row.bom_item_id) if row.bom_item_id is not None else None),
+                bom_color=self._text(getattr(row, "bom_color", None)),
+                bom_size=self._text(getattr(row, "bom_size", None)),
+                bom_part=self._text(getattr(row, "bom_part", None)),
+                material_item_code=str(row.material_item_code),
+                material_name=material_names.get(str(row.material_item_code)),
+                warehouse=self._text(getattr(row, "warehouse", None)),
+                uom=str(getattr(row, "uom", None) or "米"),
+                qty_per_piece=Decimal(str(row.qty_per_piece or 0)),
+                loss_rate=Decimal(str(row.loss_rate or 0)),
+                required_qty=Decimal(str(row.required_qty or 0)),
+                available_qty=Decimal(str(row.available_qty or 0)),
+                shortage_qty=Decimal(str(row.shortage_qty or 0)),
+                checked_at=row.checked_at,
+            )
+            for row in snapshots
+        ]
+        return self._material_check_data_with_plan_context(
+            data=ProductionMaterialCheckData(
+                plan_id=int(plan.id),
+                snapshot_count=len(items),
+                items=items,
+            ),
+            plan=plan,
+            sales_order_item=sales_order_item,
+        )
+
+    def _has_generated_purchase_for_sales_order(self, *, company: str, sales_order: str | None) -> bool:
+        if not sales_order:
+            return False
+        try:
+            return (
+                self.session.query(LyMaterialPurchaseRequirement.id)
+                .filter(
+                    LyMaterialPurchaseRequirement.company == company,
+                    LyMaterialPurchaseRequirement.sales_order == sales_order,
+                    LyMaterialPurchaseRequirement.status != "cancelled",
+                )
+                .filter(
+                    or_(
+                        LyMaterialPurchaseRequirement.status.in_(("purchased", "completed")),
+                        LyMaterialPurchaseRequirement.purchase_order_id.isnot(None),
+                        LyMaterialPurchaseRequirement.purchase_order_item_id.isnot(None),
+                        LyMaterialPurchaseRequirement.purchase_no.isnot(None),
+                        LyMaterialPurchaseRequirement.purchased_qty > 0,
+                        LyMaterialPurchaseRequirement.received_qty > 0,
+                    )
+                )
+                .first()
+                is not None
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    def _ensure_material_recalculate_allowed_for_plan(self, *, plan: LyProductionPlan) -> None:
+        try:
+            requirement = (
+                self.session.query(LyMaterialPurchaseRequirement.id)
+                .filter(
+                    LyMaterialPurchaseRequirement.company == str(plan.company),
+                    LyMaterialPurchaseRequirement.source_type == "production_plan",
+                    LyMaterialPurchaseRequirement.source_id == str(plan.id),
+                    LyMaterialPurchaseRequirement.status != "cancelled",
+                )
+                .filter(
+                    or_(
+                        LyMaterialPurchaseRequirement.status.in_(("purchased", "completed")),
+                        LyMaterialPurchaseRequirement.purchase_order_id.isnot(None),
+                        LyMaterialPurchaseRequirement.purchase_order_item_id.isnot(None),
+                        LyMaterialPurchaseRequirement.purchase_no.isnot(None),
+                        LyMaterialPurchaseRequirement.purchased_qty > 0,
+                        LyMaterialPurchaseRequirement.received_qty > 0,
+                    )
+                )
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if requirement is not None or self._has_generated_purchase_for_sales_order(
+            company=str(plan.company),
+            sales_order=self._text(plan.sales_order),
+        ):
+            raise BusinessException(
+                code=PRODUCTION_MATERIAL_CHECK_STATUS_INVALID,
+                message="该订单已生成采购单，不能直接重算。请走补料/变更流程。",
+            )
+
+    def _ensure_material_recalculate_allowed_for_sales_order(self, *, company: str, sales_order: str) -> None:
+        if self._has_generated_purchase_for_sales_order(company=company, sales_order=sales_order):
+            raise BusinessException(
+                code=PRODUCTION_MATERIAL_CHECK_STATUS_INVALID,
+                message="该订单已生成采购单，不能直接重算。请走补料/变更流程。",
+            )
+
+    def _existing_sales_order_material_check_data(
+        self,
+        *,
+        order: LySalesOrder,
+        lines: list[LySalesOrderItem],
+        plan_map: dict[str, list[LyProductionPlan]],
+        warehouse: str,
+    ) -> ProductionSalesOrderMaterialCheckData | None:
+        result_items: list[ProductionSalesOrderMaterialCheckPlanItem] = []
+        required_total = Decimal("0")
+        available_total = Decimal("0")
+        shortage_total = Decimal("0")
+        snapshot_count = 0
+
+        for line in lines:
+            plans = plan_map.get(str(line.sales_order_item), [])
+            if not plans:
+                return None
+            for plan in plans:
+                existing = self._existing_material_check_data_for_plan(plan=plan, sales_order_item=line)
+                if existing is None:
+                    return None
+                required_qty_total = sum((Decimal(str(item.required_qty)) for item in existing.items), Decimal("0"))
+                available_qty_total = sum((Decimal(str(item.available_qty)) for item in existing.items), Decimal("0"))
+                shortage_qty_total = sum((Decimal(str(item.shortage_qty)) for item in existing.items), Decimal("0"))
+                snapshot_count += int(existing.snapshot_count)
+                required_total += required_qty_total
+                available_total += available_qty_total
+                shortage_total += shortage_qty_total
+                result_items.append(
+                    ProductionSalesOrderMaterialCheckPlanItem(
+                        plan_id=int(plan.id),
+                        plan_no=str(plan.plan_no),
+                        sales_order_item=str(plan.sales_order_item),
+                        item_code=str(plan.item_code),
+                        planned_qty=Decimal(str(plan.planned_qty or 0)),
+                        created_plan=False,
+                        snapshot_count=int(existing.snapshot_count),
+                        required_qty_total=required_qty_total,
+                        available_qty_total=available_qty_total,
+                        shortage_qty_total=shortage_qty_total,
+                    )
+                )
+
+        if not result_items:
+            return None
+        return ProductionSalesOrderMaterialCheckData(
+            sales_order=str(order.sales_order_no),
+            company=str(order.company),
+            warehouse=warehouse,
+            plan_count=len(result_items),
+            created_plan_count=0,
+            snapshot_count=snapshot_count,
+            required_qty_total=required_total.quantize(Decimal("0.000001")),
+            available_qty_total=available_total.quantize(Decimal("0.000001")),
+            shortage_qty_total=shortage_total.quantize(Decimal("0.000001")),
+            items=result_items,
+        )
+
     def material_check(
         self,
         *,
@@ -5209,6 +7101,7 @@ class ProductionService:
                 "scenario_tag": str(payload.scenario_tag or "").strip(),
                 "warehouse": warehouse,
                 "material_check_mode": "small_factory" if simplified_material_check else "stock",
+                "recalculate": bool(payload.recalculate),
                 "sales_order": str(plan.sales_order),
                 "sales_order_item": str(plan.sales_order_item),
                 "item_code": str(plan.item_code),
@@ -5228,6 +7121,29 @@ class ProductionService:
                 plan=plan,
                 sales_order_item=native_item,
             )
+
+        existing_material_check = self._existing_material_check_data_for_plan(plan=plan, sales_order_item=native_item)
+        if existing_material_check is not None and not payload.recalculate:
+            bom_rows, bom_source = self._material_bom_rows_for_plan(plan=plan)
+            if not bom_rows:
+                message = (
+                    "该样板单未维护打样用料 BOM 明细，无法算料"
+                    if bom_source == "sample"
+                    else "该款式未维护用料 BOM 明细，无法算料"
+                )
+                raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message=message)
+            bom_rows = self._filter_bom_rows_for_sales_order_item(bom_rows=bom_rows, sales_order_item=native_item)
+            if not bom_rows:
+                message = (
+                    "该样板单未维护匹配当前颜色/尺码的打样用料 BOM 明细，无法算料"
+                    if bom_source == "sample"
+                    else "该款式未维护匹配当前颜色/尺码的用料 BOM 明细，无法算料"
+                )
+                raise BusinessException(code=PRODUCTION_BOM_NOT_FOUND, message=message)
+            self._ensure_material_bom_rows_active(company=str(plan.company), bom_rows=bom_rows)
+            return existing_material_check
+        if payload.recalculate:
+            self._ensure_material_recalculate_allowed_for_plan(plan=plan)
 
         if not simplified_material_check:
             self._ensure_warehouse_master_active(company=str(plan.company), warehouse=warehouse)
@@ -5410,6 +7326,7 @@ class ProductionService:
                 "operation": operation,
                 "warehouse": warehouse,
                 "material_check_mode": "small_factory" if simplified_material_check else "stock",
+                "recalculate": bool(payload.recalculate),
                 "planned_start_date": payload.planned_start_date.isoformat() if payload.planned_start_date else None,
                 "lines": [
                     {
@@ -5432,6 +7349,18 @@ class ProductionService:
             return self._production_sales_order_material_check_data_from_json(existing_parent_operation.response_json)
 
         existing_plan_map = self._production_plans_by_sales_order_item(company=company, sales_order=str(order.sales_order_no))
+        if payload.recalculate:
+            self._ensure_material_recalculate_allowed_for_sales_order(company=company, sales_order=str(order.sales_order_no))
+        elif lines and all(str(line.ys_material_calc_state or "") == "已算料" for line in lines):
+            existing_data = self._existing_sales_order_material_check_data(
+                order=order,
+                lines=lines,
+                plan_map=existing_plan_map,
+                warehouse=warehouse,
+            )
+            if existing_data is not None:
+                return existing_data
+
         result_items: list[ProductionSalesOrderMaterialCheckPlanItem] = []
         totals = {
             "snapshot_count": 0,
@@ -5487,6 +7416,7 @@ class ProductionService:
                     operator=operator,
                     payload=ProductionMaterialCheckRequest(
                         warehouse=warehouse,
+                        recalculate=bool(payload.recalculate),
                         operation="material_check",
                         idempotency_key=f"{scenario_tag}:idem-order-material-check-{sub_digest}",
                         scenario_tag=scenario_tag,
@@ -6058,7 +7988,15 @@ class ProductionService:
         )
 
         previous = str(plan.status)
-        if previous != "work_order_pending":
+        no_regress_statuses = {
+            "work_order_pending",
+            "work_order_created",
+            "job_cards_synced",
+            "material_issued",
+            "production_in_progress",
+            "production_completed",
+        }
+        if previous not in no_regress_statuses:
             plan.status = "work_order_pending"
             self._log_status(
                 plan_id=int(plan.id),
@@ -7600,6 +9538,37 @@ class ProductionService:
         if payload_request_id and not is_request_id_valid(payload_request_id):
             raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="request_id 格式无效")
 
+    def _validate_production_status_payload(
+        self,
+        *,
+        plan: LyProductionPlan,
+        payload: ProductionPlanStatusAdvanceRequest,
+        plan_id: int,
+        request_id: str | None,
+    ) -> None:
+        operation = self._text(payload.operation) or "production_status"
+        if operation != "production_status":
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="operation 必须为 production_status")
+        action = (self._text(payload.action) or "").lower()
+        if action not in {"start", "complete"}:
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="生产操作必须为 start 或 complete")
+        if payload.plan_id is not None and int(payload.plan_id) != int(plan_id):
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="plan_id 与路径不一致")
+        if payload.company and str(payload.company).strip() != str(plan.company):
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="company 与生产计划不一致")
+        if payload.sales_order and str(payload.sales_order).strip() != str(plan.sales_order):
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="sales_order 与生产计划不一致")
+        if payload.sales_order_item and str(payload.sales_order_item).strip() != str(plan.sales_order_item):
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="sales_order_item 与生产计划不一致")
+        if payload.item_code and str(payload.item_code).strip() != str(plan.item_code):
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="item_code 与生产计划不一致")
+        payload_request_id = self._text(payload.request_id)
+        header_request_id = self._text(request_id)
+        if payload_request_id and header_request_id and payload_request_id != header_request_id:
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="request_id 与请求头不一致")
+        if payload_request_id and not is_request_id_valid(payload_request_id):
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="request_id 格式无效")
+
     @staticmethod
     def _tracking_exception_item(row: LyProductionTrackingException) -> ProductionTrackingExceptionItem:
         return ProductionTrackingExceptionItem(
@@ -7656,6 +9625,12 @@ class ProductionService:
             return ProductionTrackingNodeEventData.model_validate(payload)
         return ProductionTrackingNodeEventData.parse_obj(payload)
 
+    @staticmethod
+    def _production_plan_detail_data_from_json(payload: dict[str, Any]) -> ProductionPlanDetailData:
+        if hasattr(ProductionPlanDetailData, "model_validate"):
+            return ProductionPlanDetailData.model_validate(payload)
+        return ProductionPlanDetailData.parse_obj(payload)
+
     def _calculate_quote_material_cost(self, *, plan: LyProductionPlan, quote_qty: Decimal) -> Decimal:
         try:
             snapshots = (
@@ -7667,7 +9642,7 @@ class ProductionService:
             bom_rows = (
                 self.session.query(LyApparelBomItem)
                 .filter(LyApparelBomItem.bom_id == int(plan.bom_id))
-                .order_by(LyApparelBomItem.id.asc())
+                .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                 .all()
             )
         except SQLAlchemyError as exc:
@@ -7712,15 +9687,405 @@ class ProductionService:
             material_cost += required_qty * unit_price
         return material_cost.quantize(Decimal("0.000001"))
 
+    def _build_quote_items_from_plans(
+        self,
+        *,
+        plans: list[LyProductionPlan],
+        line_attrs: dict[tuple[str, str, str], dict[str, Any]],
+        material_cost_by_plan: dict[int, Decimal],
+        quote_unit_price: Decimal,
+        labor_cost: Decimal,
+        management_fee: Decimal,
+        other_fee: Decimal,
+        overrides: list[Any],
+    ) -> list[ProductionQuoteLineItem]:
+        total_qty = sum((Decimal(str(plan.planned_qty or 0)) for plan in plans), Decimal("0"))
+        override_by_plan: dict[int, Any] = {}
+        override_by_item: dict[str, Any] = {}
+        for override in overrides or []:
+            plan_id = getattr(override, "plan_id", None)
+            sales_order_item = self._text(getattr(override, "sales_order_item", None))
+            if plan_id is not None:
+                override_by_plan[int(plan_id)] = override
+            if sales_order_item:
+                override_by_item[sales_order_item] = override
+
+        items: list[ProductionQuoteLineItem] = []
+        for plan in plans:
+            plan_id = int(plan.id)
+            qty = Decimal(str(plan.planned_qty or 0))
+            ratio = (qty / total_qty).quantize(Decimal("0.000001")) if total_qty > 0 else Decimal("0")
+            override = override_by_plan.get(plan_id) or override_by_item.get(str(plan.sales_order_item))
+            line_unit_price = self._override_decimal(override, "quote_unit_price", quote_unit_price)
+            line_labor_cost = self._override_decimal(override, "labor_cost", (labor_cost * ratio).quantize(Decimal("0.000001")))
+            line_management_fee = self._override_decimal(override, "management_fee", (management_fee * ratio).quantize(Decimal("0.000001")))
+            line_other_fee = self._override_decimal(override, "other_fee", (other_fee * ratio).quantize(Decimal("0.000001")))
+            attrs = line_attrs.get((str(plan.company), str(plan.sales_order), str(plan.sales_order_item)), {})
+            items.append(
+                ProductionQuoteLineItem(
+                    plan_id=plan_id,
+                    plan_no=str(plan.plan_no),
+                    sales_order_item=str(plan.sales_order_item),
+                    sales_order_item_id=attrs.get("id"),
+                    item_code=str(plan.item_code),
+                    item_name=attrs.get("item_name"),
+                    color=attrs.get("color"),
+                    size=attrs.get("size"),
+                    bom_version=(str(plan.bom_version) if plan.bom_version else None),
+                    quote_qty=qty,
+                    material_cost=Decimal(str(material_cost_by_plan.get(plan_id, Decimal("0")))).quantize(Decimal("0.000001")),
+                    labor_cost=line_labor_cost,
+                    management_fee=line_management_fee,
+                    other_fee=line_other_fee,
+                    quote_unit_price=line_unit_price,
+                    quote_amount=(qty * line_unit_price).quantize(Decimal("0.000001")),
+                )
+            )
+        return items
+
+    @staticmethod
+    def _allocate_quote_cost_by_plan_qty(
+        *,
+        plans: list[LyProductionPlan],
+        total_cost: Decimal,
+    ) -> dict[int, Decimal]:
+        total_qty = sum((Decimal(str(plan.planned_qty or 0)) for plan in plans), Decimal("0"))
+        allocated: dict[int, Decimal] = {}
+        running = Decimal("0")
+        for index, plan in enumerate(plans):
+            plan_id = int(plan.id)
+            if index == len(plans) - 1:
+                amount = (total_cost - running).quantize(Decimal("0.000001"))
+            else:
+                qty = Decimal(str(plan.planned_qty or 0))
+                ratio = (qty / total_qty).quantize(Decimal("0.000001")) if total_qty > 0 else Decimal("0")
+                amount = (total_cost * ratio).quantize(Decimal("0.000001"))
+                running += amount
+            allocated[plan_id] = amount
+        return allocated
+
+    def _quote_items_from_json(self, row: LyProductionQuote) -> list[ProductionQuoteLineItem]:
+        raw_items = getattr(row, "quote_items_json", None) or []
+        items: list[ProductionQuoteLineItem] = []
+        for item in raw_items:
+            if hasattr(ProductionQuoteLineItem, "model_validate"):
+                items.append(ProductionQuoteLineItem.model_validate(item))
+            else:
+                items.append(ProductionQuoteLineItem.parse_obj(item))
+        if items:
+            return items
+        quote_qty = Decimal(str(row.quote_qty or 0))
+        quote_unit_price = Decimal(str(getattr(row, "quote_unit_price", 0) or 0))
+        if quote_unit_price <= 0 and quote_qty > 0:
+            quote_unit_price = (Decimal(str(row.quote_amount or 0)) / quote_qty).quantize(Decimal("0.000001"))
+        return [
+            ProductionQuoteLineItem(
+                plan_id=int(row.plan_id) if row.plan_id is not None else None,
+                plan_no=str(row.plan_no),
+                sales_order_item=str(row.sales_order_item),
+                item_code=str(row.item_code),
+                quote_qty=quote_qty,
+                material_cost=Decimal(str(row.material_cost or 0)),
+                labor_cost=Decimal(str(row.labor_cost or 0)),
+                management_fee=Decimal(str(row.management_fee or 0)),
+                other_fee=Decimal(str(getattr(row, "other_fee", 0) or 0)),
+                quote_unit_price=quote_unit_price,
+                quote_amount=Decimal(str(row.quote_amount or 0)),
+            )
+        ]
+
+    @staticmethod
+    def _quote_items_json(items: list[ProductionQuoteLineItem]) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for item in items:
+            if hasattr(item, "model_dump"):
+                result.append(item.model_dump(mode="json"))
+            else:
+                result.append(item.dict())
+        return result
+
+    def _rebuild_quote_items_from_existing(
+        self,
+        *,
+        quote_items: list[ProductionQuoteLineItem],
+        quote_unit_price: Decimal,
+        labor_cost: Decimal,
+        management_fee: Decimal,
+        other_fee: Decimal,
+        material_cost_total: Decimal | None,
+        overrides: list[Any],
+    ) -> list[ProductionQuoteLineItem]:
+        total_qty = sum((Decimal(str(item.quote_qty or 0)) for item in quote_items), Decimal("0"))
+        override_by_plan: dict[int, Any] = {}
+        override_by_item: dict[str, Any] = {}
+        for override in overrides or []:
+            plan_id = getattr(override, "plan_id", None)
+            sales_order_item = self._text(getattr(override, "sales_order_item", None))
+            if plan_id is not None:
+                override_by_plan[int(plan_id)] = override
+            if sales_order_item:
+                override_by_item[sales_order_item] = override
+
+        rebuilt: list[ProductionQuoteLineItem] = []
+        for item in quote_items:
+            qty = Decimal(str(item.quote_qty or 0)).quantize(Decimal("0.000001"))
+            ratio = (qty / total_qty).quantize(Decimal("0.000001")) if total_qty > 0 else Decimal("0")
+            plan_id = int(item.plan_id) if item.plan_id is not None else None
+            override = (override_by_plan.get(plan_id) if plan_id is not None else None) or override_by_item.get(str(item.sales_order_item or ""))
+            line_unit_price = self._override_decimal(override, "quote_unit_price", quote_unit_price)
+            line_material_cost = (
+                (material_cost_total * ratio).quantize(Decimal("0.000001"))
+                if material_cost_total is not None
+                else Decimal(str(item.material_cost or 0)).quantize(Decimal("0.000001"))
+            )
+            line_labor_cost = self._override_decimal(override, "labor_cost", (labor_cost * ratio).quantize(Decimal("0.000001")))
+            line_management_fee = self._override_decimal(override, "management_fee", (management_fee * ratio).quantize(Decimal("0.000001")))
+            line_other_fee = self._override_decimal(override, "other_fee", (other_fee * ratio).quantize(Decimal("0.000001")))
+            rebuilt.append(
+                ProductionQuoteLineItem(
+                    plan_id=plan_id,
+                    plan_no=item.plan_no,
+                    sales_order_item=item.sales_order_item,
+                    sales_order_item_id=item.sales_order_item_id,
+                    item_code=str(item.item_code),
+                    item_name=item.item_name,
+                    color=item.color,
+                    size=item.size,
+                    bom_version=item.bom_version,
+                    quote_qty=qty,
+                    material_cost=line_material_cost,
+                    labor_cost=line_labor_cost,
+                    management_fee=line_management_fee,
+                    other_fee=line_other_fee,
+                    quote_unit_price=line_unit_price,
+                    quote_amount=(qty * line_unit_price).quantize(Decimal("0.000001")),
+                )
+            )
+        return rebuilt
+
+    @staticmethod
+    def _quote_amount_from_items(
+        *,
+        quote_items: list[ProductionQuoteLineItem],
+        quote_qty: Decimal,
+        quote_unit_price: Decimal,
+    ) -> Decimal:
+        if quote_items:
+            return sum((Decimal(str(item.quote_amount or 0)) for item in quote_items), Decimal("0")).quantize(Decimal("0.000001"))
+        return (quote_qty * quote_unit_price).quantize(Decimal("0.000001"))
+
+    def _quote_fee_amounts(
+        self,
+        *,
+        quote_qty: Decimal,
+        labor_cost: Decimal,
+        management_fee: Decimal,
+        other_fee: Decimal,
+        labor_fee_per_piece: Decimal | None,
+        management_fee_per_piece: Decimal | None,
+        other_fee_amount: Decimal | None,
+    ) -> tuple[Decimal, Decimal, Decimal]:
+        labor_amount = (labor_fee_per_piece * quote_qty).quantize(Decimal("0.000001")) if labor_fee_per_piece is not None else labor_cost
+        management_amount = (
+            (management_fee_per_piece * quote_qty).quantize(Decimal("0.000001")) if management_fee_per_piece is not None else management_fee
+        )
+        other_amount = other_fee_amount if other_fee_amount is not None else other_fee
+        return (
+            Decimal(str(labor_amount or 0)).quantize(Decimal("0.000001")),
+            Decimal(str(management_amount or 0)).quantize(Decimal("0.000001")),
+            Decimal(str(other_amount or 0)).quantize(Decimal("0.000001")),
+        )
+
+    def _write_quote_back_to_sales_order(self, *, row: LyProductionQuote) -> None:
+        order = self._find_sales_order_for_quote(row=row)
+        if order is None:
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="报价对应的销售订单不存在，不能确认核价")
+
+        quote_items = self._quote_items_from_json(row)
+        items = (
+            self.session.query(LySalesOrderItem)
+            .filter(LySalesOrderItem.sales_order_id == int(order.id))
+            .all()
+        )
+        item_by_id = {int(item.id): item for item in items}
+        item_by_name = {str(item.sales_order_item): item for item in items}
+        grand_total = Decimal("0")
+        for quote_item in quote_items:
+            target = None
+            if quote_item.sales_order_item_id is not None:
+                target = item_by_id.get(int(quote_item.sales_order_item_id))
+            if target is None and quote_item.sales_order_item:
+                target = item_by_name.get(str(quote_item.sales_order_item))
+            if target is None:
+                continue
+            rate = Decimal(str(quote_item.quote_unit_price or 0)).quantize(Decimal("0.000001"))
+            amount = (Decimal(str(target.qty or 0)) * rate).quantize(Decimal("0.000001"))
+            target.rate = rate
+            target.amount = amount
+            grand_total += amount
+
+        if grand_total <= 0:
+            grand_total = Decimal(str(row.quote_amount or 0)).quantize(Decimal("0.000001"))
+        order.grand_total = grand_total
+        if hasattr(order, "quote_status"):
+            order.quote_status = "已核价"
+        if hasattr(order, "quote_no"):
+            order.quote_no = str(row.quote_no)
+        if hasattr(order, "quote_amount"):
+            order.quote_amount = Decimal(str(row.quote_amount or 0))
+        quote_qty = Decimal(str(row.quote_qty or 0))
+        quote_unit_price = Decimal(str(getattr(row, "quote_unit_price", 0) or 0)).quantize(Decimal("0.000001"))
+        material_cost = Decimal(str(row.material_cost or 0)).quantize(Decimal("0.000001"))
+        labor_cost = Decimal(str(row.labor_cost or 0)).quantize(Decimal("0.000001"))
+        management_fee = Decimal(str(row.management_fee or 0)).quantize(Decimal("0.000001"))
+        other_fee = Decimal(str(getattr(row, "other_fee", 0) or 0)).quantize(Decimal("0.000001"))
+        total_cost = (material_cost + labor_cost + management_fee + other_fee).quantize(Decimal("0.000001"))
+        if hasattr(order, "quote_unit_price"):
+            order.quote_unit_price = quote_unit_price if quote_unit_price > 0 else (
+                (Decimal(str(row.quote_amount or 0)) / quote_qty).quantize(Decimal("0.000001")) if quote_qty > 0 else Decimal("0")
+            )
+        if hasattr(order, "quote_material_cost"):
+            order.quote_material_cost = material_cost
+        if hasattr(order, "quote_labor_cost"):
+            order.quote_labor_cost = labor_cost
+        if hasattr(order, "quote_management_fee"):
+            order.quote_management_fee = management_fee
+        if hasattr(order, "quote_other_fee"):
+            order.quote_other_fee = other_fee
+        if hasattr(order, "quote_total_cost"):
+            order.quote_total_cost = total_cost
+        if hasattr(order, "gross_profit"):
+            order.gross_profit = Decimal(str(getattr(row, "gross_profit", 0) or 0))
+        if hasattr(order, "gross_margin_rate"):
+            order.gross_margin_rate = Decimal(str(getattr(row, "gross_margin_rate", 0) or 0))
+        order.updated_by = str(row.updated_by or row.created_by or "system")
+
+    def _find_sales_order_for_quote(self, *, row: LyProductionQuote) -> LySalesOrder | None:
+        try:
+            sql = self.session.query(LySalesOrder)
+            sales_order_id = getattr(row, "sales_order_id", None)
+            if sales_order_id is not None:
+                found = sql.filter(LySalesOrder.id == int(sales_order_id)).first()
+                if found is not None:
+                    return found
+            return (
+                self.session.query(LySalesOrder)
+                .filter(
+                    LySalesOrder.company == str(row.company),
+                    LySalesOrder.sales_order_no == str(row.sales_order),
+                )
+                .order_by(LySalesOrder.id.desc())
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    def _find_sales_order_id(self, *, company: str, sales_order: str) -> int | None:
+        order = (
+            self.session.query(LySalesOrder)
+            .filter(
+                LySalesOrder.company == company,
+                LySalesOrder.sales_order_no == sales_order,
+            )
+            .order_by(LySalesOrder.id.desc())
+            .first()
+        )
+        return int(order.id) if order is not None else None
+
+    def _order_quote_context(
+        self,
+        *,
+        sales_order: str | None,
+        sales_order_id: int | None,
+        company: str | None,
+    ) -> tuple[LySalesOrder | None, list[LyProductionPlan]]:
+        normalized_sales_order = self._text(sales_order)
+        order: LySalesOrder | None = None
+        try:
+            if sales_order_id is not None:
+                order_sql = self.session.query(LySalesOrder).filter(LySalesOrder.id == int(sales_order_id))
+                if company:
+                    order_sql = order_sql.filter(LySalesOrder.company == company)
+                order = order_sql.first()
+                if order is None:
+                    raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="销售订单不存在")
+                normalized_sales_order = str(order.sales_order_no)
+            elif normalized_sales_order:
+                order_sql = self.session.query(LySalesOrder).filter(
+                    (LySalesOrder.sales_order_no == normalized_sales_order)
+                    | (LySalesOrder.source_order_ref == normalized_sales_order)
+                )
+                if company:
+                    order_sql = order_sql.filter(LySalesOrder.company == company)
+                order = order_sql.order_by(LySalesOrder.id.desc()).first()
+                if order is not None:
+                    normalized_sales_order = str(order.sales_order_no)
+            if not normalized_sales_order:
+                raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="请选择销售订单后再创建报价")
+
+            plan_sql = self.session.query(LyProductionPlan).filter(LyProductionPlan.sales_order == normalized_sales_order)
+            if company:
+                plan_sql = plan_sql.filter(LyProductionPlan.company == company)
+            plans = plan_sql.order_by(LyProductionPlan.sales_order_item.asc(), LyProductionPlan.id.asc()).all()
+        except BusinessException:
+            raise
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if not plans:
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="该订单还没有生产计划，不能创建报价")
+        return order, plans
+
+    def _get_active_quote_by_sales_order(self, *, company: str, sales_order: str) -> LyProductionQuote | None:
+        try:
+            return (
+                self.session.query(LyProductionQuote)
+                .filter(
+                    LyProductionQuote.company == company,
+                    LyProductionQuote.sales_order == sales_order,
+                    LyProductionQuote.status != "void",
+                )
+                .order_by(LyProductionQuote.id.desc())
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+    @staticmethod
+    def _quote_display_plan_no(plans: list[LyProductionPlan]) -> str:
+        group_nos = [str(getattr(plan, "plan_group_no", "") or "").strip() for plan in plans]
+        distinct_groups = sorted({value for value in group_nos if value})
+        if len(distinct_groups) == 1:
+            return distinct_groups[0]
+        first = str(plans[0].plan_no)
+        return first if len(plans) == 1 else f"{first} 等{len(plans)}行"
+
+    @staticmethod
+    def _override_decimal(override: Any, field_name: str, default: Decimal) -> Decimal:
+        if override is None:
+            return Decimal(str(default)).quantize(Decimal("0.000001"))
+        value = getattr(override, field_name, None)
+        if value is None:
+            return Decimal(str(default)).quantize(Decimal("0.000001"))
+        return Decimal(str(value)).quantize(Decimal("0.000001"))
+
     def _quote_item(self, row: LyProductionQuote, *, plan: LyProductionPlan | None = None) -> ProductionQuoteListItem:
         quote_qty = Decimal(str(row.quote_qty or 0))
         quote_amount = Decimal(str(row.quote_amount or 0))
-        if quote_qty > 0:
-            quote_unit_price = (quote_amount / quote_qty).quantize(Decimal("0.000001"))
-        else:
-            quote_unit_price = Decimal("0")
+        quote_unit_price = Decimal(str(getattr(row, "quote_unit_price", 0) or 0))
+        if quote_unit_price <= 0:
+            quote_unit_price = (quote_amount / quote_qty).quantize(Decimal("0.000001")) if quote_qty > 0 else Decimal("0")
+        material_cost = Decimal(str(row.material_cost or 0))
+        labor_cost = Decimal(str(row.labor_cost or 0))
+        management_fee = Decimal(str(row.management_fee or 0))
+        other_fee = Decimal(str(getattr(row, "other_fee", 0) or 0))
+        total_cost = (material_cost + labor_cost + management_fee + other_fee).quantize(Decimal("0.000001"))
+        gross_profit = Decimal(str(getattr(row, "gross_profit", 0) or 0))
+        gross_margin_rate = Decimal(str(getattr(row, "gross_margin_rate", 0) or 0))
+        if gross_margin_rate == 0 and quote_amount > 0 and gross_profit != 0:
+            gross_margin_rate = ((gross_profit / quote_amount) * Decimal("100")).quantize(Decimal("0.000001"))
         return ProductionQuoteListItem(
             quote_id=int(row.id),
+            sales_order_id=int(row.sales_order_id) if getattr(row, "sales_order_id", None) is not None else None,
             plan_id=int(row.plan_id),
             quote_no=str(row.quote_no),
             plan_no=str(row.plan_no),
@@ -7730,18 +10095,29 @@ class ProductionService:
             customer=str(row.customer) if row.customer else None,
             item_code=str(row.item_code),
             quote_qty=quote_qty,
-            material_cost=Decimal(str(row.material_cost or 0)),
-            labor_cost=Decimal(str(row.labor_cost or 0)),
-            management_fee=Decimal(str(row.management_fee or 0)),
+            material_cost=material_cost,
+            labor_cost=labor_cost,
+            management_fee=management_fee,
+            other_fee=other_fee,
+            material_cost_amount=material_cost,
+            labor_cost_amount=labor_cost,
+            management_fee_amount=management_fee,
+            other_fee_amount=other_fee,
+            labor_fee_per_piece=(labor_cost / quote_qty).quantize(Decimal("0.000001")) if quote_qty > 0 else Decimal("0"),
+            management_fee_per_piece=(management_fee / quote_qty).quantize(Decimal("0.000001")) if quote_qty > 0 else Decimal("0"),
+            total_cost_amount=total_cost,
             quote_unit_price=quote_unit_price,
             quote_amount=quote_amount,
-            gross_margin=Decimal("0"),
+            gross_profit=gross_profit,
+            gross_margin=gross_margin_rate,
+            gross_margin_rate=gross_margin_rate,
             currency=str(row.currency or "CNY"),
             quoted_at=row.created_at,
             delivery_date=plan.planned_start_date if plan is not None else None,
             valid_until=row.valid_until,
             status=str(row.status),
             source="saved",
+            quote_items=self._quote_items_from_json(row),
         )
 
     def _quote_item_from_operation(self, row: LyProductionQuoteOperation) -> ProductionQuoteListItem:
@@ -7883,12 +10259,23 @@ class ProductionService:
     @staticmethod
     def _normalize_quote_status(value: str | None) -> str:
         status = (value or "draft").strip().lower()
+        if status == "confirmed":
+            status = "quoted"
         if status not in {"draft", "pricing", "quoted", "converted", "void"}:
             raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message="报价状态非法")
         return status
 
     @staticmethod
     def _decimal_nonnegative(value: Decimal, *, field_name: str) -> Decimal:
+        amount = Decimal(str(value or 0))
+        if amount < 0:
+            raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message=f"{field_name} 不能小于 0")
+        return amount.quantize(Decimal("0.000001"))
+
+    @staticmethod
+    def _optional_decimal_nonnegative(value: Decimal | None, *, field_name: str) -> Decimal | None:
+        if value is None:
+            return None
         amount = Decimal(str(value or 0))
         if amount < 0:
             raise BusinessException(code=PRODUCTION_TRACKING_EXCEPTION_INVALID, message=f"{field_name} 不能小于 0")

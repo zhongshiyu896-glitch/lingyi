@@ -662,6 +662,15 @@ class WarehouseStockEntryDraftData(BaseModel):
     allocation_mode: Literal["strict_alloc", "zero_placeholder_fallback"] | None = None
     strict_failure_reason: str | None = None
     show_completed_forced: bool | None = None
+    sales_order: str | None = None
+    customer: str | None = None
+    style_name: str | None = None
+    production_notice_no: str | None = None
+    plan_no: str | None = None
+    plan_group_no: str | None = None
+    sales_order_item: str | None = None
+    color: str | None = None
+    size: str | None = None
     items: list[WarehouseStockEntryDraftItemData]
     outbox: WarehouseStockEntryOutboxStatusData | None = None
 

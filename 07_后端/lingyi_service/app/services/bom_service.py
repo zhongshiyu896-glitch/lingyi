@@ -267,7 +267,12 @@ class BomService:
 
     @staticmethod
     def _bom_item_created_ordering() -> tuple[Any, ...]:
-        return (LyApparelBom.created_at.desc(), LyApparelBom.id.desc(), LyApparelBomItem.id.desc())
+        return (
+            LyApparelBom.created_at.desc(),
+            LyApparelBom.id.desc(),
+            LyApparelBomItem.sequence_no.asc(),
+            LyApparelBomItem.id.asc(),
+        )
 
     @staticmethod
     def _bom_operation_parent_created_ordering() -> tuple[Any, ...]:
@@ -275,7 +280,12 @@ class BomService:
 
     @staticmethod
     def _bom_item_parent_created_ordering() -> tuple[Any, ...]:
-        return (LyApparelBom.created_at.desc(), LyApparelBom.id.desc(), LyApparelBomItem.id.asc())
+        return (
+            LyApparelBom.created_at.desc(),
+            LyApparelBom.id.desc(),
+            LyApparelBomItem.sequence_no.asc(),
+            LyApparelBomItem.id.asc(),
+        )
 
     @staticmethod
     def _is_fabric_material(material_item_code: str, remark: str | None) -> bool:
@@ -1132,7 +1142,11 @@ class BomService:
                 item_rows = (
                     self.session.query(LyApparelBomItem)
                     .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
-                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .order_by(
+                        LyApparelBomItem.bom_id.asc(),
+                        LyApparelBomItem.sequence_no.asc(),
+                        LyApparelBomItem.id.asc(),
+                    )
                     .all()
                 )
             except SQLAlchemyError as exc:
@@ -1248,7 +1262,11 @@ class BomService:
                 item_rows = (
                     self.session.query(LyApparelBomItem)
                     .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
-                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .order_by(
+                        LyApparelBomItem.bom_id.asc(),
+                        LyApparelBomItem.sequence_no.asc(),
+                        LyApparelBomItem.id.asc(),
+                    )
                     .all()
                 )
             except SQLAlchemyError as exc:
@@ -1622,7 +1640,7 @@ class BomService:
             item_rows = (
                 self.session.query(LyApparelBomItem)
                 .filter(LyApparelBomItem.bom_id == bom.id)
-                .order_by(LyApparelBomItem.id.asc())
+                .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                 .all()
             )
             op_rows = (
@@ -1649,6 +1667,7 @@ class BomService:
             items=[
                 BomItemView(
                     id=int(row.id),
+                    sequence_no=int(getattr(row, "sequence_no", 10) or 10),
                     material_item_code=str(row.material_item_code),
                     color=row.color,
                     part=getattr(row, "part", None),
@@ -1852,7 +1871,7 @@ class BomService:
             item_rows = (
                 self.session.query(LyApparelBomItem)
                 .filter(LyApparelBomItem.bom_id == bom.id)
-                .order_by(LyApparelBomItem.id.asc())
+                .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                 .all()
             )
             op_rows = (
@@ -2053,6 +2072,7 @@ class BomService:
             row = LyApparelBomItem(
                 id=next_item_id,
                 bom_id=bom_id,
+                sequence_no=int(item.sequence_no),
                 material_item_code=item.material_item_code,
                 color=item.color,
                 part=item.part,

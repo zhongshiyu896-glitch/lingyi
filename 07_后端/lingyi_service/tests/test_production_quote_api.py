@@ -223,12 +223,81 @@ class ProductionQuoteApiTest(unittest.TestCase):
             session.commit()
             return int(plan.id)
 
+    def _seed_order_with_two_plan_lines(self) -> str:
+        sales_order_no = "SO-QUOTE-ORDER-001"
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                id=1200,
+                sales_order_no=sales_order_no,
+                source_order_ref=sales_order_no,
+                company="COMP-Q",
+                customer="客户Q",
+                status="planned",
+                docstatus=1,
+                transaction_date=date(2026, 6, 26),
+                delivery_date=date(2026, 7, 10),
+                currency="CNY",
+                grand_total=Decimal("0"),
+                idempotency_key="idem-so-quote-order",
+                request_hash="hash-so-quote-order",
+                created_by="seed",
+            )
+            session.add(order)
+            line_payloads = [
+                (1201, 1, f"{sales_order_no}-001", "白", "S", Decimal("100")),
+                (1202, 2, f"{sales_order_no}-002", "黑", "M", Decimal("200")),
+            ]
+            for line_id, line_no, sales_order_item, color, size, qty in line_payloads:
+                session.add(
+                    LySalesOrderItem(
+                        id=line_id,
+                        sales_order_id=1200,
+                        company="COMP-Q",
+                        line_no=line_no,
+                        sales_order_item=sales_order_item,
+                        style_master_id=900,
+                        item_code="STYLE-QUOTE-001",
+                        item_name="报价款",
+                        color=color,
+                        size=size,
+                        qty=qty,
+                        planned_qty=qty,
+                        delivered_qty=Decimal("0"),
+                        ys_material_calc_state="待算料",
+                        uom="件",
+                        delivery_date=date(2026, 7, 10),
+                    )
+                )
+                session.add(
+                    LyProductionPlan(
+                        id=1210 + line_no,
+                        plan_no=f"PP-QUOTE-ORDER-{line_no:03d}",
+                        plan_group_no="PPG-QUOTE-ORDER-001",
+                        company="COMP-Q",
+                        sales_order=sales_order_no,
+                        sales_order_item=sales_order_item,
+                        customer="客户Q",
+                        item_code="STYLE-QUOTE-001",
+                        bom_id=901,
+                        bom_version="V1",
+                        planned_qty=qty,
+                        planned_start_date=date(2026, 6, 28),
+                        status="planned",
+                        idempotency_key=f"idem-plan-order-quote-{line_no}",
+                        request_hash=f"hash-plan-order-quote-{line_no}",
+                        created_by="seed",
+                    )
+                )
+            session.commit()
+        return sales_order_no
+
     def _payload(self, idem: str) -> dict[str, object]:
         return {
             "company": "COMP-Q",
             "plan_id": self.plan_id,
             "quote_no": "QT-SAVED-001",
             "quote_qty": 20,
+            "quote_unit_price": 16.125,
             "labor_cost": 30,
             "management_fee": 12,
             "valid_until": "2026-07-01",
@@ -236,6 +305,241 @@ class ProductionQuoteApiTest(unittest.TestCase):
             "remark": "首版报价",
             "idempotency_key": idem,
         }
+
+    def test_create_order_level_quote_groups_all_color_size_lines(self) -> None:
+        sales_order_no = self._seed_order_with_two_plan_lines()
+        payload = {
+            "company": "COMP-Q",
+            "sales_order": sales_order_no,
+            "quote_no": "QT-ORDER-LEVEL-001",
+            "quote_unit_price": 25,
+            "labor_cost": 100,
+            "management_fee": 50,
+            "other_fee": 20,
+            "valid_until": "2026-07-20",
+            "status": "pricing",
+            "remark": "整单报价",
+            "idempotency_key": "IDEM-PROD-QUOTE-ORDER-CREATE",
+        }
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-ORDER-CREATE"),
+            json=payload,
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        data = created.json()["data"]
+        self.assertEqual(data["sales_order"], sales_order_no)
+        self.assertEqual(data["sales_order_item"], "整单")
+        self.assertEqual(data["plan_no"], "PPG-QUOTE-ORDER-001")
+        self.assertEqual(Decimal(str(data["quote_qty"])), Decimal("300.000000"))
+        self.assertEqual(Decimal(str(data["quote_amount"])), Decimal("7500.000000"))
+        self.assertEqual(len(data["quote_items"]), 2)
+        self.assertEqual({item["color"] for item in data["quote_items"]}, {"白", "黑"})
+        self.assertEqual({item["size"] for item in data["quote_items"]}, {"S", "M"})
+
+        duplicate = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-ORDER-DUP"),
+            json={**payload, "quote_no": "QT-ORDER-LEVEL-OTHER", "idempotency_key": "IDEM-PROD-QUOTE-ORDER-DUP"},
+        )
+        self.assertEqual(duplicate.status_code, 200, duplicate.text)
+        self.assertEqual(duplicate.json()["data"]["quote_id"], data["quote_id"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionQuote).filter_by(sales_order=sales_order_no).count(), 1)
+
+    def test_confirm_order_level_quote_writes_back_sales_order_price(self) -> None:
+        sales_order_no = self._seed_order_with_two_plan_lines()
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-ORDER-CONFIRM-C"),
+            json={
+                "company": "COMP-Q",
+                "sales_order": sales_order_no,
+                "quote_no": "QT-ORDER-CONFIRM-001",
+                "quote_unit_price": 25,
+                "labor_cost": 100,
+                "management_fee": 50,
+                "other_fee": 20,
+                "status": "pricing",
+                "idempotency_key": "IDEM-PROD-QUOTE-ORDER-CONFIRM-C",
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        quote_id = int(created.json()["data"]["quote_id"])
+
+        confirmed = self.client.post(
+            f"/api/production/quotes/{quote_id}/confirm",
+            headers=self._headers(request_id="PROD-QUOTE-ORDER-CONFIRM"),
+            json={"company": "COMP-Q", "idempotency_key": "IDEM-PROD-QUOTE-ORDER-CONFIRM"},
+        )
+        self.assertEqual(confirmed.status_code, 200, confirmed.text)
+        self.assertEqual(confirmed.json()["data"]["status"], "quoted")
+
+        replay = self.client.post(
+            f"/api/production/quotes/{quote_id}/confirm",
+            headers=self._headers(request_id="PROD-QUOTE-ORDER-CONFIRM-REPLAY"),
+            json={"company": "COMP-Q", "idempotency_key": "IDEM-PROD-QUOTE-ORDER-CONFIRM"},
+        )
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["data"]["quote_id"], quote_id)
+
+        with self.SessionLocal() as session:
+            order = session.query(LySalesOrder).filter_by(sales_order_no=sales_order_no).one()
+            self.assertEqual(order.quote_status, "已核价")
+            self.assertEqual(order.quote_no, "QT-ORDER-CONFIRM-001")
+            self.assertEqual(Decimal(str(order.grand_total)), Decimal("7500.000000"))
+            line_amounts = {
+                item.sales_order_item: (Decimal(str(item.rate)), Decimal(str(item.amount)))
+                for item in session.query(LySalesOrderItem).filter_by(sales_order_id=int(order.id)).all()
+            }
+            self.assertEqual(line_amounts[f"{sales_order_no}-001"], (Decimal("25.000000"), Decimal("2500.000000")))
+            self.assertEqual(line_amounts[f"{sales_order_no}-002"], (Decimal("25.000000"), Decimal("5000.000000")))
+            self.assertEqual(session.query(LyProductionQuoteOperation).filter_by(operation="confirm").count(), 1)
+
+    def test_update_draft_order_level_quote_recalculates_amount_and_margin(self) -> None:
+        sales_order_no = self._seed_order_with_two_plan_lines()
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-UPDATE-C"),
+            json={
+                "company": "COMP-Q",
+                "sales_order": sales_order_no,
+                "quote_no": "QT-ORDER-UPDATE-001",
+                "quote_unit_price": 0,
+                "status": "draft",
+                "idempotency_key": "IDEM-PROD-QUOTE-UPDATE-C",
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        quote_id = int(created.json()["data"]["quote_id"])
+
+        updated = self.client.patch(
+            f"/api/production/quotes/{quote_id}",
+            headers=self._headers(request_id="PROD-QUOTE-UPDATE"),
+            json={
+                "company": "COMP-Q",
+                "quote_unit_price": 30,
+                "material_cost_amount": 1200,
+                "labor_fee_per_piece": 2,
+                "management_fee_per_piece": 1,
+                "other_fee_amount": 90,
+                "valid_until": "2026-07-25",
+                "remark": "二次编辑",
+                "idempotency_key": "IDEM-PROD-QUOTE-UPDATE",
+            },
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        data = updated.json()["data"]
+        self.assertEqual(Decimal(str(data["quote_amount"])), Decimal("9000.000000"))
+        self.assertEqual(Decimal(str(data["material_cost"])), Decimal("1200.000000"))
+        self.assertEqual(Decimal(str(data["labor_cost"])), Decimal("600.000000"))
+        self.assertEqual(Decimal(str(data["management_fee"])), Decimal("300.000000"))
+        self.assertEqual(Decimal(str(data["other_fee"])), Decimal("90.000000"))
+        self.assertEqual(Decimal(str(data["total_cost_amount"])), Decimal("2190.000000"))
+        self.assertEqual(Decimal(str(data["gross_profit"])), Decimal("6810.000000"))
+        self.assertEqual(data["valid_until"], "2026-07-25")
+        self.assertEqual(len(data["quote_items"]), 2)
+        self.assertEqual({Decimal(str(item["quote_unit_price"])) for item in data["quote_items"]}, {Decimal("30.000000")})
+        self.assertEqual(sum(Decimal(str(item["material_cost"])) for item in data["quote_items"]), Decimal("1200.000000"))
+
+        replay = self.client.patch(
+            f"/api/production/quotes/{quote_id}",
+            headers=self._headers(request_id="PROD-QUOTE-UPDATE-REPLAY"),
+            json={
+                "company": "COMP-Q",
+                "quote_unit_price": 30,
+                "material_cost_amount": 1200,
+                "labor_fee_per_piece": 2,
+                "management_fee_per_piece": 1,
+                "other_fee_amount": 90,
+                "valid_until": "2026-07-25",
+                "remark": "二次编辑",
+                "idempotency_key": "IDEM-PROD-QUOTE-UPDATE",
+            },
+        )
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["data"]["quote_id"], quote_id)
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyProductionQuoteOperation).filter_by(operation="update").count(), 1)
+
+    def test_zero_amount_quote_cannot_be_confirmed(self) -> None:
+        sales_order_no = self._seed_order_with_two_plan_lines()
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-ZERO-C"),
+            json={
+                "company": "COMP-Q",
+                "sales_order": sales_order_no,
+                "quote_no": "QT-ORDER-ZERO-001",
+                "quote_unit_price": 0,
+                "status": "draft",
+                "idempotency_key": "IDEM-PROD-QUOTE-ZERO-C",
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        quote_id = int(created.json()["data"]["quote_id"])
+        self.assertEqual(Decimal(str(created.json()["data"]["quote_amount"])), Decimal("0.000000"))
+
+        confirmed = self.client.post(
+            f"/api/production/quotes/{quote_id}/confirm",
+            headers=self._headers(request_id="PROD-QUOTE-ZERO-CONFIRM"),
+            json={"company": "COMP-Q", "idempotency_key": "IDEM-PROD-QUOTE-ZERO-CONFIRM"},
+        )
+        self.assertEqual(confirmed.status_code, 400, confirmed.text)
+        self.assertEqual(confirmed.json()["code"], "PRODUCTION_TRACKING_EXCEPTION_INVALID")
+
+    def test_confirmed_quote_can_be_reedited_as_draft_and_writes_order_costs(self) -> None:
+        sales_order_no = self._seed_order_with_two_plan_lines()
+        created = self.client.post(
+            "/api/production/quotes",
+            headers=self._headers(request_id="PROD-QUOTE-CONFIRM-BLOCK-C"),
+            json={
+                "company": "COMP-Q",
+                "sales_order": sales_order_no,
+                "quote_no": "QT-ORDER-CONFIRM-BLOCK-001",
+                "quote_unit_price": 30,
+                "labor_fee_per_piece": 2,
+                "management_fee_per_piece": 1,
+                "other_fee_amount": 90,
+                "status": "draft",
+                "idempotency_key": "IDEM-PROD-QUOTE-CONFIRM-BLOCK-C",
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        quote_id = int(created.json()["data"]["quote_id"])
+        confirmed = self.client.post(
+            f"/api/production/quotes/{quote_id}/confirm",
+            headers=self._headers(request_id="PROD-QUOTE-CONFIRM-BLOCK"),
+            json={"company": "COMP-Q", "idempotency_key": "IDEM-PROD-QUOTE-CONFIRM-BLOCK"},
+        )
+        self.assertEqual(confirmed.status_code, 200, confirmed.text)
+
+        edited = self.client.patch(
+            f"/api/production/quotes/{quote_id}",
+            headers=self._headers(request_id="PROD-QUOTE-CONFIRM-REEDIT-U"),
+            json={
+                "company": "COMP-Q",
+                "quote_unit_price": 31,
+                "material_cost_amount": 1000,
+                "idempotency_key": "IDEM-PROD-QUOTE-CONFIRM-REEDIT-U",
+            },
+        )
+        self.assertEqual(edited.status_code, 200, edited.text)
+        edited_data = edited.json()["data"]
+        self.assertEqual(edited_data["status"], "draft")
+        self.assertEqual(Decimal(str(edited_data["quote_amount"])), Decimal("9300.000000"))
+        self.assertEqual(Decimal(str(edited_data["material_cost"])), Decimal("1000.000000"))
+        with self.SessionLocal() as session:
+            order = session.query(LySalesOrder).filter_by(sales_order_no=sales_order_no).one()
+            self.assertEqual(order.quote_status, "待核价")
+            self.assertEqual(Decimal(str(order.quote_amount)), Decimal("9000.000000"))
+            self.assertEqual(Decimal(str(order.quote_unit_price)), Decimal("30.000000"))
+            self.assertEqual(Decimal(str(order.quote_material_cost)), Decimal("4207.500000"))
+            self.assertEqual(Decimal(str(order.quote_labor_cost)), Decimal("600.000000"))
+            self.assertEqual(Decimal(str(order.quote_management_fee)), Decimal("300.000000"))
+            self.assertEqual(Decimal(str(order.quote_other_fee)), Decimal("90.000000"))
+            self.assertEqual(Decimal(str(order.quote_total_cost)), Decimal("5197.500000"))
+            self.assertEqual(Decimal(str(order.gross_profit)), Decimal("3802.500000"))
 
     def test_create_quote_persists_calculated_material_cost_and_lists_saved_quote(self) -> None:
         created = self.client.post(

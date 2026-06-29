@@ -188,7 +188,7 @@ class StyleProfitLocalSourceAdapter:
             bom_items = (
                 self.session.query(LyApparelBomItem)
                 .filter(LyApparelBomItem.bom_id == int(bom.id))
-                .order_by(LyApparelBomItem.id.asc())
+                .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                 .all()
             )
             bom_operations = (

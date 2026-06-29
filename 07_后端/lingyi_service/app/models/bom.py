@@ -71,11 +71,13 @@ class LyApparelBomItem(Base):
         PrimaryKeyConstraint("id", name="pk_ly_apparel_bom_item"),
         Index("idx_ly_apparel_bom_item_bom_id", "bom_id"),
         Index("idx_ly_apparel_bom_item_material", "material_item_code"),
+        Index("idx_ly_apparel_bom_item_sequence", "bom_id", "sequence_no", "id"),
         {"schema": "ly_schema", "comment": "BOM物料明细"},
     )
 
     id = Column(IDType, autoincrement=True)
     bom_id = Column(BigInteger, ForeignKey("ly_schema.ly_apparel_bom.id"), nullable=False)
+    sequence_no = Column(BigInteger, nullable=False, default=10, server_default="10")
     material_item_code = Column(String(140), nullable=False)
     color = Column(String(64), nullable=True)
     part = Column(String(100), nullable=True)

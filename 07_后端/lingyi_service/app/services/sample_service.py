@@ -580,7 +580,7 @@ class SampleService:
         source_items = (
             self.session.query(LyApparelBomItem)
             .filter(LyApparelBomItem.bom_id == int(style_bom.id))
-            .order_by(LyApparelBomItem.id.asc())
+            .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
             .all()
         )
         source_items = self._filter_style_bom_items_for_sample(
@@ -1466,7 +1466,7 @@ class SampleService:
         source_items = (
             self.session.query(LyApparelBomItem)
             .filter(LyApparelBomItem.bom_id == int(style_bom.id))
-            .order_by(LyApparelBomItem.id.asc())
+            .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
             .all()
         )
         source_items = self._filter_style_bom_items_for_sample(

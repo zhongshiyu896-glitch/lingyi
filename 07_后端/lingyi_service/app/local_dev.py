@@ -55,6 +55,8 @@ from app.models.bom import Base as BomBase  # noqa: E402
 from app.models.bom import LyApparelBom  # noqa: E402
 from app.models.bom import LyApparelBomItem  # noqa: E402
 from app.models.bom import LyBomOperation  # noqa: E402
+from app.models.bom import LyFoundationTemplate  # noqa: E402
+from app.models.bom import LyFoundationTemplateNode  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
 from app.models.finance_approval import Base as FinanceApprovalBase  # noqa: E402
 from app.models.master_data import Base as MasterDataBase  # noqa: E402
@@ -125,6 +127,7 @@ def _create_local_tables() -> None:
     _ensure_local_sales_order_idempotency_supports_update()
     _ensure_local_style_dictionary_color_size_types()
     _ensure_local_style_master_idempotency_supports_gallery()
+    _ensure_local_style_master_size_chart_column()
     _ensure_local_sample_style_master_link()
     _ensure_local_material_bom_size_columns()
     _ensure_local_subcontract_create_idempotency_columns()
@@ -134,18 +137,144 @@ def _create_local_tables() -> None:
     _ensure_local_bom_company_style_columns()
     _ensure_local_production_material_uom_column()
     _ensure_local_production_plan_group_column()
+    _ensure_local_production_start_factory_columns()
     _ensure_local_bom_dimension_columns()
     _ensure_local_stock_entry_purchase_requirement_column()
     _ensure_local_stock_ledger_context_columns()
+    _ensure_local_production_quote_order_level_columns()
     _ensure_local_production_quote_operation_supports_quote_actions()
     _ensure_local_production_followup_node_operation_supports_edit()
     _seed_local_finance_approval_templates()
+    _seed_local_jacket_foundation_templates()
 
 
 def _seed_local_finance_approval_templates() -> None:
     db = main_module.SessionLocal()
     try:
         FinanceApprovalService(db).ensure_default_templates(company="默认公司", actor="local-dev-seed")
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def _seed_local_jacket_foundation_templates() -> None:
+    db = main_module.SessionLocal()
+    try:
+        seed_templates = [
+            {
+                "template_type": "workmanship",
+                "template_code": "WK-TPL-JACKET-001",
+                "name": "男装夹克常规大货工艺",
+                "scene": "夹克/男装/常规版",
+                "nodes": [
+                    ("WK-JK-001-01", "面料确认：按核准色卡和封样，裁前验布，主片避开明显疵点", "裁前准备", True, 10, "跟单"),
+                    ("WK-JK-001-02", "裁片要求：顺毛顺纹，左右片对称，条格款需对条对格", "裁剪要求", True, 20, "裁床"),
+                    ("WK-JK-001-03", "缝制要求：肩缝、袖窿、侧缝线迹均匀，止口宽度一致", "车缝要求", True, 30, "车间"),
+                    ("WK-JK-001-04", "领口门襟：领角对称，拉链或钮位顺直，门襟不起扭不起浪", "重点部位", True, 40, "车间"),
+                    ("WK-JK-001-05", "整烫包装：成衣整烫平服，按颜色尺码分扎分箱，外箱唛头一致", "后整包装", True, 50, "后整"),
+                ],
+            },
+            {
+                "template_type": "workmanship",
+                "template_code": "WK-TPL-JACKET-002",
+                "name": "夹克加棉里布大货工艺",
+                "scene": "夹克/秋冬/加棉里布",
+                "nodes": [
+                    ("WK-JK-002-01", "里布胆布：无抽丝破损，里布余量均匀，袖笼和下摆不吊里", "里布要求", True, 10, "车间"),
+                    ("WK-JK-002-02", "填充绗线：棉量均匀，绗线间距按纸样，成衣不结团不跑棉", "填充要求", True, 20, "车间"),
+                    ("WK-JK-002-03", "袖口下摆：罗纹或松紧不扭曲，左右松紧一致，回弹自然", "重点部位", True, 30, "车间"),
+                    ("WK-JK-002-04", "口袋工艺：袋口平服牢固，袋布不外露，袋盖左右高低一致", "口袋要求", True, 40, "车间"),
+                    ("WK-JK-002-05", "成品检验：无跳针断线污渍，五金件牢固，备用扣和吊牌齐全", "成检要求", True, 50, "质检"),
+                ],
+            },
+            {
+                "template_type": "size_spec",
+                "template_code": "SZ-TPL-JACKET-001",
+                "name": "男装夹克常规尺寸表",
+                "scene": "夹克/男装/常规版",
+                "nodes": [
+                    ("SZ-JK-001-01", "衣长：后中领缝至下摆，允差±1.0cm", "尺寸项目", True, 10, "版师"),
+                    ("SZ-JK-001-02", "胸围：夹下2.5cm平量×2，允差±2.0cm", "尺寸项目", True, 20, "版师"),
+                    ("SZ-JK-001-03", "肩宽：肩点至肩点直量，允差±1.0cm", "尺寸项目", True, 30, "版师"),
+                    ("SZ-JK-001-04", "袖长：肩点至袖口，允差±1.0cm", "尺寸项目", True, 40, "版师"),
+                    ("SZ-JK-001-05", "下摆围：下摆平量×2，允差±2.0cm", "尺寸项目", True, 50, "版师"),
+                ],
+            },
+            {
+                "template_type": "size_spec",
+                "template_code": "SZ-TPL-JACKET-002",
+                "name": "女装短款夹克尺寸表",
+                "scene": "夹克/女装/短款",
+                "nodes": [
+                    ("SZ-JK-002-01", "前衣长：肩颈点至下摆，允差±1.0cm", "尺寸项目", True, 10, "版师"),
+                    ("SZ-JK-002-02", "胸围：夹下平量×2，允差±2.0cm", "尺寸项目", True, 20, "版师"),
+                    ("SZ-JK-002-03", "腰围：腰节位置平量×2，允差±2.0cm", "尺寸项目", True, 30, "版师"),
+                    ("SZ-JK-002-04", "袖长：肩点至袖口，允差±1.0cm", "尺寸项目", True, 40, "版师"),
+                    ("SZ-JK-002-05", "袖肥：袖肥平量×2，允差±1.0cm", "尺寸项目", True, 50, "版师"),
+                ],
+            },
+        ]
+        for template_data in seed_templates:
+            template = (
+                db.query(LyFoundationTemplate)
+                .filter(
+                    LyFoundationTemplate.company == "默认公司",
+                    LyFoundationTemplate.template_type == template_data["template_type"],
+                    LyFoundationTemplate.template_code == template_data["template_code"],
+                )
+                .first()
+            )
+            if template is None:
+                template = LyFoundationTemplate(
+                    company="默认公司",
+                    template_type=str(template_data["template_type"]),
+                    template_code=str(template_data["template_code"]),
+                    name=str(template_data["name"]),
+                    scene=str(template_data["scene"]),
+                    status="active",
+                    created_by="local-dev-seed",
+                )
+                db.add(template)
+                db.flush()
+            else:
+                template.name = str(template_data["name"])
+                template.scene = str(template_data["scene"])
+                template.status = "active"
+                template.updated_by = "local-dev-seed"
+            for code, name, node_type, required, sort_no, owner in template_data["nodes"]:
+                node = (
+                    db.query(LyFoundationTemplateNode)
+                    .filter(
+                        LyFoundationTemplateNode.template_id == int(template.id),
+                        LyFoundationTemplateNode.code == code,
+                    )
+                    .first()
+                )
+                if node is None:
+                    db.add(
+                        LyFoundationTemplateNode(
+                            template_id=int(template.id),
+                            code=code,
+                            name=name,
+                            node_type=node_type,
+                            required=required,
+                            status="active",
+                            sort_no=sort_no,
+                            owner=owner,
+                            created_by="local-dev-seed",
+                        )
+                    )
+                else:
+                    node.name = name
+                    node.node_type = node_type
+                    node.required = required
+                    node.status = "active"
+                    node.sort_no = sort_no
+                    node.owner = owner
+                    node.updated_by = "local-dev-seed"
         db.commit()
     except Exception:
         db.rollback()
@@ -325,6 +454,24 @@ def _ensure_local_sales_order_item_calc_columns() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_ly_sales_order_item_material_calc ON ly_sales_order_item(company, ys_material_calc_state)"
         )
+
+
+def _ensure_local_style_master_size_chart_column() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_style_master'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_style_master)").fetchall()
+        }
+        if "size_chart" not in existing_columns:
+            conn.execute("ALTER TABLE ly_style_master ADD COLUMN size_chart JSON NOT NULL DEFAULT '{}'")
 
 
 def _ensure_local_sales_order_idempotency_supports_update() -> None:
@@ -520,6 +667,7 @@ def _ensure_local_material_bom_size_columns() -> None:
         "size": "VARCHAR(64)",
         "usage_count": "NUMERIC(18, 6) NOT NULL DEFAULT 1",
         "spec_by_size": "JSON",
+        "sequence_no": "INTEGER NOT NULL DEFAULT 10",
     }
     with sqlite3.connect(database_path) as conn:
         for table_name in ("ly_apparel_bom_item", "ly_sample_material_bom_item"):
@@ -880,6 +1028,33 @@ def _ensure_local_production_plan_group_column() -> None:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_ly_production_plan_group ON ly_production_plan(plan_group_no)")
 
 
+def _ensure_local_production_start_factory_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_production_plan'"
+        ).fetchone()
+        if not table_exists:
+            return
+        existing_columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(ly_production_plan)").fetchall()
+        }
+        column_defs = {
+            "production_mode": "VARCHAR(32)",
+            "factory_id": "VARCHAR(140)",
+            "factory_name": "VARCHAR(140)",
+            "production_start_date": "DATE",
+            "expected_finish_date": "DATE",
+            "production_remark": "VARCHAR(1000)",
+        }
+        for column_name, column_type in column_defs.items():
+            if column_name not in existing_columns:
+                conn.execute(f"ALTER TABLE ly_production_plan ADD COLUMN {column_name} {column_type}")
+
+
 def _ensure_local_bom_dimension_columns() -> None:
     database_path = main_module.engine.url.database
     if not database_path or database_path == ":memory:":
@@ -969,6 +1144,65 @@ def _ensure_local_stock_ledger_context_columns() -> None:
         )
 
 
+def _ensure_local_production_quote_order_level_columns() -> None:
+    database_path = main_module.engine.url.database
+    if not database_path or database_path == ":memory:":
+        return
+    with sqlite3.connect(database_path) as conn:
+        quote_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_production_quote'"
+        ).fetchone()
+        if quote_exists:
+            existing_columns = {
+                str(row[1])
+                for row in conn.execute("PRAGMA table_info(ly_production_quote)").fetchall()
+            }
+            column_defs = {
+                "sales_order_id": "BIGINT",
+                "quote_unit_price": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "other_fee": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "gross_profit": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "gross_margin_rate": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "quote_items_json": "JSON NOT NULL DEFAULT '[]'",
+            }
+            for column_name, column_type in column_defs.items():
+                if column_name not in existing_columns:
+                    conn.execute(
+                        f"ALTER TABLE ly_production_quote ADD COLUMN {column_name} {column_type}"
+                    )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_ly_production_quote_sales_order "
+                "ON ly_production_quote(company, sales_order, status)"
+            )
+
+        order_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ly_sales_order'"
+        ).fetchone()
+        if order_exists:
+            existing_columns = {
+                str(row[1])
+                for row in conn.execute("PRAGMA table_info(ly_sales_order)").fetchall()
+            }
+            column_defs = {
+                "quote_status": "VARCHAR(32) NOT NULL DEFAULT '未核价'",
+                "quote_no": "VARCHAR(140)",
+                "quote_amount": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "quote_unit_price": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "quote_material_cost": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "quote_labor_cost": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "quote_management_fee": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "quote_other_fee": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "quote_total_cost": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "gross_profit": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+                "gross_margin_rate": "NUMERIC(18, 6) NOT NULL DEFAULT 0",
+            }
+            for column_name, column_type in column_defs.items():
+                if column_name not in existing_columns:
+                    conn.execute(
+                        f"ALTER TABLE ly_sales_order ADD COLUMN {column_name} {column_type}"
+                    )
+
+
 def _ensure_local_production_quote_operation_supports_quote_actions() -> None:
     database_path = main_module.engine.url.database
     if not database_path or database_path == ":memory:":
@@ -978,7 +1212,7 @@ def _ensure_local_production_quote_operation_supports_quote_actions() -> None:
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='ly_production_quote_operation'"
         ).fetchone()
         existing_sql = str(row[0]) if row else ""
-        if not row or ("'copy'" in existing_sql and "'void'" in existing_sql):
+        if not row or ("'copy'" in existing_sql and "'void'" in existing_sql and "'confirm'" in existing_sql and "'update'" in existing_sql):
             return
         conn.executescript(
             """
@@ -996,7 +1230,7 @@ def _ensure_local_production_quote_operation_supports_quote_actions() -> None:
                 created_by VARCHAR(140) NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 PRIMARY KEY (id),
-                CONSTRAINT ck_ly_production_quote_operation CHECK (operation IN ('create','convert','copy','void')),
+                CONSTRAINT ck_ly_production_quote_operation CHECK (operation IN ('create','update','convert','copy','void','confirm')),
                 FOREIGN KEY(quote_id) REFERENCES ly_production_quote (id)
             );
             INSERT INTO ly_production_quote_operation_new (
@@ -1170,6 +1404,43 @@ def _seed_local_bom() -> None:
                 material.status = "active"
                 material.payload = {**dict(material.payload or {}), **payload}
                 material.updated_by = "local.dev"
+
+        for code, name, warehouse_type in [
+            ("DEFAULT-MATERIAL-WH", "默认物料仓", "material"),
+            ("FG-WH-LOCAL", "默认成品仓", "finished_goods"),
+        ]:
+            warehouse = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "warehouse",
+                    LyMasterDataRecord.company == "默认公司",
+                    LyMasterDataRecord.code == code,
+                )
+                .first()
+            )
+            payload = {"system_default": True, "warehouse_type": warehouse_type}
+            if warehouse is None:
+                session.add(
+                    LyMasterDataRecord(
+                        entity_type="warehouse",
+                        company="默认公司",
+                        code=code,
+                        name=name,
+                        status="active",
+                        payload=payload,
+                        version=1,
+                        created_by="local.dev",
+                        updated_by="local.dev",
+                    )
+                )
+            else:
+                warehouse.name = name
+                warehouse.status = "active"
+                warehouse.payload = {**dict(warehouse.payload or {}), **payload}
+                warehouse.updated_by = "local.dev"
+                warehouse.deactivated_by = None
+                warehouse.deactivated_at = None
+                warehouse.deactivate_reason = None
 
         for index, (dict_type, code, name) in enumerate(
             [

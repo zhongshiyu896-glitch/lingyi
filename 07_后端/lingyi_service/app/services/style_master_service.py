@@ -55,6 +55,8 @@ from app.schemas.style_master import StyleMasterCreateRequest
 from app.schemas.style_master import StyleMasterItem
 from app.schemas.style_master import StyleMasterListData
 from app.schemas.style_master import StyleMasterUpdateRequest
+from app.schemas.style_master import StyleSizeChartData
+from app.schemas.style_master import StyleSizeChartSummary
 from app.schemas.style_master import StyleSkuItem
 from app.schemas.style_master import StyleSkuListData
 from app.schemas.style_master import StyleSkuUpsertRequest
@@ -70,7 +72,7 @@ DICTIONARY_CODE_PREFIXES = {
     "color": "COLOR",
     "size": "SIZE",
 }
-GALLERY_IMAGE_TYPES = {"main", "detail", "color", "process", "other"}
+GALLERY_IMAGE_TYPES = {"main", "detail", "color", "process", "wash_label", "other"}
 STYLE_GALLERY_UPLOAD_PREFIX = "/uploads/images/style_gallery/"
 
 
@@ -413,6 +415,7 @@ class StyleMasterService:
                 ys_style_status=style_values["ys_style_status"],
                 colors=style_values["colors"],
                 sizes=style_values["sizes"],
+                size_chart=style_values["size_chart"],
                 version=1,
                 created_by=actor,
                 updated_by=actor,
@@ -520,6 +523,36 @@ class StyleMasterService:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
         after = self._snapshot_style(row)
         return self._style_result(row=row, before=before, after=after)
+
+    def get_style_size_chart(self, *, style_id: int, company: str | None) -> StyleSizeChartData:
+        """Return the style-specific size measurement matrix."""
+        normalized_company = self._require_text(company, "company")
+        style = self._get_style_for_read(style_id=style_id, company=normalized_company)
+        return self._style_size_chart_data(style=style)
+
+    def update_style_size_chart(self, *, style_id: int, company: str, payload: StyleSizeChartData, actor: str) -> StyleMasterMutationResult:
+        """Create or replace the style-specific size measurement matrix."""
+        company = self._require_text(company, "company")
+        style = self._get_style_for_mutation(style_id=style_id, company=company)
+        before = self._style_size_chart_data(style=style).model_dump(mode="json")
+        normalized = self._normalize_size_chart_dict(size_items=list(style.sizes or []), payload=payload)
+        try:
+            style.size_chart = normalized
+            style.updated_by = actor
+            style.updated_at = datetime.now(UTC)
+            style.version = int(style.version or 0) + 1
+            self.session.flush()
+        except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
+            raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
+        after = self._style_size_chart_data(style=style).model_dump(mode="json")
+        return StyleMasterMutationResult(
+            item=self._style_size_chart_data(style=style),
+            before=before,
+            after=after,
+            resource_type="STYLE_SIZE_CHART",
+            resource_id=int(style.id),
+            resource_no=str(style.ys_style_no),
+        )
 
     def list_style_skus(self, *, style_id: int, company: str | None) -> StyleSkuListData:
         """Return the style color-size SKU matrix."""
@@ -724,6 +757,7 @@ class StyleMasterService:
                     LyApparelBomItem(
                         id=next_item_id,
                         bom_id=int(bom.id),
+                        sequence_no=int(item.sequence_no),
                         material_item_code=item.material_item_code.strip(),
                         color=self._optional_text(item.color),
                         size=self._optional_text(item.size),
@@ -1097,7 +1131,7 @@ class StyleMasterService:
         return normalized_items
 
     def _style_values_from_create(self, payload: StyleMasterCreateRequest) -> dict[str, Any]:
-        return {
+        values = {
             "ys_style_no": self._require_text(payload.ys_style_no, "ys_style_no"),
             "ys_style_name_cn": self._require_text(payload.ys_style_name_cn, "ys_style_name_cn"),
             "ys_season": self._require_text(payload.ys_season, "ys_season"),
@@ -1107,11 +1141,14 @@ class StyleMasterService:
             "colors": [item.model_dump(mode="json") for item in payload.colors],
             "sizes": [item.model_dump(mode="json") for item in payload.sizes],
         }
+        values["size_chart"] = self._normalize_size_chart_dict(size_items=values["sizes"], payload=payload.size_chart)
+        return values
 
     def _style_values_from_update(self, *, row: LyStyleMaster, payload: StyleMasterUpdateRequest) -> dict[str, Any]:
         if row.ys_style_status == "disabled":
             raise BusinessException(code=STYLE_MASTER_INVALID_STATUS, message="停用款式不允许编辑")
-        return {
+        sizes = [item.model_dump(mode="json") for item in payload.sizes] if payload.sizes is not None else list(row.sizes or [])
+        values = {
             "ys_style_no": self._optional_text(payload.ys_style_no) or row.ys_style_no,
             "ys_style_name_cn": self._optional_text(payload.ys_style_name_cn) or row.ys_style_name_cn,
             "ys_season": self._optional_text(payload.ys_season) or row.ys_season,
@@ -1119,8 +1156,74 @@ class StyleMasterService:
             "ys_brand": self._optional_text(payload.ys_brand) or row.ys_brand,
             "ys_style_status": self._normalize_style_status(payload.ys_style_status or row.ys_style_status),
             "colors": [item.model_dump(mode="json") for item in payload.colors] if payload.colors is not None else list(row.colors or []),
-            "sizes": [item.model_dump(mode="json") for item in payload.sizes] if payload.sizes is not None else list(row.sizes or []),
+            "sizes": sizes,
         }
+        values["size_chart"] = self._normalize_size_chart_dict(size_items=sizes, payload=row.size_chart or {})
+        return values
+
+    def _style_size_codes_from_items(self, size_items: list[dict[str, Any]]) -> list[str]:
+        codes: list[str] = []
+        seen: set[str] = set()
+        for item in size_items:
+            code = self._optional_text(item.get("ys_size_code"))
+            if not code or code in seen:
+                continue
+            codes.append(code)
+            seen.add(code)
+        return codes
+
+    def _normalize_size_chart_dict(self, *, size_items: list[dict[str, Any]], payload: StyleSizeChartData | dict[str, Any] | None) -> dict[str, Any]:
+        size_codes = self._style_size_codes_from_items(size_items)
+        if isinstance(payload, StyleSizeChartData):
+            payload_dict = payload.model_dump(mode="json")
+        elif isinstance(payload, dict):
+            payload_dict = dict(payload)
+        else:
+            payload_dict = {}
+        unit = (self._optional_text(payload_dict.get("unit")) or "CM").upper()
+        rows_payload = payload_dict.get("rows") if isinstance(payload_dict.get("rows"), list) else []
+        normalized_rows: list[dict[str, Any]] = []
+        seen_parts: set[str] = set()
+        for index, row_payload in enumerate(rows_payload, start=1):
+            if not isinstance(row_payload, dict):
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message="尺码表行格式非法")
+            part = self._require_text(row_payload.get("part"), "part")
+            if part in seen_parts:
+                raise BusinessException(code=STYLE_MASTER_CONFLICT, message=f"尺码表部位重复: {part}")
+            raw_values = row_payload.get("values") if isinstance(row_payload.get("values"), dict) else {}
+            values: dict[str, str] = {}
+            for size_code in size_codes:
+                text = self._optional_text(raw_values.get(size_code))
+                if not text:
+                    continue
+                try:
+                    measurement = Decimal(text)
+                except Exception as exc:
+                    raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"尺码表 {part}/{size_code} 必须为 CM 数值") from exc
+                if measurement < 0:
+                    raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"尺码表 {part}/{size_code} 不能为负数")
+                values[size_code] = text
+            try:
+                sort_no = int(row_payload.get("sort_no") or index * 10)
+            except (TypeError, ValueError) as exc:
+                raise BusinessException(code=STYLE_MASTER_INVALID_REFERENCE, message=f"尺码表 {part} 排序非法") from exc
+            normalized_rows.append({"part": part, "values": values, "sort_no": max(sort_no, 0)})
+            seen_parts.add(part)
+        normalized_rows.sort(key=lambda item: (int(item.get("sort_no") or 0), str(item.get("part") or "")))
+        return {"unit": unit, "sizes": size_codes, "rows": normalized_rows}
+
+    def _style_size_chart_data(self, *, style: LyStyleMaster) -> StyleSizeChartData:
+        normalized = self._normalize_size_chart_dict(size_items=list(style.sizes or []), payload=style.size_chart or {})
+        return StyleSizeChartData(
+            unit=normalized["unit"],
+            sizes=normalized["sizes"],
+            rows=normalized["rows"],
+            has_size_chart=bool(normalized["rows"]),
+        )
+
+    def _style_size_chart_summary(self, row: LyStyleMaster) -> StyleSizeChartSummary:
+        data = self._style_size_chart_data(style=row)
+        return StyleSizeChartSummary(unit=data.unit, row_count=len(data.rows), has_size_chart=data.has_size_chart)
 
     def _get_style_for_mutation(self, *, style_id: int, company: str, allow_disabled: bool = False) -> LyStyleMaster:
         row = self.session.query(LyStyleMaster).filter(LyStyleMaster.id == int(style_id), LyStyleMaster.company == company).first()
@@ -1374,7 +1477,7 @@ class StyleMasterService:
         items = (
             self.session.query(LyApparelBomItem)
             .filter(LyApparelBomItem.bom_id == int(bom.id))
-            .order_by(LyApparelBomItem.id.asc())
+            .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
             .all()
         )
         operations = (
@@ -1402,6 +1505,7 @@ class StyleMasterService:
             items=[
                 StyleMaterialBomItem(
                     id=int(item.id),
+                    sequence_no=int(getattr(item, "sequence_no", 10) or 10),
                     material_item_code=str(item.material_item_code),
                     material_name=material_names.get(str(item.material_item_code)),
                     color=item.color,
@@ -1702,6 +1806,7 @@ class StyleMasterService:
             primary_thumbnail_url=gallery_summary.get("primary_thumbnail_url"),
             gallery_count=int(gallery_summary.get("gallery_count") or 0),
             sku_count=int(sku_count or 0),
+            size_chart_summary=self._style_size_chart_summary(row),
             version=int(row.version or 1),
             created_by=row.created_by,
             created_at=row.created_at,

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from datetime import date
+from io import BytesIO
 import logging
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter
 from fastapi import Body
@@ -14,6 +16,7 @@ from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
@@ -82,16 +85,23 @@ from app.schemas.production import ProductionPlanCreateRequest
 from app.schemas.production import ProductionPlanDetailData
 from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionPlanStatusAdvanceRequest
 from app.schemas.production import ProductionSalesOrderPlanCreateData
 from app.schemas.production import ProductionSalesOrderPlanCreateRequest
 from app.schemas.production import ProductionQuoteConvertData
 from app.schemas.production import ProductionQuoteConvertRequest
+from app.schemas.production import ProductionQuoteConfirmRequest
 from app.schemas.production import ProductionQuoteCopyRequest
 from app.schemas.production import ProductionQuoteCreateRequest
 from app.schemas.production import ProductionQuoteListData
 from app.schemas.production import ProductionQuoteListItem
 from app.schemas.production import ProductionQuoteQuery
+from app.schemas.production import ProductionQuoteUpdateRequest
 from app.schemas.production import ProductionQuoteVoidRequest
+from app.schemas.production import ProductionNoticeCreateRequest
+from app.schemas.production import ProductionNoticeItem
+from app.schemas.production import ProductionNoticeListData
+from app.schemas.production import ProductionNoticeUpdateRequest
 from app.schemas.production import ProductionReportSuiteData
 from app.schemas.production import ProductionReportSuiteQuery
 from app.schemas.production import ProductionSalesForecastListData
@@ -1026,7 +1036,7 @@ def create_production_quote(
     audit_action = "create"
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
-    resource_no = payload.quote_no or str(payload.plan_id)
+    resource_no = payload.quote_no or payload.sales_order or str(payload.plan_id or "")
     try:
         PermissionService(session=session).require_action(
             current_user=current_user,
@@ -1067,7 +1077,7 @@ def create_production_quote(
             resource_id=None,
             resource_no=resource_no,
             before_data=None,
-            after_data={"plan_id": payload.plan_id, "quote_no": payload.quote_no},
+            after_data={"plan_id": payload.plan_id, "sales_order": payload.sales_order, "quote_no": payload.quote_no},
             error_code=exc.code,
         )
         return _app_err(exc)
@@ -1085,7 +1095,169 @@ def create_production_quote(
             resource_id=None,
             resource_no=resource_no,
             before_data=None,
-            after_data={"plan_id": payload.plan_id, "quote_no": payload.quote_no},
+            after_data={"plan_id": payload.plan_id, "sales_order": payload.sales_order, "quote_no": payload.quote_no},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.patch("/quotes/{quote_id}", response_model=ApiResponse[ProductionQuoteListItem])
+def update_production_quote(
+    quote_id: int,
+    payload: ProductionQuoteUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_QUOTE_WRITE
+    audit_action = "update"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    resource_no = str(quote_id)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_quote",
+            resource_id=quote_id,
+        )
+        data = _service(session=session, request=request).update_quote(
+            quote_id=quote_id,
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_quote",
+            resource_id=int(data.quote_id or quote_id),
+            resource_no=str(data.quote_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=quote_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"quote_id": quote_id},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=quote_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"quote_id": quote_id},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.post("/quotes/{quote_id}/confirm", response_model=ApiResponse[ProductionQuoteListItem])
+def confirm_production_quote(
+    quote_id: int,
+    payload: ProductionQuoteConfirmRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_QUOTE_WRITE
+    audit_action = "confirm"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    resource_no = str(quote_id)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_quote",
+            resource_id=quote_id,
+        )
+        data = _service(session=session, request=request).confirm_quote(
+            quote_id=quote_id,
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_quote",
+            resource_id=int(data.quote_id or quote_id),
+            resource_no=str(data.quote_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=quote_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"quote_id": quote_id},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_quote",
+            resource_id=quote_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"quote_id": quote_id},
             error_code=app_exc.code,
         )
         return _app_err(app_exc)
@@ -1332,6 +1504,250 @@ def void_production_quote(
             error_code=app_exc.code,
         )
         return _app_err(app_exc)
+
+
+@router.get("/notices", response_model=ApiResponse[ProductionNoticeListData])
+def list_production_notices(
+    request: Request,
+    company: str | None = Query(default=None),
+    sales_order: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_notice",
+            resource_id=None,
+        )
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        data = _service(session=session, request=request).list_production_notices(
+            company=company,
+            sales_order=sales_order,
+            keyword=keyword,
+            status=status,
+            page=page,
+            page_size=page_size,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.post("/notices", response_model=ApiResponse[ProductionNoticeItem])
+def create_production_notice(
+    payload: ProductionNoticeCreateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_PLAN_CREATE
+    audit_action = "create_production_notice"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    resource_no = payload.notice_no or payload.sales_order
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_notice",
+            resource_id=None,
+        )
+        data = _service(session=session, request=request).create_production_notice(
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_notice",
+            resource_id=int(data.id),
+            resource_no=str(data.notice_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_notice",
+            resource_id=None,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"sales_order": payload.sales_order, "company": payload.company},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_notice",
+            resource_id=None,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"sales_order": payload.sales_order, "company": payload.company},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.patch("/notices/{notice_id}", response_model=ApiResponse[ProductionNoticeItem])
+def update_production_notice(
+    notice_id: int,
+    payload: ProductionNoticeUpdateRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_action = PRODUCTION_PLAN_CREATE
+    audit_action = "update_production_notice"
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    resource_no = str(notice_id)
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=permission_action,
+            module="production",
+            resource_type="production_notice",
+            resource_id=notice_id,
+        )
+        data = _service(session=session, request=request).update_production_notice(
+            notice_id=notice_id,
+            payload=payload,
+            operator=current_user.username,
+        )
+        audit.record_success(
+            module="production",
+            action=audit_action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_notice",
+            resource_id=int(data.id),
+            resource_no=str(data.notice_no),
+            before_data=None,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=audit_action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_notice",
+            resource_id=notice_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"notice_id": notice_id},
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=audit_action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=audit_action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=audit_action,
+            current_user=current_user,
+            resource_type="production_notice",
+            resource_id=notice_id,
+            resource_no=resource_no,
+            before_data=None,
+            after_data={"notice_id": notice_id},
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.get("/notices/{notice_id}/export.xlsx")
+def export_production_notice(
+    notice_id: int,
+    request: Request,
+    company: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    try:
+        PermissionService(session=session).require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_notice",
+            resource_id=notice_id,
+        )
+        filename, content = _service(session=session, request=request).export_production_notice(
+            notice_id=notice_id,
+            company=company,
+        )
+        encoded_filename = quote(filename)
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+        )
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
 
 
 @router.get("/followup-templates", response_model=ApiResponse[ProductionFollowupTemplateListData])
@@ -2436,6 +2852,109 @@ def register_production_tracking_node(
             resource_type="production_tracking_node_event",
             resource_id=int(data.id),
             resource_no=str(data.event_no),
+            before_data=before_data,
+            after_data=_as_dict(data),
+            context=context,
+        )
+        _commit_or_raise_write_error(session=session, request=request, action=action)
+        return _ok(data)
+    except HTTPException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _http_exc_err(exc)
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type="production_plan",
+            resource_id=plan_id,
+            resource_no=str(plan_id),
+            before_data=before_data,
+            after_data=None,
+            error_code=exc.code,
+        )
+        return _app_err(exc)
+    except Exception as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        app_exc = _unknown_to_internal_error(request=request, action=action, exc=exc)
+        _record_failure_safely(
+            session=session,
+            audit=audit,
+            context=context,
+            request=request,
+            action=action,
+            current_user=current_user,
+            resource_type="production_plan",
+            resource_id=plan_id,
+            resource_no=str(plan_id),
+            before_data=before_data,
+            after_data=None,
+            error_code=app_exc.code,
+        )
+        return _app_err(app_exc)
+
+
+@router.post("/plans/{plan_id}/production-status", response_model=ApiResponse[ProductionPlanDetailData])
+def advance_production_plan_status(
+    plan_id: int,
+    payload: ProductionPlanStatusAdvanceRequest,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_TRACKING_NODE
+    raw_request_id = request.headers.get("X-Request-ID")
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    before_data: dict[str, Any] | None = None
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_plan",
+            resource_id=plan_id,
+        )
+        service = _service(session=session, request=request)
+        company, item = service.get_plan_resource(plan_id=plan_id)
+        permission_service.ensure_production_resource_permission(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            item_code=item,
+            company=company,
+            resource_type="production_plan",
+            resource_id=plan_id,
+            resource_no=str(plan_id),
+            enforce_action=False,
+        )
+        before_data = {
+            "plan_id": plan_id,
+            "company": company,
+            "item_code": item,
+            "action": payload.action,
+        }
+        data = service.advance_production_plan_status(
+            plan_id=plan_id,
+            payload=payload,
+            operator=current_user.username,
+            request_id=raw_request_id,
+        )
+        audit.record_success(
+            module="production",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="production_plan",
+            resource_id=int(data.id),
+            resource_no=str(data.plan_no),
             before_data=before_data,
             after_data=_as_dict(data),
             context=context,

@@ -17,6 +17,12 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.bom import Base as BomBase
+from app.models.bom import LyApparelBom
+from app.models.bom import LyApparelBomItem
+from app.models.bom import LyApparelBomWriteOperation
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.recycle_bin import Base as RecycleBinBase
 from app.models.recycle_bin import LyRecycleBinItem
 from app.models.style_master import Base as StyleMasterBase
@@ -46,6 +52,8 @@ class StyleMasterApiTest(unittest.TestCase):
         StyleMasterBase.metadata.create_all(bind=cls.engine)
         RecycleBinBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
+        BomBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
             db = cls.SessionLocal()
@@ -78,6 +86,10 @@ class StyleMasterApiTest(unittest.TestCase):
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.query(LyRecycleBinItem).delete()
+            session.query(LyApparelBomWriteOperation).delete()
+            session.query(LyApparelBomItem).delete()
+            session.query(LyApparelBom).delete()
+            session.query(LyMasterDataRecord).delete()
             session.query(LyStyleMasterIdempotency).delete()
             session.query(LyStyleSku).delete()
             session.query(LyStyleGallery).delete()
@@ -147,6 +159,28 @@ class StyleMasterApiTest(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 201)
             self.assertEqual(response.json()["code"], "0")
+
+    def _seed_material_records(self) -> None:
+        material_rows = [
+            ("ACC-POCKET-ZIP", "口袋拉链", "拉链"),
+            ("ACC-FRONT-PLACKET", "华丰门襟", "门襟"),
+            ("ACC-HORN-BUTTON", "牛角扣", "纽扣"),
+            ("ACC-HANGTAG", "吊牌", "吊牌"),
+        ]
+        with self.SessionLocal() as session:
+            for code, name, part in material_rows:
+                session.add(
+                    LyMasterDataRecord(
+                        entity_type="material",
+                        company="COMP-A",
+                        code=code,
+                        name=name,
+                        status="active",
+                        payload={"material_kind": "accessory", "default_part": part, "uom": "个"},
+                        created_by="style.master.user",
+                    )
+                )
+            session.commit()
 
     def test_dictionary_and_style_create_update_deactivate_with_audit(self) -> None:
         self._seed_style_dictionaries()
@@ -240,6 +274,189 @@ class StyleMasterApiTest(unittest.TestCase):
         self.assertEqual(body["total"], 1)
         self.assertEqual(body["items"][0]["id"], second_id)
         self.assertEqual(body["items"][0]["ys_style_no"], "ST-ID-FILTER-002")
+
+    def test_style_material_bom_items_persist_sequence_order(self) -> None:
+        self._seed_style_dictionaries()
+        self._seed_material_records()
+
+        created = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-BOM-SORT-CREATE"),
+            json=self._style_payload(style_no="ST-BOM-SORT-001", idempotency_key="IDEMP-ST-BOM-SORT-001-C"),
+        )
+        self.assertEqual(created.status_code, 201)
+        style_id = int(created.json()["data"]["id"])
+
+        sorted_items = [
+            ("ACC-FRONT-PLACKET", "M", "门襟", 10),
+            ("ACC-FRONT-PLACKET", "L", "门襟", 11),
+            ("ACC-POCKET-ZIP", "M", "口袋", 20),
+            ("ACC-HORN-BUTTON", "M", "纽扣", 30),
+            ("ACC-HANGTAG", "M", "吊牌", 40),
+        ]
+        payload = {
+            "operation": "upsert",
+            "company": "COMP-A",
+            "idempotency_key": "IDEMP-ST-BOM-SORT-001-U",
+            "version_no": "V1",
+            "items": [
+                {
+                    "sequence_no": sequence_no,
+                    "material_item_code": material_code,
+                    "color": "通用",
+                    "size": size,
+                    "part": part,
+                    "qty_per_piece": "1",
+                    "usage_count": "1",
+                    "spec_by_size": {size: "1"},
+                    "loss_rate": "0",
+                    "uom": "个",
+                    "remark": None,
+                }
+                for material_code, size, part, sequence_no in sorted_items
+            ],
+        }
+        saved = self.client.put(
+            f"/api/style-master/styles/{style_id}/material-bom",
+            headers=self._headers(request_id="STYLE-BOM-SORT-SAVE"),
+            json=payload,
+        )
+        self.assertEqual(saved.status_code, 200)
+        saved_items = saved.json()["data"]["items"]
+        self.assertEqual([item["material_item_code"] for item in saved_items], [item[0] for item in sorted_items])
+        self.assertEqual([item["sequence_no"] for item in saved_items], [item[3] for item in sorted_items])
+
+        persisted = self.client.get(
+            f"/api/style-master/styles/{style_id}/material-bom?company=COMP-A",
+            headers=self._headers(request_id="STYLE-BOM-SORT-GET"),
+        )
+        self.assertEqual(persisted.status_code, 200)
+        persisted_items = persisted.json()["data"]["items"]
+        self.assertEqual([item["material_name"] for item in persisted_items[:4]], ["华丰门襟", "华丰门襟", "口袋拉链", "牛角扣"])
+        self.assertEqual([item["material_item_code"] for item in persisted_items], [item[0] for item in sorted_items])
+        self.assertEqual([item["sequence_no"] for item in persisted_items], [10, 11, 20, 30, 40])
+
+    def test_style_size_chart_persists_syncs_columns_and_copies_with_style(self) -> None:
+        self._seed_style_dictionaries()
+
+        created = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-CREATE"),
+            json=self._style_payload(style_no="ST-SIZE-001", idempotency_key="IDEMP-ST-SIZE-001-C"),
+        )
+        self.assertEqual(created.status_code, 201)
+        style_id = int(created.json()["data"]["id"])
+
+        empty = self.client.get(
+            f"/api/style-master/styles/{style_id}/size-chart?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-GET-EMPTY"),
+        )
+        self.assertEqual(empty.status_code, 200)
+        self.assertEqual(empty.json()["data"]["sizes"], ["S", "M"])
+        self.assertFalse(empty.json()["data"]["has_size_chart"])
+
+        size_chart_payload = {
+            "unit": "CM",
+            "sizes": ["S", "M"],
+            "rows": [
+                {"part": "后中", "values": {"S": "62.1", "M": "64.1"}, "sort_no": 10},
+                {"part": "肩宽", "values": {"S": "45", "M": "46.5"}, "sort_no": 20},
+            ],
+        }
+        saved = self.client.put(
+            f"/api/style-master/styles/{style_id}/size-chart?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-SAVE"),
+            json=size_chart_payload,
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertTrue(saved.json()["data"]["has_size_chart"])
+        self.assertEqual(saved.json()["data"]["rows"][0]["values"]["S"], "62.1")
+
+        persisted = self.client.get(
+            f"/api/style-master/styles/{style_id}/size-chart?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-GET-PERSISTED"),
+        )
+        self.assertEqual(persisted.status_code, 200)
+        persisted_chart = persisted.json()["data"]
+        self.assertEqual(persisted_chart["rows"][1]["part"], "肩宽")
+
+        listed = self.client.get(
+            "/api/style-master/styles?company=COMP-A&keyword=ST-SIZE-001",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        summary = listed.json()["data"]["items"][0]["size_chart_summary"]
+        self.assertTrue(summary["has_size_chart"])
+        self.assertEqual(summary["row_count"], 2)
+
+        copy_payload = self._style_payload(style_no="ST-SIZE-COPY", idempotency_key="IDEMP-ST-SIZE-COPY-C")
+        copy_payload["size_chart"] = persisted_chart
+        copied = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-COPY"),
+            json=copy_payload,
+        )
+        self.assertEqual(copied.status_code, 201)
+        copied_id = int(copied.json()["data"]["id"])
+        copied_chart = self.client.get(
+            f"/api/style-master/styles/{copied_id}/size-chart?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-COPY-GET"),
+        )
+        self.assertEqual(copied_chart.status_code, 200)
+        self.assertEqual(copied_chart.json()["data"]["rows"][0]["values"]["M"], "64.1")
+
+        size_l = self.client.post(
+            "/api/style-master/dictionaries",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-SIZE-L"),
+            json=self._dictionary_payload("size", "L", "L", "IDEMP-DICT-size-L"),
+        )
+        self.assertEqual(size_l.status_code, 201)
+        resized = self.client.patch(
+            f"/api/style-master/styles/{copied_id}",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-RESIZE"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-SIZE-COPY-RESIZE",
+                "sizes": [
+                    {"ys_size_code": "M", "ys_size_name": "M"},
+                    {"ys_size_code": "L", "ys_size_name": "L"},
+                ],
+            },
+        )
+        self.assertEqual(resized.status_code, 200)
+        synced = self.client.get(
+            f"/api/style-master/styles/{copied_id}/size-chart?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-SYNCED"),
+        )
+        self.assertEqual(synced.status_code, 200)
+        synced_chart = synced.json()["data"]
+        self.assertEqual(synced_chart["sizes"], ["M", "L"])
+        self.assertEqual(synced_chart["rows"][0]["values"]["M"], "64.1")
+        self.assertNotIn("S", synced_chart["rows"][0]["values"])
+
+        disabled = self.client.post(
+            f"/api/style-master/styles/{style_id}/deactivate",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-DISABLE"),
+            json={
+                "operation": "deactivate",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-SIZE-001-D",
+                "reason": "测试停用",
+            },
+        )
+        self.assertEqual(disabled.status_code, 200)
+        readonly = self.client.get(
+            f"/api/style-master/styles/{style_id}/size-chart?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-DISABLED-READ"),
+        )
+        self.assertEqual(readonly.status_code, 200)
+        rejected = self.client.put(
+            f"/api/style-master/styles/{style_id}/size-chart?company=COMP-A",
+            headers=self._headers(request_id="STYLE-SIZE-CHART-DISABLED-WRITE"),
+            json=size_chart_payload,
+        )
+        self.assertEqual(rejected.status_code, 409)
 
     def test_style_list_orders_by_latest_created_not_latest_updated(self) -> None:
         self._seed_style_dictionaries()
@@ -905,6 +1122,43 @@ class StyleMasterApiTest(unittest.TestCase):
         self.assertEqual(listed.status_code, 200)
         listed_ids = [int(item["id"]) for item in listed.json()["data"]["items"]]
         self.assertEqual(listed_ids[:3], [third_id, second_id, first_id])
+
+    def test_style_gallery_supports_wash_label_image_type(self) -> None:
+        self._seed_style_dictionaries()
+        created = self.client.post(
+            "/api/style-master/styles",
+            headers=self._headers(request_id="STYLE-GALLERY-WASH-STYLE"),
+            json=self._style_payload(style_no="ST-GAL-WASH", idempotency_key="IDEMP-ST-GAL-WASH-C"),
+        )
+        self.assertEqual(created.status_code, 201)
+        style_id = int(created.json()["data"]["id"])
+
+        wash_label = self.client.post(
+            "/api/style-master/style-gallery",
+            headers=self._headers(request_id="STYLE-GALLERY-WASH-CREATE"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "idempotency_key": "IDEMP-ST-GAL-WASH-001",
+                "style_master_id": style_id,
+                "image_url": "/uploads/images/style_gallery/wash-label-1.jpg",
+                "thumbnail_url": "/uploads/images/style_gallery/wash-label-1-thumb.jpg",
+                "image_name": "水洗标 1",
+                "image_type": "wash_label",
+                "is_primary": False,
+            },
+        )
+        self.assertEqual(wash_label.status_code, 201)
+        self.assertEqual(wash_label.json()["data"]["image_type"], "wash_label")
+
+        listed = self.client.get(
+            f"/api/style-master/style-gallery?company=COMP-A&style_id={style_id}&image_type=wash_label",
+            headers=self._headers(request_id="STYLE-GALLERY-WASH-LIST"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        body = listed.json()["data"]
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["items"][0]["image_name"], "水洗标 1")
 
     def test_style_manage_permission_fail_closed(self) -> None:
         denied = self.client.post(

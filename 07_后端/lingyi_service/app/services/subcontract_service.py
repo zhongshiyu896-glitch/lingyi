@@ -1943,7 +1943,7 @@ class SubcontractService:
             rows = (
                 self.session.query(LyApparelBomItem)
                 .filter(LyApparelBomItem.bom_id == order.bom_id)
-                .order_by(LyApparelBomItem.id.asc())
+                .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                 .all()
             )
         except SQLAlchemyError as exc:

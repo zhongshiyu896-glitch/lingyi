@@ -52,7 +52,11 @@ class MaterialPurchaseOrderListItem(BaseModel):
     company: str
     purchase_no: str
     supplier_name: str
+    sales_order: str | None = None
+    sales_order_items: list[str] = Field(default_factory=list)
+    customer: str | None = None
     style_no: str | None = None
+    order_total_qty: Decimal | None = None
     item_code: str
     material_item_code: str
     material_name: str
@@ -134,6 +138,9 @@ class MaterialPurchaseRequirementListItem(BaseModel):
     bom_version: str | None = None
     sales_order: str | None = None
     sales_order_item: str | None = None
+    customer: str | None = None
+    style_no: str | None = None
+    order_total_qty: Decimal | None = None
     item_code: str | None = None
     material_item_code: str
     material_name: str

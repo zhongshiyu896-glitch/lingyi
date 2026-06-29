@@ -34,6 +34,8 @@ from app.models.material_purchase import LyMaterialPurchasePaymentOperation
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.schemas.material_purchase import MaterialPurchaseInvoiceCreateRequest
 from app.schemas.material_purchase import MaterialPurchaseInvoiceData
 from app.schemas.material_purchase import MaterialPurchaseInvoiceListData
@@ -123,6 +125,7 @@ class MaterialPurchaseService:
 
     def __init__(self, session: Session):
         self.session = session
+        self._sales_order_context_cache: dict[tuple[str, str], dict[str, Any]] = {}
 
     def list_orders(
         self,
@@ -690,6 +693,13 @@ class MaterialPurchaseService:
         for row in requirements:
             if str(row.status) != "pending":
                 raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"需求 {row.requirement_no} 不是待采购状态")
+            if (
+                row.purchase_order_id is not None
+                or row.purchase_order_item_id is not None
+                or self._optional_text(row.purchase_no) is not None
+                or Decimal(str(row.purchased_qty or 0)) > Decimal("0")
+            ):
+                raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"需求 {row.requirement_no} 已生成采购单，不能重复生成")
             if Decimal(str(row.net_required_qty or 0)) <= Decimal("0"):
                 raise BusinessException(code=MATERIAL_PURCHASE_CONFLICT, message=f"需求 {row.requirement_no} 无净需求")
 
@@ -701,6 +711,7 @@ class MaterialPurchaseService:
             requirements=requirements,
             requested_supplier=requested_supplier,
         )
+        self._ensure_single_requirement_order_scope(requirements=requirements)
         style_no = self._resolve_requirement_style_no(requirements=requirements)
         self._ensure_active_master_records(
             company=company,
@@ -1975,7 +1986,11 @@ class MaterialPurchaseService:
             company=str(order.company),
             purchase_no=str(order.purchase_no),
             supplier_name=str(order.supplier_name),
+            sales_order=requirement_context["sales_order"],
+            sales_order_items=requirement_context["sales_order_items"],
+            customer=requirement_context["customer"],
             style_no=requirement_context["style_no"],
+            order_total_qty=requirement_context["order_total_qty"],
             item_code=str(line.item_code),
             material_item_code=str(line.material_item_code),
             material_name=str(line.material_name or ""),
@@ -2007,6 +2022,10 @@ class MaterialPurchaseService:
             material_item_code = self._optional_text(line.material_item_code)
             return {
                 "style_no": line_item_code if line_item_code and line_item_code != material_item_code else None,
+                "sales_order": None,
+                "sales_order_items": [],
+                "customer": None,
+                "order_total_qty": None,
                 "bom_color": None,
                 "bom_size": None,
                 "specification": None,
@@ -2021,8 +2040,17 @@ class MaterialPurchaseService:
         spec_by_size: dict[str, str] = {}
         for item in requirement_items:
             spec_by_size.update(item.spec_by_size or {})
+        order_total_qty_values = {
+            Decimal(str(item.order_total_qty))
+            for item in requirement_items
+            if item.order_total_qty is not None
+        }
         return {
-            "style_no": self._join_texts(self._unique_texts(item.item_code for item in requirement_items)),
+            "sales_order": self._join_texts(self._unique_texts(item.sales_order for item in requirement_items)),
+            "sales_order_items": self._unique_texts(item.sales_order_item for item in requirement_items),
+            "customer": self._join_texts(self._unique_texts(item.customer for item in requirement_items)),
+            "style_no": self._join_texts(self._unique_texts(item.style_no or item.item_code for item in requirement_items)),
+            "order_total_qty": (order_total_qty_values.pop() if len(order_total_qty_values) == 1 else None),
             "bom_color": self._join_texts(self._unique_texts(item.bom_color for item in requirement_items)),
             "bom_size": self._join_texts(self._unique_texts(item.bom_size for item in requirement_items)),
             "specification": self._join_texts(self._unique_texts(item.specification for item in requirement_items)),
@@ -2184,6 +2212,11 @@ class MaterialPurchaseService:
         net_required = Decimal(str(row.net_required_qty or 0))
         received_qty = Decimal(str(row.received_qty or 0))
         has_completed = net_required == Decimal("0") or received_qty >= net_required or str(row.status) == "completed"
+        order_context = self._sales_order_context(
+            company=str(row.company),
+            sales_order=self._optional_text(row.sales_order),
+        )
+        style_no = self._optional_text(row.item_code) or self._optional_text(order_context.get("style_no"))
         return MaterialPurchaseRequirementListItem(
             id=int(row.id),
             company=str(row.company),
@@ -2201,6 +2234,13 @@ class MaterialPurchaseService:
             bom_version=self._requirement_bom_version(row),
             sales_order=self._optional_text(row.sales_order),
             sales_order_item=self._optional_text(row.sales_order_item),
+            customer=self._optional_text(order_context.get("customer")),
+            style_no=style_no,
+            order_total_qty=(
+                Decimal(str(order_context["order_total_qty"]))
+                if order_context.get("order_total_qty") is not None
+                else None
+            ),
             item_code=self._optional_text(row.item_code),
             material_item_code=str(row.material_item_code),
             material_name=str(row.material_name or row.material_item_code),
@@ -2224,14 +2264,23 @@ class MaterialPurchaseService:
         self,
         rows: list[LyMaterialPurchaseRequirement],
     ) -> list[MaterialPurchaseRequirementListItem]:
-        grouped: dict[tuple[str, str, str, str, str, str], list[LyMaterialPurchaseRequirement]] = {}
+        grouped: dict[tuple[str, ...], list[LyMaterialPurchaseRequirement]] = {}
         for row in rows:
+            specification = self._requirement_specification(row)
+            bom_version = self._requirement_bom_version(row)
             key = (
                 str(row.status or ""),
+                self._requirement_order_scope(row),
+                self._optional_text(row.item_code) or "",
                 self._optional_text(row.supplier_name) or "",
                 str(row.material_item_code),
+                self._optional_text(row.bom_color) or "",
+                self._optional_text(row.bom_size) or "",
+                specification or "",
+                self._optional_text(row.bom_part) or "",
                 str(row.warehouse),
                 str(row.uom or "米"),
+                bom_version or "",
                 self._optional_text(row.purchase_no) or "",
             )
             grouped.setdefault(key, []).append(row)
@@ -2265,6 +2314,13 @@ class MaterialPurchaseService:
         source_nos = self._unique_texts(item.source_no for item in items)
         sales_order_items = self._unique_texts(item.sales_order_item for item in items)
         item_codes = self._unique_texts(item.item_code for item in items)
+        style_nos = self._unique_texts(item.style_no or item.item_code for item in items)
+        customers = self._unique_texts(item.customer for item in items)
+        order_total_qty_values = {
+            Decimal(str(item.order_total_qty))
+            for item in items
+            if item.order_total_qty is not None
+        }
         bom_colors = self._unique_texts(item.bom_color for item in items)
         bom_sizes = self._unique_texts(item.bom_size for item in items)
         bom_parts = self._unique_texts(item.bom_part for item in items)
@@ -2296,6 +2352,9 @@ class MaterialPurchaseService:
             bom_version=self._join_texts(bom_versions),
             sales_order=self._join_texts(sales_orders),
             sales_order_item=self._join_texts(sales_order_items),
+            customer=self._join_texts(customers),
+            style_no=self._join_texts(style_nos),
+            order_total_qty=(order_total_qty_values.pop() if len(order_total_qty_values) == 1 else None),
             item_code=self._join_texts(item_codes),
             material_item_code=str(first.material_item_code),
             material_name=str(first.material_name or first.material_item_code),
@@ -2460,6 +2519,81 @@ class MaterialPurchaseService:
             query = query.filter(column == value) if value is not None else query.filter(column.is_(None))
         return query.first()
 
+    def _requirement_order_scope(self, row: LyMaterialPurchaseRequirement) -> str:
+        sales_order = self._optional_text(row.sales_order)
+        if sales_order:
+            return f"sales_order:{sales_order}"
+        source_no = self._optional_text(row.source_no)
+        if source_no:
+            return f"source_no:{source_no}"
+        plan_id = int(row.plan_id) if row.plan_id is not None else None
+        if plan_id is not None:
+            return f"plan:{plan_id}"
+        source_id = self._optional_text(row.source_id)
+        if source_id:
+            return f"source_id:{source_id}"
+        return f"requirement:{int(row.id)}"
+
+    def _ensure_single_requirement_order_scope(
+        self,
+        *,
+        requirements: list[LyMaterialPurchaseRequirement],
+    ) -> None:
+        scopes: dict[str, list[str]] = {}
+        for requirement in requirements:
+            label = self._optional_text(requirement.sales_order) or self._optional_text(requirement.source_no) or str(requirement.source_id)
+            scopes.setdefault(self._requirement_order_scope(requirement), []).append(label)
+        if len(scopes) <= 1:
+            return
+        labels = [values[0] for values in scopes.values() if values]
+        raise BusinessException(
+            code=MATERIAL_PURCHASE_CONFLICT,
+            message=f"不允许跨订单生成同一张采购单，请按订单分别生成：{'、'.join(labels[:4])}",
+        )
+
+    def _sales_order_context(self, *, company: str, sales_order: str | None) -> dict[str, Any]:
+        sales_order_no = self._optional_text(sales_order)
+        if sales_order_no is None:
+            return {"customer": None, "style_no": None, "order_total_qty": None}
+        cache_key = (company, sales_order_no)
+        if cache_key in self._sales_order_context_cache:
+            return self._sales_order_context_cache[cache_key]
+        context: dict[str, Any] = {"customer": None, "style_no": None, "order_total_qty": None}
+        if not self._has_sqlite_tables({LySalesOrder.__tablename__, LySalesOrderItem.__tablename__}):
+            self._sales_order_context_cache[cache_key] = context
+            return context
+        try:
+            order = (
+                self.session.query(LySalesOrder)
+                .filter(
+                    LySalesOrder.company == company,
+                    LySalesOrder.sales_order_no == sales_order_no,
+                )
+                .first()
+            )
+            if order is None:
+                self._sales_order_context_cache[cache_key] = context
+                return context
+            lines = (
+                self.session.query(LySalesOrderItem)
+                .filter(
+                    LySalesOrderItem.company == company,
+                    LySalesOrderItem.sales_order_id == int(order.id),
+                )
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=DATABASE_READ_FAILED) from exc
+
+        style_nos = self._unique_texts(getattr(line, "item_code", None) for line in lines)
+        context = {
+            "customer": self._optional_text(order.customer),
+            "style_no": self._join_texts(style_nos),
+            "order_total_qty": sum((Decimal(str(getattr(line, "qty", 0) or 0)) for line in lines), Decimal("0")),
+        }
+        self._sales_order_context_cache[cache_key] = context
+        return context
+
     def _group_requirements_for_order(
         self,
         *,
@@ -2478,6 +2612,7 @@ class MaterialPurchaseService:
             bom_version = self._requirement_bom_version(requirement)
             if group_by_material:
                 key = (
+                    self._requirement_order_scope(requirement),
                     requirement_style_no,
                     str(requirement.material_item_code),
                     bom_color or "",
@@ -3039,19 +3174,22 @@ class MaterialPurchaseService:
                 .filter(
                     LyMasterDataRecord.entity_type == "material",
                     LyMasterDataRecord.company == company,
-                    LyMasterDataRecord.status == "active",
                 )
                 .all()
             )
         except SQLAlchemyError as exc:
             raise BusinessException(code=DATABASE_READ_FAILED) from exc
 
-        active_values: set[str] = {"米", "码", "件", "条", "个", "厘米", "CM", "cm", "M", "m"}
+        default_unit_values = {"米", "码", "件", "条", "个", "厘米", "CM", "cm", "M", "m"}
+        active_values: set[str] = set(default_unit_values)
+        explicit_active_values: set[str] = set()
+        explicit_inactive_values: set[str] = set()
         for row in rows:
             payload = row.payload if isinstance(row.payload, dict) else {}
             material_kind = self._optional_text(payload.get("material_kind") or payload.get("kind"))
             if material_kind != "unit":
                 continue
+            unit_values: set[str] = set()
             for candidate in (
                 row.code,
                 row.name,
@@ -3062,8 +3200,17 @@ class MaterialPurchaseService:
             ):
                 text = self._optional_text(candidate)
                 if text:
-                    active_values.add(text)
-        invalid_values = [value for value in normalized_values if value not in active_values]
+                    unit_values.add(text)
+            if str(row.status) == "active":
+                explicit_active_values.update(unit_values)
+                active_values.update(unit_values)
+            else:
+                explicit_inactive_values.update(unit_values)
+        invalid_values = [
+            value
+            for value in normalized_values
+            if value not in active_values or (value in explicit_inactive_values and value not in explicit_active_values)
+        ]
         if invalid_values:
             raise BusinessException(
                 code=MATERIAL_PURCHASE_CONFLICT,

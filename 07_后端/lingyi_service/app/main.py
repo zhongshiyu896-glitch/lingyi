@@ -139,6 +139,8 @@ from app.routers.style_master import get_db_session as style_master_router_sessi
 from app.routers.style_master import router as style_master_router
 from app.routers.material_purchase import get_db_session as material_purchase_router_session_dep
 from app.routers.material_purchase import router as material_purchase_router
+from app.routers.finance import get_db_session as finance_router_session_dep
+from app.routers.finance import router as finance_router
 from app.routers.finance_approval import get_db_session as finance_approval_router_session_dep
 from app.routers.finance_approval import router as finance_approval_router
 from app.routers.quality import get_db_session as quality_router_session_dep
@@ -215,6 +217,7 @@ app.dependency_overrides[master_data_router_session_dep] = get_db_session
 app.dependency_overrides[sample_router_session_dep] = get_db_session
 app.dependency_overrides[style_master_router_session_dep] = get_db_session
 app.dependency_overrides[material_purchase_router_session_dep] = get_db_session
+app.dependency_overrides[finance_router_session_dep] = get_db_session
 app.dependency_overrides[finance_approval_router_session_dep] = get_db_session
 app.dependency_overrides[quality_router_session_dep] = get_db_session
 app.dependency_overrides[cross_module_view_router_session_dep] = get_db_session
@@ -242,6 +245,7 @@ app.include_router(master_data_router)
 app.include_router(sample_router)
 app.include_router(style_master_router)
 app.include_router(material_purchase_router)
+app.include_router(finance_router)
 app.include_router(finance_approval_router)
 app.include_router(quality_router)
 app.include_router(cross_module_view_router)

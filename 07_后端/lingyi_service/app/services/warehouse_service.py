@@ -10,8 +10,10 @@ from decimal import Decimal
 import hashlib
 import json
 import os
+import re
 from typing import Any
 from typing import Literal
+from urllib.parse import unquote
 
 from sqlalchemy import String as SqlString
 from sqlalchemy import cast
@@ -33,6 +35,8 @@ from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.quality_outbox import LyQualityOutbox
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseInventoryCount
@@ -149,6 +153,8 @@ class WarehouseService:
     FACTORY_RETURN_MATERIAL_SOURCE_TYPE = "factory_return_material"
     _INVENTORY_ACTIVE_STATUSES = {"draft", "counted", "variance_review"}
     _FINISHED_GOODS_SOURCE_TYPE = "finished_goods_inbound"
+    _DEFAULT_FINISHED_GOODS_WAREHOUSE_CODE = "FG-WH-LOCAL"
+    _DEFAULT_FINISHED_GOODS_WAREHOUSE_NAME = "默认成品仓"
     _FINISHED_GOODS_DISABLED_ENTRY_LABEL = "成品预约入仓 -> 创建成品入仓"
     _FINISHED_GOODS_DISABLED_ENTRY_REASON = "当前入口存在受限状态，需按冻结口径提示，不得直接放开"
     _ALLOCATION_CONTRACT = "strict_alloc -> zero_placeholder_fallback"
@@ -1465,6 +1471,14 @@ class WarehouseService:
             return True
         table_names = set(inspect(session.connection()).get_table_names())
         return LyMasterDataRecord.__tablename__ in table_names
+
+    def _has_sqlite_sales_order_tables(self) -> bool:
+        session = self._require_session()
+        bind = session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        table_names = set(inspect(session.connection()).get_table_names())
+        return {LySalesOrder.__tablename__, LySalesOrderItem.__tablename__}.issubset(table_names)
 
     def _is_succeeded_subcontract_stock_fact(self, *, fact_row: Any, outbox: LySubcontractStockOutbox | None) -> bool:
         if outbox is None:
@@ -3008,6 +3022,12 @@ class WarehouseService:
 
         if is_material_purchase_receipt:
             self._validate_material_purchase_receipt(company=company, source_id=source_id, items=item_rows)
+        if finished_goods_source_id is not None and self._uses_default_finished_goods_warehouse(
+            source_warehouse=source_warehouse,
+            target_warehouse=target_warehouse,
+            item_rows=item_rows,
+        ):
+            self._ensure_default_finished_goods_warehouse(company=company, actor=current_user)
 
         self._validate_stock_entry_master_data(
             company=company,
@@ -3084,6 +3104,7 @@ class WarehouseService:
         company: str | None,
         purpose: str | None,
         source_type: str | None,
+        sales_order: str | None,
         status: str | None,
         keyword: str | None,
         page: int,
@@ -3100,6 +3121,23 @@ class WarehouseService:
         normalized_source_type = self._text(source_type)
         if normalized_source_type:
             query = query.filter(LyWarehouseStockEntryDraft.source_type == normalized_source_type)
+        normalized_sales_order = self._normalize_sales_order_code(self._text(sales_order))
+        if normalized_sales_order:
+            like_value = f"%{normalized_sales_order.lower()}%"
+            sales_order_item_exists = (
+                session.query(LyWarehouseStockEntryDraftItem.id)
+                .filter(
+                    LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+                    func.lower(LyWarehouseStockEntryDraftItem.sales_order_item).like(like_value),
+                )
+                .exists()
+            )
+            query = query.filter(
+                or_(
+                    func.lower(LyWarehouseStockEntryDraft.source_id).like(like_value),
+                    sales_order_item_exists,
+                )
+            )
         normalized_status = self._text(status)
         if normalized_status:
             query = query.filter(LyWarehouseStockEntryDraft.status == normalized_status)
@@ -3114,6 +3152,10 @@ class WarehouseService:
                         func.lower(LyWarehouseStockEntryDraftItem.item_code).like(like_value),
                         func.lower(LyWarehouseStockEntryDraftItem.source_warehouse).like(like_value),
                         func.lower(LyWarehouseStockEntryDraftItem.target_warehouse).like(like_value),
+                        func.lower(LyWarehouseStockEntryDraftItem.sales_order_item).like(like_value),
+                        func.lower(LyWarehouseStockEntryDraftItem.bom_color).like(like_value),
+                        func.lower(LyWarehouseStockEntryDraftItem.bom_size).like(like_value),
+                        func.lower(LyWarehouseStockEntryDraftItem.bom_part).like(like_value),
                     ),
                 )
                 .exists()
@@ -3762,6 +3804,28 @@ class WarehouseService:
                 "bom_part": stored_context["bom_part"] or self._text(requirement.bom_part),
             }
 
+        item_contexts = [purchase_requirement_context(item) for item in items]
+        first_value = lambda key: next((self._text(context.get(key)) for context in item_contexts if self._text(context.get(key))), None)
+        sales_order_item = first_value("sales_order_item")
+        source_text = self._decode_source_text(draft.source_id)
+        sales_order = self._sales_order_from_source_text(source_text, sales_order_item)
+        production_notice_no = self._source_component(source_text, "pn-") or self._prefixed_code(source_text, "PN")
+        plan_no = self._source_component(source_text, "pg-") or self._source_component(source_text, "plan-") or self._prefixed_code(source_text, "PP")
+        sales_order_row: LySalesOrder | None = None
+        sales_order_line: LySalesOrderItem | None = None
+        if sales_order and self._has_sqlite_sales_order_tables():
+            sales_order_query = session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == sales_order)
+            if self._text(draft.company):
+                sales_order_query = sales_order_query.filter(LySalesOrder.company == str(draft.company))
+            sales_order_row = sales_order_query.first()
+            if sales_order_row is not None:
+                line_query = session.query(LySalesOrderItem).filter(LySalesOrderItem.sales_order_id == sales_order_row.id)
+                if sales_order_item:
+                    line_query = line_query.filter(LySalesOrderItem.sales_order_item == sales_order_item)
+                elif items:
+                    line_query = line_query.filter(LySalesOrderItem.item_code == str(items[0].item_code))
+                sales_order_line = line_query.order_by(LySalesOrderItem.line_no.asc()).first()
+
         return WarehouseStockEntryDraftData(
             id=draft_id,
             company=str(draft.company),
@@ -3782,6 +3846,15 @@ class WarehouseService:
             allocation_mode=allocation_mode,
             strict_failure_reason=strict_failure_reason,
             show_completed_forced=show_completed_forced,
+            sales_order=sales_order,
+            customer=self._text(sales_order_row.customer) if sales_order_row is not None else None,
+            style_name=self._text(sales_order_line.item_name) if sales_order_line is not None else None,
+            production_notice_no=production_notice_no,
+            plan_no=plan_no,
+            plan_group_no=plan_no,
+            sales_order_item=sales_order_item,
+            color=first_value("bom_color"),
+            size=first_value("bom_size"),
             items=[
                 WarehouseStockEntryDraftItemData(
                     id=int(item.id),
@@ -3794,9 +3867,9 @@ class WarehouseService:
                     source_warehouse=self._text(item.source_warehouse),
                     target_warehouse=self._text(item.target_warehouse),
                     purchase_requirement_id=(int(item.purchase_requirement_id) if item.purchase_requirement_id is not None else None),
-                    **purchase_requirement_context(item),
+                    **item_contexts[index],
                 )
-                for item in items
+                for index, item in enumerate(items)
             ],
             outbox=self._build_outbox_status(outbox=outbox) if outbox is not None else None,
         )
@@ -3942,6 +4015,71 @@ class WarehouseService:
         replay_payload.pop("draft_id", None)
         if replay_payload != expected_payload:
             raise WarehouseServiceError(409, "WAREHOUSE_IDEMPOTENCY_CONFLICT", message)
+
+    def _uses_default_finished_goods_warehouse(
+        self,
+        *,
+        source_warehouse: str | None,
+        target_warehouse: str | None,
+        item_rows: list[dict[str, Any]],
+    ) -> bool:
+        default_values = {
+            self._DEFAULT_FINISHED_GOODS_WAREHOUSE_CODE,
+            self._DEFAULT_FINISHED_GOODS_WAREHOUSE_NAME,
+        }
+        for value in [source_warehouse, target_warehouse]:
+            if self._text(value) in default_values:
+                return True
+        for row in item_rows:
+            for value in [row.get("source_warehouse"), row.get("target_warehouse")]:
+                if self._text(value) in default_values:
+                    return True
+        return False
+
+    def _ensure_default_finished_goods_warehouse(self, *, company: str, actor: str) -> None:
+        if not self._has_sqlite_master_data_table():
+            return
+
+        session = self._require_session()
+        try:
+            row = (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == "warehouse",
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code == self._DEFAULT_FINISHED_GOODS_WAREHOUSE_CODE,
+                )
+                .first()
+            )
+            now = datetime.now(timezone.utc)
+            payload = {"system_default": True, "warehouse_type": "finished_goods"}
+            if row is None:
+                session.add(
+                    LyMasterDataRecord(
+                        entity_type="warehouse",
+                        company=company,
+                        code=self._DEFAULT_FINISHED_GOODS_WAREHOUSE_CODE,
+                        name=self._DEFAULT_FINISHED_GOODS_WAREHOUSE_NAME,
+                        status="active",
+                        payload=payload,
+                        version=1,
+                        created_by=actor,
+                        updated_by=actor,
+                        updated_at=now,
+                    )
+                )
+            else:
+                row.name = self._DEFAULT_FINISHED_GOODS_WAREHOUSE_NAME
+                row.status = "active"
+                row.payload = {**dict(row.payload or {}), **payload}
+                row.updated_by = actor
+                row.updated_at = now
+                row.deactivated_by = None
+                row.deactivated_at = None
+                row.deactivate_reason = None
+            session.flush()
+        except SQLAlchemyError as exc:
+            raise WarehouseServiceError(500, DATABASE_READ_FAILED, "数据库写入失败") from exc
 
     def _validate_stock_entry_master_data(
         self,
@@ -4949,6 +5087,57 @@ class WarehouseService:
             return None
         text = str(value).strip()
         return text or None
+
+    @staticmethod
+    def _decode_source_text(value: Any) -> str:
+        text = WarehouseService._text(value) or ""
+        try:
+            return unquote(text)
+        except Exception:
+            return text
+
+    @staticmethod
+    def _normalize_sales_order_code(value: Any) -> str | None:
+        text = WarehouseService._text(value)
+        if not text:
+            return None
+        normalized = text.upper()
+        parts = normalized.split("-")
+        if (
+            normalized.startswith("SO-")
+            and len(parts) >= 4
+            and parts[-1].isdigit()
+            and len(parts[-1]) == 3
+            and parts[-2].isdigit()
+        ):
+            return "-".join(parts[:-1])
+        return normalized
+
+    @staticmethod
+    def _source_component(source_text: str, marker: str) -> str | None:
+        normalized_marker = marker.lower()
+        for token in str(source_text or "").split(":"):
+            if token.lower().startswith(normalized_marker):
+                return WarehouseService._text(token[len(marker):])
+        return None
+
+    @staticmethod
+    def _prefixed_code(source_text: str, prefix: str) -> str | None:
+        match = re.search(rf"\b{re.escape(prefix.upper())}-[A-Z0-9-]+\b", str(source_text or "").upper())
+        return WarehouseService._text(match.group(0)) if match else None
+
+    @classmethod
+    def _sales_order_from_source_text(cls, source_text: str, sales_order_item: str | None = None) -> str | None:
+        explicit = cls._source_component(source_text, "so-")
+        if explicit:
+            return cls._normalize_sales_order_code(explicit)
+        from_item = cls._normalize_sales_order_code(sales_order_item)
+        if from_item:
+            return from_item
+        match = re.search(r"\bSO-[A-Z0-9-]+\b", str(source_text or "").upper())
+        if match:
+            return cls._normalize_sales_order_code(match.group(0))
+        return None
 
     def _require_adapter(self) -> ERPNextWarehouseAdapter:
         if self.adapter is None:

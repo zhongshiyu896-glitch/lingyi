@@ -252,6 +252,17 @@ class SalesOrderListItem(BaseModel):
     grand_total: Decimal | None = None
     currency: str | None = None
     ys_material_calc_state: str | None = None
+    quote_status: str | None = None
+    quote_no: str | None = None
+    quote_amount: Decimal | None = None
+    quote_unit_price: Decimal | None = None
+    quote_material_cost: Decimal | None = None
+    quote_labor_cost: Decimal | None = None
+    quote_management_fee: Decimal | None = None
+    quote_other_fee: Decimal | None = None
+    quote_total_cost: Decimal | None = None
+    gross_profit: Decimal | None = None
+    gross_margin_rate: Decimal | None = None
 
 
 class SalesOrderLineItem(BaseModel):
@@ -285,6 +296,17 @@ class SalesOrderDetailData(BaseModel):
     grand_total: Decimal | None = None
     currency: str | None = None
     ys_material_calc_state: str | None = None
+    quote_status: str | None = None
+    quote_no: str | None = None
+    quote_amount: Decimal | None = None
+    quote_unit_price: Decimal | None = None
+    quote_material_cost: Decimal | None = None
+    quote_labor_cost: Decimal | None = None
+    quote_management_fee: Decimal | None = None
+    quote_other_fee: Decimal | None = None
+    quote_total_cost: Decimal | None = None
+    gross_profit: Decimal | None = None
+    gross_margin_rate: Decimal | None = None
     items: list[SalesOrderLineItem]
 
 
@@ -392,6 +414,17 @@ class SalesOrderDraftData(BaseModel):
     grand_total: Decimal | None = None
     idempotency_key: str
     scenario_tag: str
+    quote_status: str | None = None
+    quote_no: str | None = None
+    quote_amount: Decimal | None = None
+    quote_unit_price: Decimal | None = None
+    quote_material_cost: Decimal | None = None
+    quote_labor_cost: Decimal | None = None
+    quote_management_fee: Decimal | None = None
+    quote_other_fee: Decimal | None = None
+    quote_total_cost: Decimal | None = None
+    gross_profit: Decimal | None = None
+    gross_margin_rate: Decimal | None = None
     created_by: str
     created_at: datetime
     cancelled_by: str | None = None

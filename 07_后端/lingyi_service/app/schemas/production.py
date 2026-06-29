@@ -136,6 +136,15 @@ class ProductionTrackingSummary(BaseModel):
     latest_tracking_at: Optional[datetime] = None
 
 
+class ProductionPlanNoticeSummary(BaseModel):
+    """Production notice summary attached to a production plan."""
+
+    notice_id: int
+    notice_no: str
+    notice_status: str
+    allow_start_production: bool = False
+
+
 class ProductionPlanListItem(BaseModel):
     """Production plan list row."""
 
@@ -154,6 +163,12 @@ class ProductionPlanListItem(BaseModel):
     bom_version: Optional[str] = None
     planned_qty: Decimal
     planned_start_date: Optional[date] = None
+    production_mode: Optional[str] = None
+    factory_id: Optional[str] = None
+    factory_name: Optional[str] = None
+    production_start_date: Optional[date] = None
+    expected_finish_date: Optional[date] = None
+    production_remark: Optional[str] = None
     status: str
     material_ready: bool = False
     required_qty_total: Decimal = Decimal("0")
@@ -161,6 +176,11 @@ class ProductionPlanListItem(BaseModel):
     shortage_qty_total: Decimal = Decimal("0")
     pending_requirement_count: int = 0
     purchase_status: str = "not_calculated"
+    production_notice: Optional["ProductionPlanNoticeSummary"] = None
+    finished_goods_inbound_qty: Decimal = Decimal("0")
+    finished_goods_remaining_qty: Decimal = Decimal("0")
+    finished_goods_inbound_status: str = "pending"
+    finished_goods_inbound_ref_count: int = 0
     latest_work_order_outbox: Optional[ProductionWorkOrderOutboxSummary] = None
     tracking_summary: ProductionTrackingSummary = Field(default_factory=ProductionTrackingSummary)
     created_at: datetime
@@ -449,19 +469,59 @@ class ProductionQuoteQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
-class ProductionQuoteCreateRequest(BaseModel):
-    """Create a saved production quote from an existing production plan."""
+class ProductionQuoteItemOverride(BaseModel):
+    """Optional per color/size line quote override."""
 
-    plan_id: int = Field(..., ge=1)
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    quote_unit_price: Optional[Decimal] = Field(default=None, ge=0)
+    labor_cost: Optional[Decimal] = Field(default=None, ge=0)
+    management_fee: Optional[Decimal] = Field(default=None, ge=0)
+    other_fee: Optional[Decimal] = Field(default=None, ge=0)
+    remark: Optional[str] = Field(default=None, max_length=500)
+
+
+class ProductionQuoteCreateRequest(BaseModel):
+    """Create a saved production quote from a sales order or legacy production plan."""
+
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    sales_order_id: Optional[int] = Field(default=None, ge=1)
     company: Optional[str] = Field(default=None, max_length=140)
     quote_no: Optional[str] = Field(default=None, max_length=140)
     quote_qty: Optional[Decimal] = Field(default=None, gt=0)
+    quote_unit_price: Decimal = Field(default=Decimal("0"), ge=0)
+    material_cost_amount: Optional[Decimal] = Field(default=None, ge=0)
+    labor_fee_per_piece: Optional[Decimal] = Field(default=None, ge=0)
+    management_fee_per_piece: Optional[Decimal] = Field(default=None, ge=0)
+    other_fee_amount: Optional[Decimal] = Field(default=None, ge=0)
     labor_cost: Decimal = Field(default=Decimal("0"), ge=0)
     management_fee: Decimal = Field(default=Decimal("0"), ge=0)
+    other_fee: Decimal = Field(default=Decimal("0"), ge=0)
     valid_until: Optional[date] = None
     status: Optional[str] = Field(default="draft", max_length=32)
     remark: Optional[str] = Field(default=None, max_length=500)
+    item_overrides: List[ProductionQuoteItemOverride] = Field(default_factory=list)
     operation: Optional[str] = Field(default="create", max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionQuoteUpdateRequest(BaseModel):
+    """Update an editable draft/pricing quote."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    quote_unit_price: Optional[Decimal] = Field(default=None, ge=0)
+    material_cost_amount: Optional[Decimal] = Field(default=None, ge=0)
+    labor_fee_per_piece: Optional[Decimal] = Field(default=None, ge=0)
+    management_fee_per_piece: Optional[Decimal] = Field(default=None, ge=0)
+    other_fee_amount: Optional[Decimal] = Field(default=None, ge=0)
+    labor_cost: Optional[Decimal] = Field(default=None, ge=0)
+    management_fee: Optional[Decimal] = Field(default=None, ge=0)
+    other_fee: Optional[Decimal] = Field(default=None, ge=0)
+    valid_until: Optional[date] = None
+    remark: Optional[str] = Field(default=None, max_length=500)
+    item_overrides: List[ProductionQuoteItemOverride] = Field(default_factory=list)
+    operation: Optional[str] = Field(default="update", max_length=40)
     idempotency_key: str = Field(..., min_length=1, max_length=128)
 
 
@@ -497,11 +557,41 @@ class ProductionQuoteVoidRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=1, max_length=128)
 
 
+class ProductionQuoteConfirmRequest(BaseModel):
+    """Confirm quote pricing and write the result back to the sales order."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    operation: Optional[str] = Field(default="confirm", max_length=40)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+
+
+class ProductionQuoteLineItem(BaseModel):
+    """Color/size line inside one order-level quote."""
+
+    plan_id: Optional[int] = None
+    plan_no: Optional[str] = None
+    sales_order_item: Optional[str] = None
+    sales_order_item_id: Optional[int] = None
+    item_code: str
+    item_name: Optional[str] = None
+    color: Optional[str] = None
+    size: Optional[str] = None
+    bom_version: Optional[str] = None
+    quote_qty: Decimal
+    material_cost: Decimal = Decimal("0")
+    labor_cost: Decimal = Decimal("0")
+    management_fee: Decimal = Decimal("0")
+    other_fee: Decimal = Decimal("0")
+    quote_unit_price: Decimal = Decimal("0")
+    quote_amount: Decimal = Decimal("0")
+
+
 class ProductionQuoteListItem(BaseModel):
     """Production quote list row."""
 
     quote_id: Optional[int] = None
-    plan_id: int
+    sales_order_id: Optional[int] = None
+    plan_id: Optional[int] = None
     quote_no: str
     plan_no: str
     company: str
@@ -513,15 +603,26 @@ class ProductionQuoteListItem(BaseModel):
     material_cost: Decimal = Decimal("0")
     labor_cost: Decimal = Decimal("0")
     management_fee: Decimal = Decimal("0")
+    other_fee: Decimal = Decimal("0")
+    material_cost_amount: Decimal = Decimal("0")
+    labor_cost_amount: Decimal = Decimal("0")
+    management_fee_amount: Decimal = Decimal("0")
+    other_fee_amount: Decimal = Decimal("0")
+    labor_fee_per_piece: Decimal = Decimal("0")
+    management_fee_per_piece: Decimal = Decimal("0")
+    total_cost_amount: Decimal = Decimal("0")
     quote_unit_price: Decimal
     quote_amount: Decimal
+    gross_profit: Decimal = Decimal("0")
     gross_margin: Decimal = Decimal("0")
+    gross_margin_rate: Decimal = Decimal("0")
     currency: str = "CNY"
     quoted_at: Optional[datetime] = None
     delivery_date: Optional[date] = None
     valid_until: Optional[date] = None
     status: str
     source: str = "derived"
+    quote_items: List[ProductionQuoteLineItem] = Field(default_factory=list)
 
 
 class ProductionQuoteListData(BaseModel):
@@ -538,6 +639,88 @@ class ProductionQuoteConvertData(BaseModel):
 
     quote: ProductionQuoteListItem
     sales_order: SalesOrderDraftData
+
+
+class ProductionNoticeLineItem(BaseModel):
+    """Color-size quantity line inside a production notice."""
+
+    sales_order_item: Optional[str] = None
+    item_code: str
+    item_name: Optional[str] = None
+    color: Optional[str] = None
+    size: Optional[str] = None
+    qty: Decimal
+    uom: Optional[str] = "件"
+
+
+class ProductionNoticeItem(BaseModel):
+    """Small-factory production notice row."""
+
+    id: int
+    notice_no: str
+    company: str
+    sales_order_id: Optional[int] = None
+    sales_order: str
+    customer: Optional[str] = None
+    item_code: str
+    item_name: Optional[str] = None
+    factory_name: Optional[str] = None
+    order_date: Optional[date] = None
+    delivery_date: Optional[date] = None
+    order_qty: Decimal
+    status: str
+    style_image_url: Optional[str] = None
+    workmanship_template_id: Optional[int] = None
+    size_template_id: Optional[int] = None
+    color_size_matrix: List[ProductionNoticeLineItem] = Field(default_factory=list)
+    workmanship_snapshot: dict[str, Any] = Field(default_factory=dict)
+    size_chart_snapshot: dict[str, Any] = Field(default_factory=dict)
+    cutting_plan: dict[str, Any] = Field(default_factory=dict)
+    process_text: Optional[str] = None
+    packaging_text: Optional[str] = None
+    label_text: Optional[str] = None
+    remark: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+class ProductionNoticeListData(BaseModel):
+    """Production notice list result."""
+
+    items: List[ProductionNoticeItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class ProductionNoticeCreateRequest(BaseModel):
+    """Create a production notice from one sales order."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    sales_order: str = Field(..., min_length=1, max_length=140)
+    notice_no: Optional[str] = Field(default=None, max_length=64)
+    factory_name: Optional[str] = Field(default=None, max_length=140)
+    workmanship_template_id: Optional[int] = Field(default=None, ge=1)
+    size_template_id: Optional[int] = Field(default=None, ge=1)
+    process_text: Optional[str] = Field(default=None, max_length=4000)
+    packaging_text: Optional[str] = Field(default=None, max_length=4000)
+    label_text: Optional[str] = Field(default=None, max_length=4000)
+    remark: Optional[str] = Field(default=None, max_length=4000)
+    status: Optional[str] = Field(default="draft", max_length=32)
+
+
+class ProductionNoticeUpdateRequest(BaseModel):
+    """Update editable production notice fields."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    factory_name: Optional[str] = Field(default=None, max_length=140)
+    workmanship_template_id: Optional[int] = Field(default=None, ge=1)
+    size_template_id: Optional[int] = Field(default=None, ge=1)
+    process_text: Optional[str] = Field(default=None, max_length=4000)
+    packaging_text: Optional[str] = Field(default=None, max_length=4000)
+    label_text: Optional[str] = Field(default=None, max_length=4000)
+    remark: Optional[str] = Field(default=None, max_length=4000)
+    status: Optional[str] = Field(default=None, max_length=32)
 
 
 class ProductionFollowupTemplateQuery(BaseModel):
@@ -978,6 +1161,28 @@ class ProductionTrackingNodeEventData(BaseModel):
     created_at: datetime
 
 
+class ProductionPlanStatusAdvanceRequest(BaseModel):
+    """Start or complete production for the small-factory tracking flow."""
+
+    company: Optional[str] = Field(default=None, max_length=140)
+    action: str = Field(..., min_length=1, max_length=32)
+    remark: Optional[str] = Field(default=None, max_length=1000)
+    production_mode: Optional[str] = Field(default=None, max_length=32)
+    factory_id: Optional[str] = Field(default=None, max_length=140)
+    factory_name: Optional[str] = Field(default=None, max_length=140)
+    production_start_date: Optional[date] = None
+    expected_finish_date: Optional[date] = None
+    production_remark: Optional[str] = Field(default=None, max_length=1000)
+    operation: Optional[str] = Field(default="production_status", max_length=40)
+    scenario_tag: Optional[str] = Field(default=None, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    request_id: Optional[str] = Field(default=None, max_length=64)
+
+
 class ProductionPlanDetailData(BaseModel):
     """Production plan detail result."""
 
@@ -996,6 +1201,12 @@ class ProductionPlanDetailData(BaseModel):
     bom_version: Optional[str] = None
     planned_qty: Decimal
     planned_start_date: Optional[date] = None
+    production_mode: Optional[str] = None
+    factory_id: Optional[str] = None
+    factory_name: Optional[str] = None
+    production_start_date: Optional[date] = None
+    expected_finish_date: Optional[date] = None
+    production_remark: Optional[str] = None
     status: str
     work_order: Optional[str] = None
     erpnext_docstatus: Optional[int] = None
@@ -1011,6 +1222,11 @@ class ProductionPlanDetailData(BaseModel):
     shortage_qty_total: Decimal = Decimal("0")
     pending_requirement_count: int = 0
     purchase_status: str = "not_calculated"
+    production_notice: Optional[ProductionPlanNoticeSummary] = None
+    finished_goods_inbound_qty: Decimal = Decimal("0")
+    finished_goods_remaining_qty: Decimal = Decimal("0")
+    finished_goods_inbound_status: str = "pending"
+    finished_goods_inbound_ref_count: int = 0
     material_snapshots: List[ProductionPlanMaterialSnapshotItem] = Field(default_factory=list)
     tracking_nodes: List[ProductionTrackingNodeItem] = Field(default_factory=list)
     job_cards: List[ProductionJobCardLinkItem] = Field(default_factory=list)
@@ -1039,6 +1255,7 @@ class ProductionSalesOrderMaterialCheckRequest(BaseModel):
     warehouse: Optional[str] = Field(default=None, max_length=140)
     company: Optional[str] = Field(default=None, max_length=140)
     planned_start_date: Optional[date] = None
+    recalculate: bool = False
     operation: Optional[str] = Field(default="sales_order_material_check", max_length=40)
     idempotency_key: str = Field(..., min_length=1, max_length=128)
     scenario_tag: Optional[str] = Field(default=None, max_length=40)
@@ -1164,6 +1381,7 @@ class ProductionMaterialCheckRequest(BaseModel):
     """Material-check request payload."""
 
     warehouse: Optional[str] = Field(default=None, max_length=140)
+    recalculate: bool = False
     idempotency_key: Optional[str] = Field(default=None, max_length=128)
     scenario_tag: Optional[str] = Field(default=None, max_length=40)
     operation: Optional[str] = Field(default=None, max_length=40)

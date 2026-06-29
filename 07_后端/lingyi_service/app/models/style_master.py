@@ -43,6 +43,7 @@ class LyStyleMaster(Base):
     ys_style_status = Column(String(32), nullable=False, server_default="draft")
     colors = Column(JSONType, nullable=False, default=list)
     sizes = Column(JSONType, nullable=False, default=list)
+    size_chart = Column(JSONType, nullable=False, default=dict, server_default="{}")
     version = Column(Integer, nullable=False, server_default="1")
     created_by = Column(String(140), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -89,7 +90,7 @@ class LyStyleGallery(Base):
     __table_args__ = (
         Index("idx_ly_style_gallery_company_style", "company", "style_master_id", "status"),
         Index("idx_ly_style_gallery_company_primary", "company", "style_master_id", "is_primary", "status"),
-        CheckConstraint("image_type IN ('main','detail','color','process','other')", name="ck_ly_style_gallery_type"),
+        CheckConstraint("image_type IN ('main','detail','color','process','wash_label','other')", name="ck_ly_style_gallery_type"),
         CheckConstraint("status IN ('active','inactive')", name="ck_ly_style_gallery_status"),
         {"schema": "ly_schema", "comment": "FastAPI 原生款式图库 URL 记录"},
     )

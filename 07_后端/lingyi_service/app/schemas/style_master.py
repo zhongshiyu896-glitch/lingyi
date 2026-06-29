@@ -12,7 +12,7 @@ from pydantic import Field
 StyleStatus = Literal["draft", "enabled", "disabled"]
 StyleDictionaryType = Literal["season", "year", "brand", "color", "size"]
 StyleDictionaryStatus = Literal["active", "inactive"]
-StyleGalleryImageType = Literal["main", "detail", "color", "process", "other"]
+StyleGalleryImageType = Literal["main", "detail", "color", "process", "wash_label", "other"]
 StyleSkuStatus = Literal["active", "inactive"]
 
 
@@ -38,6 +38,31 @@ class StyleSizeItem(BaseModel):
     ys_size_name: str = Field(..., min_length=1, max_length=140)
 
 
+class StyleSizeChartRow(BaseModel):
+    """One measurement row in a style size chart."""
+
+    part: str = Field(..., min_length=1, max_length=100)
+    values: dict[str, str] = Field(default_factory=dict)
+    sort_no: int = Field(default=10, ge=0)
+
+
+class StyleSizeChartData(BaseModel):
+    """Style-specific size measurement matrix."""
+
+    unit: str = Field(default="CM", min_length=1, max_length=16)
+    sizes: list[str] = Field(default_factory=list)
+    rows: list[StyleSizeChartRow] = Field(default_factory=list)
+    has_size_chart: bool = False
+
+
+class StyleSizeChartSummary(BaseModel):
+    """Lightweight style size chart state returned in list rows."""
+
+    unit: str = "CM"
+    row_count: int = 0
+    has_size_chart: bool = False
+
+
 class StyleMasterWriteBase(BaseModel):
     """Mutable style master fields."""
 
@@ -50,6 +75,7 @@ class StyleMasterWriteBase(BaseModel):
     ys_style_status: StyleStatus = "draft"
     colors: list[StyleColorItem] = Field(default_factory=list)
     sizes: list[StyleSizeItem] = Field(default_factory=list)
+    size_chart: StyleSizeChartData | None = None
 
 
 class StyleMasterCreateRequest(StyleMasterWriteBase):
@@ -101,6 +127,7 @@ class StyleMasterItem(BaseModel):
     primary_thumbnail_url: str | None = None
     gallery_count: int = 0
     sku_count: int = 0
+    size_chart_summary: StyleSizeChartSummary = Field(default_factory=StyleSizeChartSummary)
     source: Literal["fastapi_style_master"] = "fastapi_style_master"
     version: int
     created_by: str
@@ -305,6 +332,7 @@ class StyleDictionaryListData(BaseModel):
 class StyleMaterialBomItemPayload(BaseModel):
     """Style material BOM line payload."""
 
+    sequence_no: int = Field(default=10, ge=1)
     material_item_code: str = Field(..., min_length=1, max_length=140)
     color: str | None = Field(default=None, max_length=64)
     size: str | None = Field(default=None, max_length=64)
@@ -363,6 +391,7 @@ class StyleMaterialBomItem(BaseModel):
     """Style material BOM line."""
 
     id: int
+    sequence_no: int = 10
     material_item_code: str
     material_name: str | None = None
     color: str | None = None

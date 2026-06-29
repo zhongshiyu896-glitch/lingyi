@@ -362,6 +362,47 @@ class ProductionPlanTest(unittest.TestCase):
             session.commit()
             return plan_id
 
+    def _seed_stock_entry_draft(
+        self,
+        *,
+        source_id: str,
+        source_type: str = "finished_goods_inbound",
+        status: str = "pending_outbox",
+        qty: str = "1",
+        item_code: str = "ITEM-A",
+        sales_order_item: str | None = "SOI-001",
+        idempotency_key: str,
+    ) -> None:
+        with self.SessionLocal() as session:
+            draft = LyWarehouseStockEntryDraft(
+                company="COMP-A",
+                purpose="Material Receipt",
+                source_type=source_type,
+                source_id=source_id,
+                source_warehouse=None,
+                target_warehouse="FG-WH-001",
+                status=status,
+                created_by="seed",
+                created_at=datetime.utcnow(),
+                idempotency_key=idempotency_key,
+                event_key=f"event-{idempotency_key}",
+            )
+            session.add(draft)
+            session.flush()
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=int(draft.id),
+                    company="COMP-A",
+                    item_code=item_code,
+                    qty=Decimal(qty),
+                    uom="Nos",
+                    source_warehouse=None,
+                    target_warehouse="FG-WH-001",
+                    sales_order_item=sales_order_item,
+                )
+            )
+            session.commit()
+
     @staticmethod
     def _payload(
         *,
@@ -1180,6 +1221,31 @@ class ProductionPlanTest(unittest.TestCase):
             snapshot = session.query(LyProductionPlanMaterial).filter_by(plan_id=plan_id).one()
             self.assertEqual(snapshot.uom, "Nos")
 
+    def test_create_work_order_does_not_regress_completed_production_status(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-wo-no-regress", planned_qty="12"),
+            )
+        self.assertEqual(create_response.status_code, 200, create_response.text)
+        plan_id = int(create_response.json()["data"]["plan_id"])
+        self._set_plan_status(plan_id=plan_id, status="production_completed")
+
+        outbox_response = self.client.post(
+            f"/api/production/plans/{plan_id}/create-work-order",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._create_work_order_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-create-wo-no-regress",
+            ),
+        )
+        self.assertEqual(outbox_response.status_code, 200, outbox_response.text)
+
+        with self.SessionLocal() as session:
+            plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one()
+            self.assertEqual(plan.status, "production_completed")
+
     def test_plan_detail_returns_work_order_link_fields(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
             create_response = self.client.post(
@@ -1405,6 +1471,103 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(matched["inbound_refs"], [plan_no])
         self.assertEqual(matched["outbound_refs"], ["DN-REAL-IO-001/SI-REAL-IO-001"])
         self.assertEqual(matched["io_status"], "in_progress")
+
+    def test_finished_goods_inbound_trace_source_counts_full_and_updates_plan_status(self) -> None:
+        plan_id = self._seed_orphan_plan(status="production_completed")
+        source_id = (
+            "Z003-WAREHOUSE-20260616-301:finished-goods:"
+            "fg:so-SO-TEST-001:pn-PN-TRACE-001:pg-PP-ORPHAN-001:li-SOI-001:b-B1:0"
+        )
+        self._seed_stock_entry_draft(
+            source_id=source_id,
+            qty="10",
+            sales_order_item="SOI-001",
+            idempotency_key="idem-fg-trace-full",
+        )
+
+        io_response = self.client.get(
+            "/api/production/order-io-quantities?keyword=SO-TEST-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(io_response.status_code, 200, io_response.text)
+        io_row = next(row for row in io_response.json()["data"]["items"] if int(row["plan_id"]) == plan_id)
+        self.assertEqual(Decimal(str(io_row["inbound_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(io_row["pending_inbound_qty"])), Decimal("0.000000"))
+        self.assertEqual(io_row["inbound_ref_count"], 1)
+
+        plans_response = self.client.get(
+            "/api/production/plans?keyword=SO-TEST-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(plans_response.status_code, 200, plans_response.text)
+        plan_row = next(row for row in plans_response.json()["data"]["items"] if int(row["id"]) == plan_id)
+        self.assertEqual(Decimal(str(plan_row["finished_goods_inbound_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(plan_row["finished_goods_remaining_qty"])), Decimal("0.000000"))
+        self.assertEqual(plan_row["finished_goods_inbound_status"], "completed")
+        self.assertEqual(plan_row["finished_goods_inbound_ref_count"], 1)
+
+    def test_finished_goods_inbound_partial_excludes_draft_cancelled_and_material_purchase(self) -> None:
+        plan_id = self._seed_orphan_plan(status="production_completed")
+        active_source = (
+            "Z003-WAREHOUSE-20260616-301:finished-goods:"
+            "fg:so-SO-TEST-001:pn-PN-TRACE-002:pg-PP-ORPHAN-001:li-SOI-001:b-B2:0"
+        )
+        draft_source = (
+            "Z003-WAREHOUSE-20260616-301:finished-goods:"
+            "fg:so-SO-TEST-001:pn-PN-TRACE-002:pg-PP-ORPHAN-001:li-SOI-001:b-B2:draft"
+        )
+        cancelled_source = (
+            "Z003-WAREHOUSE-20260616-301:finished-goods:"
+            "fg:so-SO-TEST-001:pn-PN-TRACE-002:pg-PP-ORPHAN-001:li-SOI-001:b-B2:cancelled"
+        )
+        self._seed_stock_entry_draft(
+            source_id=active_source,
+            qty="4",
+            sales_order_item="SOI-001",
+            idempotency_key="idem-fg-trace-partial-active",
+        )
+        self._seed_stock_entry_draft(
+            source_id=draft_source,
+            status="draft",
+            qty="3",
+            sales_order_item="SOI-001",
+            idempotency_key="idem-fg-trace-partial-draft",
+        )
+        self._seed_stock_entry_draft(
+            source_id=cancelled_source,
+            status="cancelled",
+            qty="2",
+            sales_order_item="SOI-001",
+            idempotency_key="idem-fg-trace-partial-cancelled",
+        )
+        self._seed_stock_entry_draft(
+            source_id="Z003-WAREHOUSE-20260616-301:purchase:PO-SHOULD-NOT-COUNT",
+            source_type="material_purchase_order",
+            qty="10",
+            sales_order_item="SOI-001",
+            idempotency_key="idem-fg-trace-partial-material",
+        )
+
+        io_response = self.client.get(
+            "/api/production/order-io-quantities?keyword=SO-TEST-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(io_response.status_code, 200, io_response.text)
+        io_row = next(row for row in io_response.json()["data"]["items"] if int(row["plan_id"]) == plan_id)
+        self.assertEqual(Decimal(str(io_row["inbound_qty"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(io_row["pending_inbound_qty"])), Decimal("6.000000"))
+        self.assertEqual(io_row["inbound_ref_count"], 1)
+
+        plans_response = self.client.get(
+            "/api/production/plans?keyword=SO-TEST-001&page=1&page_size=20",
+            headers=self._headers(),
+        )
+        self.assertEqual(plans_response.status_code, 200, plans_response.text)
+        plan_row = next(row for row in plans_response.json()["data"]["items"] if int(row["id"]) == plan_id)
+        self.assertEqual(Decimal(str(plan_row["finished_goods_inbound_qty"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(plan_row["finished_goods_remaining_qty"])), Decimal("6.000000"))
+        self.assertEqual(plan_row["finished_goods_inbound_status"], "partial")
+        self.assertEqual(plan_row["finished_goods_inbound_ref_count"], 1)
 
     def test_factory_packing_create_is_idempotent_and_feeds_order_io_quantities(self) -> None:
         plan_id = self._seed_orphan_plan(status="planned")

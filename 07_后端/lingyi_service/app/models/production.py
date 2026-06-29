@@ -52,6 +52,12 @@ class LyProductionPlan(Base):
     bom_version = Column(String(64), nullable=True)
     planned_qty = Column(Numeric(18, 6), nullable=False)
     planned_start_date = Column(Date, nullable=True)
+    production_mode = Column(String(32), nullable=True)
+    factory_id = Column(String(140), nullable=True)
+    factory_name = Column(String(140), nullable=True)
+    production_start_date = Column(Date, nullable=True)
+    expected_finish_date = Column(Date, nullable=True)
+    production_remark = Column(String(1000), nullable=True)
     status = Column(String(32), nullable=False, server_default="planned")
     idempotency_key = Column(String(128), nullable=False)
     request_hash = Column(String(64), nullable=False)
@@ -148,6 +154,51 @@ class LyFactoryPacking(Base):
     request_hash = Column(String(64), nullable=False)
     created_by = Column(String(140), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+
+class LyProductionNotice(Base):
+    """Small-factory production notice generated from one sales order."""
+
+    __tablename__ = "ly_production_notice"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_ly_production_notice"),
+        Index("uk_ly_production_notice_no", "company", "notice_no", unique=True),
+        Index("uk_ly_production_notice_sales_order", "company", "sales_order", unique=True),
+        Index("idx_ly_production_notice_status", "company", "status"),
+        Index("idx_ly_production_notice_item", "company", "item_code"),
+        CheckConstraint("order_qty >= 0", name="ck_ly_production_notice_order_qty_nonnegative"),
+        CheckConstraint("status IN ('draft','confirmed','sent')", name="ck_ly_production_notice_status"),
+        {"schema": "ly_schema", "comment": "小工厂生产通知单"},
+    )
+
+    id = Column(IDType, autoincrement=True)
+    notice_no = Column(String(64), nullable=False)
+    company = Column(String(140), nullable=False)
+    sales_order_id = Column(IDType, nullable=True)
+    sales_order = Column(String(140), nullable=False)
+    customer = Column(String(140), nullable=True)
+    item_code = Column(String(140), nullable=False)
+    item_name = Column(String(255), nullable=True)
+    factory_name = Column(String(140), nullable=True)
+    order_date = Column(Date, nullable=True)
+    delivery_date = Column(Date, nullable=True)
+    order_qty = Column(Numeric(18, 6), nullable=False, server_default="0")
+    style_image_url = Column(Text, nullable=True)
+    workmanship_template_id = Column(IDType, nullable=True)
+    size_template_id = Column(IDType, nullable=True)
+    color_size_matrix = Column(JSONType, nullable=False, default=list)
+    workmanship_snapshot = Column(JSONType, nullable=False, default=dict)
+    size_chart_snapshot = Column(JSONType, nullable=False, default=dict)
+    cutting_plan = Column(JSONType, nullable=False, default=dict)
+    process_text = Column(Text, nullable=True)
+    packaging_text = Column(Text, nullable=True)
+    label_text = Column(Text, nullable=True)
+    remark = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, server_default="draft")
+    created_by = Column(String(140), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_by = Column(String(140), nullable=True)
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
@@ -458,12 +509,15 @@ class LyProductionQuote(Base):
         PrimaryKeyConstraint("id", name="pk_ly_production_quote"),
         Index("uk_ly_production_quote_no", "company", "quote_no", unique=True),
         Index("idx_ly_production_quote_plan", "plan_id", "status"),
+        Index("idx_ly_production_quote_sales_order", "company", "sales_order", "status"),
         Index("idx_ly_production_quote_company_status", "company", "status"),
         Index("idx_ly_production_quote_item", "company", "item_code"),
         CheckConstraint("quote_qty >= 0", name="ck_ly_production_quote_qty_nonnegative"),
         CheckConstraint("material_cost >= 0", name="ck_ly_production_quote_material_nonnegative"),
         CheckConstraint("labor_cost >= 0", name="ck_ly_production_quote_labor_nonnegative"),
         CheckConstraint("management_fee >= 0", name="ck_ly_production_quote_management_nonnegative"),
+        CheckConstraint("other_fee >= 0", name="ck_ly_production_quote_other_fee_nonnegative"),
+        CheckConstraint("quote_unit_price >= 0", name="ck_ly_production_quote_unit_price_nonnegative"),
         CheckConstraint("quote_amount >= 0", name="ck_ly_production_quote_amount_nonnegative"),
         CheckConstraint("status IN ('draft','pricing','quoted','converted','void')", name="ck_ly_production_quote_status"),
         {"schema": "ly_schema", "comment": "FastAPI 原生报价单"},
@@ -472,6 +526,7 @@ class LyProductionQuote(Base):
     id = Column(IDType, autoincrement=True)
     quote_no = Column(String(140), nullable=False)
     company = Column(String(140), nullable=False)
+    sales_order_id = Column(BigInteger, nullable=True)
     plan_id = Column(BigInteger, ForeignKey("ly_schema.ly_production_plan.id"), nullable=False)
     plan_no = Column(String(64), nullable=False)
     sales_order = Column(String(140), nullable=False)
@@ -482,7 +537,12 @@ class LyProductionQuote(Base):
     material_cost = Column(Numeric(18, 6), nullable=False, server_default="0")
     labor_cost = Column(Numeric(18, 6), nullable=False, server_default="0")
     management_fee = Column(Numeric(18, 6), nullable=False, server_default="0")
+    other_fee = Column(Numeric(18, 6), nullable=False, server_default="0")
+    quote_unit_price = Column(Numeric(18, 6), nullable=False, server_default="0")
     quote_amount = Column(Numeric(18, 6), nullable=False, server_default="0")
+    gross_profit = Column(Numeric(18, 6), nullable=False, server_default="0")
+    gross_margin_rate = Column(Numeric(18, 6), nullable=False, server_default="0")
+    quote_items_json = Column(JSONType, nullable=False, default=list)
     currency = Column(String(16), nullable=False, server_default="CNY")
     valid_until = Column(Date, nullable=True)
     status = Column(String(32), nullable=False, server_default="draft")
@@ -501,7 +561,7 @@ class LyProductionQuoteOperation(Base):
         PrimaryKeyConstraint("id", name="pk_ly_production_quote_operation"),
         Index("uk_ly_production_quote_operation_idem", "company", "operation", "idempotency_key", unique=True),
         Index("idx_ly_production_quote_operation_quote", "quote_id", "operation"),
-        CheckConstraint("operation IN ('create','convert','copy','void')", name="ck_ly_production_quote_operation"),
+        CheckConstraint("operation IN ('create','update','convert','copy','void','confirm')", name="ck_ly_production_quote_operation"),
         {"schema": "ly_schema", "comment": "报价单写操作幂等账本"},
     )
 

@@ -113,7 +113,7 @@ class AuditService:
             items = (
                 self.session.query(LyApparelBomItem)
                 .filter(LyApparelBomItem.bom_id == bom.id)
-                .order_by(LyApparelBomItem.id.asc())
+                .order_by(LyApparelBomItem.sequence_no.asc(), LyApparelBomItem.id.asc())
                 .all()
             )
             operations = (
@@ -145,6 +145,7 @@ class AuditService:
             "items": [
                 {
                     "id": row.id,
+                    "sequence_no": row.sequence_no,
                     "material_item_code": row.material_item_code,
                     "color": row.color,
                     "size": row.size,

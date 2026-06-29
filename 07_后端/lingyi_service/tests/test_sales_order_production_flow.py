@@ -26,7 +26,10 @@ from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.master_data import Base as MasterDataBase
+from app.models.master_data import LyMasterDataRecord
 from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionNotice
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanOperation
 from app.models.production import LyProductionPlanMaterial
@@ -65,6 +68,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         StyleMasterBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         BomBase.metadata.create_all(bind=cls.engine)
+        MasterDataBase.metadata.create_all(bind=cls.engine)
         ProductionBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
@@ -111,6 +115,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionPlanOperation).delete()
             session.query(LyProductionPlan).delete()
+            session.query(LyProductionNotice).delete()
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
@@ -715,7 +720,7 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             key="idem-so-a4-stale-req-001-submit",
         )
 
-        def _run_material_check(scenario: str) -> dict[str, object]:
+        def _run_material_check(scenario: str, *, recalculate: bool = False, expected_status: int = 200) -> dict[str, object]:
             request_id = f"req-{scenario}"
             with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
                 response = self.client.post(
@@ -731,11 +736,13 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
                         "sales_order_item": sales_order_item,
                         "item_code": "DEMO-TEE",
                         "bom_id": 1,
+                        "recalculate": recalculate,
                         "request_id": request_id,
                     },
                 )
-            self.assertEqual(response.status_code, 200, response.text)
-            return response.json()["data"]
+            self.assertEqual(response.status_code, expected_status, response.text)
+            payload = response.json()
+            return payload["data"] if expected_status == 200 else payload
 
         first_check = _run_material_check("Z003-PROD-PLAN-DETAIL-20260617-904")
         self.assertEqual(first_check["snapshot_count"], 1)
@@ -750,7 +757,14 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             bom_item.material_item_code = "FABRIC-REVISED"
             session.commit()
 
-        second_check = _run_material_check("Z003-PROD-PLAN-DETAIL-20260617-905")
+        no_recalc_check = _run_material_check("Z003-PROD-PLAN-DETAIL-20260617-905")
+        self.assertEqual(no_recalc_check["snapshot_count"], 1)
+        self.assertEqual(no_recalc_check["items"][0]["material_item_code"], "FABRIC-DEMO")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).count(), 1)
+            self.assertEqual(session.query(LyMaterialPurchaseRequirement).one().material_item_code, "FABRIC-DEMO")
+
+        second_check = _run_material_check("Z003-PROD-PLAN-DETAIL-20260617-906", recalculate=True)
         self.assertEqual(second_check["snapshot_count"], 1)
         self.assertEqual(second_check["items"][0]["material_item_code"], "FABRIC-REVISED")
         self.assertEqual(Decimal(str(second_check["items"][0]["shortage_qty"])), Decimal("84.000000"))
@@ -777,6 +791,21 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertEqual((cancelled.payload or {}).get("cancel_reason"), "stale_material_check")
             snapshots = session.query(LyProductionPlanMaterial).order_by(LyProductionPlanMaterial.id.asc()).all()
             self.assertEqual([row.material_item_code for row in snapshots], ["FABRIC-REVISED"])
+            pending_requirement = requirements[1]
+            pending_requirement.status = "purchased"
+            pending_requirement.purchase_no = "PO-A4-STALE-REQ-001"
+            pending_requirement.purchase_order_id = 9001
+            pending_requirement.purchase_order_item_id = 9002
+            pending_requirement.purchased_qty = Decimal(str(pending_requirement.net_required_qty))
+            session.commit()
+
+        blocked_recalc = _run_material_check(
+            "Z003-PROD-PLAN-DETAIL-20260617-907",
+            recalculate=True,
+            expected_status=409,
+        )
+        self.assertEqual(blocked_recalc["code"], "PRODUCTION_MATERIAL_CHECK_STATUS_INVALID")
+        self.assertIn("已生成采购单", blocked_recalc["message"])
 
     def test_sales_order_material_check_auto_creates_plans_and_purchase_requirements(self) -> None:
         order_payload = {
@@ -860,6 +889,15 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(material_check_replay.status_code, 200, material_check_replay.text)
         data = material_check.json()["data"]
         replay_data = material_check_replay.json()["data"]
+        second_click_payload = {**material_check_payload, "idempotency_key": "idem-sales-order-material-check-a4-batch-002"}
+        with patch.dict(os.environ, {"APP_ENV": "development", "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"}):
+            material_check_second_click = self.client.post(
+                "/api/production/sales-orders/SO-A4-BATCH-MAT-001/material-check",
+                headers={**self._headers(), "X-Request-ID": "req-a4-order-material-check-second-click"},
+                json=second_click_payload,
+            )
+        self.assertEqual(material_check_second_click.status_code, 200, material_check_second_click.text)
+        second_click_data = material_check_second_click.json()["data"]
         self.assertEqual(data["sales_order"], "SO-A4-BATCH-MAT-001")
         self.assertEqual(data["warehouse"], "DEFAULT-MATERIAL-WH")
         self.assertEqual(data["plan_count"], 2)
@@ -873,6 +911,10 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
         self.assertEqual(replay_data["snapshot_count"], 2)
         self.assertEqual(Decimal(str(replay_data["shortage_qty_total"])), Decimal("105.000000"))
         self.assertEqual(replay_data["items"], data["items"])
+        self.assertEqual(second_click_data["plan_count"], 2)
+        self.assertEqual(second_click_data["created_plan_count"], 0)
+        self.assertEqual(second_click_data["snapshot_count"], 2)
+        self.assertEqual(Decimal(str(second_click_data["shortage_qty_total"])), Decimal("105.000000"))
         self.assertEqual(
             [Decimal(str(item["planned_qty"])) for item in data["items"]],
             [Decimal("30.000000"), Decimal("20.000000")],
@@ -1684,6 +1726,340 @@ class SalesOrderProductionFlowTest(unittest.TestCase):
             self.assertIn("production:plan_create", audit_actions)
             self.assertIn("production:material_check", audit_actions)
             self.assertIn("production:material_issue", audit_actions)
+
+    def test_ready_plan_can_start_and_complete_production_status(self) -> None:
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                company="COMP-A",
+                sales_order_no="SO-A4-PROD-STATUS-001",
+                source_order_ref="SO-A4-PROD-STATUS-001",
+                customer="CUST-A",
+                status="planned",
+                docstatus=1,
+                transaction_date=date(2026, 6, 18),
+                delivery_date=date(2026, 7, 18),
+                currency="CNY",
+                grand_total=Decimal("8000"),
+                idempotency_key="idem-so-a4-prod-status",
+                request_hash="hash-so-a4-prod-status",
+                scenario_tag="",
+                payload={},
+                created_by="seed",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item="SO-A4-PROD-STATUS-001-001",
+                    item_code="DEMO-TEE",
+                    item_name="Demo Tee",
+                    color="白色",
+                    size="M",
+                    qty=Decimal("100"),
+                    planned_qty=Decimal("100"),
+                    delivered_qty=Decimal("0"),
+                    ys_material_calc_state="已算料",
+                    rate=Decimal("80"),
+                    amount=Decimal("8000"),
+                    uom="件",
+                )
+            )
+            plan = LyProductionPlan(
+                plan_no="PP-A4-PROD-STATUS-001",
+                plan_group_no="PP-A4-PROD-STATUS-001",
+                company="COMP-A",
+                sales_order="SO-A4-PROD-STATUS-001",
+                sales_order_item="SO-A4-PROD-STATUS-001-001",
+                customer="CUST-A",
+                item_code="DEMO-TEE",
+                bom_id=1,
+                bom_version="V1",
+                planned_qty=Decimal("100"),
+                planned_start_date=date(2026, 6, 19),
+                status="material_checked",
+                idempotency_key="idem-pp-a4-prod-status-001",
+                request_hash="hash-pp-a4-prod-status-001",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.commit()
+            plan_id = int(plan.id)
+
+        blocked_request_id = "req-a4-prod-status-start-blocked"
+        blocked = self.client.post(
+            f"/api/production/plans/{plan_id}/production-status",
+            headers=self._headers_for(user="a4.prod.user", roles="System Manager", request_id=blocked_request_id),
+            json={
+                "company": "COMP-A",
+                "action": "start",
+                "operation": "production_status",
+                "scenario_tag": "production_status",
+                "idempotency_key": "idem-a4-prod-status-start-blocked",
+                "plan_id": plan_id,
+                "sales_order": "SO-A4-PROD-STATUS-001",
+                "sales_order_item": "SO-A4-PROD-STATUS-001-001",
+                "item_code": "DEMO-TEE",
+                "request_id": blocked_request_id,
+            },
+        )
+        self.assertEqual(blocked.status_code, 400, blocked.text)
+        self.assertEqual(blocked.json()["code"], "PRODUCTION_TRACKING_NODE_INVALID")
+        self.assertIn("尚未齐料", blocked.json()["message"])
+
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionPlanMaterial(
+                    plan_id=plan_id,
+                    bom_item_id=1,
+                    bom_color="白色",
+                    bom_size="M",
+                    bom_part="主面",
+                    material_item_code="FABRIC-DEMO",
+                    warehouse="WH-A",
+                    uom="米",
+                    qty_per_piece=Decimal("2"),
+                    loss_rate=Decimal("0"),
+                    required_qty=Decimal("200"),
+                    available_qty=Decimal("200"),
+                    shortage_qty=Decimal("0"),
+                )
+            )
+            order_id = int(session.query(LySalesOrder.id).filter_by(company="COMP-A", sales_order_no="SO-A4-PROD-STATUS-001").scalar())
+            session.add(
+                LyProductionNotice(
+                    notice_no="PN-A4-PROD-STATUS-001",
+                    company="COMP-A",
+                    sales_order_id=order_id,
+                    sales_order="SO-A4-PROD-STATUS-001",
+                    customer="CUST-A",
+                    item_code="DEMO-TEE",
+                    item_name="Demo Tee",
+                    factory_name="本厂",
+                    order_qty=Decimal("100"),
+                    color_size_matrix=[],
+                    workmanship_snapshot={},
+                    size_chart_snapshot={},
+                    cutting_plan={"plan_no": "PP-A4-PROD-STATUS-001"},
+                    status="confirmed",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        start_request_id = "req-a4-prod-status-start"
+        start_payload = {
+            "company": "COMP-A",
+            "action": "start",
+            "remark": "齐料后开始生产",
+            "production_mode": "in_house",
+            "factory_name": "本厂",
+            "production_start_date": "2026-06-20",
+            "expected_finish_date": "2026-06-25",
+            "production_remark": "本厂正常排产",
+            "operation": "production_status",
+            "scenario_tag": "production_status",
+            "idempotency_key": "idem-a4-prod-status-start",
+            "plan_id": plan_id,
+            "sales_order": "SO-A4-PROD-STATUS-001",
+            "sales_order_item": "SO-A4-PROD-STATUS-001-001",
+            "item_code": "DEMO-TEE",
+            "request_id": start_request_id,
+        }
+        start = self.client.post(
+            f"/api/production/plans/{plan_id}/production-status",
+            headers=self._headers_for(user="a4.prod.user", roles="System Manager", request_id=start_request_id),
+            json=start_payload,
+        )
+        replay = self.client.post(
+            f"/api/production/plans/{plan_id}/production-status",
+            headers=self._headers_for(user="a4.prod.user", roles="System Manager", request_id=start_request_id),
+            json=start_payload,
+        )
+        self.assertEqual(start.status_code, 200, start.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(start.json()["data"]["status"], "production_in_progress")
+        self.assertEqual(replay.json()["data"]["status"], "production_in_progress")
+        self.assertEqual(start.json()["data"]["production_mode"], "in_house")
+        self.assertEqual(start.json()["data"]["factory_name"], "本厂")
+        self.assertEqual(start.json()["data"]["production_start_date"], "2026-06-20")
+        self.assertEqual(start.json()["data"]["production_notice"]["notice_status"], "confirmed")
+        self.assertEqual(start.json()["data"]["production_notice"]["notice_no"], "PN-A4-PROD-STATUS-001")
+
+        duplicate_start = self.client.post(
+            f"/api/production/plans/{plan_id}/production-status",
+            headers=self._headers_for(user="a4.prod.user", roles="System Manager", request_id="req-a4-prod-status-start-duplicate"),
+            json={
+                **start_payload,
+                "idempotency_key": "idem-a4-prod-status-start-duplicate",
+                "request_id": "req-a4-prod-status-start-duplicate",
+            },
+        )
+        self.assertEqual(duplicate_start.status_code, 400, duplicate_start.text)
+        self.assertIn("已开始生产", duplicate_start.json()["message"])
+
+        complete_request_id = "req-a4-prod-status-complete"
+        complete = self.client.post(
+            f"/api/production/plans/{plan_id}/production-status",
+            headers=self._headers_for(user="a4.prod.user", roles="System Manager", request_id=complete_request_id),
+            json={
+                "company": "COMP-A",
+                "action": "complete",
+                "remark": "生产完成",
+                "operation": "production_status",
+                "scenario_tag": "production_status",
+                "idempotency_key": "idem-a4-prod-status-complete",
+                "plan_id": plan_id,
+                "sales_order": "SO-A4-PROD-STATUS-001",
+                "sales_order_item": "SO-A4-PROD-STATUS-001-001",
+                "item_code": "DEMO-TEE",
+                "request_id": complete_request_id,
+            },
+        )
+        self.assertEqual(complete.status_code, 200, complete.text)
+        self.assertEqual(complete.json()["data"]["status"], "production_completed")
+
+        with self.SessionLocal() as session:
+            plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one()
+            operations = (
+                session.query(LyProductionPlanOperation)
+                .filter(
+                    LyProductionPlanOperation.operation == "production_status",
+                    LyProductionPlanOperation.plan_id == plan_id,
+                )
+                .order_by(LyProductionPlanOperation.id.asc())
+                .all()
+            )
+            self.assertEqual(plan.status, "production_completed")
+            self.assertEqual(plan.production_mode, "in_house")
+            self.assertEqual(plan.factory_name, "本厂")
+            self.assertEqual(plan.production_start_date, date(2026, 6, 20))
+            self.assertEqual([row.idempotency_key for row in operations], ["idem-a4-prod-status-start", "idem-a4-prod-status-complete"])
+
+    def test_outsourced_start_requires_enabled_factory_master_data(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyMasterDataRecord(
+                    entity_type="factory",
+                    company="COMP-A",
+                    code="FAC-A4-OUT-001",
+                    name="A4启用加工厂",
+                    status="active",
+                    payload={},
+                    created_by="seed",
+                )
+            )
+            plan = LyProductionPlan(
+                plan_no="PP-A4-PROD-OUT-001",
+                plan_group_no="PP-A4-PROD-OUT-001",
+                company="COMP-A",
+                sales_order="SO-A4-PROD-OUT-001",
+                sales_order_item="SO-A4-PROD-OUT-001-001",
+                customer="CUST-A",
+                item_code="DEMO-OUT-TEE",
+                bom_id=1,
+                bom_version="V1",
+                planned_qty=Decimal("50"),
+                planned_start_date=date(2026, 6, 21),
+                status="material_checked",
+                idempotency_key="idem-pp-a4-prod-out-001",
+                request_hash="hash-pp-a4-prod-out-001",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.flush()
+            session.add(
+                LyProductionPlanMaterial(
+                    plan_id=int(plan.id),
+                    bom_item_id=1,
+                    bom_color="黑色",
+                    bom_size="L",
+                    bom_part="主面",
+                    material_item_code="FABRIC-OUT-DEMO",
+                    warehouse="WH-A",
+                    uom="米",
+                    qty_per_piece=Decimal("2"),
+                    loss_rate=Decimal("0"),
+                    required_qty=Decimal("100"),
+                    available_qty=Decimal("100"),
+                    shortage_qty=Decimal("0"),
+                )
+            )
+            session.commit()
+            plan_id = int(plan.id)
+
+        missing_factory = self.client.post(
+            f"/api/production/plans/{plan_id}/production-status",
+            headers=self._headers_for(user="a4.prod.user", roles="System Manager", request_id="req-a4-prod-out-missing-factory"),
+            json={
+                "company": "COMP-A",
+                "action": "start",
+                "production_mode": "outsourced",
+                "operation": "production_status",
+                "scenario_tag": "production_status",
+                "idempotency_key": "idem-a4-prod-out-missing-factory",
+                "plan_id": plan_id,
+                "sales_order": "SO-A4-PROD-OUT-001",
+                "sales_order_item": "SO-A4-PROD-OUT-001-001",
+                "item_code": "DEMO-OUT-TEE",
+                "request_id": "req-a4-prod-out-missing-factory",
+            },
+        )
+        self.assertEqual(missing_factory.status_code, 400, missing_factory.text)
+        self.assertIn("必须选择", missing_factory.json()["message"])
+
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionNotice(
+                    notice_no="PN-A4-PROD-OUT-001",
+                    company="COMP-A",
+                    sales_order="SO-A4-PROD-OUT-001",
+                    customer="CUST-A",
+                    item_code="DEMO-OUT-TEE",
+                    factory_name="A4启用加工厂",
+                    order_qty=Decimal("50"),
+                    color_size_matrix=[],
+                    workmanship_snapshot={},
+                    size_chart_snapshot={},
+                    cutting_plan={"plan_no": "PP-A4-PROD-OUT-001"},
+                    status="sent",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        start = self.client.post(
+            f"/api/production/plans/{plan_id}/production-status",
+            headers=self._headers_for(user="a4.prod.user", roles="System Manager", request_id="req-a4-prod-out-start"),
+            json={
+                "company": "COMP-A",
+                "action": "start",
+                "remark": "外发加工开始生产",
+                "production_mode": "outsourced",
+                "factory_id": "FAC-A4-OUT-001",
+                "factory_name": "A4启用加工厂",
+                "production_start_date": "2026-06-22",
+                "expected_finish_date": "2026-06-28",
+                "production_remark": "外发小单确认",
+                "operation": "production_status",
+                "scenario_tag": "production_status",
+                "idempotency_key": "idem-a4-prod-out-start",
+                "plan_id": plan_id,
+                "sales_order": "SO-A4-PROD-OUT-001",
+                "sales_order_item": "SO-A4-PROD-OUT-001-001",
+                "item_code": "DEMO-OUT-TEE",
+                "request_id": "req-a4-prod-out-start",
+            },
+        )
+        self.assertEqual(start.status_code, 200, start.text)
+        self.assertEqual(start.json()["data"]["status"], "production_in_progress")
+        self.assertEqual(start.json()["data"]["production_mode"], "outsourced")
+        self.assertEqual(start.json()["data"]["factory_id"], "FAC-A4-OUT-001")
+        self.assertEqual(start.json()["data"]["factory_name"], "A4启用加工厂")
+        self.assertEqual(start.json()["data"]["production_notice"]["notice_status"], "sent")
+        self.assertEqual(start.json()["data"]["production_notice"]["notice_no"], "PN-A4-PROD-OUT-001")
 
     def test_sales_order_create_preserves_explicit_item_identity_for_plan_binding(self) -> None:
         order_payload = {

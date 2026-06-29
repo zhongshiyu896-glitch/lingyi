@@ -27,6 +27,7 @@ class ApiResponse(BaseModel, Generic[T]):
 class BomItemPayload(BaseModel):
     """BOM material item payload."""
 
+    sequence_no: int = Field(default=10, ge=1)
     material_item_code: str = Field(..., min_length=1, max_length=140)
     color: Optional[str] = None
     part: Optional[str] = Field(default=None, max_length=100)
@@ -312,6 +313,7 @@ class BomItemView(BaseModel):
     """BOM item output payload."""
 
     id: int
+    sequence_no: int = 10
     material_item_code: str
     color: Optional[str]
     part: Optional[str] = None

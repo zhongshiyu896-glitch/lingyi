@@ -865,6 +865,37 @@ def _seed_style_master(
 
 def _exercise_master_data_smoke(client: TestClient) -> None:
     company = "COMP-MASTER-SMOKE"
+    material_supplier_code = "SUP-SMOKE-MAT-BIND"
+    material_unit_code = "MU-SMOKE-MAT-BIND"
+    prerequisite_entities = [
+        (
+            "suppliers",
+            material_supplier_code,
+            "Smoke Material Supplier",
+            {"supplier_name": "Smoke Material Supplier"},
+        ),
+        (
+            "materials",
+            material_unit_code,
+            "米",
+            {"material_kind": "unit", "unit_code": material_unit_code, "unit_name": "米", "base_unit": "米"},
+        ),
+    ]
+    for entity_path, code, name, payload in prerequisite_entities:
+        created = client.post(
+            f"/api/master-data/{entity_path}",
+            headers=_headers(),
+            json={
+                "operation": "create",
+                "company": company,
+                "code": code,
+                "name": name,
+                "idempotency_key": f"master-data:{entity_path}:{code}:prereq:smoke",
+                "payload": payload,
+            },
+        )
+        _assert(created.status_code == 201, f"master data {entity_path} prereq create failed: {created.text}")
+
     entities = [
         ("customers", "CUST-SMOKE-001", "Smoke Customer", {"customer_name": "Smoke Customer"}),
         ("suppliers", "SUP-SMOKE-001", "Smoke Supplier", {"supplier_name": "Smoke Supplier"}),
@@ -872,9 +903,22 @@ def _exercise_master_data_smoke(client: TestClient) -> None:
         ("warehouses", "WH-SMOKE-MD", "Smoke Warehouse", {"warehouse_name": "Smoke Warehouse"}),
         (
             "materials",
+            "MU-SMOKE-METER",
+            "米",
+            {"material_kind": "unit", "unit_code": "MU-SMOKE-METER", "unit_name": "米", "base_unit": "米"},
+        ),
+        (
+            "materials",
             "MAT-SMOKE-001",
             "Smoke Material",
-            {"material_kind": "fabric", "material_item_code": "MAT-SMOKE-001"},
+            {
+                "material_kind": "fabric",
+                "material_item_code": "MAT-SMOKE-001",
+                "supplier_code": material_supplier_code,
+                "supplier_name": "Smoke Material Supplier",
+                "unit_code": material_unit_code,
+                "uom": "米",
+            },
         ),
     ]
     for entity_path, code, name, payload in entities:
@@ -883,7 +927,7 @@ def _exercise_master_data_smoke(client: TestClient) -> None:
             "company": company,
             "code": code,
             "name": name,
-            "idempotency_key": f"master-data:{entity_path}:create:smoke",
+            "idempotency_key": f"master-data:{entity_path}:{code}:create:smoke",
             "payload": payload,
         }
         created = client.post(f"/api/master-data/{entity_path}", headers=_headers(), json=create_body)
@@ -904,7 +948,7 @@ def _exercise_master_data_smoke(client: TestClient) -> None:
                 "operation": "update",
                 "company": company,
                 "name": f"{name} Updated",
-                "idempotency_key": f"master-data:{entity_path}:update:smoke",
+                "idempotency_key": f"master-data:{entity_path}:{code}:update:smoke",
                 "payload": {**payload, "smoke_updated": True},
             },
         )
@@ -925,7 +969,7 @@ def _exercise_master_data_smoke(client: TestClient) -> None:
             json={
                 "operation": "deactivate",
                 "company": company,
-                "idempotency_key": f"master-data:{entity_path}:deactivate:smoke",
+                "idempotency_key": f"master-data:{entity_path}:{code}:deactivate:smoke",
                 "reason": "acceptance-smoke",
             },
         )
@@ -963,7 +1007,25 @@ def _exercise_sales_order_to_material_issue_smoke(client: TestClient, session_lo
         )
         for entity_type, code, name, payload in (
             ("supplier", "SUP-A4-SMOKE", "SUP-A4-SMOKE", {"supplier_name": "SUP-A4-SMOKE"}),
-            ("material", material_code, material_code, {"material_item_code": material_code, "material_kind": "fabric"}),
+            (
+                "material",
+                "MU-A4-METER",
+                "米",
+                {"material_kind": "unit", "unit_code": "MU-A4-METER", "unit_name": "米", "base_unit": "米"},
+            ),
+            (
+                "material",
+                material_code,
+                material_code,
+                {
+                    "material_item_code": material_code,
+                    "material_kind": "fabric",
+                    "supplier_code": "SUP-A4-SMOKE",
+                    "supplier_name": "SUP-A4-SMOKE",
+                    "unit_code": "MU-A4-METER",
+                    "uom": "米",
+                },
+            ),
             ("warehouse", warehouse, warehouse, {"warehouse_code": warehouse, "warehouse_name": warehouse}),
         ):
             session.add(
@@ -1649,6 +1711,37 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
             .one()
         )
         style_master_id = int(style.id)
+        for entity_type, code, name, payload in (
+            ("supplier", "SUP-SAMPLE-SMOKE", "SUP-SAMPLE-SMOKE", {"supplier_name": "SUP-SAMPLE-SMOKE"}),
+            (
+                "material",
+                "MU-SAMPLE-METER",
+                "米",
+                {"material_kind": "unit", "unit_code": "MU-SAMPLE-METER", "unit_name": "米", "base_unit": "米"},
+            ),
+        ):
+            if (
+                session.query(LyMasterDataRecord)
+                .filter(
+                    LyMasterDataRecord.entity_type == entity_type,
+                    LyMasterDataRecord.company == company,
+                    LyMasterDataRecord.code == code,
+                )
+                .first()
+                is None
+            ):
+                session.add(
+                    LyMasterDataRecord(
+                        entity_type=entity_type,
+                        company=company,
+                        code=code,
+                        name=name,
+                        status="active",
+                        payload=payload,
+                        created_by="frontend.readiness.smoke",
+                        updated_by="frontend.readiness.smoke",
+                    )
+                )
         for code, name in (
             (material_code, "Smoke 样衣面料"),
             (alternative_material_code, "Smoke 样衣替代料"),
@@ -1670,7 +1763,14 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
                         code=code,
                         name=name,
                         status="active",
-                        payload={"material_item_code": code, "material_kind": "fabric"},
+                        payload={
+                            "material_item_code": code,
+                            "material_kind": "fabric",
+                            "supplier_code": "SUP-SAMPLE-SMOKE",
+                            "supplier_name": "SUP-SAMPLE-SMOKE",
+                            "unit_code": "MU-SAMPLE-METER",
+                            "uom": "米",
+                        },
                         created_by="frontend.readiness.smoke",
                         updated_by="frontend.readiness.smoke",
                     )
@@ -3236,7 +3336,25 @@ def main() -> int:
         with session_local() as session:
             for entity_type, code, name, payload in (
                 ("supplier", purchase_supplier, purchase_supplier, {"supplier_name": purchase_supplier}),
-                ("material", purchase_item, "Smoke Fabric", {"material_item_code": purchase_item, "material_kind": "fabric"}),
+                (
+                    "material",
+                    "MU-SMOKE-METER",
+                    "米",
+                    {"material_kind": "unit", "unit_code": "MU-SMOKE-METER", "unit_name": "米", "base_unit": "米"},
+                ),
+                (
+                    "material",
+                    purchase_item,
+                    "Smoke Fabric",
+                    {
+                        "material_item_code": purchase_item,
+                        "material_kind": "fabric",
+                        "supplier_code": purchase_supplier,
+                        "supplier_name": purchase_supplier,
+                        "unit_code": "MU-SMOKE-METER",
+                        "uom": "米",
+                    },
+                ),
                 (
                     "warehouse",
                     purchase_warehouse,
