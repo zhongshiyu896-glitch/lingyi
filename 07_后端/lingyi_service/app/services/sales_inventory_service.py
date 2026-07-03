@@ -30,6 +30,7 @@ from app.models.style_master import LyStyleMaster
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.schemas.sales_inventory import CustomerItem
 from app.schemas.sales_inventory import CustomerReturnApplicationData
 from app.schemas.sales_inventory import CustomerReturnApplicationItem
@@ -6040,12 +6041,18 @@ class SalesInventoryService:
             )
 
     def _local_stock_balance(self, *, company: str, item_code: str, warehouse: str) -> Decimal:
-        summary = WarehouseService(session=self._require_session()).get_local_stock_summary(
-            company=company,
-            warehouse=warehouse,
-            item_code=item_code,
+        rows = (
+            self._require_session()
+            .query(LyWarehouseStockLedgerEntry)
+            .filter(
+                LyWarehouseStockLedgerEntry.company == company,
+                LyWarehouseStockLedgerEntry.warehouse == warehouse,
+                LyWarehouseStockLedgerEntry.item_code == item_code,
+                LyWarehouseStockLedgerEntry.status == "active",
+            )
+            .all()
         )
-        return sum((Decimal(str(row.actual_qty)) for row in summary.items), Decimal("0"))
+        return sum((Decimal(str(row.actual_qty or 0)) for row in rows), Decimal("0"))
 
     def _increase_native_sales_order_delivered_qty(
         self,

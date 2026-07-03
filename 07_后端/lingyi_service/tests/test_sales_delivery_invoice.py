@@ -165,6 +165,8 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
                     created_at=datetime(2026, 1, 1, 8, 0, tzinfo=timezone.utc),
                 )
             )
+            session.flush()
+            WarehouseService(session=session)._refresh_projected_ledger_for_draft(receipt)
             session.commit()
 
     @staticmethod
@@ -355,6 +357,28 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SALES_DELIVERY_INVOICE_STOCK_SHORTAGE")
+
+    def test_delivery_invoice_ignores_unprojected_stock_drafts(self) -> None:
+        with self.SessionLocal() as session:
+            session.query(LyWarehouseStockLedgerEntry).delete()
+            session.commit()
+
+        response = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(
+                delivery_note="DN-B4-UNPROJECTED",
+                sales_invoice="SI-B4-UNPROJECTED",
+                source_ref="SRC-B4-UNPROJECTED",
+                idempotency_key="idem-b4-delivery-unprojected",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "SALES_DELIVERY_INVOICE_STOCK_SHORTAGE")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyDeliveryInvoice).count(), 0)
+            self.assertEqual(Decimal(str(session.query(LySalesOrderItem).one().delivered_qty)), Decimal("0.000000"))
 
     def test_delivery_invoice_cancel_denies_fastapi_resource_scope_and_does_not_reverse(self) -> None:
         created = self.client.post(
