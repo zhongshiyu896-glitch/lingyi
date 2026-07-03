@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 import os
 import unittest
@@ -16,6 +17,9 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionNotice
+from app.models.production import LyProductionPlan
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LyDeliveryInvoice
@@ -62,6 +66,7 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
         StyleMasterBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
+        ProductionBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -101,6 +106,8 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             session.query(LySalesOrderIdempotency).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
+            session.query(LyProductionNotice).delete()
+            session.query(LyProductionPlan).delete()
             session.query(LyStyleMaster).delete()
             session.query(LyWarehouseStockLedgerEntry).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
@@ -191,7 +198,7 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
 
     @classmethod
     def _finished_goods_payload(cls, *, qty: str = "10") -> dict[str, object]:
-        source_id = f"{cls.STOCK_TAG}:finished-goods:FGI-B1-CLOSED"
+        source_id = f"{cls.STOCK_TAG}:finished-goods:fg:so-{cls.SALES_ORDER}:pn-PN-B1-CLOSED:pg-PPG-B1-CLOSED:li-{cls.SALES_ORDER}-001"
         return {
             "company": cls.COMPANY,
             "purpose": "Material Receipt",
@@ -221,6 +228,46 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
                 }
             ],
         }
+
+    def _seed_finished_goods_production(self) -> None:
+        with self.SessionLocal() as session:
+            order = session.query(LySalesOrder).filter_by(company=self.COMPANY, sales_order_no=self.SALES_ORDER).one()
+            item = session.query(LySalesOrderItem).filter_by(sales_order_id=int(order.id), item_code=self.ITEM_CODE).one()
+            session.add(
+                LyProductionPlan(
+                    plan_no="PP-B1-CLOSED",
+                    plan_group_no="PPG-B1-CLOSED",
+                    company=self.COMPANY,
+                    sales_order=self.SALES_ORDER,
+                    sales_order_item=str(item.sales_order_item),
+                    customer=self.CUSTOMER,
+                    item_code=self.ITEM_CODE,
+                    bom_id=1,
+                    planned_qty=Decimal("10"),
+                    planned_start_date=date.fromisoformat(self.BUSINESS_DATE),
+                    status="production_completed",
+                    idempotency_key="idem-b1-production-plan",
+                    request_hash="hash-b1-production-plan",
+                    created_by="b1.closed.flow",
+                )
+            )
+            session.add(
+                LyProductionNotice(
+                    notice_no="PN-B1-CLOSED",
+                    company=self.COMPANY,
+                    sales_order=self.SALES_ORDER,
+                    customer=self.CUSTOMER,
+                    item_code=self.ITEM_CODE,
+                    item_name="B1 Closed Tee",
+                    order_date=date.fromisoformat(self.BUSINESS_DATE),
+                    delivery_date=date.fromisoformat("2026-06-30"),
+                    order_qty=Decimal("10"),
+                    status="sent",
+                    created_by="b1.closed.flow",
+                    updated_by="b1.closed.flow",
+                )
+            )
+            session.commit()
 
     @classmethod
     def _delivery_payload(cls) -> dict[str, object]:
@@ -292,6 +339,7 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             json=self._sales_order_payload(),
         )
         self.assertEqual(order.status_code, 201, order.text)
+        self._seed_finished_goods_production()
 
         inbound_payload = self._finished_goods_payload()
         inbound = self.client.post(
@@ -403,6 +451,7 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             json=self._sales_order_payload(),
         )
         self.assertEqual(order.status_code, 201, order.text)
+        self._seed_finished_goods_production()
         inbound_payload = self._finished_goods_payload()
         inbound = self.client.post(
             "/api/warehouse/stock-entry-drafts",
@@ -491,6 +540,7 @@ class SalesFinishedGoodsInvoicePaymentFlowTest(unittest.TestCase):
             json=self._sales_order_payload(),
         )
         self.assertEqual(order.status_code, 201, order.text)
+        self._seed_finished_goods_production()
         inbound_payload = self._finished_goods_payload()
         inbound = self.client.post(
             "/api/warehouse/stock-entry-drafts",

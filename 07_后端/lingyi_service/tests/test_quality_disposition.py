@@ -38,6 +38,7 @@ class QualityDispositionTest(QualityApiBase):
             rejected_qty=Decimal("0"),
             defect_qty=Decimal("0"),
         )
+        self._seed_finished_goods_production_for_inspection(seeded, qty=Decimal("10"))
         payload = self._action_payload(
             seeded,
             scenario_tag="Z003-QUALITY-INSPECTION-20260617-201",
@@ -177,6 +178,7 @@ class QualityDispositionTest(QualityApiBase):
             rejected_qty=Decimal("0"),
             defect_qty=Decimal("0"),
         )
+        self._seed_finished_goods_production_for_inspection(seeded, qty=Decimal("8"))
         payload = self._action_payload(
             seeded,
             scenario_tag="Z003-QUALITY-INSPECTION-20260617-203",
@@ -220,6 +222,7 @@ class QualityDispositionTest(QualityApiBase):
             rejected_qty=Decimal("0"),
             defect_qty=Decimal("0"),
         )
+        self._seed_finished_goods_production_for_inspection(seeded, qty=Decimal("8"))
         payload = self._action_payload(
             seeded,
             scenario_tag="Z003-QUALITY-INSPECTION-20260617-204",

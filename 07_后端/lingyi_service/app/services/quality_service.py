@@ -1408,7 +1408,9 @@ class QualityService:
         inspection_no = str(inspection.inspection_no)
         digest = hashlib.sha256(f"{int(inspection.id)}:{inspection_no}".encode("utf-8")).hexdigest()[:16]
         safe_no = inspection_no.replace(" ", "")[:80]
-        return f"quality-release:{safe_no}:{digest}"
+        sales_order = _text(getattr(inspection, "sales_order", None))
+        sales_order_component = f":so-{sales_order}" if sales_order else ""
+        return f"quality-release:{safe_no}{sales_order_component}:{digest}"
 
     def _next_inspection_no(self) -> str:
         prefix = f"QI-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"

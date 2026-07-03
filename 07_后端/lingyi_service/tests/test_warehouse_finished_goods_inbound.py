@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 import os
 import unittest
@@ -18,7 +19,15 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionJobCardLink
+from app.models.production import LyProductionNotice
+from app.models.production import LyProductionPlan
+from app.models.production import LyProductionTrackingNodeEvent
 from app.models.quality import Base as QualityBase
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
@@ -46,6 +55,8 @@ class WarehouseFinishedGoodsInboundApiBase(unittest.TestCase):
             execution_options={"schema_translate_map": {"ly_schema": None, "public": None}},
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
+        ProductionBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
 
@@ -78,6 +89,12 @@ class WarehouseFinishedGoodsInboundApiBase(unittest.TestCase):
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LyProductionTrackingNodeEvent).delete()
+            session.query(LyProductionJobCardLink).delete()
+            session.query(LyProductionNotice).delete()
+            session.query(LyProductionPlan).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrder).delete()
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
             session.commit()
@@ -154,6 +171,118 @@ class WarehouseFinishedGoodsInboundApiBase(unittest.TestCase):
             ],
         }
 
+    def _attach_production_source(
+        self,
+        payload: dict,
+        *,
+        plan_status: str = "production_completed",
+        notice_status: str = "sent",
+        job_card_done: bool = False,
+    ) -> None:
+        item_code = str(payload["item_code"])
+        safe_item = item_code.replace("/", "-").replace(" ", "-")
+        sales_order_no = f"SO-FG-{safe_item}"
+        sales_order_item = f"{sales_order_no}-001"
+        plan_no = f"PP-FG-{safe_item}"
+        notice_no = f"PN-FG-{safe_item}"
+        source_id = (
+            f"{self.STOCK_ENTRY_SCENARIO_TAG}:finished-goods:"
+            f"fg:so-{sales_order_no}:pn-{notice_no}:pg-{plan_no}:li-{sales_order_item}:b-B1:0"
+        )
+        payload["source_id"] = source_id
+        payload["source_ref"] = source_id
+        payload["finished_goods_source_id"] = source_id
+        payload["items"][0]["sales_order_item"] = sales_order_item
+
+        with self.SessionLocal() as session:
+            order = LySalesOrder(
+                sales_order_no=sales_order_no,
+                source_order_ref=sales_order_no,
+                company="COMP-A",
+                customer="CUST-FG",
+                status="planned",
+                docstatus=1,
+                transaction_date=date(2026, 5, 1),
+                delivery_date=date(2026, 6, 1),
+                currency="CNY",
+                grand_total=Decimal("1000"),
+                idempotency_key=f"idem-{sales_order_no}",
+                request_hash=f"hash-{sales_order_no}",
+                scenario_tag="FG-INBOUND-GATE",
+                payload={},
+                created_by="seed",
+            )
+            session.add(order)
+            session.flush()
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=1,
+                    sales_order_item=sales_order_item,
+                    item_code=item_code,
+                    item_name=item_code,
+                    qty=Decimal("10"),
+                    planned_qty=Decimal("10"),
+                    delivered_qty=Decimal("0"),
+                    rate=Decimal("100"),
+                    amount=Decimal("1000"),
+                    uom="Nos",
+                    warehouse="FG-WH-001",
+                    delivery_date=date(2026, 6, 1),
+                )
+            )
+            session.add(
+                LyProductionNotice(
+                    notice_no=notice_no,
+                    company="COMP-A",
+                    sales_order_id=int(order.id),
+                    sales_order=sales_order_no,
+                    customer="CUST-FG",
+                    item_code=item_code,
+                    item_name=item_code,
+                    order_date=date(2026, 5, 1),
+                    delivery_date=date(2026, 6, 1),
+                    order_qty=Decimal("10"),
+                    status=notice_status,
+                    created_by="seed",
+                )
+            )
+            plan = LyProductionPlan(
+                plan_no=plan_no,
+                plan_group_no=plan_no,
+                company="COMP-A",
+                sales_order=sales_order_no,
+                sales_order_item=sales_order_item,
+                customer="CUST-FG",
+                item_code=item_code,
+                bom_id=1,
+                planned_qty=Decimal("10"),
+                planned_start_date=date(2026, 5, 2),
+                status=plan_status,
+                idempotency_key=f"idem-{plan_no}",
+                request_hash=f"hash-{plan_no}",
+                created_by="seed",
+            )
+            session.add(plan)
+            session.flush()
+            if job_card_done:
+                session.add(
+                    LyProductionJobCardLink(
+                        plan_id=int(plan.id),
+                        work_order=f"WO-{safe_item}",
+                        job_card=f"JC-{safe_item}",
+                        company="COMP-A",
+                        item_code=item_code,
+                        operation="车缝",
+                        operation_sequence=90,
+                        expected_qty=Decimal("10"),
+                        completed_qty=Decimal("10"),
+                        erpnext_status="Completed",
+                    )
+                )
+            session.commit()
+
 
 class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase):
     """TASK-090C contract-level tests."""
@@ -199,6 +328,7 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
             },
         ):
             payload = self._draft_payload(qty="5")
+            self._attach_production_source(payload)
             response = self.client.post(
                 "/api/warehouse/stock-entry-drafts",
                 headers=self._headers(
@@ -212,7 +342,7 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
         body = response.json()["data"]
         self.assertEqual(body["purpose"], "Material Receipt")
         self.assertEqual(body["source_type"], "finished_goods_inbound")
-        self.assertEqual(body["source_id"], "MLI-0001")
+        self.assertEqual(body["source_id"], payload["finished_goods_source_id"])
         self.assertEqual(body["allocation_mode"], "strict_alloc")
         self.assertIsNone(body["strict_failure_reason"])
         self.assertTrue(body["show_completed_forced"])
@@ -248,6 +378,7 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
             },
         ):
             payload = self._draft_payload(qty="4")
+            self._attach_production_source(payload)
             response = self.client.post(
                 "/api/warehouse/stock-entry-drafts",
                 headers=self._headers(
@@ -264,10 +395,8 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
 
     def test_create_finished_goods_draft_fastapi_local_source_without_erpnext(self) -> None:
         payload = self._draft_payload(qty="3", item_code="FG-LOCAL-001")
-        payload["source_id"] = f"{self.STOCK_ENTRY_SCENARIO_TAG}-LOCAL-FG-001"
-        payload["source_ref"] = payload["source_id"]
-        payload["finished_goods_source_id"] = payload["source_id"]
         payload["items"][0]["item_code"] = "FG-LOCAL-001"
+        self._attach_production_source(payload)
         response = self.client.post(
             "/api/warehouse/stock-entry-drafts",
             headers=self._headers(
@@ -331,10 +460,8 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
 
     def test_cancel_finished_goods_draft_removes_effective_stock(self) -> None:
         payload = self._draft_payload(qty="3", item_code="FG-CANCEL-001")
-        payload["source_id"] = f"{self.STOCK_ENTRY_SCENARIO_TAG}-LOCAL-FG-CANCEL"
-        payload["source_ref"] = payload["source_id"]
-        payload["finished_goods_source_id"] = payload["source_id"]
         payload["items"][0]["item_code"] = "FG-CANCEL-001"
+        self._attach_production_source(payload)
         create_resp = self.client.post(
             "/api/warehouse/stock-entry-drafts",
             headers=self._headers(
@@ -395,6 +522,24 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
         )
         self.assertEqual(readback_after.status_code, 200, readback_after.text)
         self.assertEqual(readback_after.json()["data"]["items"], [])
+
+    def test_finished_goods_inbound_blocks_before_production_complete(self) -> None:
+        payload = self._draft_payload(qty="2", item_code="FG-BLOCK-001")
+        self._attach_production_source(payload, plan_status="planned", notice_status="sent")
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._stock_entry_request_id(payload),
+            ),
+            json=payload,
+        )
+
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual(response.json().get("code"), "WAREHOUSE_FINISHED_GOODS_PRODUCTION_NOT_COMPLETE")
+        self.assertIn("尚未完成生产", response.json().get("message", ""))
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyWarehouseStockEntryDraft).count(), 0)
 
     def test_create_finished_goods_draft_candidate_disabled_fail_closed(self) -> None:
         with patch(

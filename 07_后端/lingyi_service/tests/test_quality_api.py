@@ -26,6 +26,9 @@ from app.models.quality import LyQualityInspectionItem
 from app.models.quality import LyQualityOperationLog
 from app.models.quality import LyQualityWriteIdempotency
 from app.models.quality_outbox import LyQualityOutbox
+from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionNotice
+from app.models.production import LyProductionPlan
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
@@ -65,6 +68,7 @@ class QualityApiBase(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         QualityBase.metadata.create_all(bind=cls.engine)
+        ProductionBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -106,6 +110,8 @@ class QualityApiBase(unittest.TestCase):
             session.query(LyQualityDefect).delete()
             session.query(LyQualityInspectionItem).delete()
             session.query(LyQualityInspection).delete()
+            session.query(LyProductionNotice).delete()
+            session.query(LyProductionPlan).delete()
             session.commit()
 
     @staticmethod
@@ -320,6 +326,57 @@ class QualityApiBase(unittest.TestCase):
             session.add(log)
             session.commit()
             return {"id": int(inspection.id), "inspection_no": str(inspection.inspection_no)}
+
+    def _seed_finished_goods_production_for_inspection(
+        self,
+        seeded: dict[str, int | str],
+        *,
+        qty: Decimal,
+        item_code: str = "ITEM-A",
+    ) -> str:
+        inspection_id = int(seeded["id"])
+        inspection_no = str(seeded["inspection_no"])
+        sales_order = f"SO-{inspection_no}"
+        sales_order_item = f"{sales_order}-001"
+        with self.SessionLocal() as session:
+            inspection = session.query(LyQualityInspection).filter(LyQualityInspection.id == inspection_id).one()
+            inspection.sales_order = sales_order
+            session.add(
+                LyProductionPlan(
+                    plan_no=f"PP-{inspection_no}",
+                    plan_group_no=f"PPG-{inspection_no}",
+                    company=str(inspection.company),
+                    sales_order=sales_order,
+                    sales_order_item=sales_order_item,
+                    customer="CUST-A",
+                    item_code=item_code,
+                    bom_id=1,
+                    planned_qty=qty,
+                    planned_start_date=date(2026, 4, 10),
+                    status="production_completed",
+                    idempotency_key=f"idem-prod-{inspection_no}",
+                    request_hash=f"hash-prod-{inspection_no}",
+                    created_by="quality.user",
+                )
+            )
+            session.add(
+                LyProductionNotice(
+                    notice_no=f"PN-{inspection_no}",
+                    company=str(inspection.company),
+                    sales_order=sales_order,
+                    customer="CUST-A",
+                    item_code=item_code,
+                    item_name=item_code,
+                    order_date=date(2026, 4, 10),
+                    delivery_date=date(2026, 4, 20),
+                    order_qty=qty,
+                    status="sent",
+                    created_by="quality.user",
+                    updated_by="quality.user",
+                )
+            )
+            session.commit()
+        return sales_order
 
 
 class QualityApiTest(QualityApiBase):

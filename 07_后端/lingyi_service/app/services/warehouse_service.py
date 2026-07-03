@@ -34,6 +34,10 @@ from app.models.master_data import LyMasterDataRecord
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.material_purchase import LyMaterialPurchaseRequirement
+from app.models.production import LyProductionJobCardLink
+from app.models.production import LyProductionNotice
+from app.models.production import LyProductionPlan
+from app.models.production import LyProductionTrackingNodeEvent
 from app.models.quality_outbox import LyQualityOutbox
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
@@ -159,6 +163,7 @@ class WarehouseService:
     _FINISHED_GOODS_DISABLED_ENTRY_REASON = "当前入口存在受限状态，需按冻结口径提示，不得直接放开"
     _ALLOCATION_CONTRACT = "strict_alloc -> zero_placeholder_fallback"
     _STRICT_ALLOC_FAILURE_REASON = "找不到可分配的制单明细"
+    _FINISHED_GOODS_COMPLETE_NODE_KEYS = {"job_card"}
 
     def __init__(
         self,
@@ -2935,6 +2940,11 @@ class WarehouseService:
                 target_warehouse=target_warehouse,
                 items=payload.items,
             )
+            self._ensure_finished_goods_production_complete(
+                company=company,
+                source_id=source_id,
+                item_rows=item_rows,
+            )
         else:
             purpose = self._require_text(payload.purpose, "purpose")
             if purpose not in self._PURPOSES:
@@ -5050,6 +5060,205 @@ class WarehouseService:
                 strict_failure_reason,
             )
         return item_rows, "zero_placeholder_fallback", strict_failure_reason
+
+    def _ensure_finished_goods_production_complete(
+        self,
+        *,
+        company: str,
+        source_id: str,
+        item_rows: list[dict[str, Any]],
+    ) -> None:
+        plans = self._resolve_finished_goods_production_plans(
+            company=company,
+            source_id=source_id,
+            item_rows=item_rows,
+        )
+        for plan in plans:
+            notice = (
+                self._require_session()
+                .query(LyProductionNotice)
+                .filter(
+                    LyProductionNotice.company == company,
+                    LyProductionNotice.sales_order == str(plan.sales_order),
+                )
+                .order_by(LyProductionNotice.id.desc())
+                .first()
+            )
+            if notice is None:
+                self._raise_finished_goods_gate("找不到已下发生产通知单，不能创建成品入库")
+            if str(notice.status) != "sent":
+                self._raise_finished_goods_gate("生产通知单尚未下发，不能创建成品入库")
+
+        completed_qty = sum((self._finished_goods_completed_qty(plan=plan) for plan in plans), Decimal("0"))
+        if completed_qty <= Decimal("0"):
+            self._raise_finished_goods_gate("该计划尚未完成生产，不能创建成品入库")
+
+        requested_qty = sum((Decimal(str(row.get("qty") or 0)) for row in item_rows), Decimal("0"))
+        if requested_qty <= Decimal("0"):
+            self._raise_finished_goods_gate("成品入库数量必须大于 0")
+        already_inbound_qty = self._finished_goods_inbound_qty_for_plans(plans=plans)
+        available_qty = completed_qty - already_inbound_qty
+        if requested_qty > available_qty:
+            self._raise_finished_goods_gate(
+                f"成品入库数量超过已完成可入库量：已完成 {completed_qty}，已入库 {already_inbound_qty}，本次需入 {requested_qty}"
+            )
+
+    def _resolve_finished_goods_production_plans(
+        self,
+        *,
+        company: str,
+        source_id: str,
+        item_rows: list[dict[str, Any]],
+    ) -> list[LyProductionPlan]:
+        session = self._require_session()
+        source_text = self._decode_source_text(source_id)
+        plan_ref = (
+            self._source_component(source_text, "pg-")
+            or self._source_component(source_text, "plan-")
+            or self._prefixed_code(source_text, "PP")
+        )
+        sales_order = self._sales_order_from_source_text(source_text)
+        source_sales_order_item = self._source_component(source_text, "li-")
+        item_sales_order_item = next(
+            (self._text(row.get("sales_order_item")) for row in item_rows if self._text(row.get("sales_order_item"))),
+            None,
+        )
+        sales_order_item = item_sales_order_item or source_sales_order_item
+        item_code = next((self._text(row.get("item_code")) for row in item_rows if self._text(row.get("item_code"))), None)
+
+        query = session.query(LyProductionPlan).filter(LyProductionPlan.company == company)
+        explicit_plan_or_group = False
+        if plan_ref:
+            explicit_plan_or_group = True
+            query = query.filter(or_(LyProductionPlan.plan_no == plan_ref, LyProductionPlan.plan_group_no == plan_ref))
+            if sales_order:
+                query = query.filter(LyProductionPlan.sales_order == sales_order)
+            if sales_order_item:
+                query = query.filter(LyProductionPlan.sales_order_item == sales_order_item)
+        elif sales_order and sales_order_item:
+            query = query.filter(
+                LyProductionPlan.sales_order == sales_order,
+                LyProductionPlan.sales_order_item == sales_order_item,
+            )
+        elif sales_order and item_code:
+            query = query.filter(
+                LyProductionPlan.sales_order == sales_order,
+                LyProductionPlan.item_code == item_code,
+            )
+        elif sales_order_item:
+            query = query.filter(LyProductionPlan.sales_order_item == sales_order_item)
+        else:
+            self._raise_finished_goods_gate("成品入库来源无法匹配生产计划，不能创建成品入库")
+
+        rows = query.order_by(LyProductionPlan.id.desc()).all()
+        if not rows:
+            self._raise_finished_goods_gate("成品入库来源找不到生产计划，不能创建成品入库")
+        if len(rows) > 1 and not self._finished_goods_plan_group_is_explicit(rows=rows, plan_ref=plan_ref, sales_order=sales_order):
+            self._raise_finished_goods_gate("成品入库来源匹配到多张生产计划，请先明确计划明细")
+        if len(rows) > 1 and not explicit_plan_or_group:
+            self._raise_finished_goods_gate("成品入库来源匹配到多张生产计划，请先明确计划明细")
+        return rows
+
+    @staticmethod
+    def _finished_goods_plan_group_is_explicit(
+        *,
+        rows: list[LyProductionPlan],
+        plan_ref: str | None,
+        sales_order: str | None,
+    ) -> bool:
+        if not plan_ref or not sales_order:
+            return False
+        return all(str(row.plan_group_no or "") == plan_ref and str(row.sales_order) == sales_order for row in rows)
+
+    def _finished_goods_completed_qty(self, *, plan: LyProductionPlan) -> Decimal:
+        planned_qty = Decimal(str(plan.planned_qty or 0))
+        if planned_qty <= Decimal("0"):
+            return Decimal("0")
+        if str(plan.status) == "production_completed":
+            return planned_qty
+
+        cards = (
+            self._require_session()
+            .query(LyProductionJobCardLink)
+            .filter(LyProductionJobCardLink.plan_id == int(plan.id))
+            .all()
+        )
+        if cards:
+            expected_qty = sum((Decimal(str(row.expected_qty or 0)) for row in cards), Decimal("0"))
+            completed_qty = sum((Decimal(str(row.completed_qty or 0)) for row in cards), Decimal("0"))
+            if expected_qty > Decimal("0") and completed_qty >= expected_qty:
+                return min(completed_qty, planned_qty)
+
+        latest_done_node = (
+            self._require_session()
+            .query(LyProductionTrackingNodeEvent)
+            .filter(
+                LyProductionTrackingNodeEvent.plan_id == int(plan.id),
+                LyProductionTrackingNodeEvent.node_key.in_(self._FINISHED_GOODS_COMPLETE_NODE_KEYS),
+                LyProductionTrackingNodeEvent.status == "done",
+                LyProductionTrackingNodeEvent.progress >= 100,
+            )
+            .order_by(LyProductionTrackingNodeEvent.created_at.desc(), LyProductionTrackingNodeEvent.id.desc())
+            .first()
+        )
+        if latest_done_node is not None:
+            return planned_qty
+        return Decimal("0")
+
+    def _finished_goods_inbound_qty_for_plans(self, *, plans: list[LyProductionPlan]) -> Decimal:
+        session = self._require_session()
+        company = str(plans[0].company)
+        item_codes = {str(plan.item_code) for plan in plans}
+        rows = (
+            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.source_type == self._FINISHED_GOODS_SOURCE_TYPE,
+                LyWarehouseStockEntryDraft.status != "cancelled",
+                LyWarehouseStockEntryDraftItem.item_code.in_(item_codes),
+            )
+            .all()
+        )
+        total = Decimal("0")
+        for draft, item in rows:
+            if any(self._finished_goods_draft_matches_plan(draft=draft, item=item, plan=plan) for plan in plans):
+                total += Decimal(str(item.qty or 0))
+        return total
+
+    def _finished_goods_draft_matches_plan(
+        self,
+        *,
+        draft: LyWarehouseStockEntryDraft,
+        item: LyWarehouseStockEntryDraftItem,
+        plan: LyProductionPlan,
+    ) -> bool:
+        item_sales_order_item = self._text(getattr(item, "sales_order_item", None))
+        if item_sales_order_item and item_sales_order_item == str(plan.sales_order_item):
+            return True
+        source_text = self._decode_source_text(getattr(draft, "source_id", ""))
+        plan_no = self._text(getattr(plan, "plan_no", None))
+        if plan_no and plan_no.lower() in source_text.lower():
+            return True
+        plan_group_no = self._text(getattr(plan, "plan_group_no", None))
+        source_sales_order = self._sales_order_from_source_text(source_text)
+        source_sales_order_item = self._source_component(source_text, "li-")
+        if plan_group_no and plan_group_no.lower() in source_text.lower() and source_sales_order == str(plan.sales_order):
+            return source_sales_order_item is None or source_sales_order_item == str(plan.sales_order_item)
+        return source_sales_order == str(plan.sales_order) and (
+            source_sales_order_item is None or source_sales_order_item == str(plan.sales_order_item)
+        )
+
+    @staticmethod
+    def _raise_finished_goods_gate(message: str) -> None:
+        raise WarehouseServiceError(
+            422,
+            "WAREHOUSE_FINISHED_GOODS_PRODUCTION_NOT_COMPLETE",
+            message,
+        )
 
     def _validate_purpose_warehouses(
         self,

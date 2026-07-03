@@ -813,7 +813,25 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         qty: str,
         idempotency_key: str,
     ) -> dict[str, object]:
-        source_id = f"{self.WAREHOUSE_SCENARIO}:finished-goods:{sales_order}"
+        with self.SessionLocal() as session:
+            plan = (
+                session.query(LyProductionPlan)
+                .filter_by(company=self.COMPANY, sales_order=sales_order)
+                .order_by(LyProductionPlan.id.asc())
+                .first()
+            )
+            self.assertIsNotNone(plan)
+            notice = (
+                session.query(LyProductionNotice)
+                .filter_by(company=self.COMPANY, sales_order=sales_order)
+                .order_by(LyProductionNotice.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(notice)
+            source_id = (
+                f"{self.WAREHOUSE_SCENARIO}:finished-goods:"
+                f"fg:so-{sales_order}:pn-{notice.notice_no}:pg-{plan.plan_no}:li-{plan.sales_order_item}"
+            )
         response = self.client.post(
             "/api/warehouse/stock-entry-drafts",
             headers=self._headers(
@@ -1144,6 +1162,17 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(confirmed_notice_data["status"], "confirmed")
         self.assertEqual(confirmed_notice_data["notice_no"], notice_data["notice_no"])
 
+        sent_notice = self.client.patch(
+            f"/api/production/notices/{notice_data['id']}",
+            headers=self._headers("req-a6-sf-notice-sent"),
+            json={
+                "company": self.COMPANY,
+                "status": "sent",
+            },
+        )
+        self.assertEqual(sent_notice.status_code, 200, sent_notice.text)
+        self.assertEqual(sent_notice.json()["data"]["status"], "sent")
+
         for plan_id in plan_ids:
             ready_detail = self.client.get(
                 f"/api/production/plans/{plan_id}",
@@ -1153,7 +1182,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             plan_notice = ready_detail.json()["data"]["production_notice"]
             self.assertEqual(plan_notice["notice_id"], notice_data["id"])
             self.assertEqual(plan_notice["notice_no"], notice_data["notice_no"])
-            self.assertEqual(plan_notice["notice_status"], "confirmed")
+            self.assertEqual(plan_notice["notice_status"], "sent")
             self.assertTrue(plan_notice["allow_start_production"])
 
         started_plan_ids: list[int] = []
@@ -1181,7 +1210,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(start.json()["data"]["status"], "production_in_progress")
             self.assertEqual(start.json()["data"]["factory_name"], "本厂")
             self.assertEqual(start.json()["data"]["production_notice"]["notice_no"], notice_data["notice_no"])
-            self.assertEqual(start.json()["data"]["production_notice"]["notice_status"], "confirmed")
+            self.assertEqual(start.json()["data"]["production_notice"]["notice_status"], "sent")
             started_plan_ids.append(plan_id)
 
         for plan_id in started_plan_ids:
@@ -1203,9 +1232,7 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(complete.status_code, 200, complete.text)
             self.assertEqual(complete.json()["data"]["status"], "production_completed")
 
-        finished_goods_source = (
-            f"{self.WAREHOUSE_SCENARIO}:fg:{sales_order_no}:notice:{notice_data['notice_no']}:plan:{plan_group_no}"
-        )
+        finished_goods_source = f"{self.WAREHOUSE_SCENARIO}:finished-goods:fg:so-{sales_order_no}:pn-{notice_data['notice_no']}:pg-{plan_group_no}"
         finished_goods_idempotency_key = f"{self.WAREHOUSE_SCENARIO}:fg-inbound:{sales_order_no}"
         finished_goods_business_date = "2026-07-06"
         finished_goods = self.client.post(
@@ -1242,7 +1269,6 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
                         "qty": "50",
                         "uom": "件",
                         "target_warehouse": "FG-WH-LOCAL",
-                        "sales_order_item": order_items[0]["name"],
                         "bom_color": order_items[0]["color"],
                         "bom_size": order_items[0]["size"],
                     }
@@ -1316,13 +1342,13 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
             self.assertEqual(str(fg_warehouse.name), "默认成品仓")
             self.assertEqual(production_statuses, {"production_completed"})
             self.assertEqual(production_plan_group_nos, {plan_group_no})
-            self.assertEqual(str(notice_row.status), "confirmed")
+            self.assertEqual(str(notice_row.status), "sent")
             self.assertIn(sales_order_no, str(fg_draft_row.source_id))
             self.assertIn(str(notice_row.notice_no), str(fg_draft_row.source_id))
             self.assertIn(plan_group_no, str(fg_draft_row.source_id))
-            self.assertEqual({str(row.sales_order_item) for row in fg_items}, {order_items[0]["name"]})
+            self.assertEqual({row.sales_order_item for row in fg_items}, {None})
             self.assertEqual({str(row.source_id) for row in fg_ledgers}, {str(fg_draft_row.id)})
-            self.assertEqual({str(row.sales_order_item) for row in fg_ledgers}, {order_items[0]["name"]})
+            self.assertEqual({row.sales_order_item for row in fg_ledgers}, {None})
 
     def _cancel_stock_receipt(self, *, draft: dict[str, object], source_id: str, idempotency_key: str, qty: str):
         return self.client.post(
@@ -2375,6 +2401,26 @@ class A6MaterialRequirementProcurementFlowTest(unittest.TestCase):
         self.assertEqual(material_issue_data["stock_entry_status"], "pending_outbox")
         self.assertEqual(material_issue_data["items"][0]["material_item_code"], self.MATERIAL)
         self.assertEqual(Decimal(str(material_issue_data["items"][0]["qty"])), Decimal("84.000000"))
+
+        with self.SessionLocal() as session:
+            plan_row = session.query(LyProductionPlan).filter_by(company=self.COMPANY, sales_order="SO-A6-001").one()
+            plan_row.status = "production_completed"
+            session.add(
+                LyProductionNotice(
+                    notice_no="PN-A6-001",
+                    company=self.COMPANY,
+                    sales_order="SO-A6-001",
+                    customer="CUST-A6",
+                    item_code=self.STYLE,
+                    item_name=self.STYLE,
+                    order_date=date(2026, 6, 17),
+                    delivery_date=date(2026, 6, 30),
+                    order_qty=Decimal("120"),
+                    status="sent",
+                    created_by="seed",
+                )
+            )
+            session.commit()
 
         finished_goods = self._create_finished_goods_inbound(
             sales_order="SO-A6-001",

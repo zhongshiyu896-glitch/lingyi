@@ -29,6 +29,11 @@ from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
+from app.models.production import Base as ProductionBase
+from app.models.production import LyProductionJobCardLink
+from app.models.production import LyProductionNotice
+from app.models.production import LyProductionPlan
+from app.models.production import LyProductionTrackingNodeEvent
 from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LySalesOrder
@@ -73,6 +78,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         SubcontractBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         SalesOrderBase.metadata.create_all(bind=cls.engine)
+        ProductionBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
         with cls.SessionLocal() as session:
             session.add(
@@ -128,6 +134,10 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
+            session.query(LyProductionTrackingNodeEvent).delete()
+            session.query(LyProductionJobCardLink).delete()
+            session.query(LyProductionNotice).delete()
+            session.query(LyProductionPlan).delete()
             session.query(LySalesOrderItem).delete()
             session.query(LySalesOrder).delete()
             session.query(LyMaterialPurchaseIdempotency).delete()
@@ -144,6 +154,91 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
                 warehouse=self.WAREHOUSE,
             )
             session.commit()
+
+    def _seed_finished_goods_production(
+        self,
+        *,
+        session,
+        sales_order: str,
+        sales_order_item: str,
+        item_code: str,
+        qty: str,
+        notice_no: str,
+        plan_no: str,
+        customer: str = "CUST-FG",
+        item_name: str | None = None,
+    ) -> None:
+        order = LySalesOrder(
+            sales_order_no=sales_order,
+            company="COMP-A",
+            customer=customer,
+            status="planned",
+            docstatus=1,
+            grand_total=Decimal("0"),
+            quote_amount=Decimal("0"),
+            quote_unit_price=Decimal("0"),
+            quote_material_cost=Decimal("0"),
+            quote_labor_cost=Decimal("0"),
+            quote_management_fee=Decimal("0"),
+            quote_other_fee=Decimal("0"),
+            quote_total_cost=Decimal("0"),
+            gross_profit=Decimal("0"),
+            gross_margin_rate=Decimal("0"),
+            idempotency_key=f"{self.SCENARIO_TAG}:sales-order:{sales_order}",
+            request_hash=f"hash:{sales_order}",
+            payload={},
+            created_by="seed",
+        )
+        session.add(order)
+        session.flush()
+        session.add(
+            LySalesOrderItem(
+                sales_order_id=order.id,
+                company="COMP-A",
+                line_no=1,
+                sales_order_item=sales_order_item,
+                item_code=item_code,
+                item_name=item_name or item_code,
+                qty=Decimal(str(qty)),
+                planned_qty=Decimal(str(qty)),
+                delivered_qty=Decimal("0"),
+                uom="件",
+            )
+        )
+        session.add(
+            LyProductionNotice(
+                notice_no=notice_no,
+                company="COMP-A",
+                sales_order_id=int(order.id),
+                sales_order=sales_order,
+                customer=customer,
+                item_code=item_code,
+                item_name=item_name or item_code,
+                order_date=date(2026, 6, 16),
+                delivery_date=date(2026, 6, 30),
+                order_qty=Decimal(str(qty)),
+                status="sent",
+                created_by="seed",
+            )
+        )
+        session.add(
+            LyProductionPlan(
+                plan_no=plan_no,
+                plan_group_no=plan_no,
+                company="COMP-A",
+                sales_order=sales_order,
+                sales_order_item=sales_order_item,
+                customer=customer,
+                item_code=item_code,
+                bom_id=1,
+                planned_qty=Decimal(str(qty)),
+                planned_start_date=date(2026, 6, 17),
+                status="production_completed",
+                idempotency_key=f"{self.SCENARIO_TAG}:plan:{plan_no}",
+                request_hash=f"hash:{plan_no}",
+                created_by="seed",
+            )
+        )
 
     @staticmethod
     def _seed_purchase_master_data(
@@ -695,7 +790,25 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
     def test_finished_goods_draft_creates_default_finished_goods_warehouse_master(self) -> None:
         default_warehouse = "FG-WH-LOCAL"
         idempotency_key = f"{self.SCENARIO_TAG}:fg-default-warehouse"
-        source_ref = f"{self.SCENARIO_TAG}:fg-default-warehouse-src"
+        sales_order = "SO-FG-DEFAULT-001"
+        notice_no = "PN-FG-DEFAULT-001"
+        plan_no = "PP-FG-DEFAULT-001"
+        sales_order_item = f"{sales_order}-001"
+        source_ref = (
+            f"{self.SCENARIO_TAG}:finished-goods:fg:so-{sales_order}:"
+            f"pn-{notice_no}:pg-{plan_no}:li-{sales_order_item}"
+        )
+        with self.SessionLocal() as session:
+            self._seed_finished_goods_production(
+                session=session,
+                sales_order=sales_order,
+                sales_order_item=sales_order_item,
+                item_code="FG-LOCAL-TEE",
+                qty="3",
+                notice_no=notice_no,
+                plan_no=plan_no,
+            )
+            session.commit()
         payload = self._stock_entry_payload(
             source_ref=source_ref,
             idempotency_key=idempotency_key,
@@ -705,6 +818,7 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             uom="件",
         )
         payload["finished_goods_source_id"] = source_ref
+        payload["items"][0]["sales_order_item"] = sales_order_item
         response = self.client.post(
             "/api/warehouse/stock-entry-drafts",
             headers=self._headers(
@@ -745,40 +859,16 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             f"pn-{notice_no}:pg-{plan_no}:li-{sales_order}-001"
         )
         with self.SessionLocal() as session:
-            order = LySalesOrder(
-                sales_order_no=sales_order,
-                company="COMP-A",
+            self._seed_finished_goods_production(
+                session=session,
+                sales_order=sales_order,
+                sales_order_item=f"{sales_order}-001",
+                item_code="FG-LOCAL-TEE",
+                qty="45",
+                notice_no=notice_no,
+                plan_no=plan_no,
                 customer="辛巴精选联盟",
-                status="planned",
-                docstatus=1,
-                grand_total=Decimal("0"),
-                quote_amount=Decimal("0"),
-                quote_unit_price=Decimal("0"),
-                quote_material_cost=Decimal("0"),
-                quote_labor_cost=Decimal("0"),
-                quote_management_fee=Decimal("0"),
-                quote_other_fee=Decimal("0"),
-                quote_total_cost=Decimal("0"),
-                gross_profit=Decimal("0"),
-                gross_margin_rate=Decimal("0"),
-                idempotency_key=f"{self.SCENARIO_TAG}:sales-order-fg-so-group",
-                request_hash="hash-fg-so-group",
-                payload={},
-                created_by="seed",
-            )
-            session.add(order)
-            session.flush()
-            session.add(
-                LySalesOrderItem(
-                    sales_order_id=order.id,
-                    company="COMP-A",
-                    line_no=1,
-                    sales_order_item=f"{sales_order}-001",
-                    item_code="FG-LOCAL-TEE",
-                    item_name="G9哈灵顿夹克",
-                    qty=Decimal("45"),
-                    uom="件",
-                )
+                item_name="G9哈灵顿夹克",
             )
             session.commit()
 
