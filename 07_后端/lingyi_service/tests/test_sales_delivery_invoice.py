@@ -358,6 +358,76 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SALES_DELIVERY_INVOICE_STOCK_SHORTAGE")
 
+    def test_delivery_invoice_splits_same_item_lines_and_reports_quantity_status(self) -> None:
+        with self.SessionLocal() as session:
+            order = session.query(LySalesOrder).filter_by(sales_order_no="SO-B4-001").one()
+            first_line = session.query(LySalesOrderItem).filter_by(sales_order_id=int(order.id), line_no=1).one()
+            first_line.qty = Decimal("6")
+            first_line.amount = Decimal("480")
+            session.add(
+                LySalesOrderItem(
+                    sales_order_id=int(order.id),
+                    company="COMP-A",
+                    line_no=2,
+                    sales_order_item="SO-B4-001-002",
+                    item_code="DEMO-TEE",
+                    item_name="Demo Tee",
+                    qty=Decimal("4"),
+                    planned_qty=Decimal("4"),
+                    delivered_qty=Decimal("0"),
+                    rate=Decimal("80"),
+                    amount=Decimal("320"),
+                    uom="件",
+                    warehouse="WH-FG",
+                    delivery_date=date(2026, 6, 30),
+                )
+            )
+            session.commit()
+
+        first_delivery = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(
+                delivered_qty=8,
+                delivery_note="DN-B4-PARTIAL",
+                sales_invoice="SI-B4-PARTIAL",
+                source_ref="SRC-B4-PARTIAL",
+                idempotency_key="idem-b4-delivery-partial",
+            ),
+        )
+        self.assertEqual(first_delivery.status_code, 201, first_delivery.text)
+        list_after_partial = self.client.get("/api/sales-inventory/sales-orders?company=COMP-A", headers=self._headers())
+        self.assertEqual(list_after_partial.status_code, 200, list_after_partial.text)
+        partial_order = list_after_partial.json()["data"]["items"][0]
+        self.assertEqual(partial_order["delivery_status"], "partial")
+        self.assertEqual(partial_order["delivery_status_name"], "部分发货")
+        self.assertEqual(Decimal(str(partial_order["ordered_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(partial_order["delivered_qty"])), Decimal("8.000000"))
+
+        second_delivery = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(
+                delivered_qty=2,
+                delivery_note="DN-B4-FULL",
+                sales_invoice="SI-B4-FULL",
+                source_ref="SRC-B4-FULL",
+                idempotency_key="idem-b4-delivery-full",
+            ),
+        )
+        self.assertEqual(second_delivery.status_code, 201, second_delivery.text)
+        list_after_full = self.client.get("/api/sales-inventory/sales-orders?company=COMP-A", headers=self._headers())
+        self.assertEqual(list_after_full.status_code, 200, list_after_full.text)
+        full_order = list_after_full.json()["data"]["items"][0]
+        self.assertEqual(full_order["delivery_status"], "fulfilled")
+        self.assertEqual(full_order["delivery_status_name"], "已发货")
+        self.assertEqual(Decimal(str(full_order["ordered_qty"])), Decimal("10.000000"))
+        self.assertEqual(Decimal(str(full_order["delivered_qty"])), Decimal("10.000000"))
+
+        with self.SessionLocal() as session:
+            lines = session.query(LySalesOrderItem).order_by(LySalesOrderItem.line_no.asc()).all()
+            self.assertEqual([Decimal(str(line.delivered_qty)) for line in lines], [Decimal("6.000000"), Decimal("4.000000")])
+
     def test_delivery_invoice_ignores_unprojected_stock_drafts(self) -> None:
         with self.SessionLocal() as session:
             session.query(LyWarehouseStockLedgerEntry).delete()

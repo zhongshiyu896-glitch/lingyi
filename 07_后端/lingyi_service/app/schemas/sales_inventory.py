@@ -249,6 +249,10 @@ class SalesOrderListItem(BaseModel):
     delivery_date: date | None = None
     status: str | None = None
     docstatus: int
+    ordered_qty: Decimal | None = None
+    delivered_qty: Decimal | None = None
+    delivery_status: str | None = None
+    delivery_status_name: str | None = None
     grand_total: Decimal | None = None
     currency: str | None = None
     ys_material_calc_state: str | None = None
@@ -293,6 +297,10 @@ class SalesOrderDetailData(BaseModel):
     delivery_date: date | None = None
     status: str | None = None
     docstatus: int
+    ordered_qty: Decimal | None = None
+    delivered_qty: Decimal | None = None
+    delivery_status: str | None = None
+    delivery_status_name: str | None = None
     grand_total: Decimal | None = None
     currency: str | None = None
     ys_material_calc_state: str | None = None

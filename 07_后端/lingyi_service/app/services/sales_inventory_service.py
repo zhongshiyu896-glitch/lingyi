@@ -5334,6 +5334,7 @@ class SalesInventoryService:
 
     def _build_native_sales_order_list_item(self, order: LySalesOrder) -> SalesOrderListItem:
         items = self._native_sales_order_items(order_id=int(order.id))
+        delivery_summary = self._native_sales_order_delivery_summary(order=order, items=items)
         return SalesOrderListItem(
             id=int(order.id),
             name=str(order.sales_order_no),
@@ -5343,6 +5344,10 @@ class SalesInventoryService:
             delivery_date=order.delivery_date,
             status=self._native_status_display(order.status),
             docstatus=int(order.docstatus or 0),
+            ordered_qty=delivery_summary["ordered_qty"],
+            delivered_qty=delivery_summary["delivered_qty"],
+            delivery_status=delivery_summary["delivery_status"],
+            delivery_status_name=delivery_summary["delivery_status_name"],
             grand_total=Decimal(str(order.grand_total or 0)),
             currency=self._text(order.currency) or "CNY",
             ys_material_calc_state=self._material_calc_state_from_items(items),
@@ -5361,6 +5366,7 @@ class SalesInventoryService:
 
     def _build_native_sales_order_detail(self, order: LySalesOrder) -> SalesOrderDetailData:
         items = self._native_sales_order_items(order_id=int(order.id))
+        delivery_summary = self._native_sales_order_delivery_summary(order=order, items=items)
         return SalesOrderDetailData(
             name=str(order.sales_order_no),
             company=str(order.company),
@@ -5369,6 +5375,10 @@ class SalesInventoryService:
             delivery_date=order.delivery_date,
             status=self._native_status_display(order.status),
             docstatus=int(order.docstatus or 0),
+            ordered_qty=delivery_summary["ordered_qty"],
+            delivered_qty=delivery_summary["delivered_qty"],
+            delivery_status=delivery_summary["delivery_status"],
+            delivery_status_name=delivery_summary["delivery_status_name"],
             grand_total=Decimal(str(order.grand_total or 0)),
             currency=self._text(order.currency) or "CNY",
             ys_material_calc_state=self._material_calc_state_from_items(items),
@@ -5402,6 +5412,32 @@ class SalesInventoryService:
                 for item in items
             ],
         )
+
+    def _native_sales_order_delivery_summary(self, *, order: LySalesOrder, items: list[LySalesOrderItem]) -> dict[str, Decimal | str | None]:
+        ordered_qty = sum((Decimal(str(item.qty or 0)) for item in items), Decimal("0"))
+        delivered_qty = sum((Decimal(str(item.delivered_qty or 0)) for item in items), Decimal("0"))
+        if str(order.status) != "planned":
+            return {
+                "ordered_qty": ordered_qty,
+                "delivered_qty": delivered_qty,
+                "delivery_status": None,
+                "delivery_status_name": None,
+            }
+        if delivered_qty <= Decimal("0"):
+            delivery_status = "pending"
+            delivery_status_name = "待发货"
+        elif ordered_qty > Decimal("0") and delivered_qty >= ordered_qty:
+            delivery_status = "fulfilled"
+            delivery_status_name = "已发货"
+        else:
+            delivery_status = "partial"
+            delivery_status_name = "部分发货"
+        return {
+            "ordered_qty": ordered_qty,
+            "delivered_qty": delivered_qty,
+            "delivery_status": delivery_status,
+            "delivery_status_name": delivery_status_name,
+        }
 
     def _build_native_sales_order_draft_data(self, order: LySalesOrder) -> SalesOrderDraftData:
         items = self._native_sales_order_items(order_id=int(order.id))
@@ -6082,12 +6118,27 @@ class SalesInventoryService:
         ]
         if not candidates:
             raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "销售订单未包含该发货物料")
-        line = candidates[0]
-        next_delivered = Decimal(str(line.delivered_qty or 0)) + delivered_qty
-        ordered_qty = Decimal(str(line.qty or 0))
-        if next_delivered > ordered_qty:
+        available_qty = sum(
+            (
+                max(Decimal(str(line.qty or 0)) - Decimal(str(line.delivered_qty or 0)), Decimal("0"))
+                for line in candidates
+            ),
+            Decimal("0"),
+        )
+        if delivered_qty > available_qty:
             raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_QTY_EXCEEDED", "发货数量超过销售订单未发数量")
-        line.delivered_qty = next_delivered
+        remaining_qty = delivered_qty
+        for line in candidates:
+            if remaining_qty <= Decimal("0"):
+                break
+            current_delivered = Decimal(str(line.delivered_qty or 0))
+            ordered_qty = Decimal(str(line.qty or 0))
+            line_available_qty = max(ordered_qty - current_delivered, Decimal("0"))
+            if line_available_qty <= Decimal("0"):
+                continue
+            applied_qty = min(line_available_qty, remaining_qty)
+            line.delivered_qty = current_delivered + applied_qty
+            remaining_qty -= applied_qty
         order.updated_at = datetime.now(timezone.utc)
 
     def _decrease_native_sales_order_delivered_qty(
@@ -6118,10 +6169,16 @@ class SalesInventoryService:
         ]
         if not candidates:
             raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "销售订单未包含该发货物料")
-        line = candidates[0]
-        current_delivered = Decimal(str(line.delivered_qty or 0))
-        next_delivered = current_delivered - delivered_qty
-        line.delivered_qty = next_delivered if next_delivered > Decimal("0") else Decimal("0")
+        remaining_qty = delivered_qty
+        for line in reversed(candidates):
+            if remaining_qty <= Decimal("0"):
+                break
+            current_delivered = Decimal(str(line.delivered_qty or 0))
+            if current_delivered <= Decimal("0"):
+                continue
+            released_qty = min(current_delivered, remaining_qty)
+            line.delivered_qty = current_delivered - released_qty
+            remaining_qty -= released_qty
         order.updated_at = datetime.now(timezone.utc)
 
     def _create_delivery_stock_issue(
