@@ -32,6 +32,7 @@ from app.models.production import LyFactoryPacking
 from app.models.production import LyProductionPlan
 from app.models.production import LyProductionPlanMaterial
 from app.models.production import LyProductionPlanOperation
+from app.models.production import LyProductionNotice
 from app.models.production import LyProductionTrackingNodeEvent
 from app.models.production import LyProductionWorkOrderLink
 from app.models.production import LyProductionWorkOrderOutbox
@@ -143,6 +144,7 @@ class ProductionPlanTest(unittest.TestCase):
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionWorkOrderOutbox).delete()
             session.query(LyProductionWorkOrderLink).delete()
+            session.query(LyProductionNotice).delete()
             session.query(LyProductionPlan).delete()
             session.query(LyDeliveryInvoice).delete()
             session.query(LySalesOrderItem).delete()
@@ -1381,6 +1383,117 @@ class ProductionPlanTest(unittest.TestCase):
 
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyProductionTrackingNodeEvent).count(), 1)
+
+    def test_tracking_node_done_requires_started_production_and_dirty_nodes_are_visible(self) -> None:
+        plan_id = self._seed_orphan_plan(status="material_checked", with_ready_snapshot=True)
+        payload = {
+            "company": "COMP-A",
+            "node_key": "job_card",
+            "node_name": "工票进度",
+            "owner": "车间",
+            "status": "done",
+            "progress": 100,
+            "remark": "误登记完成",
+            "operation": "tracking_node",
+            "scenario_tag": "production_tracking_node",
+            "idempotency_key": "node-event-before-start",
+            "plan_id": plan_id,
+            "sales_order": "SO-TEST-001",
+            "sales_order_item": "SOI-001",
+            "item_code": "ITEM-A",
+        }
+
+        blocked = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-nodes",
+            headers=self._headers(role="Production Manager"),
+            json=payload,
+        )
+        self.assertEqual(blocked.status_code, 400, blocked.text)
+        self.assertEqual(blocked.json()["code"], "PRODUCTION_TRACKING_NODE_INVALID")
+        self.assertIn("请先开始生产", blocked.json()["message"])
+
+        direct_start = self.client.post(
+            f"/api/production/plans/{plan_id}/tracking-nodes",
+            headers=self._headers(role="Production Manager"),
+            json={**payload, "node_key": "production_start", "node_name": "开始生产", "status": "in_progress", "progress": 20, "idempotency_key": "node-event-direct-start"},
+        )
+        self.assertEqual(direct_start.status_code, 400, direct_start.text)
+        self.assertIn("不能用节点登记绕过齐料和通知单门禁", direct_start.json()["message"])
+
+        with self.SessionLocal() as session:
+            plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one()
+            session.add(
+                LyProductionTrackingNodeEvent(
+                    event_no="PTN-DIRTY-001",
+                    plan_id=plan_id,
+                    company=str(plan.company),
+                    plan_no=str(plan.plan_no),
+                    sales_order=str(plan.sales_order),
+                    sales_order_item=str(plan.sales_order_item),
+                    item_code=str(plan.item_code),
+                    node_key="job_card",
+                    node_name="工票进度",
+                    owner="车间",
+                    status="done",
+                    progress=100,
+                    remark="历史脏数据",
+                    source_type="production_tracking_node",
+                    source_ref=str(plan.plan_no),
+                    idempotency_key="dirty-node-event",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers())
+        self.assertEqual(detail.status_code, 200, detail.text)
+        nodes = {row["node_key"]: row for row in detail.json()["data"]["tracking_nodes"]}
+        self.assertEqual(nodes["job_card"]["status"], "blocked")
+        self.assertIn("异常节点", nodes["job_card"]["node_name"])
+        self.assertIn("生产开始前", nodes["job_card"]["remark"])
+
+    def test_procurement_readiness_status_is_derived_from_requirement_quantities(self) -> None:
+        plan_id = self._seed_orphan_plan(status="material_checked", with_ready_snapshot=True)
+        with self.SessionLocal() as session:
+            session.add(
+                LyMaterialPurchaseRequirement(
+                    company="COMP-A",
+                    requirement_no="REQ-DERIVED-001",
+                    source_type="production_plan",
+                    source_id=str(plan_id),
+                    source_no="PP-ORPHAN-001",
+                    plan_id=plan_id,
+                    sales_order="SO-TEST-001",
+                    sales_order_item="SOI-001",
+                    item_code="ITEM-A",
+                    material_item_code="MAT-A",
+                    material_name="面料A",
+                    warehouse="WIP Warehouse - LY",
+                    required_qty=Decimal("10"),
+                    available_qty=Decimal("0"),
+                    net_required_qty=Decimal("10"),
+                    purchased_qty=Decimal("10"),
+                    received_qty=Decimal("0"),
+                    uom="米",
+                    status="purchased",
+                    purchase_no="PO-DERIVED-001",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        detail = self.client.get(f"/api/production/plans/{plan_id}", headers=self._headers())
+        self.assertEqual(detail.status_code, 200, detail.text)
+        detail_data = detail.json()["data"]
+        self.assertFalse(detail_data["material_ready"])
+        self.assertEqual(detail_data["purchase_status"], "purchasing")
+        self.assertEqual(detail_data["procurement_status"], "ordered_pending_inbound")
+        self.assertEqual(detail_data["procurement_status_label"], "已下单待入库")
+
+        listing = self.client.get("/api/production/plans?company=COMP-A&item_code=ITEM-A", headers=self._headers())
+        self.assertEqual(listing.status_code, 200, listing.text)
+        listed_plan = next(row for row in listing.json()["data"]["items"] if int(row["id"]) == plan_id)
+        self.assertEqual(listed_plan["procurement_status"], "ordered_pending_inbound")
 
     def test_order_io_quantities_use_real_local_stock_and_delivery_facts(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):

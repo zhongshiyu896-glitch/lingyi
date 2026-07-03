@@ -154,6 +154,8 @@ class MaterialPurchaseRequirementListItem(BaseModel):
     uom: str
     unit_price: Decimal
     status: PurchaseRequirementStatus
+    procurement_status: str = "pending_purchase"
+    procurement_status_label: str = "待采购"
     has_completed: bool
     purchase_no: str | None = None
     created_at: datetime | None = None

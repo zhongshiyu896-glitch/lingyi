@@ -35,6 +35,7 @@ from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_KEY_REQUIRED
 from app.core.error_codes import PRODUCTION_MATERIAL_CHECK_STATUS_INVALID
 from app.core.error_codes import PRODUCTION_MATERIAL_ISSUE_NOT_READY
+from app.core.error_codes import PRODUCTION_NOTICE_ALREADY_EXISTS
 from app.core.error_codes import PRODUCTION_PLANNED_QTY_EXCEEDED
 from app.core.error_codes import PRODUCTION_QUOTE_CONFLICT
 from app.core.error_codes import PRODUCTION_QUOTE_NOT_FOUND
@@ -193,6 +194,7 @@ from app.services.sales_inventory_service import SalesInventoryServiceError
 from app.services.erpnext_production_adapter import ERPNextSalesOrder
 from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 from app.services.production_work_order_outbox_service import ProductionWorkOrderOutboxService
+from app.services.procurement_readiness import derive_procurement_readiness_status
 
 PRODUCTION_WRITE_ENTRY_FROZEN_REASON = (
     "受控写门禁：create-work-order 与 sync-job-cards 仅允许 local-dev + local sqlite + scenario carrier 完整校验。"
@@ -220,6 +222,7 @@ PRODUCTION_TRACKING_NODE_DEFAULT_NAMES = {
     "job_card": "工票进度",
     "exception": "异常处理",
 }
+PRODUCTION_DIRECT_START_NODE_KEYS = frozenset({"production_start", "start_production", "start"})
 PRODUCTION_LOCAL_ALLOWED_DB_URL = DEFAULT_LOCAL_DEV_DATABASE_URL
 PRODUCTION_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 PRODUCTION_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
@@ -637,6 +640,8 @@ class ProductionService:
                     shortage_qty_total=Decimal(str(material_readiness["shortage_qty_total"])),
                     pending_requirement_count=int(material_readiness["pending_requirement_count"]),
                     purchase_status=str(material_readiness["purchase_status"]),
+                    procurement_status=str(material_readiness["procurement_status"]),
+                    procurement_status_label=str(material_readiness["procurement_status_label"]),
                     production_notice=production_notice,
                     finished_goods_inbound_qty=finished_goods_summary["inbound_qty"],
                     finished_goods_remaining_qty=finished_goods_summary["remaining_qty"],
@@ -753,13 +758,24 @@ class ProductionService:
                 self.session.query(
                     LyMaterialPurchaseRequirement.plan_id.label("plan_id"),
                     LyMaterialPurchaseRequirement.status.label("status"),
+                    LyMaterialPurchaseRequirement.net_required_qty.label("net_required_qty"),
+                    LyMaterialPurchaseRequirement.purchased_qty.label("purchased_qty"),
+                    LyMaterialPurchaseRequirement.received_qty.label("received_qty"),
+                    LyMaterialPurchaseRequirement.purchase_no.label("purchase_no"),
                     func.count(LyMaterialPurchaseRequirement.id).label("requirement_count"),
                 )
                 .filter(
                     LyMaterialPurchaseRequirement.plan_id.in_(normalized_ids),
-                    LyMaterialPurchaseRequirement.status.in_(("pending", "purchased")),
+                    LyMaterialPurchaseRequirement.status != "cancelled",
                 )
-                .group_by(LyMaterialPurchaseRequirement.plan_id, LyMaterialPurchaseRequirement.status)
+                .group_by(
+                    LyMaterialPurchaseRequirement.plan_id,
+                    LyMaterialPurchaseRequirement.status,
+                    LyMaterialPurchaseRequirement.net_required_qty,
+                    LyMaterialPurchaseRequirement.purchased_qty,
+                    LyMaterialPurchaseRequirement.received_qty,
+                    LyMaterialPurchaseRequirement.purchase_no,
+                )
                 .all()
             )
         except SQLAlchemyError as exc:
@@ -784,8 +800,18 @@ class ProductionService:
             count = int(row.requirement_count or 0)
             if str(row.status) == "purchased":
                 summary["_purchased_requirement_count"] = int(summary["_purchased_requirement_count"]) + count
-            else:
+            elif str(row.status) == "pending":
                 summary["_pending_requirement_count"] = int(summary["_pending_requirement_count"]) + count
+            summary["_requirement_rows"].extend(
+                {
+                    "status": row.status,
+                    "net_required_qty": row.net_required_qty,
+                    "purchased_qty": row.purchased_qty,
+                    "received_qty": row.received_qty,
+                    "purchase_no": row.purchase_no,
+                }
+                for _ in range(count)
+            )
 
         return {plan_id: self._finalize_material_readiness_summary(summary) for plan_id, summary in summaries.items()}
 
@@ -1005,6 +1031,7 @@ class ProductionService:
                     "_snapshot_count": 0,
                     "_pending_requirement_count": 0,
                     "_purchased_requirement_count": 0,
+                    "_requirement_rows": [],
                 }
             )
         return summary
@@ -1012,31 +1039,22 @@ class ProductionService:
     @staticmethod
     def _finalize_material_readiness_summary(summary: dict[str, Any]) -> dict[str, Any]:
         snapshot_count = int(summary.get("_snapshot_count") or 0)
-        pending_count = int(summary.get("_pending_requirement_count") or 0)
-        purchased_count = int(summary.get("_purchased_requirement_count") or 0)
-        active_requirement_count = pending_count + purchased_count
         shortage_qty_total = Decimal(str(summary.get("shortage_qty_total") or 0))
-
-        if snapshot_count <= 0:
-            purchase_status = "not_calculated"
-        elif shortage_qty_total <= Decimal("0") and active_requirement_count == 0:
-            purchase_status = "ready"
-        elif purchased_count > 0:
-            purchase_status = "purchasing"
-        elif pending_count > 0:
-            purchase_status = "pending_purchase"
-        elif shortage_qty_total > Decimal("0"):
-            purchase_status = "shortage"
-        else:
-            purchase_status = "ready"
+        readiness = derive_procurement_readiness_status(
+            snapshot_count=snapshot_count,
+            shortage_qty_total=shortage_qty_total,
+            requirement_rows=list(summary.get("_requirement_rows") or []),
+        )
 
         return {
-            "material_ready": purchase_status == "ready",
+            "material_ready": readiness.material_ready,
             "required_qty_total": Decimal(str(summary.get("required_qty_total") or 0)),
             "available_qty_total": Decimal(str(summary.get("available_qty_total") or 0)),
             "shortage_qty_total": shortage_qty_total,
-            "pending_requirement_count": active_requirement_count,
-            "purchase_status": purchase_status,
+            "pending_requirement_count": readiness.pending_requirement_count,
+            "purchase_status": readiness.purchase_status,
+            "procurement_status": readiness.procurement_status,
+            "procurement_status_label": readiness.procurement_status_label,
         }
 
     @staticmethod
@@ -1715,18 +1733,24 @@ class ProductionService:
         company = str(order.company)
         notice_no = self._text(payload.notice_no) or self._next_production_notice_no()
         existing = self._get_production_notice_by_sales_order(company=company, sales_order=str(order.sales_order_no))
-
-        row = existing
-        if row is None:
-            row = LyProductionNotice(
-                notice_no=notice_no,
-                company=company,
-                sales_order_id=int(order.id),
-                sales_order=str(order.sales_order_no),
-                status=requested_status,
-                created_by=operator,
+        if existing is not None:
+            raise BusinessException(
+                code=PRODUCTION_NOTICE_ALREADY_EXISTS,
+                message=(
+                    f"销售订单 {order.sales_order_no} 已存在生产通知单 {existing.notice_no}，"
+                    "请打开已有通知单编辑或下发"
+                ),
             )
-            self.session.add(row)
+
+        row = LyProductionNotice(
+            notice_no=notice_no,
+            company=company,
+            sales_order_id=int(order.id),
+            sales_order=str(order.sales_order_no),
+            status=requested_status,
+            created_by=operator,
+        )
+        self.session.add(row)
 
         row.customer = self._text(order.customer)
         row.item_code = str(first_line.item_code)
@@ -6203,6 +6227,8 @@ class ProductionService:
             shortage_qty_total=Decimal(str(material_readiness["shortage_qty_total"])),
             pending_requirement_count=int(material_readiness["pending_requirement_count"]),
             purchase_status=str(material_readiness["purchase_status"]),
+            procurement_status=str(material_readiness["procurement_status"]),
+            procurement_status_label=str(material_readiness["procurement_status_label"]),
             production_notice=production_notice,
             finished_goods_inbound_qty=finished_goods_summary["inbound_qty"],
             finished_goods_remaining_qty=finished_goods_summary["remaining_qty"],
@@ -6486,16 +6512,24 @@ class ProductionService:
         ]
         node_indexes = {item.node_key: index for index, item in enumerate(nodes)}
         for event in node_events:
+            event_status = str(event.status)
+            event_node_name = str(event.node_name)
+            event_remark = str(event.remark) if event.remark else None
+            if event_status == "done" and plan_status not in {"production_in_progress", "production_completed"}:
+                event_status = "blocked"
+                event_node_name = f"异常节点：{event_node_name}"
+                dirty_reason = "该节点在生产开始前被登记完成，请复核生产状态机"
+                event_remark = f"{event_remark}；{dirty_reason}" if event_remark else dirty_reason
             item = ProductionTrackingNodeItem(
                 event_id=int(event.id),
                 node_key=str(event.node_key),
-                node_name=str(event.node_name),
+                node_name=event_node_name,
                 owner=str(event.owner or ""),
-                status=str(event.status),
+                status=event_status,
                 progress=int(event.progress or 0),
                 source_type=str(event.source_type or "production_tracking_node"),
                 source_ref=(str(event.source_ref) if event.source_ref else None),
-                remark=(str(event.remark) if event.remark else None),
+                remark=event_remark,
                 updated_at=event.created_at,
             )
             if item.node_key in node_indexes:
@@ -6624,6 +6658,13 @@ class ProductionService:
         status = (self._text(payload.status) or "").lower()
         progress = int(payload.progress)
         remark = self._text(payload.remark) or ""
+        if node_key in PRODUCTION_DIRECT_START_NODE_KEYS and status in {"in_progress", "done"}:
+            raise BusinessException(
+                code=PRODUCTION_TRACKING_NODE_INVALID,
+                message="请使用开始生产接口推进生产，不能用节点登记绕过齐料和通知单门禁",
+            )
+        if status == "done" and str(plan.status or "") not in {"production_in_progress", "production_completed"}:
+            raise BusinessException(code=PRODUCTION_TRACKING_NODE_INVALID, message="请先开始生产，再登记生产跟进节点完成")
         scenario_tag = self._text(payload.scenario_tag)
         header_request_id = self._text(request_id)
         request_hash = self._production_operation_request_hash(

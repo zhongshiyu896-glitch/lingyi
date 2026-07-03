@@ -60,6 +60,7 @@ from app.schemas.dashboard import DashboardSalesInventoryOverviewData
 from app.schemas.dashboard import DashboardSourceStatusData
 from app.schemas.dashboard import DashboardWarehouseOverviewData
 from app.services.quality_service import QualityService
+from app.services.procurement_readiness import derive_procurement_readiness_status
 from app.services.warehouse_service import WarehouseService
 
 
@@ -712,8 +713,7 @@ class DashboardService:
                 count=alert_counts["shortage_blocked_orders"],
                 tone="amber",
                 route="/materialPurchase/materialPurchaseProcess?view=readiness",
-                # TODO(批3口径切换): 统一齐料口径后改为批3定义的订单级 readiness 状态。
-                source_note="现阶段按采购需求池 pending/purchased 且未收齐聚合。",
+                source_note="按统一采购齐料派生状态统计未齐料订单。",
             ),
             DashboardWorkbenchAlertData(
                 key="unpaid_customers_over_30d",
@@ -800,7 +800,6 @@ class DashboardService:
             recent_orders=recent_orders,
             data_sources=self._workbench_data_sources(),
             todo_notes=[
-                "TODO(批3口径切换): 缺料和齐料中阶段当前按采购需求池近似，批3统一口径后切换。",
                 "TODO(模块③接入): 本月回款和应收余额当前为发货发票/回款单 v1 口径。",
             ],
         )
@@ -835,6 +834,7 @@ class DashboardService:
                     "delivery_date": getattr(item, "delivery_date", None) or order.delivery_date,
                     "plan_statuses": set(),
                     "shortage": False,
+                    "procurement_status": "not_calculated",
                 },
             )
             snapshot["qty"] += self._decimal_or_zero(item.qty)
@@ -857,24 +857,48 @@ class DashboardService:
                     grouped[str(sales_order)]["plan_statuses"].add(str(status or ""))
 
         if order_nos and self._has_tables({LyMaterialPurchaseRequirement.__tablename__}):
-            for sales_order, status, net_required_qty, received_qty in (
+            requirements_by_order: dict[str, list[dict[str, Any]]] = {order_no: [] for order_no in order_nos}
+            for sales_order, status, net_required_qty, purchased_qty, received_qty, purchase_no in (
                 self.session.query(
                     LyMaterialPurchaseRequirement.sales_order,
                     LyMaterialPurchaseRequirement.status,
                     LyMaterialPurchaseRequirement.net_required_qty,
+                    LyMaterialPurchaseRequirement.purchased_qty,
                     LyMaterialPurchaseRequirement.received_qty,
+                    LyMaterialPurchaseRequirement.purchase_no,
                 )
                 .filter(
                     LyMaterialPurchaseRequirement.company == company,
                     LyMaterialPurchaseRequirement.sales_order.in_(order_nos),
-                    LyMaterialPurchaseRequirement.status.in_(["pending", "purchased"]),
+                    LyMaterialPurchaseRequirement.status != "cancelled",
                 )
                 .all()
             ):
                 order_no = str(sales_order or "")
-                if order_no in grouped and self._decimal_or_zero(received_qty) < self._decimal_or_zero(net_required_qty):
-                    # TODO(批3口径切换): 这里先按采购需求池未收齐判断缺料卡住。
-                    grouped[order_no]["shortage"] = True
+                if order_no in requirements_by_order:
+                    requirements_by_order[order_no].append(
+                        {
+                            "status": status,
+                            "net_required_qty": net_required_qty,
+                            "purchased_qty": purchased_qty,
+                            "received_qty": received_qty,
+                            "purchase_no": purchase_no,
+                        }
+                    )
+            for order_no, requirement_rows in requirements_by_order.items():
+                readiness = derive_procurement_readiness_status(
+                    snapshot_count=len(requirement_rows),
+                    shortage_qty_total=Decimal("1") if requirement_rows else Decimal("0"),
+                    requirement_rows=requirement_rows,
+                )
+                grouped[order_no]["procurement_status"] = readiness.procurement_status
+                grouped[order_no]["shortage"] = readiness.procurement_status in {
+                    "pending_purchase",
+                    "purchasing",
+                    "ordered_pending_inbound",
+                    "partial_inbound",
+                    "inbound_exception",
+                }
         return list(grouped.values())
 
     def _build_stage_distribution(self, *, active_orders: list[dict[str, Any]]) -> list[DashboardWorkbenchStageData]:
@@ -918,7 +942,6 @@ class DashboardService:
         if not bool(row.get("all_material_calculated")):
             return "material_calc"
         if bool(row.get("shortage")):
-            # TODO(批3口径切换): 待采购/齐料中后续改为统一 readiness 阶段字段。
             return "purchase_ready"
         plan_statuses = {str(value) for value in row.get("plan_statuses", set())}
         if plan_statuses.intersection({"production_completed", "finished", "completed"}):
@@ -1288,11 +1311,11 @@ class DashboardService:
                 fields=[
                     "ly_sales_order.quote_status",
                     "ly_sales_order_item.ys_material_calc_state",
-                    "ly_material_purchase_requirement.status/received_qty/net_required_qty",
+                    "ly_material_purchase_requirement.status/net_required_qty/purchased_qty/received_qty/purchase_no",
                     "ly_production_plan.status",
                     "ly_sales_order_item.delivered_qty",
                 ],
-                note="TODO(批3口径切换): 齐料中阶段后续改为统一 readiness 状态。",
+                note="阶段分布与流水线共用统一采购齐料派生状态。",
             ),
             DashboardWorkbenchSourceData(
                 module="到期订单/最近订单/异常",

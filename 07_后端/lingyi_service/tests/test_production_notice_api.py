@@ -389,10 +389,9 @@ class ProductionNoticeApiTest(unittest.TestCase):
             json={**payload, "factory_name": "改后的加工厂"},
             headers=self._headers("PROD-NOTICE-REQ-REPEAT"),
         )
-        self.assertEqual(repeat_response.status_code, 200)
-        repeat_data = repeat_response.json()["data"]
-        self.assertEqual(repeat_data["id"], data["id"])
-        self.assertEqual(repeat_data["factory_name"], "改后的加工厂")
+        self.assertEqual(repeat_response.status_code, 409, repeat_response.text)
+        self.assertEqual(repeat_response.json()["code"], "PRODUCTION_NOTICE_ALREADY_EXISTS")
+        self.assertIn(data["notice_no"], repeat_response.json()["message"])
 
         patch_response = self.client.patch(
             f"/api/production/notices/{data['id']}",
@@ -503,10 +502,15 @@ class ProductionNoticeApiTest(unittest.TestCase):
             json={"company": "COMP-N", "sales_order": "SO-NOTICE-001"},
             headers=self._headers("PROD-NOTICE-DEFAULT-FACTORY-REPEAT"),
         )
-        self.assertEqual(repeat.status_code, 200, repeat.text)
-        repeat_data = repeat.json()["data"]
-        self.assertEqual(repeat_data["id"], first_data["id"])
-        self.assertEqual(repeat_data["factory_name"], "本厂")
+        self.assertEqual(repeat.status_code, 409, repeat.text)
+        self.assertEqual(repeat.json()["code"], "PRODUCTION_NOTICE_ALREADY_EXISTS")
+        detail = self.client.get(
+            "/api/production/notices",
+            params={"company": "COMP-N", "keyword": "SO-NOTICE-001"},
+            headers=self._headers("PROD-NOTICE-DEFAULT-FACTORY-DETAIL"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertEqual(detail.json()["data"]["items"][0]["factory_name"], "本厂")
 
     def test_notice_status_gate_controls_production_start(self) -> None:
         plan_id = self._seed_ready_plan()
@@ -587,10 +591,16 @@ class ProductionNoticeApiTest(unittest.TestCase):
             json={"company": "COMP-N", "sales_order": "SO-NOTICE-001", "factory_name": "二次更新工厂"},
             headers=self._headers("PROD-NOTICE-REPEAT-NO-STATUS"),
         )
-        self.assertEqual(repeat_without_status.status_code, 200, repeat_without_status.text)
-        self.assertEqual(repeat_without_status.json()["data"]["id"], first.json()["data"]["id"])
-        self.assertEqual(repeat_without_status.json()["data"]["status"], "confirmed")
-        self.assertEqual(repeat_without_status.json()["data"]["factory_name"], "二次更新工厂")
+        self.assertEqual(repeat_without_status.status_code, 409, repeat_without_status.text)
+        self.assertEqual(repeat_without_status.json()["code"], "PRODUCTION_NOTICE_ALREADY_EXISTS")
+        detail = self.client.get(
+            "/api/production/notices",
+            params={"company": "COMP-N", "keyword": "SO-NOTICE-001"},
+            headers=self._headers("PROD-NOTICE-REPEAT-NO-STATUS-DETAIL"),
+        )
+        self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertEqual(detail.json()["data"]["items"][0]["status"], "confirmed")
+        self.assertNotEqual(detail.json()["data"]["items"][0]["factory_name"], "二次更新工厂")
 
 
 if __name__ == "__main__":

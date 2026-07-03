@@ -176,6 +176,8 @@ class ProductionPlanListItem(BaseModel):
     shortage_qty_total: Decimal = Decimal("0")
     pending_requirement_count: int = 0
     purchase_status: str = "not_calculated"
+    procurement_status: str = "not_calculated"
+    procurement_status_label: str = "未算料"
     production_notice: Optional["ProductionPlanNoticeSummary"] = None
     finished_goods_inbound_qty: Decimal = Decimal("0")
     finished_goods_remaining_qty: Decimal = Decimal("0")
@@ -1222,6 +1224,8 @@ class ProductionPlanDetailData(BaseModel):
     shortage_qty_total: Decimal = Decimal("0")
     pending_requirement_count: int = 0
     purchase_status: str = "not_calculated"
+    procurement_status: str = "not_calculated"
+    procurement_status_label: str = "未算料"
     production_notice: Optional[ProductionPlanNoticeSummary] = None
     finished_goods_inbound_qty: Decimal = Decimal("0")
     finished_goods_remaining_qty: Decimal = Decimal("0")

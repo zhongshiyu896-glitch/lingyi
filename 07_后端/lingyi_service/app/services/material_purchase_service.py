@@ -53,6 +53,7 @@ from app.schemas.material_purchase import MaterialPurchaseRequirementListData
 from app.schemas.material_purchase import MaterialPurchaseRequirementListItem
 from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderData
 from app.schemas.material_purchase import MaterialPurchaseRequirementToOrderRequest
+from app.services.procurement_readiness import derive_procurement_readiness_status
 
 DEFAULT_MATERIAL_WAREHOUSE_CODE = "DEFAULT-MATERIAL-WH"
 DEFAULT_MATERIAL_WAREHOUSE_NAME = "默认物料仓"
@@ -2217,6 +2218,11 @@ class MaterialPurchaseService:
             sales_order=self._optional_text(row.sales_order),
         )
         style_no = self._optional_text(row.item_code) or self._optional_text(order_context.get("style_no"))
+        readiness = derive_procurement_readiness_status(
+            snapshot_count=1,
+            shortage_qty_total=net_required - received_qty,
+            requirement_rows=[row],
+        )
         return MaterialPurchaseRequirementListItem(
             id=int(row.id),
             company=str(row.company),
@@ -2254,6 +2260,8 @@ class MaterialPurchaseService:
             uom=str(row.uom or "米"),
             unit_price=Decimal(str(row.unit_price or 0)),
             status=str(row.status),  # type: ignore[arg-type]
+            procurement_status=readiness.procurement_status,
+            procurement_status_label=readiness.procurement_status_label,
             has_completed=has_completed,
             purchase_no=self._optional_text(row.purchase_no),
             created_at=row.created_at,
@@ -2331,6 +2339,11 @@ class MaterialPurchaseService:
             spec_by_size.update(item.spec_by_size or {})
         unit_prices = {Decimal(str(item.unit_price or 0)) for item in items}
         unit_price = unit_prices.pop() if len(unit_prices) == 1 else Decimal("0")
+        readiness = derive_procurement_readiness_status(
+            snapshot_count=len(rows),
+            shortage_qty_total=net_required_qty - received_qty,
+            requirement_rows=rows,
+        )
 
         return MaterialPurchaseRequirementListItem(
             id=int(first.id),
@@ -2368,6 +2381,8 @@ class MaterialPurchaseService:
             uom=str(first.uom or "米"),
             unit_price=unit_price,
             status=str(first.status),  # type: ignore[arg-type]
+            procurement_status=readiness.procurement_status,
+            procurement_status_label=readiness.procurement_status_label,
             has_completed=all(item.has_completed for item in items),
             purchase_no=self._join_texts(purchase_nos),
             created_at=first.created_at,
