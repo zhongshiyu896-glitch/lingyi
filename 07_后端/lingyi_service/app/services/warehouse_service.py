@@ -41,6 +41,7 @@ from app.models.production import LyProductionTrackingNodeEvent
 from app.models.quality_outbox import LyQualityOutbox
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
+from app.models.sales_order import LyDeliveryInvoice
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseInventoryCount
@@ -1484,6 +1485,14 @@ class WarehouseService:
             return True
         table_names = set(inspect(session.connection()).get_table_names())
         return {LySalesOrder.__tablename__, LySalesOrderItem.__tablename__}.issubset(table_names)
+
+    def _has_sqlite_delivery_invoice_table(self) -> bool:
+        session = self._require_session()
+        bind = session.get_bind()
+        if bind.dialect.name != "sqlite":
+            return True
+        table_names = set(inspect(session.connection()).get_table_names())
+        return LyDeliveryInvoice.__tablename__ in table_names
 
     def _is_succeeded_subcontract_stock_fact(self, *, fact_row: Any, outbox: LySubcontractStockOutbox | None) -> bool:
         if outbox is None:
@@ -3823,6 +3832,17 @@ class WarehouseService:
         plan_no = self._source_component(source_text, "pg-") or self._source_component(source_text, "plan-") or self._prefixed_code(source_text, "PP")
         sales_order_row: LySalesOrder | None = None
         sales_order_line: LySalesOrderItem | None = None
+        production_plan = self._finished_goods_plan_context(
+            draft=draft,
+            source_text=source_text,
+            sales_order=sales_order,
+            sales_order_item=sales_order_item,
+            plan_no=plan_no,
+            items=items,
+        )
+        if production_plan is not None:
+            sales_order = sales_order or self._text(production_plan.sales_order)
+            sales_order_item = sales_order_item or self._text(production_plan.sales_order_item)
         if sales_order and self._has_sqlite_sales_order_tables():
             sales_order_query = session.query(LySalesOrder).filter(LySalesOrder.sales_order_no == sales_order)
             if self._text(draft.company):
@@ -3835,6 +3855,27 @@ class WarehouseService:
                 elif items:
                     line_query = line_query.filter(LySalesOrderItem.item_code == str(items[0].item_code))
                 sales_order_line = line_query.order_by(LySalesOrderItem.line_no.asc()).first()
+
+        first_item = items[0] if items else None
+        warehouse = self._text(getattr(first_item, "target_warehouse", None)) or self._text(draft.target_warehouse)
+        item_code = self._text(getattr(first_item, "item_code", None))
+        row_qty = sum((Decimal(str(item.qty or 0)) for item in items), Decimal("0"))
+        delivered_qty = (
+            self._finished_goods_delivered_qty(company=str(draft.company), source_id=str(draft.source_id))
+            if str(draft.source_type) == self._FINISHED_GOODS_SOURCE_TYPE
+            else Decimal("0")
+        )
+        confirmed_available_qty = (
+            self._local_stock_balance(company=str(draft.company), item_code=item_code, warehouse=warehouse)
+            if item_code and warehouse and str(draft.status) != "cancelled"
+            else Decimal("0")
+        )
+        outbox_data = self._build_outbox_status(outbox=outbox) if outbox is not None else None
+        exception_status = strict_failure_reason or (outbox_data.error_message if outbox_data is not None else None)
+        source_remaining_qty = max(row_qty - delivered_qty, Decimal("0"))
+        available_to_ship_qty = Decimal("0")
+        if str(draft.status) != "cancelled" and (outbox_data is None or outbox_data.status not in {"failed", "dead", "cancelled"}):
+            available_to_ship_qty = min(source_remaining_qty, max(confirmed_available_qty, Decimal("0")))
 
         return WarehouseStockEntryDraftData(
             id=draft_id,
@@ -3856,15 +3897,25 @@ class WarehouseService:
             allocation_mode=allocation_mode,
             strict_failure_reason=strict_failure_reason,
             show_completed_forced=show_completed_forced,
+            sales_order_id=int(sales_order_row.id) if sales_order_row is not None else None,
+            sales_order_no=sales_order,
             sales_order=sales_order,
-            customer=self._text(sales_order_row.customer) if sales_order_row is not None else None,
-            style_name=self._text(sales_order_line.item_name) if sales_order_line is not None else None,
+            customer=(self._text(sales_order_row.customer) if sales_order_row is not None else None)
+            or (self._text(production_plan.customer) if production_plan is not None else None),
+            style_name=(self._text(sales_order_line.item_name) if sales_order_line is not None else None)
+            or (self._text(production_plan.item_name) if production_plan is not None and hasattr(production_plan, "item_name") else None),
             production_notice_no=production_notice_no,
             plan_no=plan_no,
             plan_group_no=plan_no,
             sales_order_item=sales_order_item,
             color=first_value("bom_color"),
             size=first_value("bom_size"),
+            production_required_qty=Decimal(str(production_plan.planned_qty or 0)) if production_plan is not None else Decimal("0"),
+            cumulative_inbound_qty=row_qty if str(draft.status) != "cancelled" else Decimal("0"),
+            confirmed_available_qty=confirmed_available_qty,
+            delivered_qty=delivered_qty,
+            available_to_ship_qty=available_to_ship_qty,
+            exception_status=exception_status,
             items=[
                 WarehouseStockEntryDraftItemData(
                     id=int(item.id),
@@ -3881,8 +3932,68 @@ class WarehouseService:
                 )
                 for index, item in enumerate(items)
             ],
-            outbox=self._build_outbox_status(outbox=outbox) if outbox is not None else None,
+            outbox=outbox_data,
         )
+
+    def _finished_goods_plan_context(
+        self,
+        *,
+        draft: LyWarehouseStockEntryDraft,
+        source_text: str,
+        sales_order: str | None,
+        sales_order_item: str | None,
+        plan_no: str | None,
+        items: list[LyWarehouseStockEntryDraftItem],
+    ) -> LyProductionPlan | None:
+        if str(draft.source_type) != self._FINISHED_GOODS_SOURCE_TYPE:
+            return None
+        query = self._require_session().query(LyProductionPlan).filter(LyProductionPlan.company == str(draft.company))
+        if plan_no:
+            query = query.filter(or_(LyProductionPlan.plan_no == plan_no, LyProductionPlan.plan_group_no == plan_no))
+        if sales_order:
+            query = query.filter(LyProductionPlan.sales_order == sales_order)
+        if sales_order_item:
+            query = query.filter(LyProductionPlan.sales_order_item == sales_order_item)
+        elif items:
+            query = query.filter(LyProductionPlan.item_code == str(items[0].item_code))
+        if not plan_no and not sales_order and not sales_order_item:
+            fallback_plan = self._source_component(source_text, "plan-") or self._source_component(source_text, "pg-")
+            if fallback_plan:
+                query = query.filter(or_(LyProductionPlan.plan_no == fallback_plan, LyProductionPlan.plan_group_no == fallback_plan))
+        return query.order_by(LyProductionPlan.id.desc()).first()
+
+    def _finished_goods_delivered_qty(self, *, company: str, source_id: str) -> Decimal:
+        refs = {self._text(source_id), self._text(self._decode_source_text(source_id))}
+        normalized_refs = {str(ref) for ref in refs if ref}
+        if not normalized_refs:
+            return Decimal("0")
+        if not self._has_sqlite_delivery_invoice_table():
+            return Decimal("0")
+        rows = (
+            self._require_session()
+            .query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.status != "cancelled",
+                LyDeliveryInvoice.source_ref.in_(sorted(normalized_refs)),
+            )
+            .all()
+        )
+        return sum((Decimal(str(row.delivered_qty or 0)) for row in rows), Decimal("0"))
+
+    def _local_stock_balance(self, *, company: str, item_code: str, warehouse: str) -> Decimal:
+        rows = (
+            self._require_session()
+            .query(LyWarehouseStockLedgerEntry)
+            .filter(
+                LyWarehouseStockLedgerEntry.company == company,
+                LyWarehouseStockLedgerEntry.item_code == item_code,
+                LyWarehouseStockLedgerEntry.warehouse == warehouse,
+                LyWarehouseStockLedgerEntry.status == "active",
+            )
+            .all()
+        )
+        return sum((Decimal(str(row.actual_qty or 0)) for row in rows), Decimal("0"))
 
     def _apply_material_purchase_receipt(
         self,
@@ -5338,14 +5449,18 @@ class WarehouseService:
     @classmethod
     def _sales_order_from_source_text(cls, source_text: str, sales_order_item: str | None = None) -> str | None:
         explicit = cls._source_component(source_text, "so-")
+        prefixed = cls._prefixed_code(source_text, "SO")
         if explicit:
-            return cls._normalize_sales_order_code(explicit)
+            normalized_explicit = cls._normalize_sales_order_code(explicit)
+            if normalized_explicit and (normalized_explicit.startswith("SO-") or not prefixed):
+                return normalized_explicit
         from_item = cls._normalize_sales_order_code(sales_order_item)
         if from_item:
             return from_item
-        match = re.search(r"\bSO-[A-Z0-9-]+\b", str(source_text or "").upper())
-        if match:
-            return cls._normalize_sales_order_code(match.group(0))
+        if prefixed:
+            return cls._normalize_sales_order_code(prefixed)
+        if explicit:
+            return cls._normalize_sales_order_code(explicit)
         return None
 
     def _require_adapter(self) -> ERPNextWarehouseAdapter:

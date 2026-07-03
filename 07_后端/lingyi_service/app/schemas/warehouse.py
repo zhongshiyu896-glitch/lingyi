@@ -662,6 +662,8 @@ class WarehouseStockEntryDraftData(BaseModel):
     allocation_mode: Literal["strict_alloc", "zero_placeholder_fallback"] | None = None
     strict_failure_reason: str | None = None
     show_completed_forced: bool | None = None
+    sales_order_id: int | None = None
+    sales_order_no: str | None = None
     sales_order: str | None = None
     customer: str | None = None
     style_name: str | None = None
@@ -671,6 +673,12 @@ class WarehouseStockEntryDraftData(BaseModel):
     sales_order_item: str | None = None
     color: str | None = None
     size: str | None = None
+    production_required_qty: Decimal = Decimal("0")
+    cumulative_inbound_qty: Decimal = Decimal("0")
+    confirmed_available_qty: Decimal = Decimal("0")
+    delivered_qty: Decimal = Decimal("0")
+    available_to_ship_qty: Decimal = Decimal("0")
+    exception_status: str | None = None
     items: list[WarehouseStockEntryDraftItemData]
     outbox: WarehouseStockEntryOutboxStatusData | None = None
 

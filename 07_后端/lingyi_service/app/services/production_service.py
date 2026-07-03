@@ -4542,11 +4542,16 @@ class ProductionService:
 
     @staticmethod
     def _sales_order_from_finished_goods_source(source_id: str) -> str | None:
-        match = re.search(r"(?:^|:)so-([^:]+)", str(source_id or ""), flags=re.IGNORECASE)
-        if not match:
-            return None
-        sales_order = match.group(1).strip()
-        return sales_order or None
+        source_text = str(source_id or "")
+        explicit_match = re.search(r"(?:^|:)so-([^:]+)", source_text, flags=re.IGNORECASE)
+        prefixed_match = re.search(r"\bSO-[A-Z0-9-]+\b", source_text.upper())
+        explicit = explicit_match.group(1).strip() if explicit_match else ""
+        prefixed = prefixed_match.group(0).strip() if prefixed_match else ""
+        if explicit and (explicit.upper().startswith("SO-") or not prefixed):
+            return explicit
+        if prefixed:
+            return prefixed
+        return explicit or None
 
     @staticmethod
     def _production_order_inbound_refs(plan: LyProductionPlan) -> set[str]:

@@ -51,6 +51,7 @@ from app.services.erpnext_production_adapter import ERPNextProductionAdapter
 from app.services.erpnext_production_adapter import ERPNextSalesOrder
 from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 from app.services.permission_service import FASTAPI_ROLE_ACTIONS_ENV
+from app.services.production_service import ProductionService
 
 
 class ProductionPlanTest(unittest.TestCase):
@@ -58,6 +59,16 @@ class ProductionPlanTest(unittest.TestCase):
 
     CREATE_SCENARIO_TAG = "Z003-PROD-PLAN-20260413-001"
     DETAIL_SCENARIO_TAG = "Z003-PROD-PLAN-DETAIL-20260413-001"
+
+    def test_finished_goods_source_parser_preserves_so_prefix(self) -> None:
+        self.assertEqual(
+            ProductionService._sales_order_from_finished_goods_source("Z003:finished-goods:SO-FG-TRACE-001"),
+            "SO-FG-TRACE-001",
+        )
+        self.assertEqual(
+            ProductionService._sales_order_from_finished_goods_source("Z003:finished-goods:fg:so-SO-FG-TRACE-002:pn-PN-001"),
+            "SO-FG-TRACE-002",
+        )
 
     @classmethod
     def setUpClass(cls) -> None:

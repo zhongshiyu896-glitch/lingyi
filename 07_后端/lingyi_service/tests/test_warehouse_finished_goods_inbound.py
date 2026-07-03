@@ -343,6 +343,10 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
         self.assertEqual(body["purpose"], "Material Receipt")
         self.assertEqual(body["source_type"], "finished_goods_inbound")
         self.assertEqual(body["source_id"], payload["finished_goods_source_id"])
+        self.assertIsNotNone(body["sales_order_id"])
+        self.assertEqual(body["sales_order_no"], "SO-FG-FG-ITEM-001")
+        self.assertEqual(body["sales_order"], "SO-FG-FG-ITEM-001")
+        self.assertEqual(body["customer"], "CUST-FG")
         self.assertEqual(body["allocation_mode"], "strict_alloc")
         self.assertIsNone(body["strict_failure_reason"])
         self.assertTrue(body["show_completed_forced"])
@@ -363,6 +367,47 @@ class WarehouseFinishedGoodsInboundApiTest(WarehouseFinishedGoodsInboundApiBase)
             )
             self.assertEqual(outbox.payload.get("allocation_mode"), "strict_alloc")
             self.assertTrue(outbox.payload.get("show_completed_forced"))
+
+    def test_create_finished_goods_draft_links_sales_order_from_plan_only_source(self) -> None:
+        item_code = "FG-PLAN-ONLY-001"
+        safe_item = item_code.replace("/", "-").replace(" ", "-")
+        plan_no = f"PP-FG-{safe_item}"
+        source_id = f"{self.STOCK_ENTRY_SCENARIO_TAG}:finished-goods:{plan_no}:batch:unit:0"
+        with patch(
+            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.get_finished_goods_inbound_candidate",
+            return_value={
+                "source_id": "MLI-0001",
+                "item_code": item_code,
+                "qty": Decimal("12"),
+                "uom": "Nos",
+                "strict_alloc_qty": Decimal("12"),
+                "disabled": False,
+                "disabled_reason": None,
+            },
+        ):
+            payload = self._draft_payload(qty="5", item_code=item_code)
+            self._attach_production_source(payload)
+            payload["source_id"] = source_id
+            payload["source_ref"] = source_id
+            payload["finished_goods_source_id"] = source_id
+            payload["items"][0]["sales_order_item"] = None
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers(
+                    "warehouse:stock_entry_draft,warehouse:read",
+                    request_id=self._stock_entry_request_id(payload),
+                ),
+                json=payload,
+            )
+
+        self.assertEqual(response.status_code, 201, response.text)
+        body = response.json()["data"]
+        self.assertEqual(body["plan_no"], plan_no)
+        self.assertIsNotNone(body["sales_order_id"])
+        self.assertEqual(body["sales_order_no"], "SO-FG-FG-PLAN-ONLY-001")
+        self.assertEqual(body["sales_order"], "SO-FG-FG-PLAN-ONLY-001")
+        self.assertEqual(body["sales_order_item"], "SO-FG-FG-PLAN-ONLY-001-001")
+        self.assertEqual(body["customer"], "CUST-FG")
 
     def test_create_finished_goods_draft_fallback_mode(self) -> None:
         with patch(
