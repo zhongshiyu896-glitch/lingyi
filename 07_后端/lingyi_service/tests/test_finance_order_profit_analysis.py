@@ -1,4 +1,4 @@
-"""Tests for order operating gross-profit analysis."""
+"""Tests for order quoted gross-profit projection analysis."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from app.routers.finance import get_db_session as finance_db_dep
 
 
 class FinanceOrderProfitAnalysisTest(unittest.TestCase):
-    """Validate the boss-facing operating gross-profit page data contract."""
+    """Validate the boss-facing quoted gross-profit page data contract."""
 
     @classmethod
     def setUpClass(cls) -> None:

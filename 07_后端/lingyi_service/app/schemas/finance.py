@@ -10,7 +10,7 @@ from pydantic import Field
 
 
 class OrderProfitAnalysisItem(BaseModel):
-    """One sales-order operating gross-profit row."""
+    """One sales-order quoted gross-profit projection row."""
 
     id: int
     company: str
@@ -53,7 +53,7 @@ class OrderProfitAnalysisSummary(BaseModel):
 
 
 class OrderProfitAnalysisListData(BaseModel):
-    """Paginated order operating gross-profit rows."""
+    """Paginated order quoted gross-profit projection rows."""
 
     items: list[OrderProfitAnalysisItem] = Field(default_factory=list)
     total: int

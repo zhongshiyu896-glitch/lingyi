@@ -44,7 +44,7 @@ PROFIT_STATUS_ALIASES = {
 
 
 class FinanceAnalysisService:
-    """Build readonly operating gross-profit rows without financial posting."""
+    """Build readonly quoted gross-profit projection rows without financial posting."""
 
     def __init__(self, session: Session) -> None:
         self.session = session
