@@ -23,6 +23,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.models.material_purchase import LyMaterialPurchaseRequirement
 from app.models.material_purchase import LyMaterialPurchaseInvoice
 from app.models.production import LyProductionPlan
 from app.models.sales_order import LyDeliveryInvoice
@@ -30,10 +31,22 @@ from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.style_profit import LyStyleProfitSnapshot
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.schemas.dashboard import DashboardHomeChartData
 from app.schemas.dashboard import DashboardHomeChartPointData
 from app.schemas.dashboard import DashboardHomeChartSeriesData
+from app.schemas.dashboard import DashboardWorkbenchAlertData
+from app.schemas.dashboard import DashboardWorkbenchCustomerShareData
+from app.schemas.dashboard import DashboardWorkbenchData
+from app.schemas.dashboard import DashboardWorkbenchDueOrderData
+from app.schemas.dashboard import DashboardWorkbenchExceptionData
+from app.schemas.dashboard import DashboardWorkbenchKpiData
+from app.schemas.dashboard import DashboardWorkbenchQuickActionData
+from app.schemas.dashboard import DashboardWorkbenchRecentOrderData
+from app.schemas.dashboard import DashboardWorkbenchSourceData
+from app.schemas.dashboard import DashboardWorkbenchStageData
+from app.schemas.dashboard import DashboardWorkbenchTrendPointData
 from app.schemas.dashboard import DashboardOverviewData
 from app.schemas.dashboard import DashboardKanbanData
 from app.schemas.dashboard import DashboardKanbanFlowLinkData
@@ -279,6 +292,14 @@ class DashboardService:
                 previous_end=previous_end,
             )
             charts = self._build_home_charts(company=company, end_date=period_end)
+            workbench = self._build_workbench(
+                company=company,
+                as_of=period_end,
+                period_start=period_start,
+                period_end=period_end,
+                current_totals=current_totals,
+                previous_totals=previous_totals,
+            )
         except SQLAlchemyError as exc:
             raise self._source_unavailable(module="dashboard_business", exc=exc) from exc
 
@@ -466,6 +487,7 @@ class DashboardService:
             trend_points=[],
             charts=charts,
             primary_actions=["查看动态", "刷新指标", "导出概览"],
+            workbench=workbench,
         )
 
     @staticmethod
@@ -619,6 +641,703 @@ class DashboardService:
                 previous_totals["gross_profit_status"] = "complete"
 
         return current_totals, previous_totals
+
+    def _build_workbench(
+        self,
+        *,
+        company: str,
+        as_of: date,
+        period_start: date,
+        period_end: date,
+        current_totals: dict[str, Decimal | str],
+        previous_totals: dict[str, Decimal | str],
+    ) -> DashboardWorkbenchData:
+        active_orders = self._active_order_snapshots(company=company)
+        stage_distribution = self._build_stage_distribution(active_orders=active_orders)
+        stage_total = sum(row.count for row in stage_distribution)
+        delivery_stats = self._delivery_invoice_stats(company=company, period_start=period_start, period_end=period_end)
+        previous_delivery_stats = self._delivery_invoice_stats(
+            company=company,
+            period_start=self._previous_period(period_start=period_start, period_end=period_end)[0],
+            period_end=self._previous_period(period_start=period_start, period_end=period_end)[1],
+        )
+        collection_amount = self._collection_amount(company=company, period_start=period_start, period_end=period_end)
+        previous_collection_amount = self._collection_amount(
+            company=company,
+            period_start=self._previous_period(period_start=period_start, period_end=period_end)[0],
+            period_end=self._previous_period(period_start=period_start, period_end=period_end)[1],
+        )
+        receivable_balance = self._receivable_balance_v1(company=company)
+        alert_counts = self._dashboard_alert_counts(company=company, as_of=as_of, active_orders=active_orders)
+        trend = self._shipment_collection_trend(company=company, end_date=period_end)
+        due_orders = self._due_orders(company=company, as_of=as_of)
+        customer_shares = self._customer_shares(company=company, period_start=period_start, period_end=period_end)
+        exceptions = self._dashboard_exceptions(
+            company=company,
+            shortage_count=alert_counts["shortage_blocked_orders"],
+            overdue_count=alert_counts["overdue_orders"],
+        )
+        recent_orders = self._recent_orders(company=company)
+
+        gross_profit_value = (
+            self._decimal_or_zero(current_totals["gross_profit"])
+            if current_totals["gross_profit_status"] == "complete"
+            else Decimal("0")
+        )
+        gross_profit_trend = (
+            self._period_trend(current_totals["gross_profit"], previous_totals["gross_profit"])
+            if current_totals["gross_profit_status"] == "complete"
+            else "—"
+        )
+        alerts = [
+            DashboardWorkbenchAlertData(
+                key="overdue_orders",
+                label="已逾期订单",
+                count=alert_counts["overdue_orders"],
+                tone="red",
+                route="/production/productOrder?due=overdue",
+                source_note="销售订单明细交期早于统计日且未完全交付。",
+            ),
+            DashboardWorkbenchAlertData(
+                key="due_soon_orders",
+                label="7 天内到交期",
+                count=alert_counts["due_soon_orders"],
+                tone="amber",
+                route="/production/productOrder?due=soon",
+                source_note="销售订单明细交期在统计日至 7 天内且未完全交付。",
+            ),
+            DashboardWorkbenchAlertData(
+                key="shortage_blocked_orders",
+                label="缺料卡住的订单",
+                count=alert_counts["shortage_blocked_orders"],
+                tone="amber",
+                route="/materialPurchase/materialPurchaseProcess?view=readiness",
+                # TODO(批3口径切换): 统一齐料口径后改为批3定义的订单级 readiness 状态。
+                source_note="现阶段按采购需求池 pending/purchased 且未收齐聚合。",
+            ),
+            DashboardWorkbenchAlertData(
+                key="unpaid_customers_over_30d",
+                label="超 30 天未回款客户",
+                count=alert_counts["unpaid_customers_over_30d"],
+                tone="blue",
+                route="/production/receivablePayment",
+                # TODO(模块③接入): 回款模块上线后改为客户回款账龄表。
+                source_note="v1 按发货开票 submitted/partly_paid 且 outstanding_amount > 0 统计客户。",
+            ),
+        ]
+        kpis = [
+            DashboardWorkbenchKpiData(
+                key="active_order_count",
+                label="在产订单",
+                value=Decimal(stage_total),
+                unit="单",
+                trend="—",
+                route="/production/productOrder",
+                tone="blue",
+                source_note="阶段分布同源订单数，统计未取消且未完全交付订单。",
+            ),
+            DashboardWorkbenchKpiData(
+                key="monthly_shipment",
+                label="本月出货",
+                value=delivery_stats["qty"],
+                unit="件",
+                sub_value=f"¥{self._format_wan(delivery_stats['amount'])}",
+                trend=self._period_trend(delivery_stats["amount"], previous_delivery_stats["amount"]),
+                trend_direction=self._trend_direction(delivery_stats["amount"], previous_delivery_stats["amount"]),
+                route="/production/deliveryInvoice",
+                tone="green",
+                source_note="发货开票 grand_total/delivered_qty 按 posting_date 月度聚合。",
+            ),
+            DashboardWorkbenchKpiData(
+                key="monthly_collection",
+                label="本月回款",
+                value=collection_amount,
+                unit="元",
+                trend=self._period_trend(collection_amount, previous_collection_amount),
+                trend_direction=self._trend_direction(collection_amount, previous_collection_amount),
+                route="/production/receivablePayment",
+                tone="cyan",
+                # TODO(模块③接入): 回款模块上线后改为正式收款流水聚合。
+                source_note="v1 按销售回款单 paid_amount 聚合，缺失时为 0。",
+            ),
+            DashboardWorkbenchKpiData(
+                key="receivable_balance_v1",
+                label="应收余额",
+                value=receivable_balance,
+                unit="元",
+                trend="—",
+                route="/production/receivablePayment",
+                tone="amber",
+                # TODO(模块③接入): 回款模块上线后改为客户应收余额表。
+                source_note="v1 按累计发货开票金额减累计已回款金额。",
+            ),
+            DashboardWorkbenchKpiData(
+                key="monthly_gross_profit",
+                label="核价毛利（预测）",
+                value=gross_profit_value,
+                unit="元",
+                trend=gross_profit_trend,
+                trend_direction=self._trend_direction(
+                    self._decimal_or_zero(current_totals["gross_profit"]),
+                    self._decimal_or_zero(previous_totals["gross_profit"]),
+                ),
+                route="/reports/style-profit",
+                tone="purple",
+                source_note="沿用 monthly_gross_profit，只统计 complete 利润快照。",
+            ),
+        ]
+
+        return DashboardWorkbenchData(
+            alerts=alerts,
+            kpis=kpis,
+            shipment_collection_trend=trend,
+            stage_distribution=stage_distribution,
+            due_orders=due_orders,
+            customer_shares=customer_shares,
+            pipeline=stage_distribution,
+            quick_actions=self._quick_actions(),
+            exceptions=exceptions,
+            recent_orders=recent_orders,
+            data_sources=self._workbench_data_sources(),
+            todo_notes=[
+                "TODO(批3口径切换): 缺料和齐料中阶段当前按采购需求池近似，批3统一口径后切换。",
+                "TODO(模块③接入): 本月回款和应收余额当前为发货发票/回款单 v1 口径。",
+            ],
+        )
+
+    def _active_order_snapshots(self, *, company: str) -> list[dict[str, Any]]:
+        if not self._has_tables({LySalesOrder.__tablename__, LySalesOrderItem.__tablename__}):
+            return []
+        rows = (
+            self.session.query(LySalesOrder, LySalesOrderItem)
+            .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+            .filter(
+                LySalesOrder.company == company,
+                LySalesOrder.status != "cancelled",
+                LySalesOrderItem.delivered_qty < LySalesOrderItem.qty,
+            )
+            .all()
+        )
+        grouped: dict[str, dict[str, Any]] = {}
+        for order, item in rows:
+            order_no = str(order.sales_order_no)
+            snapshot = grouped.setdefault(
+                order_no,
+                {
+                    "sales_order": order_no,
+                    "customer": str(order.customer or ""),
+                    "quote_status": str(order.quote_status or ""),
+                    "qty": Decimal("0"),
+                    "delivered_qty": Decimal("0"),
+                    "all_material_calculated": True,
+                    "style_no": str(item.item_code or ""),
+                    "updated_at": order.updated_at or order.created_at,
+                    "delivery_date": getattr(item, "delivery_date", None) or order.delivery_date,
+                    "plan_statuses": set(),
+                    "shortage": False,
+                },
+            )
+            snapshot["qty"] += self._decimal_or_zero(item.qty)
+            snapshot["delivered_qty"] += self._decimal_or_zero(item.delivered_qty)
+            snapshot["all_material_calculated"] = bool(snapshot["all_material_calculated"]) and str(
+                item.ys_material_calc_state or ""
+            ) == "已算料"
+            item_delivery = getattr(item, "delivery_date", None) or order.delivery_date
+            if item_delivery and (snapshot["delivery_date"] is None or item_delivery < snapshot["delivery_date"]):
+                snapshot["delivery_date"] = item_delivery
+
+        order_nos = list(grouped)
+        if order_nos and self._has_tables({LyProductionPlan.__tablename__}):
+            for sales_order, status in (
+                self.session.query(LyProductionPlan.sales_order, LyProductionPlan.status)
+                .filter(LyProductionPlan.company == company, LyProductionPlan.sales_order.in_(order_nos))
+                .all()
+            ):
+                if str(sales_order) in grouped:
+                    grouped[str(sales_order)]["plan_statuses"].add(str(status or ""))
+
+        if order_nos and self._has_tables({LyMaterialPurchaseRequirement.__tablename__}):
+            for sales_order, status, net_required_qty, received_qty in (
+                self.session.query(
+                    LyMaterialPurchaseRequirement.sales_order,
+                    LyMaterialPurchaseRequirement.status,
+                    LyMaterialPurchaseRequirement.net_required_qty,
+                    LyMaterialPurchaseRequirement.received_qty,
+                )
+                .filter(
+                    LyMaterialPurchaseRequirement.company == company,
+                    LyMaterialPurchaseRequirement.sales_order.in_(order_nos),
+                    LyMaterialPurchaseRequirement.status.in_(["pending", "purchased"]),
+                )
+                .all()
+            ):
+                order_no = str(sales_order or "")
+                if order_no in grouped and self._decimal_or_zero(received_qty) < self._decimal_or_zero(net_required_qty):
+                    # TODO(批3口径切换): 这里先按采购需求池未收齐判断缺料卡住。
+                    grouped[order_no]["shortage"] = True
+        return list(grouped.values())
+
+    def _build_stage_distribution(self, *, active_orders: list[dict[str, Any]]) -> list[DashboardWorkbenchStageData]:
+        counters = {
+            "quote": 0,
+            "material_calc": 0,
+            "purchase_ready": 0,
+            "production": 0,
+            "finished_inbound": 0,
+            "delivery": 0,
+        }
+        for row in active_orders:
+            stage_key = self._classify_order_stage(row)
+            counters[stage_key] += 1
+        specs = [
+            ("quote", "待核价", "/production/productQuote", "去核价", "blue"),
+            ("material_calc", "待算料", "/production/productOrder", "去算料", "green"),
+            ("purchase_ready", "待采购 / 齐料中", "/materialPurchase/materialPurchaseProcess?view=readiness", "去处理", "amber"),
+            ("production", "生产中", "/production/orderTrackingV2", "看进度", "purple"),
+            ("finished_inbound", "待成品入库", "/production/finishedGoodsInbound", "去入库", "cyan"),
+            ("delivery", "待发货", "/production/deliveryInvoice", "去发货", "red"),
+        ]
+        return [
+            DashboardWorkbenchStageData(
+                key=key,
+                label=label,
+                count=counters[key],
+                route=route,
+                action_label=action,
+                tone=tone,
+                source_note="stage_distribution 与管理员 pipeline 同源。",
+            )
+            for key, label, route, action, tone in specs
+        ]
+
+    @staticmethod
+    def _classify_order_stage(row: dict[str, Any]) -> str:
+        quote_status = str(row.get("quote_status") or "").lower()
+        if quote_status and quote_status not in {"已核价", "quoted", "confirmed", "complete", "completed"}:
+            return "quote"
+        if not bool(row.get("all_material_calculated")):
+            return "material_calc"
+        if bool(row.get("shortage")):
+            # TODO(批3口径切换): 待采购/齐料中后续改为统一 readiness 阶段字段。
+            return "purchase_ready"
+        plan_statuses = {str(value) for value in row.get("plan_statuses", set())}
+        if plan_statuses.intersection({"production_completed", "finished", "completed"}):
+            return "finished_inbound"
+        delivered_qty = DashboardService._decimal_or_zero(row.get("delivered_qty"))
+        if delivered_qty > Decimal("0"):
+            return "delivery"
+        if plan_statuses:
+            return "production"
+        return "production"
+
+    def _delivery_invoice_stats(self, *, company: str, period_start: date, period_end: date) -> dict[str, Decimal]:
+        result = {"amount": Decimal("0"), "qty": Decimal("0")}
+        if not self._has_tables({LyDeliveryInvoice.__tablename__}):
+            return result
+        row = (
+            self.session.query(
+                func.coalesce(func.sum(LyDeliveryInvoice.grand_total), 0),
+                func.coalesce(func.sum(LyDeliveryInvoice.delivered_qty), 0),
+            )
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.status != "cancelled",
+                LyDeliveryInvoice.posting_date >= period_start,
+                LyDeliveryInvoice.posting_date <= period_end,
+            )
+            .one()
+        )
+        result["amount"] = self._decimal_or_zero(row[0])
+        result["qty"] = self._decimal_or_zero(row[1])
+        return result
+
+    def _collection_amount(self, *, company: str, period_start: date, period_end: date) -> Decimal:
+        if not self._has_tables({LySalesPaymentEntry.__tablename__}):
+            return Decimal("0")
+        # TODO(模块③接入): 回款模块上线后切换到正式回款流水总表。
+        value = (
+            self.session.query(func.coalesce(func.sum(LySalesPaymentEntry.paid_amount), 0))
+            .filter(
+                LySalesPaymentEntry.company == company,
+                LySalesPaymentEntry.status == "submitted",
+                LySalesPaymentEntry.posting_date >= period_start,
+                LySalesPaymentEntry.posting_date <= period_end,
+            )
+            .scalar()
+        )
+        return self._decimal_or_zero(value)
+
+    def _receivable_balance_v1(self, *, company: str) -> Decimal:
+        if not self._has_tables({LyDeliveryInvoice.__tablename__}):
+            return Decimal("0")
+        # TODO(模块③接入): 回款模块上线后切换到客户应收余额表。
+        row = (
+            self.session.query(
+                func.coalesce(func.sum(LyDeliveryInvoice.grand_total), 0),
+                func.coalesce(func.sum(LyDeliveryInvoice.paid_amount), 0),
+            )
+            .filter(LyDeliveryInvoice.company == company, LyDeliveryInvoice.status != "cancelled")
+            .one()
+        )
+        balance = self._decimal_or_zero(row[0]) - self._decimal_or_zero(row[1])
+        return balance if balance > Decimal("0") else Decimal("0")
+
+    def _dashboard_alert_counts(self, *, company: str, as_of: date, active_orders: list[dict[str, Any]]) -> dict[str, int]:
+        due_soon_end = as_of + timedelta(days=7)
+        overdue_orders = {
+            str(row["sales_order"])
+            for row in active_orders
+            if row.get("delivery_date") is not None and row["delivery_date"] < as_of
+        }
+        due_soon_orders = {
+            str(row["sales_order"])
+            for row in active_orders
+            if row.get("delivery_date") is not None and as_of <= row["delivery_date"] <= due_soon_end
+        }
+        shortage_orders = {str(row["sales_order"]) for row in active_orders if bool(row.get("shortage"))}
+        unpaid_customers = set()
+        if self._has_tables({LyDeliveryInvoice.__tablename__}):
+            cutoff = as_of - timedelta(days=30)
+            rows = (
+                self.session.query(LyDeliveryInvoice.customer)
+                .filter(
+                    LyDeliveryInvoice.company == company,
+                    LyDeliveryInvoice.status.in_(["submitted", "partly_paid"]),
+                    LyDeliveryInvoice.outstanding_amount > 0,
+                    LyDeliveryInvoice.posting_date <= cutoff,
+                )
+                .all()
+            )
+            unpaid_customers = {str(row[0] or "未填客户") for row in rows}
+        return {
+            "overdue_orders": len(overdue_orders),
+            "due_soon_orders": len(due_soon_orders),
+            "shortage_blocked_orders": len(shortage_orders),
+            "unpaid_customers_over_30d": len(unpaid_customers),
+        }
+
+    def _shipment_collection_trend(self, *, company: str, end_date: date) -> list[DashboardWorkbenchTrendPointData]:
+        months = self._month_buckets(end_date=end_date, count=6)
+        totals = {
+            start: {"shipment_amount": Decimal("0"), "collection_amount": Decimal("0")}
+            for start in months
+        }
+        first_month = months[0]
+        last_day = self._month_end(months[-1])
+        if self._has_tables({LyDeliveryInvoice.__tablename__}):
+            rows = (
+                self.session.query(LyDeliveryInvoice.posting_date, LyDeliveryInvoice.grand_total)
+                .filter(
+                    LyDeliveryInvoice.company == company,
+                    LyDeliveryInvoice.status != "cancelled",
+                    LyDeliveryInvoice.posting_date >= first_month,
+                    LyDeliveryInvoice.posting_date <= last_day,
+                )
+                .all()
+            )
+            for posting_date, amount in rows:
+                bucket = self._month_start(posting_date)
+                if bucket in totals:
+                    totals[bucket]["shipment_amount"] += self._decimal_or_zero(amount)
+        if self._has_tables({LySalesPaymentEntry.__tablename__}):
+            rows = (
+                self.session.query(LySalesPaymentEntry.posting_date, LySalesPaymentEntry.paid_amount)
+                .filter(
+                    LySalesPaymentEntry.company == company,
+                    LySalesPaymentEntry.status == "submitted",
+                    LySalesPaymentEntry.posting_date >= first_month,
+                    LySalesPaymentEntry.posting_date <= last_day,
+                )
+                .all()
+            )
+            for posting_date, amount in rows:
+                bucket = self._month_start(posting_date)
+                if bucket in totals:
+                    totals[bucket]["collection_amount"] += self._decimal_or_zero(amount)
+        return [
+            DashboardWorkbenchTrendPointData(
+                period=f"{bucket.month}月",
+                shipment_amount=values["shipment_amount"],
+                collection_amount=values["collection_amount"],
+            )
+            for bucket, values in totals.items()
+        ]
+
+    def _due_orders(self, *, company: str, as_of: date) -> list[DashboardWorkbenchDueOrderData]:
+        if not self._has_tables({LySalesOrder.__tablename__, LySalesOrderItem.__tablename__}):
+            return []
+        due_end = as_of + timedelta(days=7)
+        rows = (
+            self.session.query(LySalesOrder, LySalesOrderItem)
+            .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+            .filter(
+                LySalesOrder.company == company,
+                LySalesOrder.status != "cancelled",
+                LySalesOrderItem.delivered_qty < LySalesOrderItem.qty,
+                func.coalesce(LySalesOrderItem.delivery_date, LySalesOrder.delivery_date) >= as_of,
+                func.coalesce(LySalesOrderItem.delivery_date, LySalesOrder.delivery_date) <= due_end,
+            )
+            .order_by(func.coalesce(LySalesOrderItem.delivery_date, LySalesOrder.delivery_date).asc(), LySalesOrder.id.desc())
+            .limit(8)
+            .all()
+        )
+        result: list[DashboardWorkbenchDueOrderData] = []
+        for order, item in rows:
+            due_date = getattr(item, "delivery_date", None) or order.delivery_date
+            if due_date is None:
+                continue
+            ordered_qty = self._decimal_or_zero(item.qty)
+            finished_qty = self._decimal_or_zero(item.delivered_qty)
+            rate = self._safe_rate(numerator=finished_qty, denominator=ordered_qty) * Decimal("100")
+            result.append(
+                DashboardWorkbenchDueOrderData(
+                    sales_order=str(order.sales_order_no),
+                    customer=str(order.customer or ""),
+                    style_no=str(item.item_code or ""),
+                    due_date=due_date,
+                    days_left=(due_date - as_of).days,
+                    ordered_qty=ordered_qty,
+                    finished_qty=finished_qty,
+                    completion_rate=rate.quantize(Decimal("0.01")),
+                    route=f"/production/productOrder?keyword={order.sales_order_no}",
+                )
+            )
+        return result
+
+    def _customer_shares(self, *, company: str, period_start: date, period_end: date) -> list[DashboardWorkbenchCustomerShareData]:
+        if not self._has_tables({LyDeliveryInvoice.__tablename__}):
+            return []
+        rows = (
+            self.session.query(
+                LyDeliveryInvoice.customer,
+                func.coalesce(func.sum(LyDeliveryInvoice.grand_total), 0),
+            )
+            .filter(
+                LyDeliveryInvoice.company == company,
+                LyDeliveryInvoice.status != "cancelled",
+                LyDeliveryInvoice.posting_date >= period_start,
+                LyDeliveryInvoice.posting_date <= period_end,
+            )
+            .group_by(LyDeliveryInvoice.customer)
+            .order_by(func.coalesce(func.sum(LyDeliveryInvoice.grand_total), 0).desc())
+            .limit(5)
+            .all()
+        )
+        total = sum((self._decimal_or_zero(amount) for _, amount in rows), Decimal("0"))
+        if total <= Decimal("0"):
+            return []
+        return [
+            DashboardWorkbenchCustomerShareData(
+                customer=str(customer or "未填客户"),
+                amount=self._decimal_or_zero(amount),
+                ratio=(self._decimal_or_zero(amount) / total * Decimal("100")).quantize(Decimal("0.01")),
+            )
+            for customer, amount in rows
+        ]
+
+    def _dashboard_exceptions(self, *, company: str, shortage_count: int, overdue_count: int) -> list[DashboardWorkbenchExceptionData]:
+        rows: list[DashboardWorkbenchExceptionData] = []
+        if self._has_tables({LyWarehouseStockEntryOutboxEvent.__tablename__}):
+            failed = (
+                self.session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.status.in_(["failed", "dead"]))
+                .order_by(LyWarehouseStockEntryOutboxEvent.created_at.desc(), LyWarehouseStockEntryOutboxEvent.id.desc())
+                .limit(3)
+                .all()
+            )
+            for row in failed:
+                title = str(row.error_message or row.event_type or "入库失败")
+                rows.append(
+                    DashboardWorkbenchExceptionData(
+                        key=f"stock_outbox_{row.id}",
+                        title=f"入库失败：{title}",
+                        severity="danger",
+                        route="/materialStock/stockTransaction",
+                        action_label="去处理",
+                        source_note="仓库 Stock Entry outbox failed/dead 真实错误。",
+                    )
+                )
+        if shortage_count > 0:
+            rows.append(
+                DashboardWorkbenchExceptionData(
+                    key="shortage_orders",
+                    title=f"{shortage_count} 个订单缺料或齐料未完成",
+                    severity="danger",
+                    route="/materialPurchase/materialPurchaseProcess?view=readiness",
+                    action_label="催采购",
+                    source_note="采购需求池 pending/purchased 未收齐。",
+                )
+            )
+        if self._has_tables({LyProductionPlan.__tablename__}):
+            not_started = (
+                self.session.query(func.count(distinct(LyProductionPlan.sales_order)))
+                .filter(
+                    LyProductionPlan.company == company,
+                    LyProductionPlan.status.in_(["planned", "material_checked", "work_order_created"]),
+                )
+                .scalar()
+            )
+            if int(not_started or 0) > 0:
+                rows.append(
+                    DashboardWorkbenchExceptionData(
+                        key="notice_not_started",
+                        title=f"{int(not_started or 0)} 个订单已下发未开始生产",
+                        severity="warning",
+                        route="/production/orderTrackingV2",
+                        action_label="去查看",
+                    )
+                )
+        if overdue_count > 0:
+            rows.append(
+                DashboardWorkbenchExceptionData(
+                    key="overdue_dynamics",
+                    title=f"{overdue_count} 条超期订单动态待确认",
+                    severity="warning",
+                    route="/production/productOrder?due=overdue",
+                    action_label="去确认",
+                )
+            )
+        return rows[:8]
+
+    def _recent_orders(self, *, company: str) -> list[DashboardWorkbenchRecentOrderData]:
+        if not self._has_tables({LySalesOrder.__tablename__, LySalesOrderItem.__tablename__}):
+            return []
+        rows = (
+            self.session.query(LySalesOrder, LySalesOrderItem)
+            .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+            .filter(LySalesOrder.company == company, LySalesOrder.status != "cancelled")
+            .order_by(LySalesOrder.updated_at.desc(), LySalesOrder.id.desc(), LySalesOrderItem.line_no.asc())
+            .limit(5)
+            .all()
+        )
+        result: list[DashboardWorkbenchRecentOrderData] = []
+        for order, item in rows:
+            status_label, next_action = self._recent_order_status(order=order, item=item)
+            result.append(
+                DashboardWorkbenchRecentOrderData(
+                    sales_order=str(order.sales_order_no),
+                    customer=str(order.customer or ""),
+                    style_no=str(item.item_code or ""),
+                    qty=self._decimal_or_zero(item.qty),
+                    status=status_label,
+                    next_action=next_action,
+                    route=f"/production/productOrder?keyword={order.sales_order_no}",
+                )
+            )
+        return result
+
+    @staticmethod
+    def _recent_order_status(*, order: LySalesOrder, item: LySalesOrderItem) -> tuple[str, str]:
+        if str(order.quote_status or "") not in {"已核价", "quoted", "confirmed", "complete", "completed"}:
+            return "待核价", "去核价"
+        if str(item.ys_material_calc_state or "") != "已算料":
+            return "待算料", "看齐料"
+        if DashboardService._decimal_or_zero(item.delivered_qty) >= DashboardService._decimal_or_zero(item.qty):
+            return "已发货", "看订单"
+        if DashboardService._decimal_or_zero(item.planned_qty) > Decimal("0"):
+            return "生产中", "看生产"
+        return "待生产", "去排产"
+
+    @staticmethod
+    def _quick_actions() -> list[DashboardWorkbenchQuickActionData]:
+        return [
+            DashboardWorkbenchQuickActionData(key="style", label="新建款式", route="/basic/styleMaster", icon="plus"),
+            DashboardWorkbenchQuickActionData(key="order", label="新建大货订单", route="/production/productOrder", icon="order"),
+            DashboardWorkbenchQuickActionData(key="quote", label="内部核价", route="/production/productQuote", icon="money"),
+            DashboardWorkbenchQuickActionData(key="purchase", label="物料采购单", route="/materialPurchase/materialPurchaseProcess", icon="cart"),
+            DashboardWorkbenchQuickActionData(key="notice", label="生成生产通知单", route="/production/productOrder", icon="notice"),
+            DashboardWorkbenchQuickActionData(key="inbound", label="成品入库", route="/production/finishedGoodsInbound", icon="box"),
+        ]
+
+    @staticmethod
+    def _workbench_data_sources() -> list[DashboardWorkbenchSourceData]:
+        return [
+            DashboardWorkbenchSourceData(
+                module="要紧的事横幅",
+                api="/api/dashboard/overview",
+                fields=[
+                    "ly_sales_order.delivery_date",
+                    "ly_sales_order_item.delivery_date",
+                    "ly_sales_order_item.qty",
+                    "ly_sales_order_item.delivered_qty",
+                    "ly_material_purchase_requirement.status",
+                    "ly_delivery_invoice.status",
+                    "ly_delivery_invoice.outstanding_amount",
+                ],
+            ),
+            DashboardWorkbenchSourceData(
+                module="KPI 卡",
+                api="/api/dashboard/overview",
+                fields=[
+                    "ly_delivery_invoice.posting_date/grand_total/delivered_qty/paid_amount",
+                    "ly_sales_payment_entry.posting_date/paid_amount",
+                    "ly_style_profit_snapshot.profit_amount/snapshot_status",
+                ],
+            ),
+            DashboardWorkbenchSourceData(
+                module="趋势/客户占比",
+                api="/api/dashboard/overview",
+                fields=[
+                    "ly_delivery_invoice.posting_date/grand_total/customer",
+                    "ly_sales_payment_entry.posting_date/paid_amount",
+                ],
+            ),
+            DashboardWorkbenchSourceData(
+                module="阶段分布/流水线",
+                api="/api/dashboard/overview",
+                fields=[
+                    "ly_sales_order.quote_status",
+                    "ly_sales_order_item.ys_material_calc_state",
+                    "ly_material_purchase_requirement.status/received_qty/net_required_qty",
+                    "ly_production_plan.status",
+                    "ly_sales_order_item.delivered_qty",
+                ],
+                note="TODO(批3口径切换): 齐料中阶段后续改为统一 readiness 状态。",
+            ),
+            DashboardWorkbenchSourceData(
+                module="到期订单/最近订单/异常",
+                api="/api/dashboard/overview",
+                fields=[
+                    "ly_sales_order.updated_at/customer/status",
+                    "ly_sales_order_item.delivery_date/qty/delivered_qty",
+                    "ly_warehouse_stock_entry_outbox_event.status/error_message",
+                ],
+            ),
+        ]
+
+    @staticmethod
+    def _trend_direction(current: Decimal | int | str, previous: Decimal | int | str) -> str:
+        current_value = DashboardService._decimal_or_zero(current)
+        previous_value = DashboardService._decimal_or_zero(previous)
+        if previous_value <= Decimal("0") or current_value == previous_value:
+            return "flat"
+        return "up" if current_value > previous_value else "down"
+
+    @staticmethod
+    def _format_wan(value: Decimal | int | str) -> str:
+        decimal_value = DashboardService._decimal_or_zero(value)
+        wan = (decimal_value / Decimal("10000")).quantize(Decimal("0.1"))
+        return f"{DashboardService._format_decimal(wan)}万"
+
+    @staticmethod
+    def _month_start(value: date) -> date:
+        return value.replace(day=1)
+
+    @staticmethod
+    def _add_months(value: date, offset: int) -> date:
+        month_index = value.month - 1 + offset
+        year = value.year + month_index // 12
+        month = month_index % 12 + 1
+        return date(year, month, 1)
+
+    @classmethod
+    def _month_buckets(cls, *, end_date: date, count: int) -> list[date]:
+        end_month = cls._month_start(end_date)
+        return [cls._add_months(end_month, offset) for offset in range(1 - count, 1)]
+
+    @classmethod
+    def _month_end(cls, value: date) -> date:
+        return cls._add_months(cls._month_start(value), 1) - timedelta(days=1)
 
     def _build_home_charts(self, *, company: str, end_date: date) -> list[DashboardHomeChartData]:
         start_date = end_date - timedelta(days=29)

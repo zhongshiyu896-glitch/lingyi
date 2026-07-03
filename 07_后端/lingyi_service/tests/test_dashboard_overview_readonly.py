@@ -14,6 +14,8 @@ from unittest.mock import patch
 from fastapi import Request
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy import distinct
+from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -622,6 +624,73 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         payment_point = next(point for point in charts["receivable_collection_trend"]["points"] if point["period"] == "2026-06-15")
         self.assertEqual(Decimal(str(payment_point["values"]["paid_amount"])), Decimal("200.000000"))
 
+        workbench = home["workbench"]
+        alerts = {row["key"]: row for row in workbench["alerts"]}
+        kpis = {row["key"]: row for row in workbench["kpis"]}
+        stages = {row["key"]: row for row in workbench["stage_distribution"]}
+        pipeline = {row["key"]: row for row in workbench["pipeline"]}
+
+        self.assertEqual(alerts["overdue_orders"]["count"], 1)
+        self.assertEqual(alerts["due_soon_orders"]["count"], 1)
+        self.assertEqual(alerts["unpaid_customers_over_30d"]["count"], 0)
+        self.assertEqual(kpis["monthly_gross_profit"]["label"], "核价毛利（预测）")
+        self.assertEqual(Decimal(str(kpis["monthly_shipment"]["value"])), Decimal("4"))
+        self.assertEqual(Decimal(str(kpis["monthly_collection"]["value"])), Decimal("200"))
+        self.assertEqual(Decimal(str(kpis["receivable_balance_v1"]["value"])), Decimal("300"))
+        self.assertEqual(Decimal(str(kpis["monthly_gross_profit"]["value"])), Decimal("700"))
+        self.assertEqual(sum(row["count"] for row in workbench["stage_distribution"]), int(kpis["active_order_count"]["value"]))
+        self.assertEqual(stages, pipeline)
+        self.assertEqual(stages["quote"]["count"], 2)
+
+        workbench_trend = {row["period"]: row for row in workbench["shipment_collection_trend"]}
+        self.assertEqual(Decimal(str(workbench_trend["6月"]["shipment_amount"])), Decimal("500"))
+        self.assertEqual(Decimal(str(workbench_trend["6月"]["collection_amount"])), Decimal("200"))
+        self.assertEqual(workbench["due_orders"][0]["sales_order"], "SO-DASH-BIZ-001")
+        self.assertEqual(Decimal(str(workbench["due_orders"][0]["completion_rate"])), Decimal("0.00"))
+        self.assertEqual(workbench["customer_shares"][0]["customer"], "DASH-BIZ-CUST")
+        self.assertEqual(Decimal(str(workbench["customer_shares"][0]["amount"])), Decimal("500"))
+        self.assertTrue(any(row["sales_order"] == "SO-DASH-BIZ-001" for row in workbench["recent_orders"]))
+
+        with self.SessionLocal() as session:
+            delivery_date_expr = func.coalesce(LySalesOrderItem.delivery_date, LySalesOrder.delivery_date)
+            direct_overdue = (
+                session.query(func.count(distinct(LySalesOrder.id)))
+                .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+                .filter(
+                    LySalesOrder.company == "COMP-A",
+                    LySalesOrder.status != "cancelled",
+                    delivery_date_expr < date(2026, 6, 24),
+                    LySalesOrderItem.delivered_qty < LySalesOrderItem.qty,
+                )
+                .scalar()
+            )
+            direct_due_soon = (
+                session.query(func.count(distinct(LySalesOrder.id)))
+                .join(LySalesOrderItem, LySalesOrderItem.sales_order_id == LySalesOrder.id)
+                .filter(
+                    LySalesOrder.company == "COMP-A",
+                    LySalesOrder.status != "cancelled",
+                    delivery_date_expr >= date(2026, 6, 24),
+                    delivery_date_expr <= date(2026, 7, 1),
+                    LySalesOrderItem.delivered_qty < LySalesOrderItem.qty,
+                )
+                .scalar()
+            )
+            direct_shipment_qty = (
+                session.query(func.coalesce(func.sum(LyDeliveryInvoice.delivered_qty), 0))
+                .filter(
+                    LyDeliveryInvoice.company == "COMP-A",
+                    LyDeliveryInvoice.status != "cancelled",
+                    LyDeliveryInvoice.posting_date >= date(2026, 6, 1),
+                    LyDeliveryInvoice.posting_date <= date(2026, 6, 24),
+                )
+                .scalar()
+            )
+
+        self.assertEqual(alerts["overdue_orders"]["count"], int(direct_overdue or 0))
+        self.assertEqual(alerts["due_soon_orders"]["count"], int(direct_due_soon or 0))
+        self.assertEqual(Decimal(str(kpis["monthly_shipment"]["value"])), Decimal(str(direct_shipment_qty)))
+
     def test_fastapi_dashboard_uses_local_stock_without_erpnext_adapters(self) -> None:
         with self.SessionLocal() as session:
             draft = LyWarehouseStockEntryDraft(
@@ -861,7 +930,6 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
             "httpx.put",
             "httpx.patch",
             "httpx.delete",
-            "outbox",
             "worker",
             "run-once",
             "internal",

@@ -171,6 +171,132 @@ class DashboardHomeChartData(BaseModel):
     points: list[DashboardHomeChartPointData]
 
 
+class DashboardWorkbenchAlertData(BaseModel):
+    """Top-priority dashboard alert backed by readonly aggregation."""
+
+    key: str
+    label: str
+    count: int
+    tone: str
+    route: str | None = None
+    source_note: str | None = None
+
+
+class DashboardWorkbenchKpiData(BaseModel):
+    """Dashboard KPI card for the rebuilt homepage."""
+
+    key: str
+    label: str
+    value: Decimal
+    unit: str | None = None
+    sub_value: str | None = None
+    trend: str | None = None
+    trend_direction: str = "flat"
+    route: str | None = None
+    tone: str = "blue"
+    source_note: str | None = None
+
+
+class DashboardWorkbenchTrendPointData(BaseModel):
+    """Monthly shipment and collection trend point."""
+
+    period: str
+    shipment_amount: Decimal
+    collection_amount: Decimal
+
+
+class DashboardWorkbenchStageData(BaseModel):
+    """Order pipeline stage count. The same rows feed chart and admin board."""
+
+    key: str
+    label: str
+    count: int
+    route: str | None = None
+    action_label: str | None = None
+    tone: str = "blue"
+    source_note: str | None = None
+
+
+class DashboardWorkbenchDueOrderData(BaseModel):
+    """Order due within seven days."""
+
+    sales_order: str
+    customer: str
+    style_no: str
+    due_date: date
+    days_left: int
+    ordered_qty: Decimal
+    finished_qty: Decimal
+    completion_rate: Decimal
+    route: str | None = None
+
+
+class DashboardWorkbenchCustomerShareData(BaseModel):
+    """Top customer share by shipment amount."""
+
+    customer: str
+    amount: Decimal
+    ratio: Decimal
+
+
+class DashboardWorkbenchExceptionData(BaseModel):
+    """Actionable dashboard exception row."""
+
+    key: str
+    title: str
+    severity: str
+    route: str | None = None
+    action_label: str = "去处理"
+    source_note: str | None = None
+
+
+class DashboardWorkbenchRecentOrderData(BaseModel):
+    """Recent order row for admin dashboard."""
+
+    sales_order: str
+    customer: str
+    style_no: str
+    qty: Decimal
+    status: str
+    next_action: str
+    route: str | None = None
+
+
+class DashboardWorkbenchQuickActionData(BaseModel):
+    """Configured quick action shown on the dashboard."""
+
+    key: str
+    label: str
+    route: str
+    icon: str
+
+
+class DashboardWorkbenchSourceData(BaseModel):
+    """Reader-facing data provenance for one dashboard module."""
+
+    module: str
+    api: str
+    fields: list[str]
+    note: str | None = None
+
+
+class DashboardWorkbenchData(BaseModel):
+    """Formal homepage workbench payload. All numbers are real readonly data."""
+
+    alerts: list[DashboardWorkbenchAlertData]
+    kpis: list[DashboardWorkbenchKpiData]
+    shipment_collection_trend: list[DashboardWorkbenchTrendPointData]
+    stage_distribution: list[DashboardWorkbenchStageData]
+    due_orders: list[DashboardWorkbenchDueOrderData]
+    customer_shares: list[DashboardWorkbenchCustomerShareData]
+    pipeline: list[DashboardWorkbenchStageData]
+    quick_actions: list[DashboardWorkbenchQuickActionData]
+    exceptions: list[DashboardWorkbenchExceptionData]
+    recent_orders: list[DashboardWorkbenchRecentOrderData]
+    data_sources: list[DashboardWorkbenchSourceData]
+    todo_notes: list[str]
+
+
 class DashboardHomeOverviewData(BaseModel):
     """Homepage enhancement block payload."""
 
@@ -183,6 +309,7 @@ class DashboardHomeOverviewData(BaseModel):
     trend_points: list[DashboardHomeTrendPointData]
     charts: list[DashboardHomeChartData]
     primary_actions: list[str]
+    workbench: DashboardWorkbenchData | None = None
 
 
 class DashboardOverviewData(BaseModel):
