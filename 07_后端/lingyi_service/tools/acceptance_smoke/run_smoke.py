@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import ExitStack
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 from datetime import timezone
 from decimal import Decimal
 import os
@@ -69,6 +70,7 @@ from app.models.subcontract import LySubcontractOrder  # noqa: E402
 from app.models.subcontract import LySubcontractReceipt  # noqa: E402
 from app.models.subcontract import LySubcontractStockOutbox  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
+from app.models.production import LyProductionNotice  # noqa: E402
 from app.models.production import LyProductionPlan  # noqa: E402
 from app.models.production import LyProductionPlanMaterial  # noqa: E402
 from app.models.production import LyProductionWorkOrderLink  # noqa: E402
@@ -114,6 +116,7 @@ from app.schemas.system_management import SystemApprovalFlowCatalogData  # noqa:
 from app.schemas.warehouse import WarehouseStockSummaryData  # noqa: E402
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter  # noqa: E402
 from app.services.quality_service import QualitySourceValidationSnapshot  # noqa: E402
+from app.services.warehouse_service import WarehouseService  # noqa: E402
 
 
 class _DumpablePage:
@@ -1094,6 +1097,19 @@ def _exercise_sales_order_to_material_issue_smoke(client: TestClient, session_lo
         int(created_order.json()["data"]["id"]) == int(replayed_order.json()["data"]["id"]),
         "sales order draft idempotent replay mismatch",
     )
+    order_id = int(created_order.json()["data"]["id"])
+    submitted_order = client.post(
+        f"/api/sales-inventory/sales-orders/drafts/{order_id}/submit",
+        headers=_headers(request_id="req-a4-smoke-submit-sales-order"),
+        json={
+            "operation": "submit_draft",
+            "company": company,
+            "sales_order_no_or_source_order_ref": sales_order_no,
+            "idempotency_key": "sales-order-submit:a4-smoke:001",
+        },
+    )
+    _assert(submitted_order.status_code == 200, submitted_order.text)
+    _assert(submitted_order.json()["data"]["docstatus"] == 1, "sales order submit docstatus mismatch")
 
     order_detail = client.get(f"/api/sales-inventory/sales-orders/{sales_order_no}", headers=_headers())
     _assert(order_detail.status_code == 200, order_detail.text)
@@ -1508,15 +1524,53 @@ def _exercise_workshop_smoke(client: TestClient) -> None:
     _assert(Decimal(str(daily_wages.json()["data"]["total_amount"])) == Decimal("30.000000"), "workshop total_amount mismatch")
 
 
-def _exercise_finished_goods_inbound_smoke(client: TestClient) -> None:
+def _exercise_finished_goods_inbound_smoke(client: TestClient, session_local: sessionmaker) -> None:
     scenario_tag = "Z003-WAREHOUSE-20260617-701"
     company = "COMP-FG-SMOKE"
-    source_ref = f"{scenario_tag}:finished-goods:FGIN-SMOKE-001"
     warehouse = "WH-FG-SMOKE"
     item_code = "ITEM-FG-SMOKE"
     quantity = "7"
     business_date = date(2026, 6, 17).isoformat()
+    plan_no = "PP-FGIN-SMOKE-001"
+    sales_order = "SO-FGIN-SMOKE-001"
+    sales_order_item = "SO-FGIN-SMOKE-001-ITEM-1"
+    source_ref = f"{scenario_tag}:finished-goods:plan-{plan_no}:so-{sales_order}:li-{sales_order_item}"
     idempotency_key = f"{scenario_tag}:fg-inbound:001"
+    with session_local() as session:
+        session.add(
+            LyProductionNotice(
+                notice_no="PN-FGIN-SMOKE-001",
+                company=company,
+                sales_order=sales_order,
+                customer="CUST-FG-SMOKE",
+                item_code=item_code,
+                item_name="Finished Goods Smoke Item",
+                order_date=date(2026, 6, 12),
+                delivery_date=date(2026, 6, 30),
+                order_qty=Decimal(quantity),
+                status="sent",
+                created_by="frontend.readiness.smoke",
+                updated_by="frontend.readiness.smoke",
+            )
+        )
+        session.add(
+            LyProductionPlan(
+                plan_no=plan_no,
+                company=company,
+                sales_order=sales_order,
+                sales_order_item=sales_order_item,
+                customer="CUST-FG-SMOKE",
+                item_code=item_code,
+                bom_id=701,
+                planned_qty=Decimal(quantity),
+                planned_start_date=date(2026, 6, 12),
+                status="production_completed",
+                idempotency_key="production-plan:fgin-smoke:001",
+                request_hash="fgin-smoke-plan-hash",
+                created_by="frontend.readiness.smoke",
+            )
+        )
+        session.commit()
     request_id = _warehouse_request_id(
         scenario_tag=scenario_tag,
         idempotency_key=idempotency_key,
@@ -1800,6 +1854,7 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
             )
         )
         session.commit()
+    sample_due_date = (date.today() + timedelta(days=30)).isoformat()
     create_payload = {
         "operation": "create",
         "company": company,
@@ -1814,7 +1869,7 @@ def _exercise_sample_workflow_smoke(client: TestClient, session_local) -> None: 
         "progress": 0,
         "pattern_maker": "PATTERN-SMOKE",
         "sample_maker": "SEW-SMOKE",
-        "due_date": date(2026, 6, 30).isoformat(),
+        "due_date": sample_due_date,
         "status": "draft",
         "image_tone": "blue",
         "owner_note": "acceptance-smoke sample workflow",
@@ -2628,6 +2683,8 @@ def _exercise_sales_delivery_payment_smoke(client: TestClient, session_local) ->
                 created_at=datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc),
             )
         )
+        session.flush()
+        WarehouseService(session=session)._refresh_projected_ledger_for_draft(receipt)
         session.commit()
 
     delivery_payload = {
@@ -3280,7 +3337,7 @@ def main() -> int:
 
         _exercise_quality_smoke(client)
         _exercise_workshop_smoke(client)
-        _exercise_finished_goods_inbound_smoke(client)
+        _exercise_finished_goods_inbound_smoke(client, session_local)
         _exercise_inventory_count_smoke(client)
         _exercise_sample_workflow_smoke(client, session_local)
         _exercise_subcontract_return_material_smoke(client, session_local)
