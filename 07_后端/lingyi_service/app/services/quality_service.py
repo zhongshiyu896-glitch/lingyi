@@ -1746,6 +1746,9 @@ def _to_list_item(row: LyQualityInspection) -> QualityInspectionListItem:
         item_code=str(row.item_code),
         supplier=_text(row.supplier),
         warehouse=_text(row.warehouse),
+        work_order=_text(row.work_order),
+        sales_order=_text(row.sales_order),
+        remark=_text(row.remark),
         inspection_date=row.inspection_date,
         inspected_qty=_decimal(row.inspected_qty),
         accepted_qty=_decimal(row.accepted_qty),
@@ -1770,9 +1773,6 @@ def _to_detail(
     base = _to_list_item(row).model_dump()
     return QualityInspectionDetailData(
         **base,
-        work_order=_text(row.work_order),
-        sales_order=_text(row.sales_order),
-        remark=_text(row.remark),
         confirmed_by=_text(row.confirmed_by),
         confirmed_at=row.confirmed_at,
         cancelled_by=_text(row.cancelled_by),

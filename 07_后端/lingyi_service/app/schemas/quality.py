@@ -187,6 +187,9 @@ class QualityInspectionListItem(BaseModel):
     item_code: str
     supplier: str | None = None
     warehouse: str | None = None
+    work_order: str | None = None
+    sales_order: str | None = None
+    remark: str | None = None
     inspection_date: date
     inspected_qty: Decimal
     accepted_qty: Decimal
