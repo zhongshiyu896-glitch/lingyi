@@ -23,6 +23,8 @@ from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LyDeliveryInvoiceOperation
 from app.models.sales_order import LySalesPaymentEntry
 from app.models.sales_order import LySalesPaymentEntryOperation
+from app.models.sales_order import LySalesReturn
+from app.models.sales_order import LySalesReturnOperation
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderIdempotency
 from app.models.sales_order import LySalesOrderItem
@@ -76,6 +78,10 @@ from app.schemas.sales_inventory import SalesPaymentEntryCancelRequest
 from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryData
 from app.schemas.sales_inventory import SalesPaymentEntryListData
+from app.schemas.sales_inventory import SalesReturnCancelRequest
+from app.schemas.sales_inventory import SalesReturnCreateRequest
+from app.schemas.sales_inventory import SalesReturnData
+from app.schemas.sales_inventory import SalesReturnListData
 from app.schemas.sales_inventory import ReferenceDraftCreateRequest
 from app.schemas.sales_inventory import ReferenceDraftData
 from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
@@ -1452,6 +1458,292 @@ class SalesInventoryService:
                 raise SalesInventoryServiceError(404, "SALES_DELIVERY_INVOICE_NOT_FOUND", "发货开票单不存在")
             return self._build_delivery_invoice_data(replay_row)
         return self._build_delivery_invoice_data(row)
+
+    def create_sales_return(
+        self,
+        *,
+        payload: SalesReturnCreateRequest,
+        current_user: str,
+        scenario_tag: str | None,
+    ) -> SalesReturnData:
+        session = self._require_session()
+        company = self._require_text(payload.company, "company")
+        delivery_note = self._require_text(payload.delivery_note, "delivery_note")
+        sales_invoice = self._require_text(payload.sales_invoice, "sales_invoice")
+        return_qty = self._positive_decimal(payload.return_qty, "return_qty")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        reason = self._require_text(payload.reason, "reason")
+        operation = self._text(payload.operation) or "create_sales_return"
+        if operation != "create_sales_return":
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "operation 非法")
+
+        invoice = self._find_delivery_invoice_by_id_for_update(company=company, invoice_id=int(payload.delivery_invoice_id))
+        if invoice is None:
+            raise SalesInventoryServiceError(404, "SALES_DELIVERY_INVOICE_NOT_FOUND", "发货开票单不存在")
+        if str(invoice.status) == "cancelled":
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "已取消发货单不可退货")
+        if self._text(invoice.delivery_note) != delivery_note:
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "delivery_note 与发货单不一致")
+        if self._text(invoice.sales_invoice) != sales_invoice:
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "sales_invoice 与发货单不一致")
+
+        posting_date = payload.posting_date
+        return_no = self._text(payload.return_no) or self._build_sales_return_no(posting_date=posting_date, idempotency_key=idempotency_key)
+        warehouse = self._text(payload.warehouse) or str(invoice.warehouse)
+        source_ref = self._text(payload.source_ref) or f"{return_no}:{sales_invoice}"
+        rate = Decimal(str(invoice.rate)) if invoice.rate is not None else None
+        return_amount = return_qty * rate if rate is not None else Decimal("0")
+        delivered_qty = Decimal(str(invoice.delivered_qty or 0))
+
+        returned_before = self._sales_return_qty_for_invoice(company=company, delivery_invoice_id=int(invoice.id))
+        if return_qty > delivered_qty - returned_before:
+            raise SalesInventoryServiceError(409, "SALES_RETURN_QTY_EXCEEDED", "退货数量超过可退数量")
+
+        request_hash = self._sales_return_request_hash(
+            {
+                "company": company,
+                "return_no": return_no,
+                "delivery_invoice_id": int(invoice.id),
+                "delivery_note": delivery_note,
+                "sales_invoice": sales_invoice,
+                "return_qty": str(return_qty),
+                "warehouse": warehouse,
+                "posting_date": posting_date.isoformat(),
+                "reason": reason,
+                "source_ref": source_ref,
+            }
+        )
+
+        existing_idem = (
+            session.query(LySalesReturn)
+            .filter(
+                LySalesReturn.company == company,
+                LySalesReturn.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing_idem is not None:
+            if str(existing_idem.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "幂等键冲突且请求内容不一致")
+            return self._build_sales_return_data(existing_idem)
+
+        existing_source = (
+            session.query(LySalesReturn)
+            .filter(
+                LySalesReturn.company == company,
+                LySalesReturn.source_ref == source_ref,
+            )
+            .first()
+        )
+        if existing_source is not None:
+            if str(existing_source.request_hash) != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "source_ref 已存在且请求内容不一致")
+            return self._build_sales_return_data(existing_source)
+
+        existing_return_no = (
+            session.query(LySalesReturn)
+            .filter(
+                LySalesReturn.company == company,
+                LySalesReturn.return_no == return_no,
+            )
+            .first()
+        )
+        if existing_return_no is not None:
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "return_no 已存在")
+
+        stock_draft = self._create_sales_return_stock_receipt(
+            company=company,
+            return_no=return_no,
+            delivery_note=delivery_note,
+            sales_invoice=sales_invoice,
+            sales_order=str(invoice.sales_order),
+            item_code=str(invoice.item_code),
+            return_qty=return_qty,
+            uom=str(invoice.uom),
+            warehouse=warehouse,
+            posting_date=posting_date,
+            idempotency_key=idempotency_key,
+            reason=reason,
+            current_user=current_user,
+        )
+        row = LySalesReturn(
+            company=company,
+            return_no=return_no,
+            delivery_invoice_id=int(invoice.id),
+            delivery_note=delivery_note,
+            sales_invoice=sales_invoice,
+            sales_order=str(invoice.sales_order),
+            customer=self._text(invoice.customer),
+            item_code=str(invoice.item_code),
+            item_name=self._text(invoice.item_name),
+            warehouse=warehouse,
+            return_qty=return_qty,
+            uom=str(invoice.uom),
+            rate=rate,
+            return_amount=return_amount,
+            posting_date=posting_date,
+            status="submitted",
+            docstatus=1,
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            scenario_tag=self._text(scenario_tag) or self._text(payload.scenario_tag),
+            warehouse_draft_id=int(stock_draft.id),
+            payload={
+                "operation": operation,
+                "reason": reason,
+                "receivable_adjustment_status": "pending_confirmation",
+                "receivable_adjustment_suggestion": str(return_amount),
+                "stock_source_id": return_no,
+            },
+            created_by=current_user,
+        )
+        session.add(row)
+        session.flush()
+        return self._build_sales_return_data(row)
+
+    def list_local_sales_returns(
+        self,
+        *,
+        company: str | None,
+        sales_order: str | None,
+        customer: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        status: str | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+    ) -> SalesReturnListData:
+        rows = self._query_local_sales_returns(
+            company=company,
+            sales_order=sales_order,
+            customer=customer,
+            item_code=item_code,
+            warehouse=warehouse,
+            status=status,
+            keyword=keyword,
+        )
+        total = len(rows)
+        start = max(page - 1, 0) * page_size
+        paged = rows[start : start + page_size]
+        return SalesReturnListData(
+            items=[self._build_sales_return_data(row) for row in paged],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_sales_return_scope_for_permission(
+        self,
+        *,
+        company: str,
+        return_id: int,
+    ) -> dict[str, str | None]:
+        row = self._find_sales_return_by_id(company=company, return_id=return_id)
+        if row is None:
+            raise SalesInventoryServiceError(404, "SALES_RETURN_NOT_FOUND", "销售退货单不存在")
+        return {
+            "company": self._text(row.company),
+            "customer": self._text(row.customer),
+            "item_code": self._text(row.item_code),
+            "warehouse": self._text(row.warehouse),
+        }
+
+    def cancel_sales_return(
+        self,
+        *,
+        return_id: int,
+        payload: SalesReturnCancelRequest,
+        current_user: str,
+        scenario_tag: str | None,
+    ) -> SalesReturnData:
+        session = self._require_session()
+        company = self._require_text(payload.company, "company")
+        return_no = self._require_text(payload.return_no, "return_no")
+        sales_invoice = self._require_text(payload.sales_invoice, "sales_invoice")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        operation = self._text(payload.operation) or "cancel_sales_return"
+        reason = self._text(payload.reason)
+        if operation != "cancel_sales_return":
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "operation 非法")
+
+        row = self._find_sales_return_by_id_for_update(company=company, return_id=return_id)
+        if row is None:
+            raise SalesInventoryServiceError(404, "SALES_RETURN_NOT_FOUND", "销售退货单不存在")
+        if self._text(row.return_no) != return_no:
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "return_no 与单据不一致")
+        if self._text(row.sales_invoice) != sales_invoice:
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "sales_invoice 与单据不一致")
+
+        request_hash = self._sales_return_request_hash(
+            {
+                "operation": operation,
+                "company": company,
+                "sales_return_id": int(row.id),
+                "return_no": return_no,
+                "sales_invoice": sales_invoice,
+                "reason": reason,
+                "scenario_tag": self._text(scenario_tag) or self._text(payload.scenario_tag),
+            }
+        )
+        existing_operation = self._find_sales_return_operation_by_idempotency(
+            company=company,
+            operation_type=operation,
+            idempotency_key=idempotency_key,
+        )
+        if existing_operation is not None:
+            if str(existing_operation.request_hash or "") != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "幂等键冲突且请求内容不一致")
+            replay_row = self._find_sales_return_by_id(company=company, return_id=int(existing_operation.sales_return_id))
+            if replay_row is None:
+                raise SalesInventoryServiceError(404, "SALES_RETURN_NOT_FOUND", "销售退货单不存在")
+            return self._build_sales_return_data(replay_row)
+
+        if str(row.status) == "cancelled":
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "销售退货单已取消")
+        self._assert_sales_return_stock_draft_cancelable(row)
+
+        now = datetime.now(timezone.utc)
+        try:
+            self._cancel_sales_return_stock_draft(row, reason=reason or "cancel_sales_return", cancelled_by=current_user, cancelled_at=now)
+            row.status = "cancelled"
+            row.docstatus = 2
+            row.cancelled_by = current_user
+            row.cancelled_at = now
+            row.cancel_reason = reason
+            row.updated_by = current_user
+            row.updated_at = now
+            session.add(
+                LySalesReturnOperation(
+                    company=company,
+                    sales_return_id=int(row.id),
+                    return_no=return_no,
+                    sales_invoice=sales_invoice,
+                    operation_type=operation,
+                    idempotency_key=idempotency_key,
+                    request_hash=request_hash,
+                    result_status="cancelled",
+                    result_user=current_user,
+                    result_at=now,
+                    reason=reason,
+                )
+            )
+            replay_operation = self._flush_sales_return_operation_or_resolve_replay(
+                company=company,
+                operation_type=operation,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+            )
+        except SalesInventoryServiceError:
+            raise
+
+        if replay_operation is not None:
+            replay_row = self._find_sales_return_by_id(company=company, return_id=int(replay_operation.sales_return_id))
+            if replay_row is None:
+                raise SalesInventoryServiceError(404, "SALES_RETURN_NOT_FOUND", "销售退货单不存在")
+            return self._build_sales_return_data(replay_row)
+        return self._build_sales_return_data(row)
 
     def list_local_delivery_invoices(
         self,
@@ -5569,6 +5861,16 @@ class SalesInventoryService:
         raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
+    @staticmethod
+    def _sales_return_request_hash(payload: dict[str, Any]) -> str:
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
+    @staticmethod
+    def _build_sales_return_no(*, posting_date: date, idempotency_key: str) -> str:
+        digest = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:8].upper()
+        return f"SR-{posting_date.strftime('%Y%m%d')}-{digest}"
+
     def _next_delivery_note(self, *, company: str, posting_date: date) -> str:
         prefix = f"DN-{posting_date.strftime('%Y%m%d')}-"
         latest = (
@@ -5673,6 +5975,62 @@ class SalesInventoryService:
             ]
         return rows
 
+    def _query_local_sales_returns(
+        self,
+        *,
+        company: str | None,
+        sales_order: str | None,
+        customer: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        status: str | None,
+        keyword: str | None,
+    ) -> list[LySalesReturn]:
+        session = self._require_session()
+        query = session.query(LySalesReturn)
+        normalized_company = self._text(company)
+        normalized_sales_order = self._text(sales_order)
+        normalized_customer = self._text(customer)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_status = self._text(status)
+        if normalized_company:
+            query = query.filter(LySalesReturn.company == normalized_company)
+        if normalized_sales_order:
+            query = query.filter(LySalesReturn.sales_order == normalized_sales_order)
+        if normalized_customer:
+            query = query.filter(LySalesReturn.customer == normalized_customer)
+        if normalized_item_code:
+            query = query.filter(LySalesReturn.item_code == normalized_item_code)
+        if normalized_warehouse:
+            query = query.filter(LySalesReturn.warehouse == normalized_warehouse)
+        if normalized_status:
+            query = query.filter(LySalesReturn.status == normalized_status)
+        rows = query.order_by(LySalesReturn.id.desc()).all()
+        normalized_keyword = self._text(keyword)
+        if normalized_keyword:
+            rows = [
+                row
+                for row in rows
+                if self._contains_like(
+                    " ".join(
+                        [
+                            str(row.return_no),
+                            str(row.delivery_note),
+                            str(row.sales_invoice),
+                            str(row.sales_order),
+                            self._text(row.customer) or "",
+                            str(row.item_code),
+                            str(row.warehouse),
+                            self._text(row.cancel_reason) or "",
+                            self._text((row.payload or {}).get("reason")) or "",
+                        ]
+                    ),
+                    normalized_keyword,
+                )
+            ]
+        return rows
+
     def _query_local_payment_entries(
         self,
         *,
@@ -5718,6 +6076,25 @@ class SalesInventoryService:
                 )
             ]
         return rows
+
+    def _sales_return_qty_for_invoice(
+        self,
+        *,
+        company: str,
+        delivery_invoice_id: int,
+        exclude_return_id: int | None = None,
+    ) -> Decimal:
+        query = self._require_session().query(LySalesReturn).filter(
+            LySalesReturn.company == company,
+            LySalesReturn.delivery_invoice_id == int(delivery_invoice_id),
+            LySalesReturn.status != "cancelled",
+        )
+        if exclude_return_id is not None:
+            query = query.filter(LySalesReturn.id != int(exclude_return_id))
+        total = Decimal("0")
+        for row in query.all():
+            total += Decimal(str(row.return_qty or 0))
+        return total
 
     def _find_delivery_invoice_by_id(
         self,
@@ -5803,6 +6180,82 @@ class SalesInventoryService:
                 raise SalesInventoryServiceError(409, "SALES_DELIVERY_INVOICE_CONFLICT", "幂等键冲突且请求内容不一致") from exc
             return existing
 
+    def _find_sales_return_by_id(
+        self,
+        *,
+        company: str,
+        return_id: int,
+    ) -> LySalesReturn | None:
+        return (
+            self._require_session()
+            .query(LySalesReturn)
+            .filter(
+                LySalesReturn.company == company,
+                LySalesReturn.id == int(return_id),
+            )
+            .first()
+        )
+
+    def _find_sales_return_by_id_for_update(
+        self,
+        *,
+        company: str,
+        return_id: int,
+    ) -> LySalesReturn | None:
+        return (
+            self._require_session()
+            .query(LySalesReturn)
+            .filter(
+                LySalesReturn.company == company,
+                LySalesReturn.id == int(return_id),
+            )
+            .with_for_update()
+            .first()
+        )
+
+    def _find_sales_return_operation_by_idempotency(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str,
+    ) -> LySalesReturnOperation | None:
+        return (
+            self._require_session()
+            .query(LySalesReturnOperation)
+            .filter(
+                LySalesReturnOperation.company == company,
+                LySalesReturnOperation.operation_type == operation_type,
+                LySalesReturnOperation.idempotency_key == idempotency_key,
+            )
+            .one_or_none()
+        )
+
+    def _flush_sales_return_operation_or_resolve_replay(
+        self,
+        *,
+        company: str,
+        operation_type: str,
+        idempotency_key: str,
+        request_hash: str,
+    ) -> LySalesReturnOperation | None:
+        session = self._require_session()
+        try:
+            session.flush()
+            return None
+        except IntegrityError as exc:
+            session.rollback()
+            existing = self._find_sales_return_operation_by_idempotency(
+                company=company,
+                operation_type=operation_type,
+                idempotency_key=idempotency_key,
+            )
+            if existing is None:
+                raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "销售退货取消操作冲突") from exc
+            if str(existing.request_hash or "") != request_hash:
+                raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "幂等键冲突且请求内容不一致") from exc
+            return existing
+
     def _assert_delivery_stock_draft_cancelable(self, row: LyDeliveryInvoice) -> None:
         draft_id = row.warehouse_draft_id
         if draft_id is None:
@@ -5863,6 +6316,171 @@ class SalesInventoryService:
                 event.processed_at = cancelled_at
         session.flush()
         WarehouseService(session=session)._refresh_projected_ledger_for_draft(draft)
+
+    def _assert_sales_return_stock_draft_cancelable(self, row: LySalesReturn) -> None:
+        draft_id = row.warehouse_draft_id
+        if draft_id is None:
+            return
+        session = self._require_session()
+        draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(LyWarehouseStockEntryDraft.id == int(draft_id))
+            .with_for_update()
+            .first()
+        )
+        if draft is None:
+            raise SalesInventoryServiceError(404, "SALES_RETURN_STOCK_DRAFT_NOT_FOUND", "退货入库草稿不存在")
+        if str(draft.source_type) != "customer_sales_return":
+            raise SalesInventoryServiceError(409, "SALES_RETURN_CONFLICT", "退货入库草稿来源不一致")
+        if str(draft.status) not in {"draft", "pending_outbox", "cancelled"}:
+            raise SalesInventoryServiceError(409, "SALES_RETURN_STOCK_DRAFT_SYNCED", "退货入库草稿状态不允许取消")
+        events = (
+            session.query(LyWarehouseStockEntryOutboxEvent)
+            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(draft_id))
+            .all()
+        )
+        if any(str(event.status) == "succeeded" for event in events):
+            raise SalesInventoryServiceError(409, "SALES_RETURN_STOCK_DRAFT_SYNCED", "已同步成功的退货入库不可直接取消")
+
+    def _create_sales_return_stock_receipt(
+        self,
+        *,
+        company: str,
+        return_no: str,
+        delivery_note: str,
+        sales_invoice: str,
+        sales_order: str,
+        item_code: str,
+        return_qty: Decimal,
+        uom: str,
+        warehouse: str,
+        posting_date: date,
+        idempotency_key: str,
+        reason: str,
+        current_user: str,
+    ) -> LyWarehouseStockEntryDraft:
+        session = self._require_session()
+        stock_idempotency_key = f"sales-return:{idempotency_key}"
+        existing = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.idempotency_key == stock_idempotency_key,
+            )
+            .first()
+        )
+        if existing is not None:
+            return existing
+        event_key = self._build_sales_return_stock_event_key(
+            company=company,
+            return_no=return_no,
+            sales_invoice=sales_invoice,
+            idempotency_key=idempotency_key,
+        )
+        now = datetime.now(timezone.utc)
+        draft = LyWarehouseStockEntryDraft(
+            company=company,
+            purpose="Material Receipt",
+            source_type="customer_sales_return",
+            source_id=return_no,
+            source_warehouse=None,
+            target_warehouse=warehouse,
+            status="pending_outbox",
+            created_by=current_user,
+            created_at=now,
+            idempotency_key=stock_idempotency_key,
+            event_key=event_key,
+        )
+        session.add(draft)
+        session.flush()
+        session.add(
+            LyWarehouseStockEntryDraftItem(
+                draft_id=int(draft.id),
+                company=company,
+                item_code=item_code,
+                qty=return_qty,
+                uom=uom,
+                batch_no=None,
+                serial_no=None,
+                source_warehouse=None,
+                target_warehouse=warehouse,
+            )
+        )
+        session.add(
+            LyWarehouseStockEntryOutboxEvent(
+                draft_id=int(draft.id),
+                event_type="customer_sales_return_receipt_sync",
+                event_key=event_key,
+                payload={
+                    "business_date": posting_date.isoformat(),
+                    "return_no": return_no,
+                    "delivery_note": delivery_note,
+                    "sales_invoice": sales_invoice,
+                    "sales_order": sales_order,
+                    "company": company,
+                    "item_code": item_code,
+                    "warehouse": warehouse,
+                    "return_qty": str(return_qty),
+                    "reason": reason,
+                },
+                status="in_pending",
+                retry_count=0,
+                external_ref=None,
+                error_message=None,
+                created_at=now,
+                processed_at=None,
+            )
+        )
+        session.flush()
+        WarehouseService(session=session)._refresh_projected_ledger_for_draft(draft)
+        return draft
+
+    def _cancel_sales_return_stock_draft(
+        self,
+        row: LySalesReturn,
+        *,
+        reason: str,
+        cancelled_by: str,
+        cancelled_at: datetime,
+    ) -> None:
+        draft_id = row.warehouse_draft_id
+        if draft_id is None:
+            return
+        session = self._require_session()
+        draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(LyWarehouseStockEntryDraft.id == int(draft_id))
+            .with_for_update()
+            .first()
+        )
+        if draft is None or str(draft.status) == "cancelled":
+            return
+        draft.status = "cancelled"
+        draft.cancelled_by = cancelled_by
+        draft.cancelled_at = cancelled_at
+        draft.cancel_reason = reason
+        events = (
+            session.query(LyWarehouseStockEntryOutboxEvent)
+            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(draft_id))
+            .all()
+        )
+        for event in events:
+            if str(event.status) in {"in_pending", "processing", "failed"}:
+                event.status = "cancelled"
+                event.processed_at = cancelled_at
+        session.flush()
+        WarehouseService(session=session)._refresh_projected_ledger_for_draft(draft)
+
+    @staticmethod
+    def _build_sales_return_stock_event_key(
+        *,
+        company: str,
+        return_no: str,
+        sales_invoice: str,
+        idempotency_key: str,
+    ) -> str:
+        raw = "|".join([company, return_no, sales_invoice, idempotency_key]).encode("utf-8")
+        return f"csr:{hashlib.sha256(raw).hexdigest()}"
 
     def _find_sales_payment_entry_by_id(
         self,
@@ -5968,6 +6586,76 @@ class SalesInventoryService:
             **self._delivery_invoice_financial_ledger(row),
             created_by=str(row.created_by),
             created_at=row.created_at,
+        )
+
+    def _build_sales_return_data(self, row: LySalesReturn) -> SalesReturnData:
+        session = self._require_session()
+        invoice = (
+            session.query(LyDeliveryInvoice)
+            .filter(
+                LyDeliveryInvoice.company == str(row.company),
+                LyDeliveryInvoice.id == int(row.delivery_invoice_id),
+            )
+            .first()
+        )
+        draft = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(LyWarehouseStockEntryDraft.id == int(row.warehouse_draft_id))
+            .first()
+            if row.warehouse_draft_id is not None
+            else None
+        )
+        returned_before = self._sales_return_qty_for_invoice(
+            company=str(row.company),
+            delivery_invoice_id=int(row.delivery_invoice_id),
+            exclude_return_id=int(row.id),
+        )
+        active_return_qty = Decimal(str(row.return_qty or 0)) if str(row.status) != "cancelled" else Decimal("0")
+        returned_after = returned_before + active_return_qty
+        delivered_qty = Decimal(str(invoice.delivered_qty if invoice is not None else row.return_qty or 0))
+        remaining = delivered_qty - returned_after
+        if remaining < Decimal("0"):
+            remaining = Decimal("0")
+        payload = row.payload or {}
+        reason = self._text(payload.get("reason")) or self._text(row.cancel_reason)
+        return_amount = Decimal(str(row.return_amount or 0))
+        return SalesReturnData(
+            id=int(row.id),
+            company=str(row.company),
+            return_no=str(row.return_no),
+            delivery_invoice_id=int(row.delivery_invoice_id),
+            delivery_note=str(row.delivery_note),
+            sales_invoice=str(row.sales_invoice),
+            sales_order=str(row.sales_order),
+            customer=self._text(row.customer),
+            item_code=str(row.item_code),
+            item_name=self._text(row.item_name),
+            warehouse=str(row.warehouse),
+            delivered_qty=delivered_qty,
+            return_qty=Decimal(str(row.return_qty or 0)),
+            returned_qty_before=returned_before,
+            returned_qty_after=returned_after,
+            remaining_returnable_qty=remaining,
+            uom=str(row.uom),
+            rate=self._decimal_or_none(row.rate),
+            return_amount=return_amount,
+            receivable_adjustment_suggestion=return_amount if str(row.status) != "cancelled" else Decimal("0"),
+            receivable_adjustment_status=str(payload.get("receivable_adjustment_status") or "pending_confirmation"),
+            posting_date=row.posting_date,
+            reason=reason,
+            status=str(row.status),  # type: ignore[arg-type]
+            docstatus=int(row.docstatus or 0),
+            source_ref=str(row.source_ref),
+            idempotency_key=str(row.idempotency_key),
+            scenario_tag=self._text(row.scenario_tag),
+            warehouse_draft_id=int(row.warehouse_draft_id) if row.warehouse_draft_id is not None else None,
+            warehouse_draft_status=str(draft.status) if draft is not None else None,
+            warehouse_draft_source_type=str(draft.source_type) if draft is not None else None,
+            created_by=str(row.created_by),
+            created_at=row.created_at,
+            cancelled_by=self._text(row.cancelled_by),
+            cancelled_at=row.cancelled_at,
+            cancel_reason=self._text(row.cancel_reason),
         )
 
     def _build_sales_payment_entry_data(self, row: LySalesPaymentEntry) -> SalesPaymentEntryData:

@@ -892,6 +892,8 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         local_write_routes = {
             "/api/sales-inventory/delivery-invoices": {"POST"},
             "/api/sales-inventory/delivery-invoices/{invoice_id}/cancel": {"POST"},
+            "/api/sales-inventory/sales-returns": {"POST"},
+            "/api/sales-inventory/sales-returns/{return_id}/cancel": {"POST"},
             "/api/sales-inventory/payment-entries": {"POST"},
             "/api/sales-inventory/payment-entries/{payment_id}/cancel": {"POST"},
             "/api/sales-inventory/sales-orders/drafts": {"POST"},

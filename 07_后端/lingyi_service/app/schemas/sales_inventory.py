@@ -166,6 +166,86 @@ class DeliveryInvoiceListData(BaseModel):
     page_size: int
 
 
+class SalesReturnCreateRequest(BaseModel):
+    """Create FastAPI-native customer sales return payload."""
+
+    company: str
+    delivery_invoice_id: int
+    delivery_note: str
+    sales_invoice: str
+    return_qty: Decimal
+    posting_date: date
+    reason: str
+    warehouse: str | None = None
+    return_no: str | None = None
+    source_ref: str | None = None
+    idempotency_key: str
+    scenario_tag: str | None = None
+    operation: str | None = "create_sales_return"
+
+
+class SalesReturnCancelRequest(BaseModel):
+    """Cancel FastAPI-native customer sales return payload."""
+
+    operation: Literal["cancel_sales_return"] = "cancel_sales_return"
+    company: str
+    return_no: str
+    sales_invoice: str
+    reason: str | None = None
+    idempotency_key: str
+    scenario_tag: str | None = None
+
+
+class SalesReturnData(BaseModel):
+    """FastAPI-native customer sales return response."""
+
+    id: int
+    company: str
+    return_no: str
+    delivery_invoice_id: int
+    delivery_note: str
+    sales_invoice: str
+    sales_order: str
+    customer: str | None = None
+    item_code: str
+    item_name: str | None = None
+    warehouse: str
+    delivered_qty: Decimal
+    return_qty: Decimal
+    returned_qty_before: Decimal = Decimal("0")
+    returned_qty_after: Decimal = Decimal("0")
+    remaining_returnable_qty: Decimal = Decimal("0")
+    uom: str
+    rate: Decimal | None = None
+    return_amount: Decimal
+    receivable_adjustment_suggestion: Decimal
+    receivable_adjustment_status: str = "pending_confirmation"
+    posting_date: date
+    reason: str | None = None
+    status: Literal["submitted", "cancelled"]
+    docstatus: int
+    source_ref: str
+    idempotency_key: str
+    scenario_tag: str | None = None
+    warehouse_draft_id: int | None = None
+    warehouse_draft_status: str | None = None
+    warehouse_draft_source_type: str | None = None
+    created_by: str
+    created_at: datetime
+    cancelled_by: str | None = None
+    cancelled_at: datetime | None = None
+    cancel_reason: str | None = None
+
+
+class SalesReturnListData(BaseModel):
+    """Paginated customer sales return response."""
+
+    items: list[SalesReturnData]
+    total: int
+    page: int
+    page_size: int
+
+
 class SalesPaymentEntryCreateRequest(BaseModel):
     """Create FastAPI-native customer payment entry payload."""
 

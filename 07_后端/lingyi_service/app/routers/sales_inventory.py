@@ -54,6 +54,9 @@ from app.schemas.sales_inventory import SalesOrderDraftUpdateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryCancelRequest
 from app.schemas.sales_inventory import SalesPaymentEntryCreateRequest
 from app.schemas.sales_inventory import SalesPaymentEntryListData
+from app.schemas.sales_inventory import SalesReturnCancelRequest
+from app.schemas.sales_inventory import SalesReturnCreateRequest
+from app.schemas.sales_inventory import SalesReturnListData
 from app.schemas.production import ProductionSalesOrderMaterialCheckRequest
 from app.schemas.sales_inventory import StockLedgerData
 from app.schemas.sales_inventory import StockLedgerItem
@@ -88,6 +91,9 @@ REFERENCE_ALLOWED_TYPES = {"customer", "supplier"}
 DELIVERY_INVOICE_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-DELIVERY-INVOICE-\d{8}-\d{3}$")
 DELIVERY_INVOICE_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-DELIVERY-INVOICE-\d{8}-\d{3})(?:$|[-_.].*)$")
 DELIVERY_INVOICE_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-DELIVERY-INVOICE-\d{8}-\d{3})(?:[-_.].*)?$")
+SALES_RETURN_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-RETURN-\d{8}-\d{3}$")
+SALES_RETURN_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-RETURN-\d{8}-\d{3})(?:$|[-_.].*)$")
+SALES_RETURN_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-RETURN-\d{8}-\d{3})(?:[-_.].*)?$")
 SALES_PAYMENT_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-PAYMENT-\d{8}-\d{3}$")
 SALES_PAYMENT_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-PAYMENT-\d{8}-\d{3})(?:$|[-_.].*)$")
 SALES_PAYMENT_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-PAYMENT-\d{8}-\d{3})(?:[-_.].*)?$")
@@ -151,6 +157,13 @@ def _extract_delivery_invoice_request_tag(value: str) -> str | None:
     return matched.group(1)
 
 
+def _extract_sales_return_request_tag(value: str) -> str | None:
+    matched = SALES_RETURN_REQUEST_TAG_PATTERN.fullmatch(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
 def _extract_sales_payment_request_tag(value: str) -> str | None:
     matched = SALES_PAYMENT_REQUEST_TAG_PATTERN.fullmatch(value)
     if matched is None:
@@ -195,6 +208,17 @@ def _raise_delivery_invoice_conflict(message: str) -> None:
         status_code=409,
         detail={
             "code": "SALES_DELIVERY_INVOICE_CONFLICT",
+            "message": message,
+            "data": {},
+        },
+    )
+
+
+def _raise_sales_return_conflict(message: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "SALES_RETURN_CONFLICT",
             "message": message,
             "data": {},
         },
@@ -415,6 +439,57 @@ def _validate_delivery_invoice_write_gate(
         _raise_delivery_invoice_conflict("idempotency_key 载体缺失或格式非法")
     if idempotency_tag != normalized_scenario_tag:
         _raise_delivery_invoice_conflict("idempotency_key 载体与 scenario_tag 不一致")
+    return normalized_scenario_tag
+
+
+def _validate_sales_return_write_gate(
+    *,
+    request_obj: Request,
+    scenario_tag: str | None,
+    idempotency_key: str | None,
+    company: str | None,
+    operation: str | None,
+) -> str:
+    normalized_scenario_tag = _scope_text(scenario_tag)
+    strict_gate_requested = bool(
+        normalized_scenario_tag and SALES_RETURN_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag)
+    )
+    normalized_operation = _scope_text(operation) or "create_sales_return"
+    if normalized_operation not in {"create_sales_return", "cancel_sales_return"}:
+        _raise_sales_return_conflict("operation 非法")
+    if not _scope_text(company):
+        _raise_sales_return_conflict("company 不能为空")
+    if not _scope_text(idempotency_key):
+        _raise_sales_return_conflict("idempotency_key 不能为空")
+    if not strict_gate_requested:
+        return normalized_scenario_tag or ""
+
+    if not _is_local_sales_order_write_enabled():
+        _raise_sales_return_conflict("仅允许本地开发测试库执行销售退货场景写入")
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_sales_return_conflict("request_id 不能为空")
+    if not is_request_id_valid(request_id_header):
+        _raise_sales_return_conflict("request_id_pattern_invalid")
+    header_tag = _extract_sales_return_request_tag(request_id_header)
+    if header_tag is None or SALES_RETURN_SCENARIO_FULL_PATTERN.fullmatch(header_tag) is None:
+        _raise_sales_return_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    if not request_id or request_id != request_id_header:
+        _raise_sales_return_conflict("request_id 与 Header 不一致")
+    request_tag = _extract_sales_return_request_tag(request_id)
+    if request_tag != header_tag:
+        _raise_sales_return_conflict("request_id 与 scenario_tag 不一致")
+    if normalized_scenario_tag != header_tag:
+        _raise_sales_return_conflict("scenario_tag 载体与 request_id 不一致")
+
+    idempotency_tag = _match_sales_order_prefixed_carrier(idempotency_key, SALES_RETURN_IDEMPOTENCY_PATTERN)
+    if idempotency_tag is None:
+        _raise_sales_return_conflict("idempotency_key 载体缺失或格式非法")
+    if idempotency_tag != normalized_scenario_tag:
+        _raise_sales_return_conflict("idempotency_key 载体与 scenario_tag 不一致")
     return normalized_scenario_tag
 
 
@@ -1284,6 +1359,242 @@ def cancel_delivery_invoice(
             resource_type="delivery_invoice",
             resource_id=invoice_id,
             resource_no=payload.delivery_note,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _ok(data)
+
+
+@router.get("/sales-returns")
+def list_sales_returns(
+    request: Request,
+    company: str | None = Query(default=None),
+    sales_order: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="sales_return",
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="sales_return",
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": company,
+            "customer": customer,
+            "item_code": item_code,
+            "warehouse": warehouse,
+        },
+        required_fields=(),
+        resource_type="sales_return",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    data: SalesReturnListData = _write_service(session).list_local_sales_returns(
+        company=company,
+        sales_order=sales_order,
+        customer=customer,
+        item_code=item_code,
+        warehouse=warehouse,
+        status=status,
+        keyword=keyword,
+        page=page,
+        page_size=page_size,
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
+@router.post("/sales-returns")
+def create_sales_return(
+    request: Request,
+    payload: SalesReturnCreateRequest = Body(...),
+    idempotency_key_header: str | None = Header(default=None, alias="Idempotency-Key"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_WRITE
+    if not payload.idempotency_key and idempotency_key_header:
+        payload.idempotency_key = idempotency_key_header
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="sales_return",
+    )
+    scenario_tag = _validate_sales_return_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        operation=payload.operation,
+    )
+    service = _write_service(session)
+    try:
+        invoice_scope = service.get_delivery_invoice_scope_for_permission(
+            company=payload.company,
+            invoice_id=int(payload.delivery_invoice_id),
+        )
+        permission_service.ensure_resource_scope_permission(
+            current_user=current_user,
+            request_obj=request,
+            module="sales_inventory",
+            action=action,
+            resource_scope={
+                **invoice_scope,
+                "warehouse": payload.warehouse or invoice_scope.get("warehouse"),
+            },
+            required_fields=("company", "item_code", "warehouse"),
+            resource_type="sales_return",
+            resource_no=payload.return_no or payload.delivery_note,
+            enforce_action=False,
+        )
+        data = service.create_sales_return(
+            payload=payload,
+            current_user=current_user.username,
+            scenario_tag=scenario_tag,
+        )
+        AuditService(session).record_success(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_return",
+            resource_id=int(data.id),
+            resource_no=str(data.return_no),
+            before_data=None,
+            after_data=jsonable_encoder(data),
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_return",
+            resource_id=None,
+            resource_no=payload.return_no or payload.delivery_note,
+            before_data=None,
+            after_data=jsonable_encoder(payload),
+            error_code=exc.code,
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _created(data)
+
+
+@router.post("/sales-returns/{return_id}/cancel")
+def cancel_sales_return(
+    return_id: int,
+    request: Request,
+    payload: SalesReturnCancelRequest = Body(...),
+    idempotency_key_header: str | None = Header(default=None, alias="Idempotency-Key"),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_WRITE
+    if not payload.idempotency_key and idempotency_key_header:
+        payload.idempotency_key = idempotency_key_header
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="sales_return",
+        resource_id=str(return_id),
+    )
+    scenario_tag = _validate_sales_return_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        operation=payload.operation,
+    )
+    service = _write_service(session)
+    try:
+        permission_service.ensure_resource_scope_permission(
+            current_user=current_user,
+            request_obj=request,
+            module="sales_inventory",
+            action=action,
+            resource_scope=service.get_sales_return_scope_for_permission(
+                company=payload.company,
+                return_id=return_id,
+            ),
+            required_fields=("company", "item_code", "warehouse"),
+            resource_type="sales_return",
+            resource_id=str(return_id),
+            resource_no=payload.return_no,
+            enforce_action=False,
+        )
+        data = service.cancel_sales_return(
+            return_id=return_id,
+            payload=payload,
+            current_user=current_user.username,
+            scenario_tag=scenario_tag,
+        )
+        AuditService(session).record_success(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_return",
+            resource_id=int(data.id),
+            resource_no=str(data.return_no),
+            before_data=None,
+            after_data=jsonable_encoder(data),
+            context=AuditContext.from_request(request),
+        )
+        session.commit()
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        AuditService(session).record_failure(
+            module="sales_inventory",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="sales_return",
+            resource_id=return_id,
+            resource_no=payload.return_no,
             before_data=None,
             after_data=jsonable_encoder(payload),
             error_code=exc.code,

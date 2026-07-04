@@ -24,6 +24,8 @@ from app.models.quality import Base as QualityBase
 from app.models.sales_order import Base as SalesOrderBase
 from app.models.sales_order import LyDeliveryInvoice
 from app.models.sales_order import LyDeliveryInvoiceOperation
+from app.models.sales_order import LySalesReturn
+from app.models.sales_order import LySalesReturnOperation
 from app.models.sales_order import LySalesOrder
 from app.models.sales_order import LySalesOrderItem
 from app.models.warehouse import LyWarehouseStockEntryDraft
@@ -82,6 +84,8 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LySalesReturnOperation).delete()
+            session.query(LySalesReturn).delete()
             session.query(LyDeliveryInvoiceOperation).delete()
             session.query(LyDeliveryInvoice).delete()
             session.query(LySalesOrderItem).delete()
@@ -187,6 +191,40 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
             "reason": "VOID-B4-DELIVERY-001",
             "idempotency_key": "idem-b4-delivery-cancel-001",
             "scenario_tag": "B4-DELIVERY-CANCEL-001",
+        }
+        payload.update(overrides)
+        return payload
+
+    @staticmethod
+    def _return_payload(delivery_invoice_id: int, **overrides) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "operation": "create_sales_return",
+            "company": "COMP-A",
+            "delivery_invoice_id": delivery_invoice_id,
+            "delivery_note": "DN-B4-001",
+            "sales_invoice": "SI-B4-001",
+            "return_no": "SR-B4-001",
+            "return_qty": 2,
+            "posting_date": "2026-06-18",
+            "warehouse": "WH-RETURNS",
+            "reason": "客户尺码不符退回",
+            "source_ref": "SRC-B4-RETURN-001",
+            "idempotency_key": "idem-b4-sales-return-001",
+            "scenario_tag": "B4-SALES-RETURN-001",
+        }
+        payload.update(overrides)
+        return payload
+
+    @staticmethod
+    def _return_cancel_payload(**overrides) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "operation": "cancel_sales_return",
+            "company": "COMP-A",
+            "return_no": "SR-B4-001",
+            "sales_invoice": "SI-B4-001",
+            "reason": "VOID-B4-SALES-RETURN-001",
+            "idempotency_key": "idem-b4-sales-return-cancel-001",
+            "scenario_tag": "B4-SALES-RETURN-CANCEL-001",
         }
         payload.update(overrides)
         return payload
@@ -498,6 +536,215 @@ class SalesDeliveryInvoiceFlowTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "SALES_DELIVERY_ORDER_NOT_FOUND")
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyDeliveryInvoice).count(), 0)
+
+    def test_sales_return_create_replay_and_independent_receipt_readbacks(self) -> None:
+        created_invoice = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+        invoice_id = int(created_invoice.json()["data"]["id"])
+
+        created_return = self.client.post(
+            "/api/sales-inventory/sales-returns",
+            headers=self._headers(),
+            json=self._return_payload(invoice_id),
+        )
+        replay = self.client.post(
+            "/api/sales-inventory/sales-returns",
+            headers=self._headers(),
+            json=self._return_payload(invoice_id),
+        )
+        conflict = self.client.post(
+            "/api/sales-inventory/sales-returns",
+            headers=self._headers(),
+            json=self._return_payload(invoice_id, return_qty=1),
+        )
+        listed = self.client.get(
+            "/api/sales-inventory/sales-returns?keyword=SR-B4-001",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(created_return.status_code, 201, created_return.text)
+        self.assertEqual(replay.status_code, 201, replay.text)
+        self.assertEqual(created_return.json()["data"]["id"], replay.json()["data"]["id"])
+        self.assertEqual(conflict.status_code, 409, conflict.text)
+        self.assertEqual(conflict.json()["code"], "SALES_RETURN_CONFLICT")
+        data = created_return.json()["data"]
+        self.assertEqual(data["return_no"], "SR-B4-001")
+        self.assertEqual(data["warehouse"], "WH-RETURNS")
+        self.assertEqual(data["warehouse_draft_source_type"], "customer_sales_return")
+        self.assertEqual(data["receivable_adjustment_status"], "pending_confirmation")
+        self.assertEqual(Decimal(str(data["delivered_qty"])), Decimal("4.000000"))
+        self.assertEqual(Decimal(str(data["return_qty"])), Decimal("2.000000"))
+        self.assertEqual(Decimal(str(data["return_amount"])), Decimal("160.000000"))
+        self.assertEqual(Decimal(str(data["receivable_adjustment_suggestion"])), Decimal("160.000000"))
+        self.assertEqual(Decimal(str(data["returned_qty_before"])), Decimal("0"))
+        self.assertEqual(Decimal(str(data["returned_qty_after"])), Decimal("2.000000"))
+        self.assertEqual(Decimal(str(data["remaining_returnable_qty"])), Decimal("2.000000"))
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual(listed.json()["data"]["total"], 1)
+        self.assertEqual(listed.json()["data"]["items"][0]["return_no"], "SR-B4-001")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySalesReturn).count(), 1)
+            order_item = session.query(LySalesOrderItem).one()
+            self.assertEqual(Decimal(str(order_item.delivered_qty)), Decimal("4.000000"))
+            draft = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "customer_sales_return")
+                .one()
+            )
+            self.assertEqual(draft.purpose, "Material Receipt")
+            self.assertEqual(draft.source_id, "SR-B4-001")
+            self.assertEqual(draft.target_warehouse, "WH-RETURNS")
+            event = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(draft.id))
+                .one()
+            )
+            self.assertEqual(event.event_type, "customer_sales_return_receipt_sync")
+            normal_ledger = WarehouseService(session=session).list_local_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-FG",
+                item_code="DEMO-TEE",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            self.assertEqual([Decimal(str(row.actual_qty)) for row in normal_ledger.items], [Decimal("10.000000"), Decimal("-4.000000")])
+            return_ledger = WarehouseService(session=session).list_local_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-RETURNS",
+                item_code="DEMO-TEE",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            self.assertEqual([Decimal(str(row.actual_qty)) for row in return_ledger.items], [Decimal("2.000000")])
+
+    def test_sales_return_blocks_over_return_quantity_before_stock_draft(self) -> None:
+        created_invoice = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+
+        response = self.client.post(
+            "/api/sales-inventory/sales-returns",
+            headers=self._headers(),
+            json=self._return_payload(
+                int(created_invoice.json()["data"]["id"]),
+                return_qty=5,
+                idempotency_key="idem-b4-sales-return-over",
+                source_ref="SRC-B4-RETURN-OVER",
+                return_no="SR-B4-OVER",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["code"], "SALES_RETURN_QTY_EXCEEDED")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySalesReturn).count(), 0)
+            self.assertEqual(
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "customer_sales_return")
+                .count(),
+                0,
+            )
+
+    def test_sales_return_cancel_reverses_pending_receipt_without_touching_delivery(self) -> None:
+        created_invoice = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+        created_return = self.client.post(
+            "/api/sales-inventory/sales-returns",
+            headers=self._headers(),
+            json=self._return_payload(int(created_invoice.json()["data"]["id"])),
+        )
+        self.assertEqual(created_return.status_code, 201, created_return.text)
+        return_id = int(created_return.json()["data"]["id"])
+
+        cancelled = self.client.post(
+            f"/api/sales-inventory/sales-returns/{return_id}/cancel",
+            headers=self._headers(),
+            json=self._return_cancel_payload(),
+        )
+        replay = self.client.post(
+            f"/api/sales-inventory/sales-returns/{return_id}/cancel",
+            headers=self._headers(),
+            json=self._return_cancel_payload(),
+        )
+
+        self.assertEqual(cancelled.status_code, 200, cancelled.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(cancelled.json()["data"]["status"], "cancelled")
+        self.assertEqual(Decimal(str(cancelled.json()["data"]["receivable_adjustment_suggestion"])), Decimal("0"))
+        with self.SessionLocal() as session:
+            return_row = session.query(LySalesReturn).one()
+            invoice_row = session.query(LyDeliveryInvoice).one()
+            order_item = session.query(LySalesOrderItem).one()
+            self.assertEqual(return_row.status, "cancelled")
+            self.assertEqual(invoice_row.status, "submitted")
+            self.assertEqual(Decimal(str(order_item.delivered_qty)), Decimal("4.000000"))
+            draft = (
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "customer_sales_return")
+                .one()
+            )
+            self.assertEqual(draft.status, "cancelled")
+            events = (
+                session.query(LyWarehouseStockEntryOutboxEvent)
+                .filter(LyWarehouseStockEntryOutboxEvent.draft_id == int(draft.id))
+                .all()
+            )
+            self.assertEqual({event.status for event in events}, {"cancelled"})
+            return_ledger = WarehouseService(session=session).list_local_stock_ledger(
+                company="COMP-A",
+                warehouse="WH-RETURNS",
+                item_code="DEMO-TEE",
+                from_date=None,
+                to_date=None,
+                page=1,
+                page_size=20,
+            )
+            self.assertEqual(return_ledger.items, [])
+
+    def test_sales_return_create_denies_fastapi_resource_scope_and_does_not_write(self) -> None:
+        created_invoice = self.client.post(
+            "/api/sales-inventory/delivery-invoices",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created_invoice.status_code, 201, created_invoice.text)
+
+        self._set_fastapi_scope(warehouses=["WH-OTHER"])
+        response = self.client.post(
+            "/api/sales-inventory/sales-returns",
+            headers=self._headers(role="Sales Manager"),
+            json=self._return_payload(int(created_invoice.json()["data"]["id"])),
+        )
+
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySalesReturn).count(), 0)
+            self.assertEqual(
+                session.query(LyWarehouseStockEntryDraft)
+                .filter(LyWarehouseStockEntryDraft.source_type == "customer_sales_return")
+                .count(),
+                0,
+            )
+            security = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(security)
+            self.assertEqual(security.event_type, "RESOURCE_ACCESS_DENIED")
 
 
 if __name__ == "__main__":
