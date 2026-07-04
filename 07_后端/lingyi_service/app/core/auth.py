@@ -40,7 +40,6 @@ DEV_AUTH_ALLOWED_ENVS = frozenset({"development", "test", "local"})
 LOCAL_SESSION_COOKIE_NAME = "lingyi_local_session"
 LOCAL_SESSION_SOURCE = "dev_session"
 FASTAPI_SESSION_SOURCE = "fastapi_session"
-LOCAL_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 ERPNEXT_SESSION_COOKIE_NAME = "sid"
 AUTH_SESSION_CACHE_TTL_ENV = "LINGYI_AUTH_CACHE_TTL_SECONDS"
 AUTH_SESSION_CACHE_DEFAULT_TTL_SECONDS = 45.0
@@ -51,10 +50,17 @@ FASTAPI_AUTH_USERS_ENV = "LINGYI_FASTAPI_AUTH_USERS_JSON"
 FASTAPI_PASSWORD_HASH_SCHEME = "pbkdf2_sha256"
 FASTAPI_PASSWORD_HASH_ITERATIONS = 260_000
 FASTAPI_ADMIN_BCRYPT_ROUNDS_ENV = "LINGYI_AUTH_BCRYPT_ROUNDS"
+AUTH_HARDENING_ENABLED_ENV = "LINGYI_AUTH_HARDENING_ENABLED"
+AUTH_SESSION_MAX_AGE_SECONDS_ENV = "LINGYI_AUTH_SESSION_MAX_AGE_SECONDS"
+AUTH_STRONG_PASSWORD_ENABLED_ENV = "LINGYI_AUTH_STRONG_PASSWORD_ENABLED"
+AUTH_STRONG_PASSWORD_MIN_LENGTH_ENV = "LINGYI_AUTH_STRONG_PASSWORD_MIN_LENGTH"
+AUTH_RATE_LIMIT_ENABLED_ENV = "LINGYI_AUTH_RATE_LIMIT_ENABLED"
 FASTAPI_LOGIN_MAX_FAILURES_ENV = "LINGYI_AUTH_LOGIN_MAX_FAILURES"
 FASTAPI_LOGIN_WINDOW_SECONDS_ENV = "LINGYI_AUTH_LOGIN_WINDOW_SECONDS"
 FASTAPI_LOGIN_LOCK_SECONDS_ENV = "LINGYI_AUTH_LOGIN_LOCK_SECONDS"
 AUTH_RATE_LIMITED_CODE = "AUTH_RATE_LIMITED"
+LOCAL_SESSION_DEFAULT_MAX_AGE_SECONDS = 8 * 60 * 60
+LOCAL_SESSION_HARDENED_DEFAULT_MAX_AGE_SECONDS = 60 * 60
 
 LOCAL_LOGIN_ROLE_PROFILES: dict[str, list[str]] = {
     "system_manager": ["System Manager"],
@@ -257,6 +263,23 @@ def _normalized_app_env(default: str = "development") -> str:
     return os.getenv("APP_ENV", default).strip().lower() or default
 
 
+def is_auth_hardening_enabled() -> bool:
+    return _env_flag(AUTH_HARDENING_ENABLED_ENV, default=False)
+
+
+def is_auth_rate_limit_enabled() -> bool:
+    return _env_flag(AUTH_RATE_LIMIT_ENABLED_ENV, default=is_auth_hardening_enabled())
+
+
+def is_strong_password_enabled() -> bool:
+    return _env_flag(AUTH_STRONG_PASSWORD_ENABLED_ENV, default=is_auth_hardening_enabled())
+
+
+def local_session_max_age_seconds() -> int:
+    default = LOCAL_SESSION_HARDENED_DEFAULT_MAX_AGE_SECONDS if is_auth_hardening_enabled() else LOCAL_SESSION_DEFAULT_MAX_AGE_SECONDS
+    return _env_int(AUTH_SESSION_MAX_AGE_SECONDS_ENV, default=default, minimum=300, maximum=24 * 60 * 60)
+
+
 def is_local_session_auth_enabled() -> bool:
     return _normalized_app_env() in DEV_AUTH_ALLOWED_ENVS and _env_flag("LINGYI_ALLOW_DEV_AUTH", default=False)
 
@@ -274,8 +297,28 @@ def _bcrypt_rounds() -> int:
     return _env_int(FASTAPI_ADMIN_BCRYPT_ROUNDS_ENV, default=12, minimum=10, maximum=15)
 
 
+def validate_admin_password_strength(password: str) -> None:
+    if not is_strong_password_enabled():
+        return
+    min_length = _env_int(AUTH_STRONG_PASSWORD_MIN_LENGTH_ENV, default=12, minimum=8, maximum=72)
+    encoded_password = (password or "").encode("utf-8")
+    if len(encoded_password) > 72:
+        raise ValueError("bcrypt password must be 72 bytes or fewer")
+    checks = {
+        "长度": len(password or "") >= min_length,
+        "大写字母": any(char.isupper() for char in password or ""),
+        "小写字母": any(char.islower() for char in password or ""),
+        "数字": any(char.isdigit() for char in password or ""),
+        "符号": any(not char.isalnum() for char in password or ""),
+    }
+    missing = [label for label, passed in checks.items() if not passed]
+    if missing:
+        raise ValueError(f"password does not meet hardening policy: missing {', '.join(missing)}")
+
+
 def make_admin_password_hash(password: str, *, rounds: int | None = None) -> str:
     """Build a bcrypt password hash for the DB-backed admin account."""
+    validate_admin_password_strength(password)
     encoded_password = (password or "").encode("utf-8")
     if not encoded_password:
         raise ValueError("password must not be empty")
@@ -315,6 +358,8 @@ def _login_rate_limit_key(*, username: str, request_obj: Request | None) -> str:
 
 
 def _ensure_login_not_rate_limited(*, key: str, now: float | None = None) -> None:
+    if not is_auth_rate_limit_enabled():
+        return
     moment = now if now is not None else time.monotonic()
     with _login_failure_lock:
         bucket = _login_failure_buckets.get(key)
@@ -327,6 +372,8 @@ def _ensure_login_not_rate_limited(*, key: str, now: float | None = None) -> Non
 
 
 def _record_login_failure(*, key: str, now: float | None = None) -> None:
+    if not is_auth_rate_limit_enabled():
+        return
     moment = now if now is not None else time.monotonic()
     with _login_failure_lock:
         bucket = _login_failure_buckets.get(key)
@@ -610,7 +657,7 @@ def create_local_session_token(current_user: CurrentUser) -> str:
         "roles": current_user.roles,
         "is_service_account": current_user.is_service_account,
         "source": current_user.source,
-        "exp": int(time.time()) + LOCAL_SESSION_MAX_AGE_SECONDS,
+        "exp": int(time.time()) + local_session_max_age_seconds(),
     }
     raw_payload = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     signature = _sign_local_session_payload(raw_payload)
@@ -621,7 +668,7 @@ def set_local_session_cookie(response: Response, current_user: CurrentUser, *, s
     response.set_cookie(
         key=LOCAL_SESSION_COOKIE_NAME,
         value=create_local_session_token(current_user),
-        max_age=LOCAL_SESSION_MAX_AGE_SECONDS,
+        max_age=local_session_max_age_seconds(),
         httponly=True,
         samesite="lax",
         secure=secure,

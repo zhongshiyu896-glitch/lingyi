@@ -118,6 +118,11 @@ class AuthSessionTest(unittest.TestCase):
         os.environ["LINGYI_AUTH_LOGIN_MAX_FAILURES"] = "5"
         os.environ["LINGYI_AUTH_LOGIN_WINDOW_SECONDS"] = "300"
         os.environ["LINGYI_AUTH_LOGIN_LOCK_SECONDS"] = "300"
+        os.environ.pop("LINGYI_AUTH_HARDENING_ENABLED", None)
+        os.environ.pop("LINGYI_AUTH_RATE_LIMIT_ENABLED", None)
+        os.environ.pop("LINGYI_AUTH_SESSION_MAX_AGE_SECONDS", None)
+        os.environ.pop("LINGYI_AUTH_STRONG_PASSWORD_ENABLED", None)
+        os.environ.pop("LINGYI_AUTH_STRONG_PASSWORD_MIN_LENGTH", None)
         os.environ.pop("LINGYI_FASTAPI_AUTH_USERS_JSON", None)
         with self.SessionLocal() as session:
             session.query(LyAuthAdminUser).delete()
@@ -261,6 +266,7 @@ class AuthSessionTest(unittest.TestCase):
                 "LINGYI_AUTH_LOGIN_MAX_FAILURES": "2",
                 "LINGYI_AUTH_LOGIN_WINDOW_SECONDS": "300",
                 "LINGYI_AUTH_LOGIN_LOCK_SECONDS": "300",
+                "LINGYI_AUTH_RATE_LIMIT_ENABLED": "true",
             },
             clear=False,
         ):
@@ -274,6 +280,81 @@ class AuthSessionTest(unittest.TestCase):
         self.assertEqual(second.json()["code"], "AUTH_RATE_LIMITED")
         self.assertEqual(third.status_code, 429)
         self.assertEqual(third.json()["code"], "AUTH_RATE_LIMITED")
+
+    def test_production_fastapi_login_rate_limit_is_opt_in(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyAuthAdminUser(
+                    username="admin",
+                    password_hash=auth_core.make_admin_password_hash("secret-pass", rounds=10),
+                    roles=["System Manager"],
+                    status="active",
+                )
+            )
+            session.commit()
+
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+                "LINGYI_AUTH_LOGIN_MAX_FAILURES": "1",
+                "LINGYI_AUTH_RATE_LIMIT_ENABLED": "false",
+            },
+            clear=False,
+        ):
+            first = self.client.post("/api/auth/login", json={"username": "admin", "password": "bad-pass"})
+            second = self.client.post("/api/auth/login", json={"username": "admin", "password": "secret-pass"})
+
+        self.assertEqual(first.status_code, 401)
+        self.assertEqual(second.status_code, 200)
+
+    def test_auth_hardening_session_max_age_and_strong_password_policy(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "LINGYI_AUTH_HARDENING_ENABLED": "true",
+                "LINGYI_AUTH_STRONG_PASSWORD_ENABLED": "true",
+                "LINGYI_AUTH_STRONG_PASSWORD_MIN_LENGTH": "12",
+            },
+            clear=False,
+        ):
+            with self.assertRaises(ValueError):
+                auth_core.make_admin_password_hash("weak-pass", rounds=10)
+            strong_hash = auth_core.make_admin_password_hash("StrongPass-2026", rounds=10)
+
+        with self.SessionLocal() as session:
+            session.add(
+                LyAuthAdminUser(
+                    username="admin",
+                    password_hash=strong_hash,
+                    roles=["System Manager"],
+                    status="active",
+                )
+            )
+            session.commit()
+
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_PERMISSION_SOURCE": "fastapi",
+                "LINGYI_ERPNEXT_BASE_URL": "",
+                "LINGYI_AUTH_HARDENING_ENABLED": "true",
+                "LINGYI_AUTH_SESSION_MAX_AGE_SECONDS": "900",
+            },
+            clear=False,
+        ):
+            response = self.client.post(
+                "/api/auth/login",
+                json={"username": "admin", "password": "StrongPass-2026"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Max-Age=900", response.headers.get("set-cookie", ""))
 
     def test_production_login_uses_fastapi_native_session_without_erpnext(self) -> None:
         def _fake_urlopen(req, timeout=0):
