@@ -42,8 +42,10 @@ from app.schemas.sales_inventory import DiagnosticData
 from app.schemas.sales_inventory import DeliveryInvoiceCancelRequest
 from app.schemas.sales_inventory import DeliveryInvoiceCreateRequest
 from app.schemas.sales_inventory import DeliveryInvoiceListData
+from app.schemas.sales_inventory import CustomerReceivableSummaryListData
 from app.schemas.sales_inventory import InventoryAggregationData
 from app.schemas.sales_inventory import InventoryAggregationItem
+from app.schemas.sales_inventory import OverdueReceivableListData
 from app.schemas.sales_inventory import ReferenceDraftCreateRequest
 from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
 from app.schemas.sales_inventory import SupplierItem
@@ -1712,6 +1714,117 @@ def list_payment_entries(
         customer=customer,
         status=status,
         keyword=keyword,
+        page=_coerce_page(page, default=1),
+        page_size=_coerce_page(page_size, default=20, maximum=100),
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
+@router.get("/customer-receivables")
+@router.get("/receivable-customers")
+def list_customer_receivables(
+    request: Request,
+    company: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    as_of: date | None = Query(default=None),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="customer_receivable",
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="customer_receivable",
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": company,
+            "customer": customer,
+        },
+        required_fields=(),
+        resource_type="customer_receivable",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    data: CustomerReceivableSummaryListData = _write_service(session).list_customer_receivable_summaries(
+        company=company,
+        customer=customer,
+        keyword=keyword,
+        as_of=as_of,
+        page=_coerce_page(page, default=1),
+        page_size=_coerce_page(page_size, default=20, maximum=100),
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
+@router.get("/overdue-receivables")
+def list_overdue_receivables(
+    request: Request,
+    company: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    as_of: date | None = Query(default=None),
+    min_overdue_days: Any = Query(default=1),
+    page: Any = Query(default=1),
+    page_size: Any = Query(default=20),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="overdue_receivable",
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="overdue_receivable",
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "company": company,
+            "customer": customer,
+        },
+        required_fields=(),
+        resource_type="overdue_receivable",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    data: OverdueReceivableListData = _write_service(session).list_overdue_receivables(
+        company=company,
+        customer=customer,
+        keyword=keyword,
+        as_of=as_of,
+        min_overdue_days=_coerce_page(min_overdue_days, default=1, minimum=1, maximum=3650),
         page=_coerce_page(page, default=1),
         page_size=_coerce_page(page_size, default=20, maximum=100),
     )

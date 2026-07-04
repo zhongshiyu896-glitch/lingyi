@@ -34,6 +34,8 @@ from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.models.warehouse import LyWarehouseStockLedgerEntry
 from app.schemas.sales_inventory import CustomerItem
+from app.schemas.sales_inventory import CustomerReceivableSummaryItem
+from app.schemas.sales_inventory import CustomerReceivableSummaryListData
 from app.schemas.sales_inventory import CustomerReturnApplicationData
 from app.schemas.sales_inventory import CustomerReturnApplicationItem
 from app.schemas.sales_inventory import CustomerReturnInboundData
@@ -70,6 +72,8 @@ from app.schemas.sales_inventory import MaterialInventoryReportData
 from app.schemas.sales_inventory import MaterialInventoryReportItem
 from app.schemas.sales_inventory import MaterialTransferData
 from app.schemas.sales_inventory import MaterialTransferItem
+from app.schemas.sales_inventory import OverdueReceivableItem
+from app.schemas.sales_inventory import OverdueReceivableListData
 from app.schemas.sales_inventory import SalesInventoryListData
 from app.schemas.sales_inventory import SalesInvoiceItem
 from app.schemas.sales_inventory import SupplierItem
@@ -2197,6 +2201,249 @@ class SalesInventoryService:
         start = max((page - 1) * page_size, 0)
         return SalesPaymentEntryListData(
             items=[self._build_sales_payment_entry_data(row) for row in rows[start : start + page_size]],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_customer_receivable_summaries(
+        self,
+        *,
+        company: str | None,
+        customer: str | None,
+        keyword: str | None,
+        as_of: date | None,
+        page: int,
+        page_size: int,
+    ) -> CustomerReceivableSummaryListData:
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_customer = self._text(customer)
+        normalized_keyword = self._text(keyword)
+        as_of_date = as_of or date.today()
+
+        invoice_query = session.query(LyDeliveryInvoice).filter(
+            LyDeliveryInvoice.status != "cancelled",
+            LyDeliveryInvoice.docstatus != 2,
+        )
+        if normalized_company:
+            invoice_query = invoice_query.filter(LyDeliveryInvoice.company == normalized_company)
+        if normalized_customer:
+            invoice_query = invoice_query.filter(LyDeliveryInvoice.customer == normalized_customer)
+
+        grouped: dict[tuple[str, str], dict[str, Any]] = {}
+        for invoice in invoice_query.order_by(LyDeliveryInvoice.posting_date.desc(), LyDeliveryInvoice.id.desc()).all():
+            invoice_company = str(invoice.company)
+            invoice_customer = self._text(invoice.customer) or "未填写客户"
+            key = (invoice_company, invoice_customer)
+            row = grouped.setdefault(
+                key,
+                {
+                    "company": invoice_company,
+                    "customer": invoice_customer,
+                    "customer_name": invoice_customer,
+                    "total_receivable": Decimal("0"),
+                    "received_amount": Decimal("0"),
+                    "outstanding_amount": Decimal("0"),
+                    "overdue_amount": Decimal("0"),
+                    "overdue_invoice_count": 0,
+                    "invoice_count": 0,
+                    "payment_count": 0,
+                    "latest_invoice_date": None,
+                    "latest_payment_date": None,
+                    "oldest_due_date": None,
+                    "max_overdue_days": 0,
+                },
+            )
+            row["total_receivable"] = self._decimal_or_zero(row["total_receivable"]) + self._decimal_or_zero(invoice.grand_total)
+            row["invoice_count"] = int(row["invoice_count"]) + 1
+            posting_date = invoice.posting_date
+            if posting_date and (row["latest_invoice_date"] is None or posting_date > row["latest_invoice_date"]):
+                row["latest_invoice_date"] = posting_date
+
+            outstanding = self._decimal_or_zero(invoice.outstanding_amount)
+            due_date = invoice.due_date or invoice.posting_date
+            if outstanding > Decimal("0") and due_date:
+                if row["oldest_due_date"] is None or due_date < row["oldest_due_date"]:
+                    row["oldest_due_date"] = due_date
+                overdue_days = max((as_of_date - due_date).days, 0)
+                if overdue_days > 0:
+                    row["overdue_invoice_count"] = int(row["overdue_invoice_count"]) + 1
+                    row["overdue_amount"] = self._decimal_or_zero(row["overdue_amount"]) + outstanding
+                    row["max_overdue_days"] = max(int(row["max_overdue_days"]), overdue_days)
+
+        if grouped:
+            payment_query = session.query(LySalesPaymentEntry).filter(
+                LySalesPaymentEntry.status == "submitted",
+                LySalesPaymentEntry.docstatus == 1,
+            )
+            if normalized_company:
+                payment_query = payment_query.filter(LySalesPaymentEntry.company == normalized_company)
+            if normalized_customer:
+                payment_query = payment_query.filter(LySalesPaymentEntry.customer == normalized_customer)
+            for payment in payment_query.all():
+                payment_customer = self._text(payment.customer) or "未填写客户"
+                row = grouped.get((str(payment.company), payment_customer))
+                if row is None:
+                    continue
+                row["received_amount"] = self._decimal_or_zero(row["received_amount"]) + self._decimal_or_zero(payment.paid_amount)
+                row["payment_count"] = int(row["payment_count"]) + 1
+                posting_date = payment.posting_date
+                if posting_date and (row["latest_payment_date"] is None or posting_date > row["latest_payment_date"]):
+                    row["latest_payment_date"] = posting_date
+
+        items: list[CustomerReceivableSummaryItem] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in grouped.values():
+            total_receivable = self._decimal_or_zero(row["total_receivable"])
+            received_amount = self._decimal_or_zero(row["received_amount"])
+            outstanding_amount = total_receivable - received_amount
+            if outstanding_amount < Decimal("0"):
+                outstanding_amount = Decimal("0")
+            row["outstanding_amount"] = outstanding_amount
+            collection_status = self._receivable_collection_status(
+                outstanding_amount=outstanding_amount,
+                received_amount=received_amount,
+                overdue_amount=self._decimal_or_zero(row["overdue_amount"]),
+            )
+            risk_level = self._receivable_risk_level(
+                outstanding_amount=outstanding_amount,
+                overdue_days=int(row["max_overdue_days"]),
+            )
+            haystack = " ".join(
+                [
+                    str(row["company"]),
+                    str(row["customer"]),
+                    str(row["customer_name"]),
+                    collection_status,
+                    risk_level,
+                ]
+            ).lower()
+            if keyword_lc and keyword_lc not in haystack:
+                continue
+            items.append(
+                CustomerReceivableSummaryItem(
+                    company=str(row["company"]),
+                    customer=str(row["customer"]),
+                    customer_name=str(row["customer_name"]),
+                    total_receivable=total_receivable,
+                    received_amount=received_amount,
+                    outstanding_amount=outstanding_amount,
+                    overdue_amount=self._decimal_or_zero(row["overdue_amount"]),
+                    overdue_invoice_count=int(row["overdue_invoice_count"]),
+                    invoice_count=int(row["invoice_count"]),
+                    payment_count=int(row["payment_count"]),
+                    latest_invoice_date=row["latest_invoice_date"],
+                    latest_payment_date=row["latest_payment_date"],
+                    oldest_due_date=row["oldest_due_date"],
+                    max_overdue_days=int(row["max_overdue_days"]),
+                    collection_status=collection_status,
+                    risk_level=risk_level,
+                )
+            )
+
+        items.sort(key=lambda item: (item.outstanding_amount, item.max_overdue_days, item.customer), reverse=True)
+        total = len(items)
+        start = max((page - 1) * page_size, 0)
+        return CustomerReceivableSummaryListData(
+            items=items[start : start + page_size],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_overdue_receivables(
+        self,
+        *,
+        company: str | None,
+        customer: str | None,
+        keyword: str | None,
+        as_of: date | None,
+        min_overdue_days: int,
+        page: int,
+        page_size: int,
+    ) -> OverdueReceivableListData:
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_customer = self._text(customer)
+        normalized_keyword = self._text(keyword)
+        as_of_date = as_of or date.today()
+        min_days = max(int(min_overdue_days), 1)
+
+        latest_payment_by_invoice: dict[str, date] = {}
+        payment_query = session.query(LySalesPaymentEntry).filter(
+            LySalesPaymentEntry.status == "submitted",
+            LySalesPaymentEntry.docstatus == 1,
+        )
+        if normalized_company:
+            payment_query = payment_query.filter(LySalesPaymentEntry.company == normalized_company)
+        if normalized_customer:
+            payment_query = payment_query.filter(LySalesPaymentEntry.customer == normalized_customer)
+        for payment in payment_query.all():
+            invoice_no = str(payment.sales_invoice)
+            posting_date = payment.posting_date
+            if posting_date and (invoice_no not in latest_payment_by_invoice or posting_date > latest_payment_by_invoice[invoice_no]):
+                latest_payment_by_invoice[invoice_no] = posting_date
+
+        invoice_query = session.query(LyDeliveryInvoice).filter(
+            LyDeliveryInvoice.status.in_(["submitted", "partly_paid"]),
+            LyDeliveryInvoice.docstatus != 2,
+            LyDeliveryInvoice.outstanding_amount > 0,
+        )
+        if normalized_company:
+            invoice_query = invoice_query.filter(LyDeliveryInvoice.company == normalized_company)
+        if normalized_customer:
+            invoice_query = invoice_query.filter(LyDeliveryInvoice.customer == normalized_customer)
+
+        items: list[OverdueReceivableItem] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for invoice in invoice_query.order_by(LyDeliveryInvoice.due_date.asc(), LyDeliveryInvoice.id.asc()).all():
+            due_date = invoice.due_date or invoice.posting_date
+            if due_date is None:
+                continue
+            overdue_days = (as_of_date - due_date).days
+            if overdue_days < min_days:
+                continue
+            customer_name = self._text(invoice.customer) or "未填写客户"
+            haystack = " ".join(
+                [
+                    str(invoice.sales_invoice),
+                    str(invoice.delivery_note),
+                    str(invoice.sales_order),
+                    customer_name,
+                    str(invoice.item_code),
+                    str(invoice.warehouse),
+                    str(invoice.status),
+                ]
+            ).lower()
+            if keyword_lc and keyword_lc not in haystack:
+                continue
+            items.append(
+                OverdueReceivableItem(
+                    company=str(invoice.company),
+                    customer=customer_name,
+                    sales_invoice=str(invoice.sales_invoice),
+                    sales_order=str(invoice.sales_order),
+                    delivery_note=str(invoice.delivery_note),
+                    item_code=str(invoice.item_code),
+                    warehouse=str(invoice.warehouse),
+                    grand_total=self._decimal_or_zero(invoice.grand_total),
+                    paid_amount=self._decimal_or_zero(invoice.paid_amount),
+                    outstanding_amount=self._decimal_or_zero(invoice.outstanding_amount),
+                    posting_date=invoice.posting_date,
+                    due_date=due_date,
+                    overdue_days=overdue_days,
+                    status=str(invoice.status),
+                    latest_payment_date=latest_payment_by_invoice.get(str(invoice.sales_invoice)),
+                    collection_status="逾期未回" if overdue_days >= 30 else "待催收",
+                )
+            )
+
+        items.sort(key=lambda item: (item.overdue_days, item.outstanding_amount, item.sales_invoice), reverse=True)
+        total = len(items)
+        start = max((page - 1) * page_size, 0)
+        return OverdueReceivableListData(
+            items=items[start : start + page_size],
             total=total,
             page=page,
             page_size=page_size,
@@ -5271,6 +5518,31 @@ class SalesInventoryService:
         if normalized is None:
             raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", f"{field_name} 不能为空")
         return normalized
+
+    @staticmethod
+    def _receivable_collection_status(
+        *,
+        outstanding_amount: Decimal,
+        received_amount: Decimal,
+        overdue_amount: Decimal,
+    ) -> str:
+        if outstanding_amount <= Decimal("0"):
+            return "已收清"
+        if overdue_amount > Decimal("0"):
+            return "逾期未回"
+        if received_amount > Decimal("0"):
+            return "部分回款"
+        return "未回款"
+
+    @staticmethod
+    def _receivable_risk_level(*, outstanding_amount: Decimal, overdue_days: int) -> str:
+        if outstanding_amount <= Decimal("0"):
+            return "低风险"
+        if overdue_days >= 30:
+            return "高风险"
+        if overdue_days > 0:
+            return "中风险"
+        return "低风险"
 
     def _resolve_enabled_style(self, *, company: str, style_no: str | None, style_master_id: int | None = None) -> LyStyleMaster:
         session = self._require_session()

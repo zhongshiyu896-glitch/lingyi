@@ -252,6 +252,52 @@ class SalesPaymentEntryFlowTest(unittest.TestCase):
             audit_actions = {row.action for row in session.query(LyOperationAuditLog).all()}
             self.assertIn("sales_inventory:write", audit_actions)
 
+    def test_customer_receivable_summary_and_overdue_rows_use_payment_facts(self) -> None:
+        created = self.client.post(
+            "/api/sales-inventory/payment-entries",
+            headers=self._headers(),
+            json=self._payload(),
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+
+        summary = self.client.get(
+            "/api/sales-inventory/customer-receivables?company=COMP-A&as_of=2026-07-20",
+            headers=self._headers(),
+        )
+        overdue = self.client.get(
+            "/api/sales-inventory/overdue-receivables?company=COMP-A&as_of=2026-07-20",
+            headers=self._headers(),
+        )
+        over_30 = self.client.get(
+            "/api/sales-inventory/overdue-receivables?company=COMP-A&as_of=2026-07-20&min_overdue_days=30",
+            headers=self._headers(),
+        )
+
+        self.assertEqual(summary.status_code, 200, summary.text)
+        summary_payload = summary.json()["data"]
+        self.assertEqual(summary_payload["total"], 1)
+        summary_row = summary_payload["items"][0]
+        self.assertEqual(summary_row["customer"], "CUST-A")
+        self.assertEqual(Decimal(str(summary_row["total_receivable"])), Decimal("400.000000"))
+        self.assertEqual(Decimal(str(summary_row["received_amount"])), Decimal("150.000000"))
+        self.assertEqual(Decimal(str(summary_row["outstanding_amount"])), Decimal("250.000000"))
+        self.assertEqual(Decimal(str(summary_row["overdue_amount"])), Decimal("250.000000"))
+        self.assertEqual(summary_row["overdue_invoice_count"], 1)
+        self.assertEqual(summary_row["payment_count"], 1)
+        self.assertEqual(summary_row["collection_status"], "逾期未回")
+        self.assertEqual(summary_row["risk_level"], "中风险")
+
+        self.assertEqual(overdue.status_code, 200, overdue.text)
+        overdue_payload = overdue.json()["data"]
+        self.assertEqual(overdue_payload["total"], 1)
+        overdue_row = overdue_payload["items"][0]
+        self.assertEqual(overdue_row["sales_invoice"], "SI-B5-001")
+        self.assertEqual(Decimal(str(overdue_row["outstanding_amount"])), Decimal("250.000000"))
+        self.assertEqual(overdue_row["overdue_days"], 3)
+        self.assertEqual(overdue_row["collection_status"], "待催收")
+        self.assertEqual(over_30.status_code, 200, over_30.text)
+        self.assertEqual(over_30.json()["data"]["total"], 0)
+
     def test_payment_entry_blocks_overpayment(self) -> None:
         response = self.client.post(
             "/api/sales-inventory/payment-entries",

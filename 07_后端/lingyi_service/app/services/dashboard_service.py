@@ -668,7 +668,7 @@ class DashboardService:
             period_start=self._previous_period(period_start=period_start, period_end=period_end)[0],
             period_end=self._previous_period(period_start=period_start, period_end=period_end)[1],
         )
-        receivable_balance = self._receivable_balance_v1(company=company)
+        receivable_balance = self._receivable_balance(company=company)
         alert_counts = self._dashboard_alert_counts(company=company, as_of=as_of, active_orders=active_orders)
         trend = self._shipment_collection_trend(company=company, end_date=period_end)
         due_orders = self._due_orders(company=company, as_of=as_of)
@@ -721,8 +721,7 @@ class DashboardService:
                 count=alert_counts["unpaid_customers_over_30d"],
                 tone="blue",
                 route="/production/receivablePayment",
-                # TODO(模块③接入): 回款模块上线后改为客户回款账龄表。
-                source_note="v1 按发货开票 submitted/partly_paid 且 outstanding_amount > 0 统计客户。",
+                source_note="按销售发票 due_date（无 due_date 用 posting_date）超 30 天且未收清客户统计。",
             ),
         ]
         kpis = [
@@ -757,8 +756,7 @@ class DashboardService:
                 trend_direction=self._trend_direction(collection_amount, previous_collection_amount),
                 route="/production/receivablePayment",
                 tone="cyan",
-                # TODO(模块③接入): 回款模块上线后改为正式收款流水聚合。
-                source_note="v1 按销售回款单 paid_amount 聚合，缺失时为 0。",
+                source_note="按正式销售回款单 paid_amount 月度聚合。",
             ),
             DashboardWorkbenchKpiData(
                 key="receivable_balance_v1",
@@ -768,8 +766,7 @@ class DashboardService:
                 trend="—",
                 route="/production/receivablePayment",
                 tone="amber",
-                # TODO(模块③接入): 回款模块上线后改为客户应收余额表。
-                source_note="v1 按累计发货开票金额减累计已回款金额。",
+                source_note="按累计销售发票金额减累计正式销售回款金额。",
             ),
             DashboardWorkbenchKpiData(
                 key="monthly_gross_profit",
@@ -799,9 +796,7 @@ class DashboardService:
             exceptions=exceptions,
             recent_orders=recent_orders,
             data_sources=self._workbench_data_sources(),
-            todo_notes=[
-                "TODO(模块③接入): 本月回款和应收余额当前为发货发票/回款单 v1 口径。",
-            ],
+            todo_notes=[],
         )
 
     def _active_order_snapshots(self, *, company: str) -> list[dict[str, Any]]:
@@ -977,7 +972,6 @@ class DashboardService:
     def _collection_amount(self, *, company: str, period_start: date, period_end: date) -> Decimal:
         if not self._has_tables({LySalesPaymentEntry.__tablename__}):
             return Decimal("0")
-        # TODO(模块③接入): 回款模块上线后切换到正式回款流水总表。
         value = (
             self.session.query(func.coalesce(func.sum(LySalesPaymentEntry.paid_amount), 0))
             .filter(
@@ -990,19 +984,25 @@ class DashboardService:
         )
         return self._decimal_or_zero(value)
 
-    def _receivable_balance_v1(self, *, company: str) -> Decimal:
+    def _receivable_balance(self, *, company: str) -> Decimal:
         if not self._has_tables({LyDeliveryInvoice.__tablename__}):
             return Decimal("0")
-        # TODO(模块③接入): 回款模块上线后切换到客户应收余额表。
-        row = (
-            self.session.query(
-                func.coalesce(func.sum(LyDeliveryInvoice.grand_total), 0),
-                func.coalesce(func.sum(LyDeliveryInvoice.paid_amount), 0),
-            )
+        total_receivable = self._decimal_or_zero(
+            self.session.query(func.coalesce(func.sum(LyDeliveryInvoice.grand_total), 0))
             .filter(LyDeliveryInvoice.company == company, LyDeliveryInvoice.status != "cancelled")
-            .one()
+            .scalar()
         )
-        balance = self._decimal_or_zero(row[0]) - self._decimal_or_zero(row[1])
+        received_amount = Decimal("0")
+        if self._has_tables({LySalesPaymentEntry.__tablename__}):
+            received_amount = self._decimal_or_zero(
+                self.session.query(func.coalesce(func.sum(LySalesPaymentEntry.paid_amount), 0))
+                .filter(
+                    LySalesPaymentEntry.company == company,
+                    LySalesPaymentEntry.status == "submitted",
+                )
+                .scalar()
+            )
+        balance = total_receivable - received_amount
         return balance if balance > Decimal("0") else Decimal("0")
 
     def _dashboard_alert_counts(self, *, company: str, as_of: date, active_orders: list[dict[str, Any]]) -> dict[str, int]:
@@ -1020,18 +1020,20 @@ class DashboardService:
         shortage_orders = {str(row["sales_order"]) for row in active_orders if bool(row.get("shortage"))}
         unpaid_customers = set()
         if self._has_tables({LyDeliveryInvoice.__tablename__}):
-            cutoff = as_of - timedelta(days=30)
             rows = (
-                self.session.query(LyDeliveryInvoice.customer)
+                self.session.query(LyDeliveryInvoice.customer, LyDeliveryInvoice.due_date, LyDeliveryInvoice.posting_date)
                 .filter(
                     LyDeliveryInvoice.company == company,
                     LyDeliveryInvoice.status.in_(["submitted", "partly_paid"]),
                     LyDeliveryInvoice.outstanding_amount > 0,
-                    LyDeliveryInvoice.posting_date <= cutoff,
                 )
                 .all()
             )
-            unpaid_customers = {str(row[0] or "未填客户") for row in rows}
+            unpaid_customers = {
+                str(customer or "未填客户")
+                for customer, due_date, posting_date in rows
+                if (as_of - (due_date or posting_date)).days >= 30
+            }
         return {
             "overdue_orders": len(overdue_orders),
             "due_soon_orders": len(due_soon_orders),

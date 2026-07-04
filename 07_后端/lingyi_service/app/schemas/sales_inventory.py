@@ -318,6 +318,68 @@ class SalesPaymentEntryListData(BaseModel):
     page_size: int
 
 
+class CustomerReceivableSummaryItem(BaseModel):
+    """Read-only customer receivable summary from sales invoices and payments."""
+
+    company: str
+    customer: str
+    customer_name: str
+    currency: str = "CNY"
+    total_receivable: Decimal
+    received_amount: Decimal
+    outstanding_amount: Decimal
+    overdue_amount: Decimal
+    overdue_invoice_count: int
+    invoice_count: int
+    payment_count: int
+    latest_invoice_date: date | None = None
+    latest_payment_date: date | None = None
+    oldest_due_date: date | None = None
+    max_overdue_days: int
+    collection_status: str
+    risk_level: str
+    source_note: str = "销售发票 grand_total 与销售回款单 paid_amount 聚合。"
+
+
+class CustomerReceivableSummaryListData(BaseModel):
+    """Paginated customer receivable summary response."""
+
+    items: list[CustomerReceivableSummaryItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class OverdueReceivableItem(BaseModel):
+    """Read-only overdue receivable invoice row."""
+
+    company: str
+    customer: str
+    sales_invoice: str
+    sales_order: str
+    delivery_note: str
+    item_code: str
+    warehouse: str
+    grand_total: Decimal
+    paid_amount: Decimal
+    outstanding_amount: Decimal
+    posting_date: date
+    due_date: date
+    overdue_days: int
+    status: str
+    latest_payment_date: date | None = None
+    collection_status: str
+
+
+class OverdueReceivableListData(BaseModel):
+    """Paginated overdue receivable response."""
+
+    items: list[OverdueReceivableItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class SalesOrderListItem(BaseModel):
     """Read-only Sales Order list row."""
 
